@@ -1,4 +1,6 @@
 
+import subprocess
+from subprocess import Popen
 
 def get_config_info_base(self):
 

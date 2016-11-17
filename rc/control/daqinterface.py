@@ -1,7 +1,7 @@
 #!/bin/env python
 
 import sys
-sys.path.append("/home/nfs/dunedaq/daqarea/lbnerc")
+sys.path.append("/home/nfs/dunedaq/jcfree/standalone_daq")
 
 import argparse
 import datetime
@@ -25,11 +25,9 @@ from rc.control.component import Component # , announcing_sender
 from rc.compatibility import xmlrpclib
 from rc.control.deepsuppression import deepsuppression
 
-execfile("rc/control/get_config_info_protodune.py")
-execfile("rc/control/put_config_info_protodune.py")
-execfile("rc/control/save_run_record_35ton.py")
-
-
+from rc.control.get_config_info_protodune import get_config_info_base
+from rc.control.put_config_info_protodune import put_config_info_base
+from rc.control.save_run_record_35ton import save_run_record_base
 
 class DAQInterface(Component):
     """
@@ -1344,10 +1342,6 @@ class DAQInterface(Component):
 
     def do_initialize(self):
 
-        print self.run_params
-
-        print "LINE 1347"
-
         self.exception = False
 
         self.nodiskwrite = False
@@ -1379,8 +1373,6 @@ class DAQInterface(Component):
         self.eventbuilder_log_filenames = []
         self.aggregator_log_filenames = []
 
-        print "LINE 1380"
-
         # JCF, 11/6/14
 
         self.procinfos = []    # Zero this out in case already filled
@@ -1397,8 +1389,6 @@ class DAQInterface(Component):
             return
 
         self.config_dirname, self.fhicl_file_path = self.get_config_info()
-
-        print "LINE 1398"
 
         # JCF, 6/11/15
 
@@ -1429,8 +1419,6 @@ class DAQInterface(Component):
                             self.lbneartdaq_build_dir))
             sleep(5)
 
-        print "LINE 1430"
-
         # Save the commit hashes of lbne-artdaq, lbnerc, and the
         # configuration directory, so they can be saved as metadata at
         # the start of the run
@@ -1459,8 +1447,6 @@ class DAQInterface(Component):
         self.config_dirname_hash = self.get_commit_hash(self.config_dirname, False)
         if self.config_dirname_hash is None:
             return
-
-        print "LINE 1461"
 
         if self.debug_level >= 1:
             print "%s: DAQInterface: \"Init\" transition underway" % \
