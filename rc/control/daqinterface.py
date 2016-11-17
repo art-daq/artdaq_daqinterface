@@ -20,9 +20,8 @@ from threading import Thread
 
 #from rc.io import sender
 from rc.io.timeoutclient import TimeoutServerProxy
-from rc.util import wait_for_interrupt
 from rc.control.component import Component # , announcing_sender
-from rc.compatibility import xmlrpclib
+#from rc.compatibility import xmlrpclib
 from rc.control.deepsuppression import deepsuppression
 
 from rc.control.get_config_info_protodune import get_config_info_base
@@ -144,7 +143,7 @@ class DAQInterface(Component):
         return Popen("date", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
 
     def print_log(self, printstr, debuglevel=-999):
-        self.logger.log(printstr)
+#        self.logger.log(printstr)
 
         if self.debug_level >= debuglevel:
             print "%s: %s" % (self.date_and_time(), printstr)
@@ -2076,8 +2075,6 @@ def main():  # no-coverage
             while True:
                 sleep(100)
         except: KeyboardInterrupt
-
-#        wait_for_interrupt()
 
 
 # JCF, Nov-16-2016

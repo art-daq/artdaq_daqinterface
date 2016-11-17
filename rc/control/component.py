@@ -5,7 +5,7 @@ import os
 import random
 #from toolz import assoc
 from contextlib import contextmanager
-from rc.log import Logger
+#from rc.log import Logger
 #from rc.io import sender
 from rc.io.rpc import rpc_server
 from rc.threading import threadable
@@ -43,8 +43,8 @@ class Component(ContextObject):
                              "components")
         self.name = name
         self.synchronous = synchronous
-        self.logger = Logger(name, logpath)
-        self.logger.log("%s starting!" % name)
+#        self.logger = Logger(name, logpath)
+#        self.logger.log("%s starting!" % name)
         # skip_init will take things right to the ready state
         #  and mean no "initialize" transition is needed
         if skip_init:
@@ -234,12 +234,12 @@ def get_args():  # no-coverage
     return parser.parse_args()
 
 
-def main():  # no-coverage
-    """
-    When not running `Component` under test, it can be instantiated on
-    the command line using `lbnecomp` (`lbnecomp -h` for help).
-    """
-    args = get_args()
-    with Component(logpath=os.path.join(os.environ["HOME"], ".lbnerc.log"),
-                   **vars(args)):
-        wait_for_interrupt()
+# def main():  # no-coverage
+#     """
+#     When not running `Component` under test, it can be instantiated on
+#     the command line using `lbnecomp` (`lbnecomp -h` for help).
+#     """
+#     args = get_args()
+#     with Component(logpath=os.path.join(os.environ["HOME"], ".lbnerc.log"),
+#                    **vars(args)):
+#         wait_for_interrupt()
