@@ -25,6 +25,8 @@ from rc.control.deepsuppression import deepsuppression
 from rc.control.get_config_info_protodune import get_config_info_base
 from rc.control.put_config_info_protodune import put_config_info_base
 from rc.control.save_run_record_35ton import save_run_record_base
+from rc.control.start_datataking_protodune import start_datataking_base
+from rc.control.stop_datataking_protodune import stop_datataking_base
 
 class DAQInterface(Component):
     """
@@ -293,16 +295,8 @@ class DAQInterface(Component):
             self.config_filename = "/".join(__file__.split("/")[:-3]) + \
                 "/docs/config.txt"
 
-        # JCF, 11/13/14
-
-        # This is the # of CfgMgrApp instances running; this determines
-        # where FHiCL documents are searched for and what constitutes
-        # illegal config.txt formatting
-
-        self.num_config_procs = None
-
-        # This will contain the directory which Jon Paley's CfgMgrApp
-        # will use to supply DAQInterface with FHiCL documents
+        # This will contain the directory with the FHiCL documents
+        # which initialize the artdaq processes
 
         self.config_dirname = None
 
@@ -312,7 +306,6 @@ class DAQInterface(Component):
 
         self.last_lbne_artdaq_line = None
 
-        # See definition, above
         self.reset_DAQInterface_config()
 
         self.__do_initialize = False
@@ -332,6 +325,8 @@ class DAQInterface(Component):
     get_config_info = get_config_info_base
     put_config_info = put_config_info_base
     save_run_record = save_run_record_base
+    start_datataking = start_datataking_base
+    stop_datataking = stop_datataking_base
 
 
     # The actual transition functions called by Run Control; note
@@ -359,41 +354,21 @@ class DAQInterface(Component):
     def recover(self):
         self.__do_recover = True
 
-    # JCF, 6/26/14
-
-    # Send a simple acknowledgement to RC that something went wrong
-
-    # JCF, 8/11/14 -- add capability to provide extra information
-
-    # JCF, 11/18/14 -- and bind the recover transition to sending RC
-    # an alert
-
     def alert_and_recover(self, extrainfo=None):
         
+        #self.alert(extrainfo)
         self.recover()
         return
 
     def check_proc_errors(self):
 
         is_all_ok = True
-
-        # JCF, Jan-14-2016
-
-        # The "5" below is fairly ad-hoc; I'll want to play around
-        # with it to find the value that makes the most sense in an
-        # operational context
-
-        # JCF, Jan-17-2016
-
-        # To clarify what's happening: now, if a process doesn't
-        # return "Success", as long as the response is one of the
-        # following shown below ("ARTDAQ PROCESS NOT YET CALLED", or a
-        # legitimate DAQ state) and not an obvious error message, for
-        # max_retries times the program will sleep for a second and
-        # then query the process again, the idea being that the lack
-        # of a "Success" response was due to the
-        # "procinfo.lastreturned" variable simply not getting filled
-        # in a timely manner
+        
+        # The following code will give artdaq processes max_retries
+        # chances to return "Success", if, rather than
+        # procinfo.lastreturned indicating an error condition, it
+        # simply appears that it hasn't been assigned its new status
+        # yet
 
         for procinfo in self.procinfos:
 
@@ -480,7 +455,7 @@ class DAQInterface(Component):
 
         if self.debug_level > 1:
 
-            print "DAQInterface: Based on procinfos array, will launch " + \
+            print "DAQInterface: will launch " + \
                 str(self.num_boardreaders()) + \
                 " BoardReaderMain processes, " + \
                 str(self.num_eventbuilders()) + \
@@ -723,102 +698,6 @@ class DAQInterface(Component):
                 for tmpline in lines:
                     print tmpline.strip()
 
-    # JCF, Nov-9-2015
-
-    def attempt_lcm_pulse(self, start_or_stop):
-
-        conf_file = "%s/%s/lcm_%s.conf" % (self.config_dirname,
-                                          self.run_params["config"],
-                                          start_or_stop)
-                                         
-        if not os.path.exists(conf_file):
-            raise Exception("Error in DAQInterface::attempt_lcm_pulse : " + 
-                            "unknown lcm configuration file \"%s\"" % (conf_file))
-
-        cmds = []
-
-        # See launch_procs() for info on this string jujitsu
-
-        if self.lbneartdaq_build_dir[-1] == "/":
-            setupdir = "/".join(self.lbneartdaq_build_dir.split("/")[0:-2])
-        else:
-            setupdir = "/".join(self.lbneartdaq_build_dir.split("/")[0:-1])
-
-        cmds.append("cd " + self.lbneartdaq_build_dir)
-        cmds.append("source " + setupdir + "/setupLBNEARTDAQ " +
-                    self.lbneartdaq_build_dir)
-
-
-#        cmds.append("cd /data/lbnedaq/lcmControl")
-#        cmds.append("source setup.sh")
-#        cmds.append("./bin/lcmControl.exe %s" % (conf_file))
-
-#        if self.debug_level >= 1:
-#            print
-#            print "About to call lcmControl.exe ; no warning message below this will imply success..."
-
-#        with deepsuppression():
-#            status = Popen("ssh lbnedaq1 ' " + ";".join(cmds) + " ' ", shell=True).wait()
-
-#        if status != 0:
-#            self.print_log("Warning in DAQInterface::attempt_lcm_pulse : " +
-#                           "error status code returned by lcmControl.exe call")
-        
-        print
-
-        return
-
-    # JCF, 2/6/15
-
-    # attempt_sync_pulse() will send a sync pulse to the TDU via an
-    # XML-RPC server connection assuming the port of the XML-RPC
-    # server to the TDU is set to a non-negative integer. For more on
-    # the TDU and its code, take a look at Tom Dealtry's notes at
-    # https://cdcvs.fnal.gov/redmine/projects/lbne-daq/wiki/Starting_and_using_TDUControl
-
-    def attempt_sync_pulse(self):
-
-        if int(self.tdu_xmlrpc_port) <= 0:
-            self.print_log("XML-RPC server port for the TDU is set to <= 0;" +
-                           " skipping sync pulse")
-            return
-
-        if os.getcwd().split("/")[-1] != "lbnerc":
-            raise Exception("Exception in DAQInterface: " +
-                            "expected to be in lbnerc/ directory")
-
-        # JCF, 2/7/15 -- should I add a "ping" before sending the sync pulse?
-
-        tdu_attempts = 5
-
-        # JCF, Jan-25-2016
-
-        # Due to the reconfiguration of the network this morning
-        # performed by Geoff Savage, Tim Nicholls and Bonnie King, I'm
-        # now launching the tdu_control_via_xmlrpcserver.py script
-        # remotely on lbnedaq1
-
-        cmd = "ssh lbnedaq1 'cd /data/lbnedaq/daqarea ; . fireup ; " + \
-            "python rc/tdu/testing_scripts/tdu_control_via_xmlrpcserver.py " + \
-            "-T 10.226.8.18 -p %s -s'" % (self.tdu_xmlrpc_port)
-
-        for tdu_attempt in range(tdu_attempts):
-            result = Popen(cmd, shell=True, stdout=subprocess.PIPE,
-                           stderr=subprocess.STDOUT)
-
-            lines = result.stdout.readlines()
-
-            if lines[-1].strip() == "0 (SUCCESS)":
-                print "TDU RESULT: " + lines[-1]
-                break
-            else:
-                for line in lines:
-                    print line
-
-        if not (lines[-1].strip() == "0 (SUCCESS)"):
-             raise Exception("Exception in DAQInterface:" +
-                             " problem running the" +
-                             " tdu_control_via_xmlrpcserver.py script")
 
     def kill_procs(self):
 
@@ -1456,17 +1335,14 @@ class DAQInterface(Component):
                     print "Searching for the FHiCL document for " + component + \
                         " given configuration \"" + self.run_params["config"] + \
                         "\""
-
-                #manual_uri = "/home/nfs/dunedaq/daqarea/config/" + self.run_params["config"] + "/" + component + "_hw_cfg.fcl"
-                manual_uri = self.config_dirname + "/" + self.run_params["config"] + "/" + component + "_hw_cfg.fcl"
-                print "WARNING: this is a special version of DAQInterface which skips use of configuration manager; will assume URI is \"" + manual_uri + "\""
+                uri = self.config_dirname + "/" + self.run_params["config"] + "/" + component + "_hw_cfg.fcl"
 
                 socket = self.run_params["daq_comp_list"][component]
 
                 self.procinfos.append(self.Procinfo("BoardReader",
                                                     socket[0],
                                                     socket[1],
-                                                    manual_uri,
+                                                    uri,
                                                     self.fhicl_file_path))
                                           
             # JCF, 11/6/14
@@ -1791,33 +1667,7 @@ class DAQInterface(Component):
 
         self.do_command("Start")
 
-        # try:
-        #     self.attempt_lcm_pulse("start")
-        # except Exception:
-        #     self.print_log("DAQInterface caught an exception " +
-        #                    "in do_start_running()")
-        #     self.print_log(traceback.format_exc())
-
-        #     self.print_log("%s, returned string is: " % (procinfo.name,))
-        #     self.print_log(procinfo.lastreturned)
-
-        #     self.alert_and_recover("An exception was "
-        #                            "thrown during the start transition")
-        #     return
-
-        # try:
-        #     self.attempt_sync_pulse()
-        # except Exception:
-        #     self.print_log("DAQInterface caught an exception " +
-        #                    "in do_start_running()")
-        #     self.print_log(traceback.format_exc())
-
-        #     self.print_log("%s, returned string is: " % (procinfo.name,))
-        #     self.print_log(procinfo.lastreturned)
-
-        #     self.alert_and_recover("An exception was "
-        #                            "thrown during the start transition")
-        #     return
+        self.start_datataking()
 
         self.complete_state_change(self.name, "starting")
         print "\n%s: Start transition complete for run %s"  % \
@@ -1831,19 +1681,7 @@ class DAQInterface(Component):
             print "%s: DAQInterface: \"Stop\" transition underway" % \
                 (self.date_and_time())
 
-        # try:
-        #     self.attempt_lcm_pulse("stop")
-        # except:
-        #     self.print_log("DAQInterface caught an exception " +
-        #                    "in do_stop_running()")
-        #     self.print_log(traceback.format_exc())
-
-        #     self.print_log("%s, returned string is: " % (procinfo.name,))
-        #     self.print_log(procinfo.lastreturned)
-
-        #     self.alert_and_recover("An exception was "
-        #                            "thrown during the stop transition")
-        #     return
+        self.stop_datataking()
 
         self.do_command("Stop")
 
