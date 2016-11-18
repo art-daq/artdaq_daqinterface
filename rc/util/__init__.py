@@ -1,6 +1,5 @@
 from __future__ import print_function
 from rc.util.exc_string import exc_string
-#from toolz import update_in
 import contextlib
 import datetime
 import inspect
@@ -111,10 +110,6 @@ def convert_to_time(t):
     except ValueError:
         rt = datetime.datetime.strptime(t, "%Y-%m-%d %H:%M:%S")
         return rt
-
-
-#def dict_datetime_from_str(dikt, key="t"):
-#    return update_in(dikt, [key], convert_to_time)
 
 
 def complement(f):

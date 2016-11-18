@@ -18,10 +18,8 @@ import glob
 import stat
 from threading import Thread
 
-#from rc.io import sender
 from rc.io.timeoutclient import TimeoutServerProxy
-from rc.control.component import Component # , announcing_sender
-#from rc.compatibility import xmlrpclib
+from rc.control.component import Component 
 from rc.control.deepsuppression import deepsuppression
 
 from rc.control.get_config_info_protodune import get_config_info_base
@@ -371,19 +369,7 @@ class DAQInterface(Component):
     # an alert
 
     def alert_and_recover(self, extrainfo=None):
-
-        #errmsg = "%s: Error in DAQInterface" % (self.date_and_time())
-
-        #if extrainfo:
-        #    errmsg += ": " + extrainfo
-
-        #trep = datetime.datetime.utcnow()
-        # self.sender.send({"type": "alert",
-        #                   "service": self.name,
-        #                   "t": trep,
-        #                   "varname": "errmsg",
-        #                   "value": errmsg})
-
+        
         self.recover()
         return
 

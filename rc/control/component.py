@@ -3,27 +3,10 @@ import datetime
 import os.path
 import os
 import random
-#from toolz import assoc
 from contextlib import contextmanager
-#from rc.log import Logger
-#from rc.io import sender
 from rc.io.rpc import rpc_server
 from rc.threading import threadable
 from rc.util.contexts import ContextObject
-from rc.util import wait_for_interrupt
-
-
-# @contextmanager
-# def announcing_sender(name, rpc_host, rpc_port, synchronous,
-#                       control_host='localhost', control_port=5000):
-#     with sender(ip=control_host, port=control_port) as s:
-#         s.send({"type": "control",
-#                 "name": name,
-#                 "synchronous": synchronous,
-#                 "host": rpc_host,
-#                 "port": rpc_port})
-#         yield s
-
 
 class Component(ContextObject):
     """
@@ -43,8 +26,6 @@ class Component(ContextObject):
                              "components")
         self.name = name
         self.synchronous = synchronous
-#        self.logger = Logger(name, logpath)
-#        self.logger.log("%s starting!" % name)
         # skip_init will take things right to the ready state
         #  and mean no "initialize" transition is needed
         if skip_init:
@@ -56,11 +37,6 @@ class Component(ContextObject):
         self.run_params = None
         self.__dummy_val = 0
         self.contexts = [
-            # ("sender", announcing_sender(self.name,
-            #                              self.__rpc_host,
-            #                              self.__rpc_port,
-            #                              self.synchronous,
-            #                              control_host=control_host)),
             ("rpc_server",
              rpc_server(port=self.__rpc_port,
                         funcs={"state": self.state,
@@ -233,13 +209,3 @@ def get_args():  # no-coverage
                         help="Component is synchronous (starts/stops w/ DAQ)")
     return parser.parse_args()
 
-
-# def main():  # no-coverage
-#     """
-#     When not running `Component` under test, it can be instantiated on
-#     the command line using `lbnecomp` (`lbnecomp -h` for help).
-#     """
-#     args = get_args()
-#     with Component(logpath=os.path.join(os.environ["HOME"], ".lbnerc.log"),
-#                    **vars(args)):
-#         wait_for_interrupt()

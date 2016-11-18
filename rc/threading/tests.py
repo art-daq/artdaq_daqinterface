@@ -1,3 +1,7 @@
+
+import sys
+sys.path.append("/home/nfs/dunedaq/jcfree/standalone_daq")
+
 from rc.util import eq, wait_until
 from rc.threading import Threadable, threadable
 import threading
