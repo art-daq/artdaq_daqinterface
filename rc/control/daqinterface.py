@@ -316,7 +316,7 @@ class DAQInterface(Component):
         self.__do_resume_running = False
         self.__do_recover = False
 
-        self.messagefacility_fhicl = "/home/nfs/dunedaq/daqarea/lbnerc/docs/MessageFacility.fcl"
+        self.messagefacility_fhicl = "/home/nfs/dunedaq/jcfree/standalone_daq/docs/MessageFacility.fcl"
 
         if self.debug_level >= 1:
             print "DAQInterface launched; if running DAQInterface in the background," \
@@ -438,6 +438,8 @@ class DAQInterface(Component):
 
     def launch_procs(self):
 
+        setupscript="setupARTDAQDEMO"
+
         greptoken = "pmt.rb -p " + self.pmt_port
         pids = self.get_pids(greptoken, self.pmt_host)
 
@@ -446,12 +448,10 @@ class DAQInterface(Component):
                             "\"pmt.rb -p %s\" was already running on %s" %
                             (self.pmt_port, self.pmt_host))
 
-        if not os.path.isdir(self.lbneartdaq_build_dir + "/lbne-artdaq"):
-            print "Unable to find " + self.lbneartdaq_build_dir + \
-                "/lbne-artdaq; have you run \"source_me\"?"
+        if not os.path.isdir(self.lbneartdaq_build_dir):
+            print "Unable to find " + self.lbneartdaq_build_dir 
             raise Exception("Exception in DAQInterface: " +
-                            "lbne-artdaq not found in " +
-                            self.lbneartdaq_build_dir)
+                            "unable to find " + self.lbneartdaq_build_dir)
 
         if self.debug_level > 1:
 
@@ -463,7 +463,7 @@ class DAQInterface(Component):
                 str(self.num_aggregators()) + \
                 " AggregatorMain processes"
 
-            print "Assuming lbne-artdaq directory is " + \
+            print "Assuming daq package is in " + \
                 self.lbneartdaq_build_dir
 
         # We'll use the desired features of the artdaq processes to
@@ -510,9 +510,9 @@ class DAQInterface(Component):
         else:
             setupdir = "/".join(self.lbneartdaq_build_dir.split("/")[0:-1])
 
-        if not os.path.exists(setupdir + "/setupLBNEARTDAQ"):
+        if not os.path.exists(setupdir + "/" + setupscript ):
             raise Exception("Exception in DAQInterface: " +
-                            "setupLBNEARTDAQ script not found in " +
+                            setupscript + " script not found in " +
                             setupdir)
 
         for logdir in ["pmt", "masterControl", "boardreader", "eventbuilder",
@@ -520,13 +520,17 @@ class DAQInterface(Component):
             cmds.append("mkdir -p -m 0777 " + self.log_directory +
                         "/" + logdir)
 
+
+        print "JCF, Nov-18-2016: PERFORMING pdunedaq01.fnal.gov-SPECIFIC PRODUCTS AREA SOURCE"
+        cmds.append(". /home/nfs/products/setup")
+
         cmds.append("cd " + self.lbneartdaq_build_dir)
-        cmds.append("source " + setupdir + "/setupLBNEARTDAQ " +
+        cmds.append("source " + setupdir + "/" + setupscript + " " +
                     self.lbneartdaq_build_dir)
         cmds.append("source " + self.lbneartdaq_build_dir +
                     "/bin/setupDemoEnvironment.sh")
 
-        cmds.append("export LBNEARTDAQ_PMT_PORT=" + self.pmt_port)
+        cmds.append("export ARTDAQDEMO_PMT_PORT=" + self.pmt_port)
 
         # This needs to use the same messagefacility package version
         # as lbne-artdaq ultimately relies on, otherwise things will
@@ -536,7 +540,7 @@ class DAQInterface(Component):
 
         cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=30")
 
-        cmd = "pmt.rb -p $LBNEARTDAQ_PMT_PORT -d " + pmtconfigname + \
+        cmd = "pmt.rb -p $ARTDAQDEMO_PMT_PORT -d " + pmtconfigname + \
             " --logpath " + self.log_directory + \
             " --logfhicl " + self.messagefacility_fhicl + " --display $DISPLAY & "
    
@@ -1263,11 +1267,11 @@ class DAQInterface(Component):
         # function, which requires Kurt's error reporting capability
         # in artdaq)
 
-        includes_commit = "eb2a186e959430f09e7f85e445edce11965f1a7f"
-        commit_date = "Jul 14, 2016"
+        includes_commit = "aa9798bee68cd6fbd6d88058001b8b7d65f7638e"
+        commit_date = "Oct 4, 2016"
 
         cmds = []
-        cmds.append("cd %s/../lbne-artdaq" % (self.lbneartdaq_build_dir))
+        cmds.append("cd %s/../artdaq-demo" % (self.lbneartdaq_build_dir))
         cmds.append("git log | grep %s" % (includes_commit))
 
         proc = Popen(";".join(cmds), shell=True,
@@ -1277,7 +1281,7 @@ class DAQInterface(Component):
         if len(proclines) != 1:
             print
             self.print_log("WARNING: DAQInterface expects a version of"
-                           " lbne-artdaq as new as or newer than %s (%s);"
+                           " artdaq-demo as new as or newer than %s (%s);"
                            " %s appears to be older" %
                            (includes_commit, commit_date,
                             self.lbneartdaq_build_dir))
@@ -1290,12 +1294,12 @@ class DAQInterface(Component):
         # Dec-9-2015: add in the lbne-raw-data hash as well
 
         self.lbne_artdaq_hash = self.get_commit_hash(
-            "%s/../lbne-artdaq" % (self.lbneartdaq_build_dir))
+            "%s/../artdaq-demo" % (self.lbneartdaq_build_dir))
         if self.lbne_artdaq_hash is None:
             return
 
         self.lbne_raw_data_hash = self.get_commit_hash(
-            "%s/../lbne-raw-data" % (self.lbneartdaq_build_dir))
+            "%s/../artdaq-core-demo" % (self.lbneartdaq_build_dir))
         if self.lbne_raw_data_hash is None:
             return
 
@@ -1345,22 +1349,6 @@ class DAQInterface(Component):
                                                     uri,
                                                     self.fhicl_file_path))
                                           
-            # JCF, 11/6/14
-
-            # After a discussion with Kurt this morning, we decided
-            # for the time being to stash the two aggregator FHiCL
-            # documents as "Aggregator1.fcl" and "Aggregator2.fcl" in
-            # a given configuration's directory
-
-            # JCF, 3/19/15
-
-            # Now, handle the FHiCLs for the EventBuilderMains in
-            # a similar manner
-
-            # JCF, Jul-5-2016
-
-            # Now that lbne-artdaq is based on artdaq v1_13_00,
-            # support >2 aggregators
 
             support_tuples = [("Aggregator", self.num_aggregators()),
                               ("EventBuilder", self.num_eventbuilders())]

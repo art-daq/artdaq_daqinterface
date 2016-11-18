@@ -1,33 +1,29 @@
 #!/bin/env bash
 
-if [[ ($1 != "start" && $# != 1 ) || ( $1 == "start" && $# != 2 ) ]]; then
-    echo "Wrong arguments" >&2
-    exit 10
-fi
-
+badargs=false
 cmd=$1
-runnum=$2
-
-if ! [[ "$runnum" =~ "" || "$runnum" =~ ^[0-9]+$ ]]; then
-    echo "Argument for run number is malformed"
-    exit 20
-fi
 
 runnum_token=""
+config_token=",config:s/artdaqdemo"
 translated_cmd=
 
 case $cmd in
     "init")
+	test $# == 1 || badargs=true 
 	translated_cmd="initializing"
+#	config_token=",config:s/"$2
 	;;
     "start")
+	test $# == 2 || badargs=true 
 	translated_cmd="starting"
-	runnum_token=",run_number:i/"$runnum
+	runnum_token=",run_number:i/"$2
 	;;
     "stop")
+	test $# == 1 || badargs=true 
 	translated_cmd="stopping"
 	;;
     "terminate")
+	test $# == 1 || badargs=true 
 	translated_cmd="terminating"
 	;;
     *)
@@ -36,7 +32,13 @@ case $cmd in
 	;;
 esac
 
-full_cmd="xmlrpc http://localhost:5570/RPC2 state_change daqint "${translated_cmd}" 'struct/{config:s/demo"${runnum_token}",daq_comp_list:struct/{component01:array/(s/pdunedaq01.fnal.gov,5305)}}'"
+if [[ "$badargs" = true ]]; then
+    echo "Incorrect arguments passed to $0" >&2
+    exit 20
+fi
+
+
+full_cmd="xmlrpc http://localhost:5570/RPC2 state_change daqint "${translated_cmd}" 'struct/{daq_comp_list:struct/{component01:array/(s/pdunedaq01.fnal.gov,5305)}"${config_token}${runnum_token}"}'"
 
 ( cd ~/lbnedaq ; . setupLBNEARTDAQ 2>&1 > /dev/null; echo $full_cmd ; eval $full_cmd )
 

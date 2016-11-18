@@ -16,7 +16,7 @@ def get_config_info_base(self):
     cmds.append( "cd %s" % (configbasedir) )
     cmds.append( ". %s/setup" % (proddir))
     cmds.append( "setup artdaq v1_13_02 -q e10:eth:prof:s35")
-    cmds.append( "conftool.sh -o export_global_config -g demo1")
+    cmds.append( "conftool.sh -o export_global_config -g artdaqdemo999")
 
     cmd = " ; ".join( cmds )
 
