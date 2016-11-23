@@ -1,7 +1,7 @@
 #!/bin/env python
 
 import sys
-sys.path.append("/home/nfs/dunedaq/jcfree/standalone_daq")
+sys.path.append("/home/jcfree/standalone_daq")
 
 import argparse
 import datetime
@@ -22,8 +22,8 @@ from rc.io.timeoutclient import TimeoutServerProxy
 from rc.control.component import Component 
 from rc.control.deepsuppression import deepsuppression
 
-from rc.control.get_config_info_protodune import get_config_info_base
-from rc.control.put_config_info_protodune import put_config_info_base
+from rc.control.get_config_info_simple import get_config_info_base
+from rc.control.put_config_info_35ton import put_config_info_base
 from rc.control.save_run_record_35ton import save_run_record_base
 from rc.control.start_datataking_protodune import start_datataking_base
 from rc.control.stop_datataking_protodune import stop_datataking_base
@@ -249,8 +249,7 @@ class DAQInterface(Component):
         # Piece together the call to msgviewer...
 
         cmds = []
-        #cmds.append(". /data/lbnedaq/products/setup")
-        cmds.append(". /home/nfs/products/setup")
+        cmds.append(". /home/jcfree/products/setup")
         cmds.append("setup artdaq_mfextensions v1_01_00 -q prof:e10:s35")
         cmds.append("msgviewer -c $ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/msgviewer.fcl 2>&1 > /dev/null &" )
 
@@ -316,7 +315,7 @@ class DAQInterface(Component):
         self.__do_resume_running = False
         self.__do_recover = False
 
-        self.messagefacility_fhicl = "/home/nfs/dunedaq/jcfree/standalone_daq/docs/MessageFacility.fcl"
+        self.messagefacility_fhicl = "/home/jcfree/standalone_daq/docs/MessageFacility.fcl"
 
         if self.debug_level >= 1:
             print "DAQInterface launched; if running DAQInterface in the background," \
@@ -521,8 +520,8 @@ class DAQInterface(Component):
                         "/" + logdir)
 
 
-        print "JCF, Nov-18-2016: PERFORMING pdunedaq01.fnal.gov-SPECIFIC PRODUCTS AREA SOURCE"
-        cmds.append(". /home/nfs/products/setup")
+#        print "JCF, Nov-18-2016: PERFORMING pdunedaq01.fnal.gov-SPECIFIC PRODUCTS AREA SOURCE"
+#        cmds.append(". /home/nfs/products/setup")
 
         cmds.append("cd " + self.lbneartdaq_build_dir)
         cmds.append("source " + setupdir + "/" + setupscript + " " +
@@ -540,9 +539,13 @@ class DAQInterface(Component):
 
         cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=30")
 
+#        cmd = "pmt.rb -p $ARTDAQDEMO_PMT_PORT -d " + pmtconfigname + \
+#            " --logpath " + self.log_directory + \
+#            " --logfhicl " + self.messagefacility_fhicl + " --display $DISPLAY & "
+
         cmd = "pmt.rb -p $ARTDAQDEMO_PMT_PORT -d " + pmtconfigname + \
             " --logpath " + self.log_directory + \
-            " --logfhicl " + self.messagefacility_fhicl + " --display $DISPLAY & "
+            " --display $DISPLAY & "
    
         cmds.append(cmd)
 
@@ -1267,8 +1270,8 @@ class DAQInterface(Component):
         # function, which requires Kurt's error reporting capability
         # in artdaq)
 
-        includes_commit = "aa9798bee68cd6fbd6d88058001b8b7d65f7638e"
-        commit_date = "Oct 4, 2016"
+        includes_commit = "b966bfca0e92d1d65721a72a5cb92ffae910215c"
+        commit_date = "Nov 16, 2016"
 
         cmds = []
         cmds.append("cd %s/../artdaq-demo" % (self.lbneartdaq_build_dir))

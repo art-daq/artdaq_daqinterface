@@ -10,6 +10,9 @@ starttime=$(date +%s)
 daq_time_in_seconds=$1
 runnum=$2
 
+root_output_dir="/tmp"
+run_records_dir=$HOME/run_records
+
 if ! [[ $daq_time_in_seconds =~ ^[0-9-]+$ ]]; then
     echo 'Entered value for daq running time of "'$daq_time_in_seconds'" does not appear to be an integer'
     exit 10
@@ -96,12 +99,11 @@ function main() {
     if [[ $daq_time_in_seconds > 0 ]]; then
 	echo "Will acquire data for $daq_time_in_seconds seconds"
 	sleep $daq_time_in_seconds
+	clean_shutdown
     else
 	echo "Will acquire data until Ctrl-C is hit"
 	sleep 10000000000
     fi
-
-    clean_shutdown
 }
 
 # clean_shutdown() will be called either (A) after the DAQ has run for
@@ -111,6 +113,8 @@ function main() {
 # "running" state; either way, it issues a "terminate"
 
 function clean_shutdown() {
+
+    echo "Entered clean_shutdown"
 
     # Stop the DAQ, if necessary
     
@@ -151,18 +155,40 @@ function clean_shutdown() {
     runningtime=$(( $endtime - $starttime ))
 
     echo $(basename $0)" completed; script was up for $runningtime seconds"
-    exit 0
 }
 
-function external_termination() {
+function check_output_file() {
 
-    clean_shutdown
+    local runtoken=$( awk 'BEGIN{ printf("r%06d", '$runnum')}' )
+    
+    local glob=$root_output_dir/*${runtoken}*.root
+    local output_file=$( ls -tr1 $glob | tail -1 )    
+
+    if [[ -n $output_file ]]; then
+	echo "Output file appears to be \"${output_file}\""
+	return
+    else
+	echo "No file in $root_output_dir matches glob $glob" >&2
+	exit 100
+    fi
 }
 
+function check_run_records() {
+
+    if [[ ! -d $run_records_dir/$runnum ]]; then
+	echo "Unable to find expected run records subdirectory $run_records_dir/$runnum" >&2
+	exit 200
+    fi
+
+    echo "Contents of $run_records_dir/$runnum :"
+    ls -ltr $run_records_dir/$runnum 
+}
 
 main $@
 
+echo
+check_output_file
+echo
+check_run_records
 
-
-
-
+exit 0

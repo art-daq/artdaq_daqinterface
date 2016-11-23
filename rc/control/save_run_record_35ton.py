@@ -3,6 +3,7 @@ import os
 import stat
 import subprocess
 from subprocess import Popen
+import traceback
 
 def save_run_record_base(self):
 

@@ -4,7 +4,7 @@ badargs=false
 cmd=$1
 
 runnum_token=""
-config_token=",config:s/artdaqdemo"
+config_token=",config:s/demo"
 translated_cmd=
 
 case $cmd in
@@ -38,7 +38,7 @@ if [[ "$badargs" = true ]]; then
 fi
 
 
-full_cmd="xmlrpc http://localhost:5570/RPC2 state_change daqint "${translated_cmd}" 'struct/{daq_comp_list:struct/{component01:array/(s/pdunedaq01.fnal.gov,5305)}"${config_token}${runnum_token}"}'"
+full_cmd="xmlrpc http://localhost:5570/RPC2 state_change daqint "${translated_cmd}" 'struct/{daq_comp_list:struct/{component01:array/(s/mu2edaq01.fnal.gov,5305)}"${config_token}${runnum_token}"}'"
 
-( cd ~/lbnedaq ; . setupLBNEARTDAQ 2>&1 > /dev/null; echo $full_cmd ; eval $full_cmd )
+( cd ~/artdaq-demo-base ; . setupARTDAQDEMO 2>&1 > /dev/null; echo $full_cmd ; eval $full_cmd )
 

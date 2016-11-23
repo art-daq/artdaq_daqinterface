@@ -1,1 +1,1 @@
-udp : { type : "UDP" threshold : "INFO" port : 30000 host : "pdunedaq01.fnal.gov" }
+udp : { type : "UDP" threshold : "INFO" port : 30000 host : "mu2edaq01.fnal.gov" }
