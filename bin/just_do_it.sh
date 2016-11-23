@@ -1,7 +1,7 @@
 #!/bin/env bash
 
-if [[ "$#" != "2" ]]; then
-    echo "Usage: $0 <daq running time in seconds (0 if you want to run until ctrl-C is hit) > <run #>"
+if [[ "$#" != "1" ]]; then
+    echo "Usage: $0 <daq running time in seconds (0 if you want to run until ctrl-C is hit) > "
     exit 0
 fi
 
@@ -18,10 +18,8 @@ if ! [[ $daq_time_in_seconds =~ ^[0-9-]+$ ]]; then
     exit 10
 fi
 
-if ! [[ $runnum =~ ^[0-9-]+$ ]]; then
-    echo 'Entered value for run number of "'$daq_time_in_seconds'" does not appear to be an integer'
-    exit 20
-fi
+lastrun=$(ls -tr1 $run_records_dir | tail -1)
+runnum=$(( lastrun + 1 ))
 
 # See below for definition of "clean_shutdown" function
 
@@ -165,7 +163,7 @@ function check_output_file() {
     local output_file=$( ls -tr1 $glob | tail -1 )    
 
     if [[ -n $output_file ]]; then
-	echo "Output file appears to be \"${output_file}\""
+	ls -l $output_file
 	return
     else
 	echo "No file in $root_output_dir matches glob $glob" >&2

@@ -85,12 +85,9 @@ def save_run_record_base(self):
     # Now save the commit hashes we determined during
     # initialization
 
-    outf.write("lbne-artdaq commit: %s\n" % (self.lbne_artdaq_hash))
-    outf.write("lbne-raw-data commit: %s\n" % (self.lbne_raw_data_hash))
-    outf.write("artdaq commit: %s\n" % (self.artdaq_hash))
-#    outf.write("lbnerc commit: %s\n" % (self.lbnerc_hash))
-    outf.write("%s commit: %s\n" % (self.config_dirname,
-                                    self.config_dirname_hash))
+    for pkg in sorted(self.package_hash_dict.keys()):
+        outf.write("%s commit: %s\n" % (pkg, self.package_hash_dict[ pkg ] ))
+
     outf.write("\n")
     outf.write("\npmt logfile(s): %s:%s/pmt/%s" %
                (self.pmt_host, self.log_directory,

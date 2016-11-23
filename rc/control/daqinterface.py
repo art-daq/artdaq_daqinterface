@@ -22,6 +22,7 @@ from rc.io.timeoutclient import TimeoutServerProxy
 from rc.control.component import Component 
 from rc.control.deepsuppression import deepsuppression
 
+from rc.control.get_host_specific_settings_mu2edaq01 import get_host_specific_settings_base
 from rc.control.get_config_info_simple import get_config_info_base
 from rc.control.put_config_info_35ton import put_config_info_base
 from rc.control.save_run_record_35ton import save_run_record_base
@@ -182,7 +183,7 @@ class DAQInterface(Component):
 
         # The build directory in which the lbne-artdaq package to be
         # used is located
-        self.lbneartdaq_build_dir = None
+        self.daq_dir = None
 
         # The host on which artdaq's pmt.rb artdaq-process control
         # script will run
@@ -200,24 +201,6 @@ class DAQInterface(Component):
         # higher values mean increasing diagnostic output
 
         self.debug_level = 999
-
-        # The directory to which artdaq output gets logged
-        self.log_directory = None
-
-        # The directory to which the FHiCL code used to initialize the
-        # artdaq processes is saved for posterity
-        self.record_directory = None
-
-        # This variable determines whether or not we'll require that
-        self.disable_configuration_check = None
-
-        # If "tdu_xmlrpc_port" is set to a number greater than 0, the
-        # attempt_sync_pulse() function, called at the beginning of
-        # do_start_running() and do_resume_running(), will send a sync
-        # pulse to the TDU with "tdu_xmlrpc_port" being used as the
-        # port number for the XML-RPC server linked to the TDU
-
-        self.tdu_xmlrpc_port = None
 
         # "procinfos" will be an array of Procinfo structures (defined
         # below), where Procinfo contains all the info DAQInterface needs
@@ -245,6 +228,10 @@ class DAQInterface(Component):
                            rpc_port=rpc_port,
                            skip_init=False)
 
+        self.get_host_specific_settings()
+
+        self.in_recovery = False
+
         # JCF, Aug-28-2015
         # Piece together the call to msgviewer...
 
@@ -257,7 +244,7 @@ class DAQInterface(Component):
 
         with deepsuppression():
             status = Popen(msgviewercmd, shell=True).wait()
-
+            
         if status != 0:
             raise Exception("Exception in DAQInterface: " +
                             "status error raised in msgviewer call within Popen")
@@ -313,14 +300,31 @@ class DAQInterface(Component):
         self.__do_terminate = False
         self.__do_pause_running = False
         self.__do_resume_running = False
-        self.__do_recover = False
+#        self.__do_recover = False
 
         self.messagefacility_fhicl = "/home/jcfree/standalone_daq/docs/MessageFacility.fcl"
+
+        # JCF, 11/6/14
+
+        self.procinfos = []    # Zero this out in case already filled
+
+        try:
+            self.read_DAQInterface_config()
+        except Exception:
+            self.print_log("DAQInterface caught an "
+                           "exception thrown by read_DAQInterface_config()")
+            self.print_log(traceback.format_exc())
+
+            self.alert_and_recover("A problem occurred with "
+                                   "the configuration manager")
+            return
+
 
         if self.debug_level >= 1:
             print "DAQInterface launched; if running DAQInterface in the background," \
                 " can press <enter> to return to shell prompt"
 
+    get_host_specific_settings = get_host_specific_settings_base
     get_config_info = get_config_info_base
     put_config_info = put_config_info_base
     save_run_record = save_run_record_base
@@ -350,14 +354,14 @@ class DAQInterface(Component):
     def resume_running(self):
         self.__do_resume_running = True
 
-    def recover(self):
-        self.__do_recover = True
-
     def alert_and_recover(self, extrainfo=None):
+
+        if extrainfo:
+            self.print_log(extrainfo, -999)
+
+        self.do_recover()
         
-        #self.alert(extrainfo)
-        self.recover()
-        return
+        raise Exception("\n\n\"" + extrainfo + "\"\n\nDAQInterface has set the DAQ back in the ground state; after making any necessary adjustments suggested by the stack trace and error messages above, please kill and restart DAQInterface")
 
     def check_proc_errors(self):
 
@@ -437,8 +441,6 @@ class DAQInterface(Component):
 
     def launch_procs(self):
 
-        setupscript="setupARTDAQDEMO"
-
         greptoken = "pmt.rb -p " + self.pmt_port
         pids = self.get_pids(greptoken, self.pmt_host)
 
@@ -447,10 +449,10 @@ class DAQInterface(Component):
                             "\"pmt.rb -p %s\" was already running on %s" %
                             (self.pmt_port, self.pmt_host))
 
-        if not os.path.isdir(self.lbneartdaq_build_dir):
-            print "Unable to find " + self.lbneartdaq_build_dir 
+        if not os.path.isdir(self.daq_dir):
+            print "Unable to find " + self.daq_dir 
             raise Exception("Exception in DAQInterface: " +
-                            "unable to find " + self.lbneartdaq_build_dir)
+                            "unable to find " + self.daq_dir)
 
         if self.debug_level > 1:
 
@@ -463,7 +465,7 @@ class DAQInterface(Component):
                 " AggregatorMain processes"
 
             print "Assuming daq package is in " + \
-                self.lbneartdaq_build_dir
+                self.daq_dir
 
         # We'll use the desired features of the artdaq processes to
         # create a text file which will be passed to artdaq's pmt.rb
@@ -500,52 +502,34 @@ class DAQInterface(Component):
 
         cmds = []
 
-        # Following if-else is Python-ese for "directory a level up
-        # from the lbne-artdaq build directory", i.e., where we expect
-        # to find the setupLBNEARTDAQ script
-
-        if self.lbneartdaq_build_dir[-1] == "/":
-            setupdir = "/".join(self.lbneartdaq_build_dir.split("/")[0:-2])
-        else:
-            setupdir = "/".join(self.lbneartdaq_build_dir.split("/")[0:-1])
-
-        if not os.path.exists(setupdir + "/" + setupscript ):
+        if not os.path.exists(self.daq_dir + "/" + self.daq_setup_script ):
             raise Exception("Exception in DAQInterface: " +
-                            setupscript + " script not found in " +
-                            setupdir)
+                            self.daq_setup_script + " script not found in " +
+                            self.daq_dir)
 
         for logdir in ["pmt", "masterControl", "boardreader", "eventbuilder",
                        "aggregator"]:
             cmds.append("mkdir -p -m 0777 " + self.log_directory +
                         "/" + logdir)
 
-
-#        print "JCF, Nov-18-2016: PERFORMING pdunedaq01.fnal.gov-SPECIFIC PRODUCTS AREA SOURCE"
-#        cmds.append(". /home/nfs/products/setup")
-
-        cmds.append("cd " + self.lbneartdaq_build_dir)
-        cmds.append("source " + setupdir + "/" + setupscript + " " +
-                    self.lbneartdaq_build_dir)
-        cmds.append("source " + self.lbneartdaq_build_dir +
-                    "/bin/setupDemoEnvironment.sh")
-
-        cmds.append("export ARTDAQDEMO_PMT_PORT=" + self.pmt_port)
+        cmds.append("cd " + self.daq_dir)
+        cmds.append("source " + self.daq_setup_script )
 
         # This needs to use the same messagefacility package version
-        # as lbne-artdaq ultimately relies on, otherwise things will
+        # as the daq package ultimately relies on, otherwise things will
         # fail
 
         cmds.append("setup artdaq_mfextensions v1_01_00 -q prof:e10:s35")
 
         cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=30")
 
+        cmd = "pmt.rb -p " + self.pmt_port + " -d " + pmtconfigname + \
+            " --logpath " + self.log_directory + \
+            " --logfhicl " + self.messagefacility_fhicl + " --display $DISPLAY & "
+
 #        cmd = "pmt.rb -p $ARTDAQDEMO_PMT_PORT -d " + pmtconfigname + \
 #            " --logpath " + self.log_directory + \
-#            " --logfhicl " + self.messagefacility_fhicl + " --display $DISPLAY & "
-
-        cmd = "pmt.rb -p $ARTDAQDEMO_PMT_PORT -d " + pmtconfigname + \
-            " --logpath " + self.log_directory + \
-            " --display $DISPLAY & "
+#            " --display $DISPLAY & "
    
         cmds.append(cmd)
 
@@ -559,8 +543,6 @@ class DAQInterface(Component):
             print launchcmd
             print
 
-        status = 1
-
         if self.debug_level >= 2:
             status = Popen(launchcmd, shell=True).wait()
         else:
@@ -568,8 +550,10 @@ class DAQInterface(Component):
                 status = Popen(launchcmd, shell=True).wait()
 
         if status != 0:
-            raise Exception("Exception in DAQInterface: " +
-                            "status error raised in pmt.rb call within Popen")
+            self.alert_and_recover("Exception in DAQInterface: " +
+                                   "status error raised in pmt.rb call within Popen")
+            #raise Exception("Exception in DAQInterface: " +
+            #                "status error raised in pmt.rb call within Popen")
 
     # check_proc_heartbeats() will check that the expected artdaq
     # processes are up and running
@@ -772,7 +756,11 @@ class DAQInterface(Component):
     # return from the caller, so that the recover transition can occur
     # immediately
 
-    def get_commit_hash(self, gitrepo, requireSuccess=True):
+    def get_commit_hash(self, gitrepo):
+
+        if not os.path.exists(gitrepo):
+            self.alert_and_recover("Expected git directory %s not found" % (gitrepo))
+
         cmds = []
         cmds.append("cd %s" % (gitrepo))
         cmds.append("git log | head -1 | awk '{print $2}'")
@@ -782,13 +770,8 @@ class DAQInterface(Component):
         proclines = proc.stdout.readlines()
 
         if len(proclines) != 1 or len(proclines[0].strip()) != 40:
-            if requireSuccess:
-                self.alert_and_recover("Commit hash for %s not found" % (gitrepo))
-                return None
-            else:
-                print "WARNING: directory " + gitrepo + " does not appear to be a git repository; " + \
-                    "no commit hash to record"
-                return "Not a git repository"
+            self.alert_and_recover("Commit hash for %s not found" % (gitrepo))
+            return None
 
         return proclines[0].strip()
 
@@ -821,41 +804,10 @@ class DAQInterface(Component):
                 self.pmt_port = res.group(1)
                 continue
 
-            res = re.search(r"\s*lbne-artdaq\s*:\s*(\S+)",
+            res = re.search(r"\s*DAQ directory\s*:\s*(\S+)",
                             line)
             if res:
-                self.lbneartdaq_build_dir = res.group(1)
-                continue
-
-            res = re.search(r"\s*log directory\s*:\s*(\S+)",
-                            line)
-            if res:
-                self.log_directory = res.group(1)
-                continue
-
-            res = re.search(r"\s*record directory\s*:\s*(\S+)",
-                            line)
-            if res:
-                self.record_directory = res.group(1)
-                continue
-
-            res = re.search(r"\s*TDU XMLRPC port\s*:\s*(\S+)",
-                            line)
-            if res:
-                self.tdu_xmlrpc_port = res.group(1)
-                continue
-
-            res = re.search(r"\s*disable configuration check\s*:\s*(\S+)",
-                            line)
-            if res:
-                inputstring = res.group(1)
-                if inputstring.lower() == "true":
-                    self.disable_configuration_check = True
-                elif inputstring.lower() == "false":
-                    self.disable_configuration_check = False
-                else:
-                    raise Exception("Exception in DAQInterface: "
-                                    "problem parsing " + self.config_filename)
+                self.daq_dir = res.group(1)
                 continue
 
             res = re.search(r"\s*debug level\s*:\s*(\S+)",
@@ -939,16 +891,8 @@ class DAQInterface(Component):
 
         if self.pmt_host is None:
             undefined_var = "PMT host"
-        elif self.lbneartdaq_build_dir is None:
-            undefined_var = "lbne-artdaq"
-        elif self.log_directory is None:
-            undefined_var = "log directory"
-        elif self.record_directory is None:
-            undefined_var = "record directory"
-        elif self.tdu_xmlrpc_port is None:
-            undefined_var = "TDU XMLRPC port"
-        elif self.disable_configuration_check is None:
-            undefined_var = "disable configuration check"
+        elif self.daq_dir is None:
+            undefined_var = "DAQ directory"
         elif self.debug_level is None:
             undefined_var = "debug level"
         elif self.pause_before_initialization is None:
@@ -1213,6 +1157,10 @@ class DAQInterface(Component):
 
     def do_initialize(self):
 
+        if self.debug_level >= 1:
+            print "%s: DAQInterface: \"Init\" transition underway" % \
+                (self.date_and_time())
+
         self.exception = False
 
         self.nodiskwrite = False
@@ -1230,12 +1178,6 @@ class DAQInterface(Component):
                                                         "_nomonitoring",
                                                         "" )
 
-        # Reset the DAQInterface configuration variables to their
-        # default values in case the configuration file has been
-        # changed since the last initialization
-
-        self.reset_DAQInterface_config()
-
         # The name of the logfile isn't determined until pmt.rb has
         # been run
         self.log_filename_wildcard = None
@@ -1244,37 +1186,16 @@ class DAQInterface(Component):
         self.eventbuilder_log_filenames = []
         self.aggregator_log_filenames = []
 
-        # JCF, 11/6/14
-
-        self.procinfos = []    # Zero this out in case already filled
-
-        try:
-            self.read_DAQInterface_config()
-        except Exception:
-            self.print_log("DAQInterface caught an "
-                           "exception thrown by read_DAQInterface_config()")
-            self.print_log(traceback.format_exc())
-
-            self.alert_and_recover("A problem occurred with "
-                                   "the configuration manager")
-            return
 
         self.config_dirname, self.fhicl_file_path = self.get_config_info()
 
-        # JCF, 6/11/15
+        includes_commit = "ff4f17871ff0ae0cca088e99b4e02c7cac535b36"
+        commit_date = "Sep 21, 2016"
 
-        # I imagine the value of "includes_commit" may change over
-        # time, but the idea is to print a warning if DAQInterface
-        # detects a version of lbne-artdaq older than some of its
-        # functionality uses (e.g., the check_proc_exceptions()
-        # function, which requires Kurt's error reporting capability
-        # in artdaq)
-
-        includes_commit = "b966bfca0e92d1d65721a72a5cb92ffae910215c"
-        commit_date = "Nov 16, 2016"
+        artdaq_dir = self.daq_dir + "/srcs/artdaq"
 
         cmds = []
-        cmds.append("cd %s/../artdaq-demo" % (self.lbneartdaq_build_dir))
+        cmds.append("cd " + artdaq_dir )
         cmds.append("git log | grep %s" % (includes_commit))
 
         proc = Popen(";".join(cmds), shell=True,
@@ -1283,45 +1204,16 @@ class DAQInterface(Component):
 
         if len(proclines) != 1:
             print
-            self.print_log("WARNING: DAQInterface expects a version of"
-                           " artdaq-demo as new as or newer than %s (%s);"
-                           " %s appears to be older" %
-                           (includes_commit, commit_date,
-                            self.lbneartdaq_build_dir))
-            sleep(5)
+            raise Exception("ERROR: DAQInterface expects a git commit hash of"
+                            " artdaq as new as or newer than %s (%s);"
+                            " %s appears to be older" %
+                            (includes_commit, commit_date, artdaq_dir ))
 
-        # Save the commit hashes of lbne-artdaq, lbnerc, and the
-        # configuration directory, so they can be saved as metadata at
-        # the start of the run
+        self.package_hash_dict = {}
 
-        # Dec-9-2015: add in the lbne-raw-data hash as well
-
-        self.lbne_artdaq_hash = self.get_commit_hash(
-            "%s/../artdaq-demo" % (self.lbneartdaq_build_dir))
-        if self.lbne_artdaq_hash is None:
-            return
-
-        self.lbne_raw_data_hash = self.get_commit_hash(
-            "%s/../artdaq-core-demo" % (self.lbneartdaq_build_dir))
-        if self.lbne_raw_data_hash is None:
-            return
-
-        self.artdaq_hash = self.get_commit_hash(
-            "%s/../artdaq" % (self.lbneartdaq_build_dir))
-        if self.artdaq_hash is None:
-            return
-
-#        self.lbnerc_hash = self.get_commit_hash(".")
-#        if self.lbnerc_hash is None:
-#            return
-
-        self.config_dirname_hash = self.get_commit_hash(self.config_dirname, False)
-        if self.config_dirname_hash is None:
-            return
-
-        if self.debug_level >= 1:
-            print "%s: DAQInterface: \"Init\" transition underway" % \
-                (self.date_and_time())
+        for pkgname in self.package_hashes_to_save:
+            pkg_full_path = "%s/srcs/%s" % (self.daq_dir, pkgname.replace("-", "_"))
+            self.package_hash_dict[pkgname] = self.get_commit_hash( pkg_full_path )
 
         self.print_log("Config name: %s" % self.run_params["config"], 1)
         self.print_log("Selected DAQ comps: %s" %
@@ -1739,10 +1631,8 @@ class DAQInterface(Component):
         print
         print "%s: DAQInterface: \"Recover\" transition underway" % \
             (self.date_and_time())
-        print "JCF, Jun-12-2014 -- for now at least, \"Recover\" simply " + \
-            "kills the artdaq processes"
-        print "JCF, Oct-21-2015 -- have now added an attempted stop transition" 
-        print "JCF, Jan-8-2015 -- and now added an attempted terminate transition" 
+
+        self.in_recovery = True
 
         def attempted_stop(self, procinfo):
 
@@ -1751,39 +1641,29 @@ class DAQInterface(Component):
             try:
                 lastreturned=procinfo.server.daq.stop()
             except Exception:
-                self.print_log("Exception caught during stop transition " +
-                               "sent to artdaq process %s " % (procinfo.name) +
-                               "at %s : %s during recovery procedure;" % (procinfo.host, procinfo.port) +
-                               " ignored as kill command will be sent " +
-                               "momentarily")
+                # self.print_log("Exception caught during stop transition " +
+                #                "sent to artdaq process %s " % (procinfo.name) +
+                #                "at %s : %s during recovery procedure;" % (procinfo.host, procinfo.port) +
+                #                " ignored as kill command will be sent " +
+                #                "momentarily")
                 return
 
-            if lastreturned != "Success":
-                self.print_log("Attempted stop sent to artdaq process %s " % (procinfo.name) +
-                               "at %s : %s during recovery procedure" % (procinfo.host, procinfo.port) +
-                               " returned \"%s\"; ignored as kill command will be sent momentarily" % (lastreturned))
-                return
+            # if lastreturned != "Success":
+            #     self.print_log("Attempted stop sent to artdaq process %s " % (procinfo.name) +
+            #                    "at %s : %s during recovery procedure" % (procinfo.host, procinfo.port) +
+            #                    " returned \"%s\"; ignored as kill command will be sent momentarily" % (lastreturned))
+            #     return
 
             try:
 
-                # JCF, Jan-11-2016
-
-                # The following "if" in which eventbuilders aren't
-                # sent a shutdown is explained by the comment
-                # elsewhere in this program beginning with "As of
-                # November 27, 2015"; this "if" should be removed once
-                # an artdaq which fixes the issue seen in artdaq
-                # v1_12_14 is installed
-
-                if "EventBuilder" not in procinfo.name:
-                    procinfo.server.daq.shutdown()
+                procinfo.server.daq.shutdown()
 
             except Exception:
-                self.print_log("Exception caught during terminate transition " +
-                               "sent to artdaq process %s " % (procinfo.name) +
-                               "at %s : %s during recovery procedure;" % (procinfo.host, procinfo.port) +
-                               " ignored as kill command will be sent " +
-                               "momentarily")
+                # self.print_log("Exception caught during terminate transition " +
+                #                "sent to artdaq process %s " % (procinfo.name) +
+                #                "at %s : %s during recovery procedure;" % (procinfo.host, procinfo.port) +
+                #                " ignored as kill command will be sent " +
+                #                "momentarily")
                 return
 
             return
@@ -1809,6 +1689,8 @@ class DAQInterface(Component):
                                    "within kill_procs()")
             return
 
+        self.in_recovery = False
+
         self.complete_state_change(self.name, "recovering")
 
         print "\n%s: Recover transition complete; if running DAQInterface " % \
@@ -1824,7 +1706,9 @@ class DAQInterface(Component):
         currently 1/sec.
         """
 
-        if self.__do_initialize:
+        if self.in_recovery:
+            pass
+        elif self.__do_initialize:
             self.do_initialize()
             self.__do_initialize = False
 
@@ -1849,9 +1733,9 @@ class DAQInterface(Component):
             self.do_command("Resume")
             self.__do_resume_running = False
 
-        elif self.__do_recover:
-            self.do_recover()
-            self.__do_recover = False
+#        elif self.__do_recover:
+#            self.do_recover()
+#            self.__do_recover = False
 
         elif self.state(self.name) != "stopped":
             self.check_proc_heartbeats()
