@@ -8,9 +8,14 @@ config_token=",config:s/demo"
 translated_cmd=
 
 case $cmd in
-    "init")
+    "boot")
 	test $# == 1 || badargs=true 
-	translated_cmd="initializing"
+	translated_cmd="booting"
+#	config_token=",config:s/"$2
+	;;
+    "config")
+	test $# == 1 || badargs=true 
+	translated_cmd="configuring"
 #	config_token=",config:s/"$2
 	;;
     "start")

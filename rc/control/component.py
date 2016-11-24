@@ -26,12 +26,8 @@ class Component(ContextObject):
                              "components")
         self.name = name
         self.synchronous = synchronous
-        # skip_init will take things right to the ready state
-        #  and mean no "initialize" transition is needed
-        if skip_init:
-            self.__state = "ready"
-        else:
-            self.__state = "stopped"
+
+        self.__state = "stopped"
         self.__rpc_host = rpc_host
         self.__rpc_port = rpc_port
         self.run_params = None
@@ -51,8 +47,9 @@ class Component(ContextObject):
     def complete_state_change(self, name, requested):
         if name != self.name:
             return
-        newstate = {"stopping": "ready",
-                    "initializing": "ready",
+        newstate = {"booting": "booted",
+                    "stopping": "ready",
+                    "configuring": "ready",
                     "starting": "running",
                     "pausing": "paused",
                     "resuming": "running",
@@ -92,9 +89,12 @@ class Component(ContextObject):
             self.stop_running()
         if requested == "pausing":
             self.pause_running()
-        if requested == "initializing":
+        if requested == "booting":
             self.run_params = state_args
-            self.initialize()
+            self.boot()
+        if requested == "configuring":
+            self.run_params = state_args
+            self.config()
         if requested == "resuming":
             self.resume_running()
         if requested == "terminating":
@@ -122,18 +122,11 @@ class Component(ContextObject):
             #                   "varname": "x",
             #                   "value": self.__dummy_val})
 
-    def initialize(self):
-        """
-        Override this to explicitly do something during "initializing"
-        transitional state (changing from "stopped" to "ready" states)
+    def boot(self):
+        self.complete_state_change(self.name, "booting")
 
-        Note: this is an optional transition.  You can call the default
-        initialize in the constructor and go right to "ready"
-        if that fits for your component.
-
-        Be sure to report when your transition is complete.
-        """
-        self.complete_state_change(self.name, "initializing")
+    def config(self):
+        self.complete_state_change(self.name, "configuring")
 
     def start_running(self):
         """

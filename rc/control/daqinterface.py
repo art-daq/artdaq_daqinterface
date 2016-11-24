@@ -54,7 +54,7 @@ class DAQInterface(Component):
     # Procinfo's functions)
 
     class Procinfo(object):
-        def __init__(self, name="", host="", port="-999", fhicl="", fhicl_file_path = []):
+        def __init__(self, name="", host="", port="-999", fhicl=None, fhicl_file_path = []):
             self.name = name
             self.port = port
             self.host = host
@@ -177,7 +177,7 @@ class DAQInterface(Component):
     # Basically, reset (and, if this is its first call, initialize)
     # all DAQInterface configuration variables to their default
     # values; this should be called both in the constructor as well as
-    # in do_initialize()
+    # in do_config()
 
     def reset_DAQInterface_config(self):
 
@@ -294,13 +294,13 @@ class DAQInterface(Component):
 
         self.reset_DAQInterface_config()
 
-        self.__do_initialize = False
+        self.__do_boot = False
+        self.__do_config = False
         self.__do_start_running = False
         self.__do_stop_running = False
         self.__do_terminate = False
         self.__do_pause_running = False
         self.__do_resume_running = False
-#        self.__do_recover = False
 
         self.messagefacility_fhicl = "/home/jcfree/standalone_daq/docs/MessageFacility.fcl"
 
@@ -315,8 +315,8 @@ class DAQInterface(Component):
                            "exception thrown by read_DAQInterface_config()")
             self.print_log(traceback.format_exc())
 
-            self.alert_and_recover("A problem occurred with "
-                                   "the configuration manager")
+            self.alert_and_recover("A problem occurred when trying to read the DAQInterface config file %s" %
+                                   self.config_filename)
             return
 
 
@@ -336,8 +336,11 @@ class DAQInterface(Component):
     # these just set booleans which are tested in the runner()
     # function, called periodically by run control
 
-    def initialize(self):
-        self.__do_initialize = True
+    def boot(self):
+        self.__do_boot = True
+
+    def config(self):
+        self.__do_config = True
 
     def start_running(self):
         self.__do_start_running = True
@@ -523,13 +526,13 @@ class DAQInterface(Component):
 
         cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=30")
 
-        cmd = "pmt.rb -p " + self.pmt_port + " -d " + pmtconfigname + \
-            " --logpath " + self.log_directory + \
-            " --logfhicl " + self.messagefacility_fhicl + " --display $DISPLAY & "
-
-#        cmd = "pmt.rb -p $ARTDAQDEMO_PMT_PORT -d " + pmtconfigname + \
+#        cmd = "pmt.rb -p " + self.pmt_port + " -d " + pmtconfigname + \
 #            " --logpath " + self.log_directory + \
-#            " --display $DISPLAY & "
+#            " --logfhicl " + self.messagefacility_fhicl + " --display $DISPLAY & "
+
+        cmd = "pmt.rb -p $ARTDAQDEMO_PMT_PORT -d " + pmtconfigname + \
+            " --logpath " + self.log_directory + \
+            " --display $DISPLAY & "
    
         cmds.append(cmd)
 
@@ -861,9 +864,7 @@ class DAQInterface(Component):
                 if filled:
                     self.procinfos.append(self.Procinfo(memberDict["name"],
                                                         memberDict["host"],
-                                                        memberDict["port"],
-                                                        memberDict["fhicl"],
-                                                        self.fhicl_file_path))
+                                                        memberDict["port"]))
                     for varname in memberDict.keys():
                         memberDict[varname] = None
 
@@ -1151,43 +1152,25 @@ class DAQInterface(Component):
                 "in the background, can press <enter> to return to shell prompt"
 
 
-    # do_initialize(), do_start_running(), etc., are the functions
-    # which get called in the runner() function when a transition is
-    # requested
+    # do_boot(), do_config(), do_start_running(), etc., are the
+    # functions which get called in the runner() function when a
+    # transition is requested
 
-    def do_initialize(self):
+    def do_boot(self):
 
         if self.debug_level >= 1:
-            print "%s: DAQInterface: \"Init\" transition underway" % \
+            print "%s: DAQInterface: \"Boot\" transition underway" % \
                 (self.date_and_time())
-
-        self.exception = False
-
-        self.nodiskwrite = False
-        self.nomonitoring = False
-
-        if "_nodiskwrite" in self.run_params["config"]:
-            self.nodiskwrite = True
-            self.run_params["config"] = string.replace( self.run_params["config"],
-                                                        "_nodiskwrite",
-                                                        "" )
-
-        if "_nomonitoring" in self.run_params["config"]:
-            self.nomonitoring = True
-            self.run_params["config"] = string.replace( self.run_params["config"],
-                                                        "_nomonitoring",
-                                                        "" )
 
         # The name of the logfile isn't determined until pmt.rb has
         # been run
+
         self.log_filename_wildcard = None
 
         self.boardreader_log_filenames = []
         self.eventbuilder_log_filenames = []
         self.aggregator_log_filenames = []
 
-
-        self.config_dirname, self.fhicl_file_path = self.get_config_info()
 
         includes_commit = "ff4f17871ff0ae0cca088e99b4e02c7cac535b36"
         commit_date = "Sep 21, 2016"
@@ -1209,26 +1192,133 @@ class DAQInterface(Component):
                             " %s appears to be older" %
                             (includes_commit, commit_date, artdaq_dir ))
 
+
         self.package_hash_dict = {}
 
         for pkgname in self.package_hashes_to_save:
             pkg_full_path = "%s/srcs/%s" % (self.daq_dir, pkgname.replace("-", "_"))
             self.package_hash_dict[pkgname] = self.get_commit_hash( pkg_full_path )
 
+        if self.debug_level >= 1:
+            print "JCF: daq_comp_list: "
+            print self.run_params["daq_comp_list"]
+#            for compname, socket in self.run_params["daq_comp_list"].items():
+#                print "%s at %s:%s" % (compname, socket[0], socket[1])
+
+        for componame, socket in self.run_params["daq_comp_list"].items():
+ 
+            self.procinfos.append(self.Procinfo("BoardReader",
+                                                socket[0],
+                                                socket[1]))
+
+        # See the Procinfo.__lt__ function for details on sorting
+
+        self.procinfos.sort()
+
+        # Now, with the info on hand about the processes contained in
+        # procinfos, actually launch them
+
+        try:
+            self.launch_procs()
+
+            if self.debug_level >= 1:
+                print "Finished call to launch_procs(); will now check that artdaq processes are up..."
+
+        except Exception:
+            self.print_log("DAQInterface caught an exception" +
+                           "in do_config()")
+            self.print_log(traceback.format_exc())
+
+            self.alert_and_recover("An exception was thrown in launch_procs()")
+            return
+
+        num_launch_procs_checks = 0
+
+        while True:
+
+            num_launch_procs_checks += 1
+
+            # "False" here means "don't consider it an error if all
+            # processes aren't found"
+
+            if self.check_proc_heartbeats(False):
+
+                if self.debug_level > 0:
+                    print "All processes appear to be up" + \
+                        ", will wait " + \
+                        str(self.pause_before_initialization) + \
+                        " seconds before initializing..."
+
+                break
+            else:
+                if num_launch_procs_checks > 5:
+                    self.print_log("artdaq processes failed to launch")
+                    self.alert_and_recover("artdaq processes failed to launch")
+                    return
+
+        sleep(self.pause_before_initialization)
+
+        for procinfo in self.procinfos:
+
+            procinfo.server = TimeoutServerProxy(
+                procinfo.socketstring, 30)
+
+        # JCF, 3/5/15
+
+        # Get our hands on the name of logfile so we can save its
+        # name for posterity. This is taken to be the most recent
+        # logfile found in the log directory. There's a tiny chance
+        # someone else's logfile could sneak in during the few seconds
+        # taken during startup, but it's unlikely...
+
+        try:
+
+            log_filename_current = self.get_logfilenames("pmt", 1)[0]
+            self.log_filename_wildcard = \
+                log_filename_current.split(".")[0] + ".*" + ".log"
+
+            self.boardreader_log_filenames = self.get_logfilenames(
+                "boardreader", self.num_boardreaders())
+
+            self.eventbuilder_log_filenames = self.get_logfilenames(
+                "eventbuilder", self.num_eventbuilders())
+
+            self.aggregator_log_filenames = self.get_logfilenames(
+                "aggregator", self.num_aggregators())
+
+        except Exception:
+            self.print_log("DAQInterface caught an exception " +
+                           "in do_config()")
+            self.print_log(traceback.format_exc())
+            self.alert_and_recover("Problem obtaining logfile name(s)")
+            return
+
+        print "\n%s: Boot transition complete; if running DAQInterface " % \
+            (self.date_and_time()) + \
+            "in the background, can press <enter> to return to shell prompt"
+
+
+    def do_config(self):
+
+        if self.debug_level >= 1:
+            print "%s: DAQInterface: \"Config\" transition underway" % \
+                (self.date_and_time())
+
+        self.exception = False
+
+        self.config_dirname, self.fhicl_file_path = self.get_config_info()
+
         self.print_log("Config name: %s" % self.run_params["config"], 1)
         self.print_log("Selected DAQ comps: %s" %
                        self.run_params["daq_comp_list"], 1)
 
-        if self.debug_level >= 1:
-            for compname, socket in self.run_params["daq_comp_list"].items():
-                print "%s at %s:%s" % (compname, socket[0], socket[1])
 
         # Now contact the configuration manager, if running, for the
         # list of URIs
 
         try:
 
-            for component in self.run_params["daq_comp_list"].keys():
+            for component, socket in self.run_params["daq_comp_list"].items():
 
                 if self.debug_level >= 1:
                     print "Searching for the FHiCL document for " + component + \
@@ -1236,14 +1326,16 @@ class DAQInterface(Component):
                         "\""
                 uri = self.config_dirname + "/" + self.run_params["config"] + "/" + component + "_hw_cfg.fcl"
 
-                socket = self.run_params["daq_comp_list"][component]
+                if not os.path.exists(uri):
+                    self.alert_and_recover("Unable to find desired uri %s" % (uri))
+                    
+                for i_proc in range(len(self.procinfos)):
 
-                self.procinfos.append(self.Procinfo("BoardReader",
-                                                    socket[0],
-                                                    socket[1],
-                                                    uri,
-                                                    self.fhicl_file_path))
-                                          
+                    if self.procinfos[i_proc].host == socket[0] and \
+                            self.procinfos[i_proc].port == socket[1]:
+                        self.procinfos[i_proc].ffp = self.fhicl_file_path
+                        self.procinfos[i_proc].update_fhicl(uri)
+
 
             support_tuples = [("Aggregator", self.num_aggregators()),
                               ("EventBuilder", self.num_eventbuilders())]
@@ -1286,16 +1378,12 @@ class DAQInterface(Component):
 
         except Exception:
             self.print_log("DAQInterface caught an exception " +
-                           "in do_initialize()")
+                           "in do_config()")
             self.print_log(traceback.format_exc())
 
             self.alert_and_recover("A problem occurred with "
                                    "the configuration manager")
             return
-
-        # See the Procinfo.__lt__ function for details on sorting
-
-        self.procinfos.sort()
 
         # JCF, 11/11/14
 
@@ -1324,20 +1412,11 @@ class DAQInterface(Component):
         xmlrpc_client_list += "\""
 
         # Second passthrough: use this newfound info to modify the
-        # FHiCL code we'll send during the init transition
+        # FHiCL code we'll send during the config transition
 
         # Note that loops of the form "proc in self.procinfos" are
         # pass-by-value rather than pass-by-reference, so I need to
         # adopt a slightly cumbersome indexing notation
-
-        # JCF, Dec-16-2015
-
-        # Also use this loop to adjust FHiCL code based on whether the
-        # user wishes to eliminate writing to disk and/or performing
-        # online monitoring
-
-        removed_diskwrite = False
-        removed_monitoring = False
 
         for i_proc in range(len(self.procinfos)):
 
@@ -1384,59 +1463,7 @@ class DAQInterface(Component):
                 str(self.num_aggregators() - 1) + "\n",
                 self.procinfos[i_proc].fhicl_used)
 
-            # JCF, Dec-16-2015
 
-            # Fairly specific assumptions are made about the form of
-            # the FHiCL code, thus it's important to record via the
-            # "removed_diskwrite" and "removed_monitoring" variables
-            # if and when we find the FHiCL code we assume keeps
-            # monitoring and/or diskwriting
-
-            if self.nodiskwrite:
-
-                fhicl_before_command = self.procinfos[i_proc].fhicl_used
-
-                self.procinfos[i_proc].fhicl_used = re.sub(
-                    "\[\s*p1\s*,\s*e1\s*,\s*a1\s*\]", "[ p1, a1 ]", fhicl_before_command)
-
-                if fhicl_before_command != self.procinfos[i_proc].fhicl_used:
-                    removed_diskwrite = True
-
-            if self.nomonitoring:
-
-                fhicl_before_command = self.procinfos[i_proc].fhicl_used
-
-                self.procinfos[i_proc].fhicl_used = re.sub(
-                    "\[\s*monitoring\s*\]", "[ ]", fhicl_before_command)
-
-                if fhicl_before_command != self.procinfos[i_proc].fhicl_used:
-                    removed_monitoring = True
-
-
-        if self.nodiskwrite and not removed_diskwrite:
-            self.print_log("WARNING: unable to remove diskwriting as "
-                           "requested due to unexpected FHiCL code format")
-
-        if self.nomonitoring and not removed_monitoring:
-            self.print_log("WARNING: unable to remove monitoring as "
-                           "requested due to unexpected FHiCL code format")
-
-        # Now, with the info on hand about the processes contained in
-        # procinfos, actually launch them
-
-        try:
-            self.launch_procs()
-
-            if self.debug_level >= 1:
-                print "Finished call to launch_procs(); will now check that artdaq processes are up..."
-
-        except Exception:
-            self.print_log("DAQInterface caught an exception" +
-                           "in do_initialize()")
-            self.print_log(traceback.format_exc())
-
-            self.alert_and_recover("An exception was thrown in launch_procs()")
-            return
 
         if self.debug_level >= 2:
             print
@@ -1453,79 +1480,10 @@ class DAQInterface(Component):
             print
             print
 
-        num_launch_procs_checks = 0
-
-        while True:
-
-            num_launch_procs_checks += 1
-
-            # "False" here means "don't consider it an error if all
-            # processes aren't found"
-
-            if self.check_proc_heartbeats(False):
-
-                if self.debug_level > 0:
-                    print "All processes appear to be up" + \
-                        ", will wait " + \
-                        str(self.pause_before_initialization) + \
-                        " seconds before initializing..."
-
-                break
-            else:
-                if self.debug_level > -1 and num_launch_procs_checks > 5:
-                    self.print_log("artdaq processes failed to launch")
-
-                    self.alert_and_recover("artdaq processes failed to launch")
-                    return
-
-        sleep(self.pause_before_initialization)
-
-        for procinfo in self.procinfos:
-            if self.debug_level >= 1:
-                print "Initializing " + procinfo.name + \
-                    " with " + procinfo.socketstring
-
-            if self.debug_level >= 2:
-                print "Sending " + procinfo.socketstring + \
-                    " at " + str(time())
-
-            procinfo.server = TimeoutServerProxy(
-                procinfo.socketstring, 30)
-
 
         self.do_command("Init")
 
-        # JCF, 3/5/15
-
-        # Get our hands on the name of logfile so we can save its
-        # name for posterity. This is taken to be the most recent
-        # logfile found in the log directory. There's a tiny chance
-        # someone else's logfile could sneak in during the few seconds
-        # taken during startup, but it's unlikely...
-
-        try:
-
-            log_filename_current = self.get_logfilenames("pmt", 1)[0]
-            self.log_filename_wildcard = \
-                log_filename_current.split(".")[0] + ".*" + ".log"
-
-            self.boardreader_log_filenames = self.get_logfilenames(
-                "boardreader", self.num_boardreaders())
-
-            self.eventbuilder_log_filenames = self.get_logfilenames(
-                "eventbuilder", self.num_eventbuilders())
-
-            self.aggregator_log_filenames = self.get_logfilenames(
-                "aggregator", self.num_aggregators())
-
-        except Exception:
-            self.print_log("DAQInterface caught an exception " +
-                           "in do_initialize()")
-            self.print_log(traceback.format_exc())
-            self.alert_and_recover("Problem obtaining logfile name(s)")
-            return
-
-        self.complete_state_change(self.name, "initializing")
+        self.complete_state_change(self.name, "configuring")
 
         self.display_lbne_artdaq_output()
 
@@ -1534,7 +1492,7 @@ class DAQInterface(Component):
                 (self.pmt_host, self.log_directory,
                  self.log_filename_wildcard)
 
-        print "\n%s: Initialize transition complete; if running DAQInterface " % \
+        print "\n%s: Config transition complete; if running DAQInterface " % \
             (self.date_and_time()) + \
             "in the background, can press <enter> to return to shell prompt"
 
@@ -1708,16 +1666,20 @@ class DAQInterface(Component):
 
         if self.in_recovery:
             pass
-        elif self.__do_initialize:
-            self.do_initialize()
-            self.__do_initialize = False
+
+        elif self.__do_boot:
+            self.do_boot()
+            self.__do_boot = False
+
+        elif self.__do_config:
+            self.do_config()
+            self.__do_config = False
 
         elif self.__do_start_running:
             self.do_start_running()
             self.__do_start_running = False
 
         elif self.__do_stop_running:
-            #self.do_command("Stop")
             self.do_stop_running()
             self.__do_stop_running = False
 
@@ -1733,11 +1695,8 @@ class DAQInterface(Component):
             self.do_command("Resume")
             self.__do_resume_running = False
 
-#        elif self.__do_recover:
-#            self.do_recover()
-#            self.__do_recover = False
-
-        elif self.state(self.name) != "stopped":
+        elif self.state(self.name) != "stopped" and self.state(self.name) != "booting":
+            #print "JCF: STATE IS " + self.state(self.name)
             self.check_proc_heartbeats()
             self.check_proc_exceptions()
 

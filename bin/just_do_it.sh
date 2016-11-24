@@ -65,11 +65,23 @@ function main() {
 	exit 50
     fi
 
+    $scriptdir/sendcmd.sh boot
+
+    wait_until_no_longer booting
+
+    state_true="0"
+    check_for_state "booted" state_true
+
+    if [[ "$state_true" != "1" ]]; then
+	echo "DAQ failed to enter booted state; exiting $0"
+	exit 51
+    fi
+
     # Initialize the DAQ
     
-    $scriptdir/sendcmd.sh init
+    $scriptdir/sendcmd.sh config
 
-    wait_until_no_longer initializing
+    wait_until_no_longer configuring
 
     state_true="0"
     check_for_state "ready" state_true
