@@ -25,7 +25,7 @@ from rc.control.deepsuppression import deepsuppression
 from rc.control.get_host_specific_settings_mu2edaq01 import get_host_specific_settings_base
 from rc.control.get_config_info_simple import get_config_info_base
 from rc.control.put_config_info_35ton import put_config_info_base
-from rc.control.save_run_record_35ton import save_run_record_base
+from rc.control.save_run_record import save_run_record_base
 from rc.control.start_datataking_protodune import start_datataking_base
 from rc.control.stop_datataking_protodune import stop_datataking_base
 
@@ -1499,6 +1499,8 @@ class DAQInterface(Component):
             print
             print
 
+        self.tmp_run_record = "/tmp/run_record_attempted_%d" % (self.run_params["run_number"])
+        self.save_run_record()            
 
         self.do_command("Init")
 
@@ -1522,7 +1524,21 @@ class DAQInterface(Component):
             print "%s: DAQInterface: \"Start\" transition underway for run %d" % \
                     (self.date_and_time(), self.run_params["run_number"])
 
-        self.save_run_record()
+        
+        if os.path.exists( self.tmp_run_record ):
+            cmd = "mv %s %s/%s" % (self.tmp_run_record, self.record_directory, str(self.run_params["run_number"]))
+            print "Command is %s" % (cmd)
+            status = Popen(cmd, shell = True).wait()
+
+            if status != 0:
+                self.alert_and_recover("Error in DAQInterface: a nonzero value was returned executing \"%s\"" %
+                                       cmd)
+                
+        else:
+            self.alert_and_recover("Error in DAQInterface: unable to find temporary run records directory %s" % 
+                                   self.tmp_run_record)
+
+
         self.put_config_info()
 
         self.do_command("Start")

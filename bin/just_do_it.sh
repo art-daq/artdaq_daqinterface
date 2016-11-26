@@ -79,7 +79,7 @@ function main() {
 
     # Initialize the DAQ
     
-    $scriptdir/sendcmd.sh config
+    $scriptdir/sendcmd.sh config $runnum
 
     wait_until_no_longer configuring
 

@@ -14,8 +14,9 @@ case $cmd in
 #	config_token=",config:s/"$2
 	;;
     "config")
-	test $# == 1 || badargs=true 
+	test $# == 2 || badargs=true 
 	translated_cmd="configuring"
+	runnum_token=",run_number:i/"$2
 #	config_token=",config:s/"$2
 	;;
     "start")
