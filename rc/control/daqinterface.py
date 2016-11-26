@@ -172,6 +172,21 @@ class DAQInterface(Component):
 
         return pids
 
+    def construct_checked_command(self, cmds ):
+
+        checked_cmds = []
+
+        for cmd in cmds:
+            checked_cmds.append( cmd )
+
+            if not re.search(r"\s*&\s*$", cmd):
+                check_cmd = " if [[ \"$?\" != \"0\" ]]; then echo Nonzero return value from command \"%s\" ; exit 1; fi " % (cmd)
+                checked_cmds.append( check_cmd )
+
+        total_cmd = " ; ".join( checked_cmds )
+
+        return total_cmd
+
     # JCF, 1/1/15
 
     # Basically, reset (and, if this is its first call, initialize)
@@ -237,17 +252,19 @@ class DAQInterface(Component):
 
         cmds = []
         cmds.append(". /home/jcfree/products/setup")
+        #cmds.append(". /home/jcfree/artdaq-demo-base-mrb/products/setup")
         cmds.append("setup artdaq_mfextensions v1_01_00 -q prof:e10:s35")
         cmds.append("msgviewer -c $ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/msgviewer.fcl 2>&1 > /dev/null &" )
 
-        msgviewercmd = " ; ".join(cmds)
+        msgviewercmd = self.construct_checked_command( cmds )
 
         with deepsuppression():
             status = Popen(msgviewercmd, shell=True).wait()
             
         if status != 0:
             raise Exception("Exception in DAQInterface: " +
-                            "status error raised in msgviewer call within Popen")
+                            "status error raised in msgviewer call within Popen; tried the following commands: \"%s\"" %
+                            " ; ".join(cmds) )
 
         # JCF, Nov-17-2015
 
@@ -522,7 +539,7 @@ class DAQInterface(Component):
         # as the daq package ultimately relies on, otherwise things will
         # fail
 
-        cmds.append("setup artdaq_mfextensions v1_01_00 -q prof:e10:s35")
+        #cmds.append("setup artdaq_mfextensions v1_01_00 -q prof:e10:s35")
 
         cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=30")
 
@@ -536,7 +553,7 @@ class DAQInterface(Component):
    
         cmds.append(cmd)
 
-        launchcmd = " ; ".join(cmds)
+        launchcmd = self.construct_checked_command( cmds )
 
         if self.pmt_host != "localhost":
             launchcmd = "ssh -f " + self.pmt_host + " '" + launchcmd + "'"
@@ -554,9 +571,9 @@ class DAQInterface(Component):
 
         if status != 0:
             self.alert_and_recover("Exception in DAQInterface: " +
-                                   "status error raised in pmt.rb call within Popen")
-            #raise Exception("Exception in DAQInterface: " +
-            #                "status error raised in pmt.rb call within Popen")
+                                   "status error raised in pmt.rb call within Popen; command was \"%s\"" %
+                                   ("; ".join(cmds)))
+
 
     # check_proc_heartbeats() will check that the expected artdaq
     # processes are up and running
@@ -1292,6 +1309,8 @@ class DAQInterface(Component):
             self.print_log(traceback.format_exc())
             self.alert_and_recover("Problem obtaining logfile name(s)")
             return
+
+        self.complete_state_change(self.name, "booting")
 
         print "\n%s: Boot transition complete; if running DAQInterface " % \
             (self.date_and_time()) + \
