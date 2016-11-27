@@ -966,6 +966,8 @@ class DAQInterface(Component):
 
     def get_run_documents(self):
 
+        assert False, "JCF: this function is broken for the time being"
+
         runstring = "\n\nrun_documents: {\n"
         
         boardreader_cntr = 0
@@ -1008,18 +1010,18 @@ class DAQInterface(Component):
             contents += "\n  '\n"
             return contents
 
-        indir = self.record_directory + "/" + str(self.run_params["run_number"])
+        indir = self.record_directory + "/" + str(self.run_number)
 
-        metadata_filename = indir + "/metadata_r" + str(self.run_params["run_number"]) + ".txt"
+        metadata_filename = indir + "/metadata_r" + str(self.run_number) + ".txt"
         runstring += get_arbitrary_file(metadata_filename, "run_metadata")
 
-        config_filename = indir + "/config_r" + str(self.run_params["run_number"]) + ".txt"        
+        config_filename = indir + "/config_r" + str(self.run_number) + ".txt"        
         runstring += get_arbitrary_file(config_filename, "run_daqinterface_config")
 
 
         has_rces = False
 
-        for component in self.run_params["daq_comp_list"] :
+        for component in self.daq_comp_list :
             if "rce" in component:
                 has_rces = True
 
@@ -1086,7 +1088,7 @@ class DAQInterface(Component):
                 elif command == "Start":
                     self.procinfos[procinfo_index].lastreturned = \
                         self.procinfos[procinfo_index].server.daq.start(\
-                        str(self.run_params["run_number"]))
+                        str(self.run_number))
                 elif command == "Pause":
                     self.procinfos[procinfo_index].lastreturned = \
                         self.procinfos[procinfo_index].server.daq.pause()
@@ -1179,6 +1181,8 @@ class DAQInterface(Component):
             print "%s: DAQInterface: \"Boot\" transition underway" % \
                 (self.date_and_time())
 
+        self.daq_comp_list = self.run_params["daq_comp_list"]
+
         # The name of the logfile isn't determined until pmt.rb has
         # been run
 
@@ -1218,11 +1222,11 @@ class DAQInterface(Component):
 
         if self.debug_level >= 1:
             print "JCF: daq_comp_list: "
-            print self.run_params["daq_comp_list"]
-#            for compname, socket in self.run_params["daq_comp_list"].items():
+            print self.daq_comp_list
+#            for compname, socket in self.daq_comp_list.items():
 #                print "%s at %s:%s" % (compname, socket[0], socket[1])
 
-        for componame, socket in self.run_params["daq_comp_list"].items():
+        for componame, socket in self.daq_comp_list.items():
  
             self.procinfos.append(self.Procinfo("BoardReader",
                                                 socket[0],
@@ -1323,13 +1327,15 @@ class DAQInterface(Component):
             print "%s: DAQInterface: \"Config\" transition underway" % \
                 (self.date_and_time())
 
+        self.config = self.run_params["config"]
+
         self.exception = False
 
         self.config_dirname, self.fhicl_file_path = self.get_config_info()
 
-        self.print_log("Config name: %s" % self.run_params["config"], 1)
+        self.print_log("Config name: %s" % self.config, 1)
         self.print_log("Selected DAQ comps: %s" %
-                       self.run_params["daq_comp_list"], 1)
+                       self.daq_comp_list, 1)
 
 
         # Now contact the configuration manager, if running, for the
@@ -1337,13 +1343,13 @@ class DAQInterface(Component):
 
         try:
 
-            for component, socket in self.run_params["daq_comp_list"].items():
+            for component, socket in self.daq_comp_list.items():
 
                 if self.debug_level >= 1:
                     print "Searching for the FHiCL document for " + component + \
-                        " given configuration \"" + self.run_params["config"] + \
+                        " given configuration \"" + self.config + \
                         "\""
-                uri = self.config_dirname + "/" + self.run_params["config"] + "/" + component + "_hw_cfg.fcl"
+                uri = self.config_dirname + "/" + self.config + "/" + component + "_hw_cfg.fcl"
 
                 if not os.path.exists(uri):
                     self.alert_and_recover("Unable to find desired uri %s" % (uri))
@@ -1376,15 +1382,15 @@ class DAQInterface(Component):
 
                         if proc_type == "EventBuilder":
                             fcl = "%s/%s/EventBuilder1.fcl" % (self.config_dirname,                             
-                                                               self.run_params["config"])
+                                                               self.config)
                         elif proc_type == "Aggregator":
                             aggregator_cntr += 1
                             if aggregator_cntr < num_procs:
                                 fcl = "%s/%s/Aggregator1.fcl" % (self.config_dirname,                             
-                                                                 self.run_params["config"])
+                                                                 self.config)
                             else:
                                 fcl = "%s/%s/Aggregator2.fcl" % (self.config_dirname,                             
-                                                                 self.run_params["config"])
+                                                                 self.config)
 
                         self.procinfos[i_proc].update_fhicl(fcl)
                             
@@ -1499,7 +1505,7 @@ class DAQInterface(Component):
             print
             print
 
-        self.tmp_run_record = "/tmp/run_record_attempted_%d" % (self.run_params["run_number"])
+        self.tmp_run_record = "/tmp/run_record_attempted"
         self.save_run_record()            
 
         self.do_command("Init")
@@ -1520,13 +1526,15 @@ class DAQInterface(Component):
 
     def do_start_running(self):
 
+        self.run_number = self.run_params["run_number"]
+
         if self.debug_level >= 1:
             print "%s: DAQInterface: \"Start\" transition underway for run %d" % \
-                    (self.date_and_time(), self.run_params["run_number"])
+                    (self.date_and_time(), self.run_number)
 
         
         if os.path.exists( self.tmp_run_record ):
-            cmd = "mv %s %s/%s" % (self.tmp_run_record, self.record_directory, str(self.run_params["run_number"]))
+            cmd = "mv %s %s/%s" % (self.tmp_run_record, self.record_directory, str(self.run_number))
             print "Command is %s" % (cmd)
             status = Popen(cmd, shell = True).wait()
 
@@ -1547,7 +1555,7 @@ class DAQInterface(Component):
 
         self.complete_state_change(self.name, "starting")
         print "\n%s: Start transition complete for run %s"  % \
-            (self.date_and_time(), str(self.run_params["run_number"])) + \
+            (self.date_and_time(), str(self.run_number)) + \
             ", if running DAQInterface in " + \
             "the background, can press <enter> to return to shell prompt"
 
@@ -1563,7 +1571,7 @@ class DAQInterface(Component):
 
         self.complete_state_change(self.name, "stopping")
         print "\n%s: Stop transition complete for run %s; if running DAQInterface " % \
-            (self.date_and_time(), str(self.run_params["run_number"]) ) + \
+            (self.date_and_time(), str(self.run_number) ) + \
             "in the background, can press <enter> to return to shell prompt"
 
     def do_terminate(self):

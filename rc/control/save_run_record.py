@@ -10,26 +10,7 @@ def save_run_record_base(self):
     # Save the FHiCL documents which were used to initialize the
     # artdaq processes
 
-    #outdir = self.record_directory + "/" + \
-    #    str(self.run_params["run_number"])
-
     outdir = self.tmp_run_record
-
-    # # First, check that the record directory is read-only; if it
-    # # isn't, publish a warning that it should be (this will help
-    # # prevent the potential disaster represented by the deletion
-    # # of the record directory
-
-    # perms = os.stat(self.record_directory)[stat.ST_MODE]
-
-    # if perms & stat.S_IWUSR:
-    #     warnmsg = "Warning in DAQInterface: %s is not read-only;" \
-    #         " to accomplish this for next time," \
-    #         " execute \"chmod 555 %s\"" % \
-    #         (self.record_directory, self.record_directory)
-    #     self.print_log(warnmsg)
-
-    # os.chmod(self.record_directory, perms | stat.S_IWUSR)
 
     try:
         os.mkdir(outdir)
@@ -42,18 +23,23 @@ def save_run_record_base(self):
         return
 
     for procinfo in self.procinfos:
+        # outf = open(outdir + "/" + procinfo.name + "_" +
+        #             procinfo.host + "_" +
+        #             procinfo.port + "_r" +
+        #             str(self.run_number) +
+        #             ".fcl", "w")
+
         outf = open(outdir + "/" + procinfo.name + "_" +
                     procinfo.host + "_" +
-                    procinfo.port + "_r" +
-                    str(self.run_params["run_number"]) +
-                    ".fcl", "w")
+                    procinfo.port + ".fcl", "w")
 
         outf.write(procinfo.fhicl_used)
         outf.close()
 
     # For good measure, let's also save the DAQInterface configuration file
 
-    config_saved_name = "config_r%d.txt" % (self.run_params["run_number"])
+#    config_saved_name = "config_r%d.txt" % (self.run_number)
+    config_saved_name = "config.txt"
 
     Popen("cp -p " + self.config_filename + " " + outdir +
           "/" + config_saved_name,
@@ -70,13 +56,15 @@ def save_run_record_base(self):
     # selected configuration, selected components, and commit
     # hashes of lbne-artdaq and lbnerc
 
-    outf = open(outdir + "/metadata_r" +
-                str(self.run_params["run_number"]) + ".txt", "w")
+#    outf = open(outdir + "/metadata_r" +
+#                str(self.run_number) + ".txt", "w")
 
-    outf.write("Config name: %s\n" % self.run_params["config"])
+    outf = open(outdir + "/metadata.txt", "w")
+
+    outf.write("Config name: %s\n" % self.config)
 
     for i_comp, component in \
-            enumerate(sorted(self.run_params["daq_comp_list"])):
+            enumerate(sorted(self.daq_comp_list)):
         outf.write("Component #%d: %s\n" % (i_comp, component))
 
     # Now save the commit hashes we determined during

@@ -3,26 +3,49 @@
 badargs=false
 cmd=$1
 
-runnum_token=""
-config_token=",config:s/demo"
+xmlrpc_arg=
 translated_cmd=
 
 case $cmd in
     "boot")
-	test $# == 1 || badargs=true 
+	test $# -gt 1 || badargs=true 
 	translated_cmd="booting"
-#	config_token=",config:s/"$2
+	shift  # Get rid of the first argument, i.e., "boot"
+	components=$@
+	components_file=$( dirname $0 )"/../components.txt"
+
+	if [[ ! -e $components_file ]]; then
+	    echo "Unable to find file containing allowed components, \"$components_file\"" >&2
+	    exit 10
+	fi
+
+	xmlrpc_arg="daq_comp_list:struct/{"
+
+	for comp in $components; do
+
+	    comp_line=$( grep $comp $components_file )
+
+	    if [[ -n $comp_line ]]; then
+		host=$( echo $comp_line | awk '{print $2}' )
+		port=$( echo $comp_line | awk '{print $3}' )
+		xmlrpc_arg=${xmlrpc_arg}${comp}":array/(s/"${host}","${port}")"
+	    else
+		echo "Unable to find listing for component \"$comp\" in $components_file" >&2
+		exit 20
+	    fi
+	done
+	xmlrpc_arg=${xmlrpc_arg}"}"
 	;;
     "config")
 	test $# == 2 || badargs=true 
 	translated_cmd="configuring"
-	runnum_token=",run_number:i/"$2
-#	config_token=",config:s/"$2
+#	xmlrpc_arg=",run_number:i/"$2
+	xmlrpc_arg="config:s/"$2
 	;;
     "start")
 	test $# == 2 || badargs=true 
 	translated_cmd="starting"
-	runnum_token=",run_number:i/"$2
+	xmlrpc_arg="run_number:i/"$2
 	;;
     "stop")
 	test $# == 1 || badargs=true 
@@ -44,7 +67,13 @@ if [[ "$badargs" = true ]]; then
 fi
 
 
-full_cmd="xmlrpc http://localhost:5570/RPC2 state_change daqint "${translated_cmd}" 'struct/{daq_comp_list:struct/{component01:array/(s/mu2edaq01.fnal.gov,5305)}"${config_token}${runnum_token}"}'"
+full_cmd="xmlrpc http://localhost:5570/RPC2 state_change daqint "${translated_cmd}
+
+if [[ -n $xmlrpc_arg ]]; then
+    full_cmd=${full_cmd}" 'struct/{"${xmlrpc_arg}"}'"
+else
+    full_cmd=${full_cmd}" 'struct/{ignored:i/999}' "
+fi
 
 ( cd ~/artdaq-demo-base ; . setupARTDAQDEMO 2>&1 > /dev/null; echo $full_cmd ; eval $full_cmd )
 

@@ -5,6 +5,8 @@ if [[ "$#" != "1" ]]; then
     exit 0
 fi
 
+config="demo"
+
 starttime=$(date +%s)
 
 daq_time_in_seconds=$1
@@ -79,7 +81,7 @@ function main() {
 
     # Initialize the DAQ
     
-    $scriptdir/sendcmd.sh config $runnum
+    $scriptdir/sendcmd.sh config $config
 
     wait_until_no_longer configuring
 
