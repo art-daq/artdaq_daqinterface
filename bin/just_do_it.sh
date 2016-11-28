@@ -67,7 +67,7 @@ function main() {
 	exit 50
     fi
 
-    $scriptdir/sendcmd.sh boot
+    $scriptdir/sendcmd.sh boot component01 component02
 
     wait_until_no_longer booting
 

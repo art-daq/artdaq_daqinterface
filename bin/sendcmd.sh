@@ -21,7 +21,12 @@ case $cmd in
 
 	xmlrpc_arg="daq_comp_list:struct/{"
 
+	num_components=$( echo $components | wc -w)
+	comp_cntr=0
+
 	for comp in $components; do
+
+	    comp_cntr=$((comp_cntr + 1))
 
 	    comp_line=$( grep $comp $components_file )
 
@@ -29,17 +34,19 @@ case $cmd in
 		host=$( echo $comp_line | awk '{print $2}' )
 		port=$( echo $comp_line | awk '{print $3}' )
 		xmlrpc_arg=${xmlrpc_arg}${comp}":array/(s/"${host}","${port}")"
+
+		test $comp_cntr != $num_components && xmlrpc_arg=${xmlrpc_arg}","
 	    else
 		echo "Unable to find listing for component \"$comp\" in $components_file" >&2
 		exit 20
 	    fi
 	done
+
 	xmlrpc_arg=${xmlrpc_arg}"}"
 	;;
     "config")
 	test $# == 2 || badargs=true 
 	translated_cmd="configuring"
-#	xmlrpc_arg=",run_number:i/"$2
 	xmlrpc_arg="config:s/"$2
 	;;
     "start")
@@ -72,7 +79,7 @@ full_cmd="xmlrpc http://localhost:5570/RPC2 state_change daqint "${translated_cm
 if [[ -n $xmlrpc_arg ]]; then
     full_cmd=${full_cmd}" 'struct/{"${xmlrpc_arg}"}'"
 else
-    full_cmd=${full_cmd}" 'struct/{ignored:i/999}' "
+    full_cmd=${full_cmd}" 'struct/{ignored_variable:i/999}' "
 fi
 
 ( cd ~/artdaq-demo-base ; . setupARTDAQDEMO 2>&1 > /dev/null; echo $full_cmd ; eval $full_cmd )

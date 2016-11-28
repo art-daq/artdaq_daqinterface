@@ -17,6 +17,7 @@ import string
 import glob
 import stat
 from threading import Thread
+import shutil
 
 from rc.io.timeoutclient import TimeoutServerProxy
 from rc.control.component import Component 
@@ -1503,9 +1504,15 @@ class DAQInterface(Component):
 
             print "/"*70
             print
+
             print
 
+        
         self.tmp_run_record = "/tmp/run_record_attempted"
+        
+        if os.path.exists(self.tmp_run_record):
+            shutil.rmtree("/tmp/run_record_attempted")
+
         self.save_run_record()            
 
         self.do_command("Init")
@@ -1535,7 +1542,6 @@ class DAQInterface(Component):
         
         if os.path.exists( self.tmp_run_record ):
             cmd = "mv %s %s/%s" % (self.tmp_run_record, self.record_directory, str(self.run_number))
-            print "Command is %s" % (cmd)
             status = Popen(cmd, shell = True).wait()
 
             if status != 0:
