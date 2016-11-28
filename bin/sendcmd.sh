@@ -8,9 +8,14 @@ translated_cmd=
 
 case $cmd in
     "boot")
-	test $# -gt 1 || badargs=true 
+	test $# -gt 2 || badargs=true 
 	translated_cmd="booting"
-	shift  # Get rid of the first argument, i.e., "boot"
+	daqinterface_config_file=$2
+	
+	xmlrpc_arg="daqinterface_config:s/"${daqinterface_config_file}
+
+	shift
+	shift
 	components=$@
 	components_file=$( dirname $0 )"/../components.txt"
 
@@ -19,7 +24,7 @@ case $cmd in
 	    exit 10
 	fi
 
-	xmlrpc_arg="daq_comp_list:struct/{"
+	xmlrpc_arg=${xmlrpc_arg}",daq_comp_list:struct/{"
 
 	num_components=$( echo $components | wc -w)
 	comp_cntr=0

@@ -21,17 +21,17 @@ EventBuilder port: 5237
 EventBuilder host: mu2edaq01.fnal.gov
 EventBuilder port: 5238
 
-EventBuilder host: mu2edaq01.fnal.gov
-EventBuilder port: 5239
+#EventBuilder host: mu2edaq01.fnal.gov
+#EventBuilder port: 5239
 
-EventBuilder host: mu2edaq01.fnal.gov
-EventBuilder port: 5240
+#EventBuilder host: mu2edaq01.fnal.gov
+#EventBuilder port: 5240
 
-EventBuilder host: mu2edaq01.fnal.gov
-EventBuilder port: 5241
+#EventBuilder host: mu2edaq01.fnal.gov
+#EventBuilder port: 5241
 
-EventBuilder host: mu2edaq01.fnal.gov
-EventBuilder port: 5242
+#EventBuilder host: mu2edaq01.fnal.gov
+#EventBuilder port: 5242
 
 Aggregator host: mu2edaq01.fnal.gov
 Aggregator port: 5265

@@ -231,8 +231,7 @@ class DAQInterface(Component):
 
     def __init__(self, logpath=None, name="toycomponent",
                  rpc_host="localhost", control_host='localhost',
-                 synchronous=True, rpc_port=6659,
-                 config_filename=""):
+                 synchronous=True, rpc_port=6659):
 
         # Initialize Component, the base class of DAQInterface
 
@@ -285,20 +284,6 @@ class DAQInterface(Component):
 
         self.exception = False
 
-        # JCF, 11/18/14
-
-        # "config_filename" refers to the file users can edit to
-        # configure DAQInterface, as well as which systems various
-        # artdaq processes will run on + the FHiCL documents which
-        # will initalize them. For details, see
-        # https://cdcvs.fnal.gov/redmine/projects/lbne-daq/wiki/Running_DAQ_Interface
-
-        if config_filename != "":
-            self.config_filename = config_filename
-        else:
-            self.config_filename = "/".join(__file__.split("/")[:-3]) + \
-                "/docs/config.txt"
-
         # This will contain the directory with the FHiCL documents
         # which initialize the artdaq processes
 
@@ -310,8 +295,6 @@ class DAQInterface(Component):
 
         self.last_lbne_artdaq_line = None
 
-        self.reset_DAQInterface_config()
-
         self.__do_boot = False
         self.__do_config = False
         self.__do_start_running = False
@@ -322,25 +305,8 @@ class DAQInterface(Component):
 
         self.messagefacility_fhicl = "/home/jcfree/standalone_daq/docs/MessageFacility.fcl"
 
-        # JCF, 11/6/14
-
-        self.procinfos = []    # Zero this out in case already filled
-
-        try:
-            self.read_DAQInterface_config()
-        except Exception:
-            self.print_log("DAQInterface caught an "
-                           "exception thrown by read_DAQInterface_config()")
-            self.print_log(traceback.format_exc())
-
-            self.alert_and_recover("A problem occurred when trying to read the DAQInterface config file %s" %
-                                   self.config_filename)
-            return
-
-
-        if self.debug_level >= 1:
-            print "DAQInterface launched; if running DAQInterface in the background," \
-                " can press <enter> to return to shell prompt"
+        print "DAQInterface launched; if running DAQInterface in the background," \
+            " can press <enter> to return to shell prompt"
 
     get_host_specific_settings = get_host_specific_settings_base
     get_config_info = get_config_info_base
@@ -1058,9 +1024,8 @@ class DAQInterface(Component):
     def do_command(self, command):
 
         if command != "Start" and command != "Init" and command != "Stop":
-            if self.debug_level >= 1:
-                print "%s: DAQInterface: \"%s\" transition underway" % \
-                    (self.date_and_time(), command)
+            print "%s: DAQInterface: \"%s\" transition underway" % \
+                (self.date_and_time(), command)
 
         # "process_command" is the function which will send a
         # transition to a single artdaq process, and be run on its own
@@ -1178,11 +1143,29 @@ class DAQInterface(Component):
 
     def do_boot(self):
 
-        if self.debug_level >= 1:
-            print "%s: DAQInterface: \"Boot\" transition underway" % \
-                (self.date_and_time())
+        print "%s: DAQInterface: \"Boot\" transition underway" % \
+            (self.date_and_time())
 
         self.daq_comp_list = self.run_params["daq_comp_list"]
+        self.config_filename = self.run_params["daqinterface_config"]
+
+        self.reset_DAQInterface_config()
+
+        # JCF, 11/6/14
+
+        self.procinfos = []    # Zero this out in case already filled
+
+        try:
+            self.read_DAQInterface_config()
+        except Exception:
+            self.print_log("DAQInterface caught an "
+                           "exception thrown by read_DAQInterface_config()")
+            self.print_log(traceback.format_exc())
+
+            self.alert_and_recover("A problem occurred when trying to read the DAQInterface config file %s" %
+                                   self.config_filename)
+            return
+
 
         # The name of the logfile isn't determined until pmt.rb has
         # been run
@@ -1324,9 +1307,8 @@ class DAQInterface(Component):
 
     def do_config(self):
 
-        if self.debug_level >= 1:
-            print "%s: DAQInterface: \"Config\" transition underway" % \
-                (self.date_and_time())
+        print "%s: DAQInterface: \"Config\" transition underway" % \
+            (self.date_and_time())
 
         self.config = self.run_params["config"]
 
@@ -1535,9 +1517,8 @@ class DAQInterface(Component):
 
         self.run_number = self.run_params["run_number"]
 
-        if self.debug_level >= 1:
-            print "%s: DAQInterface: \"Start\" transition underway for run %d" % \
-                    (self.date_and_time(), self.run_number)
+        print "%s: DAQInterface: \"Start\" transition underway for run %d" % \
+            (self.date_and_time(), self.run_number)
 
         
         if os.path.exists( self.tmp_run_record ):
@@ -1567,9 +1548,8 @@ class DAQInterface(Component):
 
     def do_stop_running(self):
 
-        if self.debug_level >= 1:
-            print "%s: DAQInterface: \"Stop\" transition underway" % \
-                (self.date_and_time())
+        print "%s: DAQInterface: \"Stop\" transition underway" % \
+            (self.date_and_time())
 
         self.stop_datataking()
 
@@ -1582,9 +1562,8 @@ class DAQInterface(Component):
 
     def do_terminate(self):
 
-        if self.debug_level >= 1:
-            print "%s: DAQInterface: \"Terminate\" transition underway" % \
-                (self.date_and_time())
+        print "%s: DAQInterface: \"Terminate\" transition underway" % \
+            (self.date_and_time())
 
         print
 
@@ -1764,11 +1743,6 @@ def get_args():  # no-coverage
                         default='localhost', help="This hostname/IP addr")
     parser.add_argument("-c", "--control-host", type=str, dest='control_host',
                         default='localhost', help="Control host")
-    parser.add_argument("-f", "--config-filename", type=str,
-                        dest='config_filename',
-                        default="/".join(__file__.split("/")[:-3]) +
-                        "/docs/config.txt",
-                        help="DAQInterface configuration file")
     return parser.parse_args()
 
 

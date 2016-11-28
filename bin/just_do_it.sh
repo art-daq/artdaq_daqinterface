@@ -67,7 +67,7 @@ function main() {
 	exit 50
     fi
 
-    $scriptdir/sendcmd.sh boot component01 component02
+    $scriptdir/sendcmd.sh boot $(dirname $0)/../docs/config_john.txt component01 component02
 
     wait_until_no_longer booting
 
@@ -151,16 +151,21 @@ function clean_shutdown() {
 
     # And terminate it
 
-    $scriptdir/sendcmd.sh terminate
+    if false; then
 
-    wait_until_no_longer terminating
+	$scriptdir/sendcmd.sh terminate
 
-    state_true="0"
-    check_for_state "stopped" state_true
+	wait_until_no_longer terminating
 
-    if [[ "$state_true" != "1" ]]; then
-	echo "DAQ unexpectedly not in stopped state;  exiting "$( basename $0)
-	exit 90
+	state_true="0"
+	check_for_state "stopped" state_true
+
+	if [[ "$state_true" != "1" ]]; then
+	    echo "DAQ unexpectedly not in stopped state;  exiting "$( basename $0)
+	    exit 90
+	fi
+    else
+	echo "Skipping the terminate step"
     fi
 
     endtime=$(date +%s)
