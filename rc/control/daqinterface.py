@@ -933,8 +933,6 @@ class DAQInterface(Component):
 
     def get_run_documents(self):
 
-        assert False, "JCF: this function is broken for the time being"
-
         runstring = "\n\nrun_documents: {\n"
         
         boardreader_cntr = 0
@@ -977,24 +975,13 @@ class DAQInterface(Component):
             contents += "\n  '\n"
             return contents
 
-        indir = self.record_directory + "/" + str(self.run_number)
+        indir = self.tmp_run_record
 
-        metadata_filename = indir + "/metadata_r" + str(self.run_number) + ".txt"
+        metadata_filename = indir + "/metadata.txt"
         runstring += get_arbitrary_file(metadata_filename, "run_metadata")
 
-        config_filename = indir + "/config_r" + str(self.run_number) + ".txt"        
+        config_filename = indir + "/config.txt"        
         runstring += get_arbitrary_file(config_filename, "run_daqinterface_config")
-
-
-        has_rces = False
-
-        for component in self.daq_comp_list :
-            if "rce" in component:
-                has_rces = True
-
-        if has_rces:
-            rce_xml_filename = indir + "/defaults.xml"
-            runstring += get_arbitrary_file(rce_xml_filename, "run_rce_xml")
 
         runstring += "} \n\n"
 
@@ -1042,12 +1029,10 @@ class DAQInterface(Component):
             try:
 
                 if command == "Init":
-#                    if not "Aggregator" in self.procinfos[procinfo_index].name:
-                    if True:
+                    if not "Aggregator" in self.procinfos[procinfo_index].name:
                         self.procinfos[procinfo_index].lastreturned = \
                             self.procinfos[procinfo_index].server.daq.init(self.procinfos[procinfo_index].fhicl_used)
                     else:
-                        print "JCF: THIS CODE STILL NEEDS TO BE DEBUGGED"
                         self.procinfos[procinfo_index].lastreturned = \
                             self.procinfos[procinfo_index].server.daq.init(self.procinfos[procinfo_index].fhicl_used + self.get_run_documents() )
 
