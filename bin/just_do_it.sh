@@ -10,7 +10,6 @@ config="demo2"
 starttime=$(date +%s)
 
 daq_time_in_seconds=$1
-runnum=$2
 
 root_output_dir="/tmp"
 run_records_dir=$HOME/run_records
@@ -199,11 +198,16 @@ function check_run_records() {
     ls -ltr $run_records_dir/$runnum 
 }
 
+
+
+
 main $@
 
 echo
 check_output_file
 echo
 check_run_records
+echo
+$( dirname $0 )/compare_run_record_and_rootfile.sh $runnum
 
 exit 0
