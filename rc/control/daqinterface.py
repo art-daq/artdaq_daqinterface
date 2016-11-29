@@ -25,7 +25,7 @@ from rc.control.deepsuppression import deepsuppression
 
 from rc.control.get_host_specific_settings_mu2edaq01 import get_host_specific_settings_base
 from rc.control.get_config_info_protodune import get_config_info_base
-from rc.control.put_config_info_35ton import put_config_info_base
+from rc.control.put_config_info_protodune import put_config_info_base
 from rc.control.save_run_record import save_run_record_base
 from rc.control.start_datataking_protodune import start_datataking_base
 from rc.control.stop_datataking_protodune import stop_datataking_base

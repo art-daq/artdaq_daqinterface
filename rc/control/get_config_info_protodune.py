@@ -19,7 +19,7 @@ def get_config_info_base(self):
     cmds.append( "cd %s" % (configbasedir) )
     cmds.append( "conftool.sh -o export_global_config -g " + self.config)
 
-    cmd = " ; ".join( cmds )
+    cmd = self.construct_checked_command( cmds )
 
     proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     cfg_lines = proc.stdout.readlines()
