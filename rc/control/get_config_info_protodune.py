@@ -2,21 +2,22 @@
 import subprocess
 from subprocess import Popen
 
+import os
+
 def get_config_info_base(self):
 
-    # JCF, Nov-10-2016
+    configbasedir = os.environ["HOME"] + "/daqarea/work-db-dir"
 
-    # The hardwired paths below are specific to pdunedaq01; these will
-    # need to be changed on another system
-    
-    proddir = "/home/nfs/products"
-    configbasedir = "/home/nfs/dunedaq/daqarea/config_protodune"
+    sourcemefile = os.environ["HOME"] + "/.database.bash.rc"
+
+    if not os.path.exists( sourcemefile ):
+        self.alert_and_recover("Error: required file to source for configuration \"%s\" doesn't appear to exist" %
+                               (sourcemefile))
 
     cmds = []
+    cmds.append( ". " + sourcemefile )
     cmds.append( "cd %s" % (configbasedir) )
-    cmds.append( ". %s/setup" % (proddir))
-    cmds.append( "setup artdaq v1_13_02 -q e10:eth:prof:s35")
-    cmds.append( "conftool.sh -o export_global_config -g artdaqdemo999")
+    cmds.append( "conftool.sh -o export_global_config -g " + self.config)
 
     cmd = " ; ".join( cmds )
 

@@ -5,7 +5,7 @@ if [[ "$#" != "1" ]]; then
     exit 0
 fi
 
-config="demo"
+config="demo2"
 
 starttime=$(date +%s)
 
@@ -149,9 +149,7 @@ function clean_shutdown() {
 	exit 80
     fi
 
-    # And terminate it
-
-    if false; then
+    if true; then
 
 	$scriptdir/sendcmd.sh terminate
 
