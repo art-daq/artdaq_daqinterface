@@ -63,6 +63,10 @@ case $cmd in
 	test $# == 1 || badargs=true 
 	translated_cmd="stopping"
 	;;
+    "shutdown")
+	test $# == 1 || badargs=true 
+	translated_cmd="shutting"
+	;;
     "terminate")
 	test $# == 1 || badargs=true 
 	translated_cmd="terminating"

@@ -296,6 +296,7 @@ class DAQInterface(Component):
         self.last_lbne_artdaq_line = None
 
         self.__do_boot = False
+        self.__do_shutdown = False
         self.__do_config = False
         self.__do_start_running = False
         self.__do_stop_running = False
@@ -322,6 +323,9 @@ class DAQInterface(Component):
 
     def boot(self):
         self.__do_boot = True
+
+    def shutdown(self):
+        self.__do_shutdown = True
 
     def config(self):
         self.__do_config = True
@@ -1039,7 +1043,7 @@ class DAQInterface(Component):
                 elif command == "Start":
                     self.procinfos[procinfo_index].lastreturned = \
                         self.procinfos[procinfo_index].server.daq.start(\
-                        str(self.run_number))
+                        str(self.run_number_for_run))
                 elif command == "Pause":
                     self.procinfos[procinfo_index].lastreturned = \
                         self.procinfos[procinfo_index].server.daq.pause()
@@ -1049,6 +1053,9 @@ class DAQInterface(Component):
                 elif command == "Stop":
                     self.procinfos[procinfo_index].lastreturned = \
                         self.procinfos[procinfo_index].server.daq.stop()
+                elif command == "Shutdown":
+                    self.procinfos[procinfo_index].lastreturned = \
+                        self.procinfos[procinfo_index].server.daq.shutdown()
                 else:
                     raise Exception("Unknown command")
             except Exception:
@@ -1113,6 +1120,8 @@ class DAQInterface(Component):
                 verbing = "pausing"
             elif command == "Resume":
                 verbing = "resuming"
+            elif command == "Shutdown":
+                verbing == "shutting"
             else:
                 raise Exception("Unknown command")
 
@@ -1496,14 +1505,14 @@ class DAQInterface(Component):
 
     def do_start_running(self):
 
-        self.run_number = self.run_params["run_number"]
+        self.run_number_for_run = self.run_params["run_number"]
 
         print "%s: DAQInterface: \"Start\" transition underway for run %d" % \
-            (self.date_and_time(), self.run_number)
+            (self.date_and_time(), self.run_number_for_run)
 
         
         if os.path.exists( self.tmp_run_record ):
-            cmd = "mv %s %s/%s" % (self.tmp_run_record, self.record_directory, str(self.run_number))
+            cmd = "mv %s %s/%s" % (self.tmp_run_record, self.record_directory, str(self.run_number_for_run))
             status = Popen(cmd, shell = True).wait()
 
             if status != 0:
@@ -1523,7 +1532,7 @@ class DAQInterface(Component):
 
         self.complete_state_change(self.name, "starting")
         print "\n%s: Start transition complete for run %s"  % \
-            (self.date_and_time(), str(self.run_number)) + \
+            (self.date_and_time(), str(self.run_number_for_run)) + \
             ", if running DAQInterface in " + \
             "the background, can press <enter> to return to shell prompt"
 
@@ -1538,7 +1547,7 @@ class DAQInterface(Component):
 
         self.complete_state_change(self.name, "stopping")
         print "\n%s: Stop transition complete for run %s; if running DAQInterface " % \
-            (self.date_and_time(), str(self.run_number) ) + \
+            (self.date_and_time(), str(self.run_number_for_run) ) + \
             "in the background, can press <enter> to return to shell prompt"
 
     def do_terminate(self):
@@ -1675,6 +1684,10 @@ class DAQInterface(Component):
         elif self.__do_boot:
             self.do_boot()
             self.__do_boot = False
+
+        elif self.__do_shutdown:
+            self.do_command("Shutdown")
+            self.__do_shutdown = False
 
         elif self.__do_config:
             self.do_config()

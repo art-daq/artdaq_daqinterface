@@ -48,6 +48,7 @@ class Component(ContextObject):
         if name != self.name:
             return
         newstate = {"booting": "booted",
+                    "shutting": "booted",
                     "stopping": "ready",
                     "configuring": "ready",
                     "starting": "running",
@@ -92,6 +93,8 @@ class Component(ContextObject):
         if requested == "booting":
             self.run_params = state_args
             self.boot()
+        if requested == "shutting":
+            self.shutdown()
         if requested == "configuring":
             self.run_params = state_args
             self.config()
@@ -124,6 +127,9 @@ class Component(ContextObject):
 
     def boot(self):
         self.complete_state_change(self.name, "booting")
+
+    def shutdown(self):
+        self.complete_state_change(self.name, "shutting")
 
     def config(self):
         self.complete_state_change(self.name, "configuring")

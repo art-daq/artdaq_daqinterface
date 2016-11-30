@@ -79,7 +79,12 @@ function main() {
     fi
 
     # Initialize the DAQ
+
+    config_cntr=0
     
+    while (( $config_cntr < 2 )); do 
+
+	config_cntr=$(( config_cntr + 1 ))
     $scriptdir/sendcmd.sh config $config
 
     wait_until_no_longer configuring
@@ -91,6 +96,8 @@ function main() {
 	echo "DAQ failed to enter ready state; exiting $0"
 	exit 60
     fi
+
+    done
 
     # Start the DAQ, and run it for the requested amount of time
 

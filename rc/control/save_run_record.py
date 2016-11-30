@@ -26,7 +26,7 @@ def save_run_record_base(self):
         # outf = open(outdir + "/" + procinfo.name + "_" +
         #             procinfo.host + "_" +
         #             procinfo.port + "_r" +
-        #             str(self.run_number) +
+        #             str(self.run_number_for_run) +
         #             ".fcl", "w")
 
         outf = open(outdir + "/" + procinfo.name + "_" +
@@ -38,7 +38,7 @@ def save_run_record_base(self):
 
     # For good measure, let's also save the DAQInterface configuration file
 
-#    config_saved_name = "config_r%d.txt" % (self.run_number)
+#    config_saved_name = "config_r%d.txt" % (self.run_number_for_run)
     config_saved_name = "config.txt"
 
     Popen("cp -p " + self.config_filename + " " + outdir +
@@ -57,7 +57,7 @@ def save_run_record_base(self):
     # hashes of lbne-artdaq and lbnerc
 
 #    outf = open(outdir + "/metadata_r" +
-#                str(self.run_number) + ".txt", "w")
+#                str(self.run_number_for_run) + ".txt", "w")
 
     outf = open(outdir + "/metadata.txt", "w")
 
