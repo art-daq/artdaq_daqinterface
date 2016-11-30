@@ -38,7 +38,7 @@ def put_config_info_base(self):
     cmds.append( "rm -f " + runnum + "/*.txt")
     cmds.append( "for file in " + runnum + "/*.*.fcl ; do mv $file $( echo $file | sed -r 's/\./_/g;s/_fcl/\.fcl/' ) ; done")
     cmds.append( "conftool.sh -o import_global_config -g %sR%s -v ver001 -s %s" % 
-                 (self.config, runnum, runnum) )
+                 (self.config_for_run, runnum, runnum) )
     cmds.append( "cd ..")
     cmds.append( "rm -rf $tmpdir ")
 

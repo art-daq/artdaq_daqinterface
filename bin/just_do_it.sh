@@ -5,7 +5,7 @@ if [[ "$#" != "1" ]]; then
     exit 0
 fi
 
-config="demo2"
+config="demo3"
 
 starttime=$(date +%s)
 
@@ -209,5 +209,6 @@ echo
 check_run_records
 echo
 $( dirname $0 )/compare_run_record_and_rootfile.sh $runnum
+echo
 
 exit 0

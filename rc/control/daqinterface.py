@@ -1216,7 +1216,7 @@ class DAQInterface(Component):
 
         except Exception:
             self.print_log("DAQInterface caught an exception" +
-                           "in do_config()")
+                           "in do_boot()")
             self.print_log(traceback.format_exc())
 
             self.alert_and_recover("An exception was thrown in launch_procs()")
@@ -1278,7 +1278,7 @@ class DAQInterface(Component):
 
         except Exception:
             self.print_log("DAQInterface caught an exception " +
-                           "in do_config()")
+                           "in do_boot()")
             self.print_log(traceback.format_exc())
             self.alert_and_recover("Problem obtaining logfile name(s)")
             return
@@ -1295,13 +1295,13 @@ class DAQInterface(Component):
         print "%s: DAQInterface: \"Config\" transition underway" % \
             (self.date_and_time())
 
-        self.config = self.run_params["config"]
+        self.config_for_run = self.run_params["config"]
 
         self.exception = False
 
         self.config_dirname, self.fhicl_file_path = self.get_config_info()
 
-        self.print_log("Config name: %s" % self.config, 1)
+        self.print_log("Config name: %s" % self.config_for_run, 1)
         self.print_log("Selected DAQ comps: %s" %
                        self.daq_comp_list, 1)
 
@@ -1315,9 +1315,9 @@ class DAQInterface(Component):
 
                 if self.debug_level >= 1:
                     print "Searching for the FHiCL document for " + component + \
-                        " given configuration \"" + self.config + \
+                        " given configuration \"" + self.config_for_run + \
                         "\""
-                uri = self.config_dirname + "/" + self.config + "/" + component + "_hw_cfg.fcl"
+                uri = self.config_dirname + "/" + self.config_for_run + "/" + component + "_hw_cfg.fcl"
 
                 if not os.path.exists(uri):
                     self.alert_and_recover("Unable to find desired uri %s" % (uri))
@@ -1343,22 +1343,18 @@ class DAQInterface(Component):
                 for i_proc in range(len(self.procinfos)):
 
                     if self.procinfos[i_proc].name == proc_type:
-                        if self.procinfos[i_proc].fhicl is not None:
-                            raise Exception("FHiCL code should not " +
-                                            "be supplied for " +
-                                            proc_type + "Mains")
 
                         if proc_type == "EventBuilder":
                             fcl = "%s/%s/EventBuilder1.fcl" % (self.config_dirname,                             
-                                                               self.config)
+                                                               self.config_for_run)
                         elif proc_type == "Aggregator":
                             aggregator_cntr += 1
                             if aggregator_cntr < num_procs:
                                 fcl = "%s/%s/Aggregator1.fcl" % (self.config_dirname,                             
-                                                                 self.config)
+                                                                 self.config_for_run)
                             else:
                                 fcl = "%s/%s/Aggregator2.fcl" % (self.config_dirname,                             
-                                                                 self.config)
+                                                                 self.config_for_run)
 
                         self.procinfos[i_proc].update_fhicl(fcl)
                             

@@ -17,7 +17,7 @@ def get_config_info_base(self):
     cmds = []
     cmds.append( ". " + sourcemefile )
     cmds.append( "cd %s" % (configbasedir) )
-    cmds.append( "conftool.sh -o export_global_config -g " + self.config)
+    cmds.append( "conftool.sh -o export_global_config -g " + self.config_for_run)
 
     cmd = self.construct_checked_command( cmds )
 
