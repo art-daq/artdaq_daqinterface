@@ -5,7 +5,7 @@ if [[ "$#" != "1" ]]; then
     exit 0
 fi
 
-config="demo3"
+config="demo2"
 
 starttime=$(date +%s)
 
@@ -82,7 +82,7 @@ function main() {
 
     config_cntr=0
     
-    while (( $config_cntr < 2 )); do 
+    while (( $config_cntr < 1 )); do 
 
 	config_cntr=$(( config_cntr + 1 ))
     $scriptdir/sendcmd.sh config $config
@@ -154,6 +154,19 @@ function clean_shutdown() {
 	echo "DAQ unexpectedly not in ready state; exiting "$( basename $0)
 	exit 80
     fi
+
+    # $scriptdir/sendcmd.sh shutdown
+    # wait_until_no_longer shutting
+
+    # sleep 1
+
+    # state_true="0"
+    # check_for_state "booted" state_true
+
+    # if [[ "$state_true" != "1" ]]; then
+    # 	echo "DAQ unexpectedly not in booted state; exiting "$( basename $0)
+    # 	exit 81
+    # fi
 
     if true; then
 

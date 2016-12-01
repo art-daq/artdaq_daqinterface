@@ -247,25 +247,7 @@ class DAQInterface(Component):
 
         self.in_recovery = False
 
-        # JCF, Aug-28-2015
-        # Piece together the call to msgviewer...
-
-        cmds = []
-        cmds.append(". /home/jcfree/products/setup")
-        #cmds.append(". /home/jcfree/artdaq-demo-base-mrb/products/setup")
-        cmds.append("setup artdaq_mfextensions v1_01_00 -q prof:e10:s35")
-        cmds.append("msgviewer -c $ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/msgviewer.fcl 2>&1 > /dev/null &" )
-
-        msgviewercmd = self.construct_checked_command( cmds )
-
-        with deepsuppression():
-            status = Popen(msgviewercmd, shell=True).wait()
             
-        if status != 0:
-            raise Exception("Exception in DAQInterface: " +
-                            "status error raised in msgviewer call within Popen; tried the following commands: \"%s\"" %
-                            " ; ".join(cmds) )
-
         # JCF, Nov-17-2015
 
         # fhicl_file_path is a sequence of directory names which will
@@ -426,6 +408,55 @@ class DAQInterface(Component):
                 num_aggregators += 1
         return num_aggregators
 
+    def artdaq_mfextensions_info(self):
+        product_deps_filename = "%s/srcs/artdaq/ups/product_deps" % (self.daq_dir)
+
+        if not os.path.exists( product_deps_filename ):
+            self.alert_and_recover("Unable to find artdaq product_deps file \"%s\"; needed to determine artdaq_mfextensions version for messagefacility viewer")
+
+        product_deps_file = open( product_deps_filename )
+
+        lines = product_deps_file.readlines()
+
+        for line in lines:
+            res = re.search(r"^\s*defaultqual\s+(e[0-9]+):(s[0-9]+)", line)
+            if res:
+                equalifier = res.group(1)
+                squalifier = res.group(2)
+
+            res = re.search(r"^\s*artdaq_mfextensions\s+([v_0-9]+)", line)
+            if res:
+                version = res.group(1)
+
+        return (version, equalifier, squalifier)
+    
+    def have_needed_artdaq_mfextensions(self):
+
+        cmds = []
+        cmds.append(". %s/products/setup" % (self.daq_dir))
+        cmds.append("ups list -aK+ artdaq_mfextensions")
+
+        checked_cmd = self.construct_checked_command( cmds )
+        
+        status = Popen(checked_cmd, shell = True).wait()
+
+        if status != 0:
+            self.alert_and_recover("Problem determining whether artdaq_mfextensions needed for messageviewer was available; command was \"%s\"" % "; ".join( cmds ))
+
+        proc = Popen(checked_cmd, shell=True, stdout=subprocess.PIPE)
+        proclines = proc.stdout.readlines()
+
+        version, equalifier, squalifier = self.artdaq_mfextensions_info()
+
+        found = False
+
+        for line in proclines:
+            if version in line and equalifier in line and squalifier in line:
+                found = True
+                break
+
+        return found
+
     # JCF, 8/11/14
 
     # launch_procs() will create the artdaq processes
@@ -505,22 +536,21 @@ class DAQInterface(Component):
 
         cmds.append("cd " + self.daq_dir)
         cmds.append("source " + self.daq_setup_script )
-
-        # This needs to use the same messagefacility package version
-        # as the daq package ultimately relies on, otherwise things will
-        # fail
-
-        #cmds.append("setup artdaq_mfextensions v1_01_00 -q prof:e10:s35")
-
         cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=30")
 
-#        cmd = "pmt.rb -p " + self.pmt_port + " -d " + pmtconfigname + \
-#            " --logpath " + self.log_directory + \
-#            " --logfhicl " + self.messagefacility_fhicl + " --display $DISPLAY & "
+        if self.have_needed_artdaq_mfextensions():
+            version, equalifier, squalifier = self.artdaq_mfextensions_info()
+            cmds.append("setup artdaq_mfextensions %s -q prof:%s:%s" % \
+                            (version, equalifier, squalifier))
 
-        cmd = "pmt.rb -p $ARTDAQDEMO_PMT_PORT -d " + pmtconfigname + \
-            " --logpath " + self.log_directory + \
-            " --display $DISPLAY & "
+            cmd = "pmt.rb -p " + self.pmt_port + " -d " + pmtconfigname + \
+                " --logpath " + self.log_directory + \
+                " --logfhicl " + self.messagefacility_fhicl + " --display $DISPLAY & "
+        else:
+
+            cmd = "pmt.rb -p $ARTDAQDEMO_PMT_PORT -d " + pmtconfigname + \
+                " --logpath " + self.log_directory + \
+                " --display $DISPLAY & "
    
         cmds.append(cmd)
 
@@ -1291,6 +1321,35 @@ class DAQInterface(Component):
             self.print_log(traceback.format_exc())
             self.alert_and_recover("Problem obtaining logfile name(s)")
             return
+
+
+        # Figure out if we have the artdaq_mfextensions version expected by the artdaq used 
+        
+        version, equalifier, squalifier = self.artdaq_mfextensions_info()
+        self.launch_messageviewer = self.have_needed_artdaq_mfextensions()
+
+        if self.launch_messageviewer:
+            print "artdaq_mfextensions %s, %s:%s, appears to be available; if windowing is supported on your host you should see the messageviewer window pop up right now" % \
+                (version, equalifier, squalifier)
+
+            cmds = []
+            cmds.append(". %s/products/setup" % (self.daq_dir))
+            cmds.append("setup artdaq_mfextensions %s -q prof:%s:%s" % \
+                            (version, equalifier, squalifier))
+            cmds.append("msgviewer -c $ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/msgviewer.fcl 2>&1 > /dev/null &" )
+
+            msgviewercmd = self.construct_checked_command( cmds )
+
+            with deepsuppression():
+                status = Popen(msgviewercmd, shell=True).wait()
+            
+                if status != 0:
+                    raise Exception("Exception in DAQInterface: " +
+                                    "status error raised in msgviewer call within Popen; tried the following commands: \"%s\"" %
+                                    " ; ".join(cmds) )
+        else:
+            print "artdaq_mfextensions %s, %s:%s, does not appear to be available- unable to launch the messageviewer window" % \
+                (version, equalifier, squalifier)
 
         self.complete_state_change(self.name, "booting")
 
