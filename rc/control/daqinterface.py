@@ -286,7 +286,8 @@ class DAQInterface(Component):
         self.__do_pause_running = False
         self.__do_resume_running = False
 
-        self.messagefacility_fhicl = "/home/jcfree/standalone_daq/docs/MessageFacility.fcl"
+        #self.messagefacility_fhicl = "/home/jcfree/standalone_daq/docs/MessageFacility.fcl"
+        self.messagefacility_fhicl = "/tmp/jcfree_tmp/MessageFacility.fcl"
 
         print "DAQInterface launched; if running DAQInterface in the background," \
             " can press <enter> to return to shell prompt"
@@ -1571,7 +1572,7 @@ class DAQInterface(Component):
 
         
         if os.path.exists( self.tmp_run_record ):
-            cmd = "mv %s %s/%s" % (self.tmp_run_record, self.record_directory, str(self.run_number_for_run))
+            cmd = "cp -r %s %s/%s" % (self.tmp_run_record, self.record_directory, str(self.run_number_for_run))
             status = Popen(cmd, shell = True).wait()
 
             if status != 0:
