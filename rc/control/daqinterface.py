@@ -209,10 +209,6 @@ class DAQInterface(Component):
 
         self.pmt_port = None
 
-        # The pause, in seconds, after firing up the artdaq processes but
-        # before issuing the init transition to them
-        self.pause_before_initialization = None
-
         # A self.debug_level of 0 means minimal diagnostic output;
         # higher values mean increasing diagnostic output
 
@@ -433,30 +429,20 @@ class DAQInterface(Component):
     
     def have_needed_artdaq_mfextensions(self):
 
+        version, equalifier, squalifier = self.artdaq_mfextensions_info()
+
         cmds = []
         cmds.append(". %s/products/setup" % (self.daq_dir))
-        cmds.append("ups list -aK+ artdaq_mfextensions")
+        cmds.append("setup artdaq_mfextensions %s -q %s:%s:prof" % (version, equalifier, squalifier))
 
         checked_cmd = self.construct_checked_command( cmds )
         
         status = Popen(checked_cmd, shell = True).wait()
 
-        if status != 0:
-            self.alert_and_recover("Problem determining whether artdaq_mfextensions needed for messageviewer was available; command was \"%s\"" % "; ".join( cmds ))
-
-        proc = Popen(checked_cmd, shell=True, stdout=subprocess.PIPE)
-        proclines = proc.stdout.readlines()
-
-        version, equalifier, squalifier = self.artdaq_mfextensions_info()
-
-        found = False
-
-        for line in proclines:
-            if version in line and equalifier in line and squalifier in line:
-                found = True
-                break
-
-        return found
+        if status == 0:
+            return True
+        else:
+            return False
 
     # JCF, 8/11/14
 
@@ -549,7 +535,7 @@ class DAQInterface(Component):
                 " --logfhicl " + self.messagefacility_fhicl + " --display $DISPLAY & "
         else:
 
-            cmd = "pmt.rb -p $ARTDAQDEMO_PMT_PORT -d " + pmtconfigname + \
+            cmd = "pmt.rb -p " + self.pmt_port + " -d " + pmtconfigname + \
                 " --logpath " + self.log_directory + \
                 " --display $DISPLAY & "
    
@@ -729,17 +715,16 @@ class DAQInterface(Component):
         pmt_pids = self.get_pids("ruby.*pmt.rb -p " + str(self.pmt_port),
                                  self.pmt_host)
 
-        if len(pmt_pids) == 1:
+        if len(pmt_pids) > 0:
 
-            cmd = "kill %s" % (pmt_pids[0])
+            for pmt_pid in pmt_pids:
 
-            if self.pmt_host != "localhost":
-                cmd = "ssh -f " + self.pmt_host + " '" + cmd + "'"
+                cmd = "kill %s" % (pmt_pid)
 
-            status = Popen(cmd, shell=True, stdout=subprocess.PIPE)
-        else:
-            self.print_log("WARNING: unable to kill processes as was unable to find one and only one instance of pmt.rb on %s" % \
-                               (self.pmt_host))
+                if self.pmt_host != "localhost":
+                    cmd = "ssh -f " + self.pmt_host + " '" + cmd + "'"
+
+                proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         for procinfo in self.procinfos:
             greptoken = procinfo.name + "Main -p " + procinfo.port
@@ -765,7 +750,7 @@ class DAQInterface(Component):
                     self.print_log("Error in "
                                    "DAQInterface::kill_procs(): ")
                     self.print_log("Appeared to be unable to kill \"%s\""
-                                   " on %s" % greptoken, procinfo.host)
+                                   " on %s" % (greptoken, procinfo.host))
 
         self.procinfos = []
 
@@ -841,12 +826,6 @@ class DAQInterface(Component):
                 self.debug_level = int(res.group(1))
                 continue
 
-            res = re.search(r"\s*pause before initialization\s*:\s*(\S+)",
-                            line)
-            if res:
-                self.pause_before_initialization = int(res.group(1))
-                continue
-
             if "EventBuilder" in line or "Aggregator" in line:
 
                 res = re.search(r"\s*(\w+)\s+(\S+)\s*:\s*(\S+)", line)
@@ -918,8 +897,6 @@ class DAQInterface(Component):
             undefined_var = "DAQ directory"
         elif self.debug_level is None:
             undefined_var = "debug level"
-        elif self.pause_before_initialization is None:
-            undefined_var = "pause before initialization"
 
         if undefined_var != "":
             errmsg = "Error: \"%s\" undefined in " \
@@ -1294,10 +1271,7 @@ class DAQInterface(Component):
             if self.check_proc_heartbeats(False):
 
                 if self.debug_level > 0:
-                    print "All processes appear to be up" + \
-                        ", will wait " + \
-                        str(self.pause_before_initialization) + \
-                        " seconds before initializing..."
+                    print "All processes appear to be up"
 
                 break
             else:
@@ -1305,8 +1279,6 @@ class DAQInterface(Component):
                     self.print_log("artdaq processes failed to launch")
                     self.alert_and_recover("artdaq processes failed to launch")
                     return
-
-        sleep(self.pause_before_initialization)
 
         for procinfo in self.procinfos:
 
@@ -1368,7 +1340,7 @@ class DAQInterface(Component):
                                     "status error raised in msgviewer call within Popen; tried the following commands: \"%s\"" %
                                     " ; ".join(cmds) )
         else:
-            print "artdaq_mfextensions %s, %s:%s, does not appear to be available- unable to launch the messageviewer window" % \
+            print "artdaq_mfextensions %s, %s:%s, does not appear to be available- unable to launch the messageviewer window. This will not affect actual datataking, it just means you'll need to look at the logfiles to see artdaq output." % \
                 (version, equalifier, squalifier)
 
         self.complete_state_change(self.name, "booting")
