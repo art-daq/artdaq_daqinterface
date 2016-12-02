@@ -88,9 +88,7 @@ def save_run_record_base(self):
         outf.write("\n%s logfiles: " % logtuple[0])
 
         for filename in logtuple[1]:
-            outf.write("\n%s:%s/%s/%s" % (self.pmt_host,
-                                          self.log_directory,
-                                          logtuple[0], filename))
+            outf.write("\n" + filename)
 
     outf.write("\n")
     outf.close()

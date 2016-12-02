@@ -24,8 +24,8 @@ from rc.control.component import Component
 from rc.control.deepsuppression import deepsuppression
 
 from rc.control.get_host_specific_settings_mu2edaq01 import get_host_specific_settings_base
-from rc.control.get_config_info_protodune import get_config_info_base
-from rc.control.put_config_info_protodune import put_config_info_base
+from rc.control.get_config_info_database import get_config_info_base
+from rc.control.put_config_info_database import put_config_info_base
 from rc.control.save_run_record import save_run_record_base
 from rc.control.start_datataking_protodune import start_datataking_base
 from rc.control.stop_datataking_protodune import stop_datataking_base
@@ -726,10 +726,10 @@ class DAQInterface(Component):
         # Now, the commands which will clean up the pmt.rb + its child
         # artdaq processes
 
-        pmt_pids = self.get_pids("pmt.rb -p " + str(self.pmt_port),
+        pmt_pids = self.get_pids("ruby.*pmt.rb -p " + str(self.pmt_port),
                                  self.pmt_host)
 
-        if len(pmt_pids) > 0:
+        if len(pmt_pids) == 1:
 
             cmd = "kill %s" % (pmt_pids[0])
 
@@ -737,6 +737,9 @@ class DAQInterface(Component):
                 cmd = "ssh -f " + self.pmt_host + " '" + cmd + "'"
 
             status = Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        else:
+            self.print_log("WARNING: unable to kill processes as was unable to find one and only one instance of pmt.rb on %s" % \
+                               (self.pmt_host))
 
         for procinfo in self.procinfos:
             greptoken = procinfo.name + "Main -p " + procinfo.port
@@ -924,31 +927,48 @@ class DAQInterface(Component):
                 (undefined_var)
             raise Exception(errmsg)
 
-    # JCF, 3/17/15
+    # JCF, Dec-1-2016
 
-    # Define the local function "get_logfilenames()" which will
-    # enable us not just to get the pmt*.log logfile, but also the
-    # artdaq-process-specific logfiles as well
+    # Define the local function "get_logfilenames()" which will enable
+    # to get the artdaq-process-specific logfiles 
 
-    def get_logfilenames(self, subdir, nfiles):
-
-        cmd = "ls -tr1 %s/%s | tail -%d" % (self.log_directory,
-                                            subdir, nfiles)
-
-        if self.pmt_host != "localhost":
-            cmd = "ssh -f " + self.pmt_host + " '" + cmd + "'"
-
-        proc = Popen(cmd, shell=True, stdout=subprocess.PIPE)
-        proclines = proc.stdout.readlines()
-
-        if len(proclines) != nfiles:
-            raise Exception("Exception in DAQInterface: " +
-                            "problem seeking logfile(s)")
+    def get_logfilenames(self, procname):
 
         logfilenames = []
 
-        for line in proclines:
-            logfilenames.append(line.strip())
+        host_count = {}
+
+        if procname == "BoardReader":
+            subdir = "boardreader"
+        elif procname == "EventBuilder":
+            subdir = "eventbuilder"
+        elif procname == "Aggregator":
+            subdir = "aggregator"
+        else:
+            assert False
+
+        for procinfo in self.procinfos:
+            if procname == procinfo.name:
+                if procinfo.host in host_count.keys():
+                    host_count[procinfo.host] += 1
+                else:
+                    host_count[procinfo.host] = 1
+
+        for host, count in host_count.items():
+            cmd = "ls -tr1 %s/%s/%s-*.log | tail -%d" % (self.log_directory,
+                                                         subdir, subdir, count)
+
+            cmd = "ssh -f " + host + " '" + cmd + "'"
+
+            proc = Popen(cmd, shell=True, stdout=subprocess.PIPE)
+            proclines = proc.stdout.readlines()
+            
+            if len(proclines) != count:
+                raise Exception("Exception in DAQInterface: " +
+                                "problem seeking logfile(s)")
+
+            for line in proclines:
+                logfilenames.append("%s:%s" % (host, line.strip()))
 
         return logfilenames
 
@@ -1174,6 +1194,8 @@ class DAQInterface(Component):
         self.daq_comp_list = self.run_params["daq_comp_list"]
         self.config_filename = self.run_params["daqinterface_config"]
 
+        self.exception = False
+
         self.reset_DAQInterface_config()
 
         # JCF, 11/6/14
@@ -1230,10 +1252,8 @@ class DAQInterface(Component):
             self.package_hash_dict[pkgname] = self.get_commit_hash( pkg_full_path )
 
         if self.debug_level >= 1:
-            print "JCF: daq_comp_list: "
-            print self.daq_comp_list
-#            for compname, socket in self.daq_comp_list.items():
-#                print "%s at %s:%s" % (compname, socket[0], socket[1])
+            for compname, socket in self.daq_comp_list.items():
+                print "%s at %s:%s" % (compname, socket[0], socket[1])
 
         for componame, socket in self.daq_comp_list.items():
  
@@ -1303,18 +1323,17 @@ class DAQInterface(Component):
 
         try:
 
-            log_filename_current = self.get_logfilenames("pmt", 1)[0]
+            cmd = "ssh %s 'ls -tr1 %s/pmt | tail -1'" % (self.pmt_host, self.log_directory)
+            print cmd
+
+            log_filename_current = Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+
             self.log_filename_wildcard = \
                 log_filename_current.split(".")[0] + ".*" + ".log"
 
-            self.boardreader_log_filenames = self.get_logfilenames(
-                "boardreader", self.num_boardreaders())
-
-            self.eventbuilder_log_filenames = self.get_logfilenames(
-                "eventbuilder", self.num_eventbuilders())
-
-            self.aggregator_log_filenames = self.get_logfilenames(
-                "aggregator", self.num_aggregators())
+            self.boardreader_log_filenames = self.get_logfilenames("BoardReader")
+            self.eventbuilder_log_filenames = self.get_logfilenames("EventBuilder")
+            self.aggregator_log_filenames = self.get_logfilenames("Aggregator")
 
         except Exception:
             self.print_log("DAQInterface caught an exception " +
@@ -1365,8 +1384,6 @@ class DAQInterface(Component):
             (self.date_and_time())
 
         self.config_for_run = self.run_params["config"]
-
-        self.exception = False
 
         self.config_dirname, self.fhicl_file_path = self.get_config_info()
 
@@ -1774,7 +1791,6 @@ class DAQInterface(Component):
             self.__do_resume_running = False
 
         elif self.state(self.name) != "stopped" and self.state(self.name) != "booting":
-            #print "JCF: STATE IS " + self.state(self.name)
             self.check_proc_heartbeats()
             self.check_proc_exceptions()
 
@@ -1806,10 +1822,5 @@ def main():  # no-coverage
             while True:
                 sleep(100)
         except: KeyboardInterrupt
-
-
-# JCF, Nov-16-2016
-
-# Uncomment main() in order to run daqinterface.py as a standalone app (divorced from RC)
 
 main()

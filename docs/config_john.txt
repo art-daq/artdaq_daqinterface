@@ -1,7 +1,8 @@
 
 DAQ directory: /home/jcfree/artdaq-demo-base-mrb
 
-PMT host: localhost
+PMT host: mu2edaq01.fnal.gov
+#PMT host: localhost
 PMT port: 5400
 
 pause before initialization: 5
@@ -21,22 +22,22 @@ EventBuilder port: 5237
 EventBuilder host: mu2edaq01.fnal.gov
 EventBuilder port: 5238
 
-#EventBuilder host: mu2edaq01.fnal.gov
-#EventBuilder port: 5239
+EventBuilder host: mu2edaq01.fnal.gov
+EventBuilder port: 5239
 
-#EventBuilder host: mu2edaq01.fnal.gov
-#EventBuilder port: 5240
+EventBuilder host: mu2edaq01.fnal.gov
+EventBuilder port: 5240
 
-#EventBuilder host: mu2edaq01.fnal.gov
-#EventBuilder port: 5241
+EventBuilder host: mu2edaq01.fnal.gov
+EventBuilder port: 5241
 
-#EventBuilder host: mu2edaq01.fnal.gov
-#EventBuilder port: 5242
+EventBuilder host: mu2edaq01.fnal.gov
+EventBuilder port: 5242
 
-Aggregator host: mu2edaq01.fnal.gov
+Aggregator host: mu2edaq05.fnal.gov
 Aggregator port: 5265
 
-Aggregator host: mu2edaq01.fnal.gov
+Aggregator host: mu2edaq05.fnal.gov
 Aggregator port: 5266
 
 
