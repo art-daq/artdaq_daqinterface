@@ -23,7 +23,7 @@ from rc.io.timeoutclient import TimeoutServerProxy
 from rc.control.component import Component 
 from rc.control.deepsuppression import deepsuppression
 
-from rc.control.get_host_specific_settings_mu2edaq01 import get_host_specific_settings_base
+#from rc.control.get_host_specific_settings_mu2edaq01 import get_host_specific_settings_base
 from rc.control.get_config_info_database import get_config_info_base
 from rc.control.put_config_info_database import put_config_info_base
 from rc.control.save_run_record import save_run_record_base
@@ -239,7 +239,7 @@ class DAQInterface(Component):
                            rpc_port=rpc_port,
                            skip_init=False)
 
-        self.get_host_specific_settings()
+#        self.get_host_specific_settings()
 
         self.in_recovery = False
 
@@ -282,13 +282,12 @@ class DAQInterface(Component):
         self.__do_pause_running = False
         self.__do_resume_running = False
 
-        #self.messagefacility_fhicl = "/home/jcfree/standalone_daq/docs/MessageFacility.fcl"
-        self.messagefacility_fhicl = "/tmp/jcfree_tmp/MessageFacility.fcl"
+        self.read_settings()
 
         print "DAQInterface launched; if running DAQInterface in the background," \
             " can press <enter> to return to shell prompt"
 
-    get_host_specific_settings = get_host_specific_settings_base
+#    get_host_specific_settings = get_host_specific_settings_base
     get_config_info = get_config_info_base
     put_config_info = put_config_info_base
     save_run_record = save_run_record_base
@@ -332,6 +331,69 @@ class DAQInterface(Component):
         self.do_recover()
         
         raise Exception("\n\n\"" + extrainfo + "\"\n\nDAQInterface has set the DAQ back in the ground state; after making any necessary adjustments suggested by the stack trace and error messages above, please kill and restart DAQInterface")
+
+    def read_settings(self):
+        if not os.path.exists( os.getcwd() + "/.settings"):
+            raise Exception("Unable to find \".settings\" file in current directory \"%s\"" % \
+                                os.getcwd())
+
+        inf = open( os.getcwd() + "/.settings" )
+        assert inf
+
+        self.log_directory = None
+        self.record_directory = None
+        self.daq_setup_script = None
+        self.package_hashes_to_save = None
+        self.messagefacility_fhicl = None
+
+        for line in inf.readlines():
+            if "log_directory" in line:
+                self.log_directory = line.split()[-1].strip()
+            elif "record_directory" in line:
+                self.record_directory = line.split()[-1].strip()
+            elif "daq_setup_script" in line:
+                self.daq_setup_script = line.split()[-1].strip()
+            elif "messagefacility_fhicl" in line:
+                self.messagefacility_fhicl = line.split()[-1].strip()
+            elif "package_hashes_to_save" in line:
+                res = re.search(r".*\[(.*)\].*", line)
+
+                if not res:
+                    raise Exception("Unable to parse package_hashes_to_save line in the settings file, %s" % \
+                                        (os.getcwd() + "/.settings"))
+
+                package_hashes_to_save_unprocessed = res.group(1).split(",")
+                self.package_hashes_to_save = []
+
+                for ip, package in enumerate(package_hashes_to_save_unprocessed):
+                    package = string.replace(package, "\"", "")
+                    package = string.replace(package, " ", "") # strip() doesn't seem to work here
+                    self.package_hashes_to_save.append(package)
+            
+        missing_vars = []
+
+        if self.log_directory is None:
+            missing_vars.append("log_directory")
+            
+        if self.record_directory is None:
+            missing_vars.append("record_directory")
+
+        if self.daq_setup_script is None:
+            missing_vars.append("daq_setup_script")
+
+        if self.package_hashes_to_save is None or self.package_hashes_to_save is []:
+            missing_vars.append("package_hashes_to_save")
+
+        if self.messagefacility_fhicl is None:
+            missing_vars.append("messagefacility_fhicl")
+
+        if len(missing_vars) > 0:
+            missing_vars_string = ", ".join(missing_vars)
+            print
+            raise Exception("Unable to parse the following variables meant to be set in the settings file, %s" % \
+                                (os.getcwd() + "/.settings : " + missing_vars_string ) )
+        
+                    
 
     def check_proc_errors(self):
 
@@ -893,6 +955,8 @@ class DAQInterface(Component):
 
         if self.pmt_host is None:
             undefined_var = "PMT host"
+        if self.pmt_port is None:
+            undefined_var = "PMT port"
         elif self.daq_dir is None:
             undefined_var = "DAQ directory"
         elif self.debug_level is None:
