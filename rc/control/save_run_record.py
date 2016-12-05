@@ -73,9 +73,14 @@ def save_run_record_base(self):
     for pkg in sorted(self.package_hash_dict.keys()):
         outf.write("%s commit: %s\n" % (pkg, self.package_hash_dict[ pkg ] ))
 
+    if self.pmt_host == "localhost":
+        pmt_host_to_record = os.environ["HOSTNAME"]
+    else:
+        pmt_host_to_record = self.pmt_host
+
     outf.write("\n")
     outf.write("\npmt logfile(s): %s:%s/pmt/%s" %
-               (self.pmt_host, self.log_directory,
+               (pmt_host_to_record, self.log_directory,
                 self.log_filename_wildcard))
 
     logtuples = [("boardreader", self.boardreader_log_filenames),

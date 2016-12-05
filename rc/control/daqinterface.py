@@ -999,7 +999,8 @@ class DAQInterface(Component):
             cmd = "ls -tr1 %s/%s/%s-*.log | tail -%d" % (self.log_directory,
                                                          subdir, subdir, count)
 
-            cmd = "ssh -f " + host + " '" + cmd + "'"
+            if host != "localhost" and host != os.environ["HOSTNAME"]:
+                cmd = "ssh -f " + host + " '" + cmd + "'"
 
             proc = Popen(cmd, shell=True, stdout=subprocess.PIPE)
             proclines = proc.stdout.readlines()
@@ -1009,7 +1010,13 @@ class DAQInterface(Component):
                                 "problem seeking logfile(s)")
 
             for line in proclines:
-                logfilenames.append("%s:%s" % (host, line.strip()))
+
+                if host == "localhost":
+                    host_to_record = os.environ["HOSTNAME"]
+                else:
+                    host_to_record = host
+
+                logfilenames.append("%s:%s" % (host_to_record, line.strip()))
 
         return logfilenames
 
@@ -1359,8 +1366,10 @@ class DAQInterface(Component):
 
         try:
 
-            cmd = "ssh %s 'ls -tr1 %s/pmt | tail -1'" % (self.pmt_host, self.log_directory)
-            print cmd
+            cmd = "ls -tr1 %s/pmt | tail -1" % (self.log_directory)
+
+            if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
+                cmd = "ssh %s '%s'" % (self.pmt_host, cmd)
 
             log_filename_current = Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
 
