@@ -6,6 +6,16 @@ cmd=$1
 xmlrpc_arg=
 translated_cmd=
 
+scriptdir="$(dirname "$0")"
+. $scriptdir/xmlrpc_setup.sh
+
+xmlrpc_retval=$?
+
+if [[ "$xmlrpc_retval" != "0" ]]; then
+    echo "Problem attempting to setup xmlrpc_c package" >&2
+    exit 40
+fi
+
 case $cmd in
     "boot")
 	test $# -gt 2 || badargs=true 
@@ -91,5 +101,6 @@ else
     full_cmd=${full_cmd}" 'struct/{ignored_variable:i/999}' "
 fi
 
-( cd ~/artdaq-demo-base ; . setupARTDAQDEMO 2>&1 > /dev/null; echo $full_cmd ; eval $full_cmd )
-
+echo $full_cmd 
+eval $full_cmd 
+exit 0

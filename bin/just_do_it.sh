@@ -5,7 +5,7 @@ if [[ "$#" != "1" ]]; then
     exit 0
 fi
 
-config="demo2"
+config="demo"
 
 starttime=$(date +%s)
 

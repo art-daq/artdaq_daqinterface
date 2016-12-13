@@ -1,7 +1,8 @@
 
 DAQ directory: /home/jcfree/artdaq-demo-base-mrb
 
-PMT host: mu2edaq01.fnal.gov
+#PMT host: mu2edaq01.fnal.gov
+PMT host: localhost
 PMT port: 5400
 
 # debug level can range from 0 to 3 (increasing order of verbosity)
@@ -31,10 +32,10 @@ EventBuilder port: 5241
 EventBuilder host: mu2edaq01.fnal.gov
 EventBuilder port: 5242
 
-Aggregator host: mu2edaq05.fnal.gov
+Aggregator host: localhost
 Aggregator port: 5265
 
-Aggregator host: mu2edaq05.fnal.gov
+Aggregator host: localhost
 Aggregator port: 5266
 
 

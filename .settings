@@ -3,4 +3,4 @@ daq_setup_script: setupARTDAQDEMO
 log_directory: /tmp
 record_directory: /home/jcfree/run_records
 package_hashes_to_save: [ artdaq-demo, artdaq-core-demo, artdaq ]
-messagefacility_fhicl: /tmp/jcfree_tmp/MessageFacility.fcl
+productsdir_for_xmlrpc: /home/jcfree/artdaq-demo-base/products/

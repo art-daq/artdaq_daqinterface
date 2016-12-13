@@ -1,15 +1,14 @@
 #!/bin/env python
 
+import os
 import sys
-sys.path.append("/home/jcfree/standalone_daq")
+sys.path.append( os.getcwd() )
 
 import argparse
 import datetime
-import os
 import subprocess
 from subprocess import Popen
 from time import sleep, time
-import sys
 import traceback
 import re
 import random
@@ -18,17 +17,17 @@ import glob
 import stat
 from threading import Thread
 import shutil
+import socket
 
 from rc.io.timeoutclient import TimeoutServerProxy
 from rc.control.component import Component 
 from rc.control.deepsuppression import deepsuppression
 
-#from rc.control.get_host_specific_settings_mu2edaq01 import get_host_specific_settings_base
-from rc.control.get_config_info_database import get_config_info_base
-from rc.control.put_config_info_database import put_config_info_base
+from rc.control.get_config_info_simple import get_config_info_base
+from rc.control.put_config_info_simple import put_config_info_base
 from rc.control.save_run_record import save_run_record_base
-from rc.control.start_datataking_protodune import start_datataking_base
-from rc.control.stop_datataking_protodune import stop_datataking_base
+from rc.control.start_datataking_noop import start_datataking_base
+from rc.control.stop_datataking_noop import stop_datataking_base
 
 class DAQInterface(Component):
     """
@@ -239,8 +238,6 @@ class DAQInterface(Component):
                            rpc_port=rpc_port,
                            skip_init=False)
 
-#        self.get_host_specific_settings()
-
         self.in_recovery = False
 
             
@@ -287,7 +284,6 @@ class DAQInterface(Component):
         print "DAQInterface launched; if running DAQInterface in the background," \
             " can press <enter> to return to shell prompt"
 
-#    get_host_specific_settings = get_host_specific_settings_base
     get_config_info = get_config_info_base
     put_config_info = put_config_info_base
     save_run_record = save_run_record_base
@@ -344,7 +340,6 @@ class DAQInterface(Component):
         self.record_directory = None
         self.daq_setup_script = None
         self.package_hashes_to_save = None
-        self.messagefacility_fhicl = None
 
         for line in inf.readlines():
             if "log_directory" in line:
@@ -353,8 +348,6 @@ class DAQInterface(Component):
                 self.record_directory = line.split()[-1].strip()
             elif "daq_setup_script" in line:
                 self.daq_setup_script = line.split()[-1].strip()
-            elif "messagefacility_fhicl" in line:
-                self.messagefacility_fhicl = line.split()[-1].strip()
             elif "package_hashes_to_save" in line:
                 res = re.search(r".*\[(.*)\].*", line)
 
@@ -383,9 +376,6 @@ class DAQInterface(Component):
 
         if self.package_hashes_to_save is None or self.package_hashes_to_save is []:
             missing_vars.append("package_hashes_to_save")
-
-        if self.messagefacility_fhicl is None:
-            missing_vars.append("messagefacility_fhicl")
 
         if len(missing_vars) > 0:
             missing_vars_string = ", ".join(missing_vars)
@@ -592,9 +582,15 @@ class DAQInterface(Component):
             cmds.append("setup artdaq_mfextensions %s -q prof:%s:%s" % \
                             (version, equalifier, squalifier))
 
+            messagefacility_fhicl_filename = os.getcwd() + "/MessageFacility.fcl" 
+            
+            messagefacility_fhicl_file = open(messagefacility_fhicl_filename, "w")
+            messagefacility_fhicl_file.write( 'udp : { type : "UDP" threshold : "INFO" port : 30000 host : "%s" }  ' % (socket.gethostname()) )
+            messagefacility_fhicl_file.close()
+
             cmd = "pmt.rb -p " + self.pmt_port + " -d " + pmtconfigname + \
                 " --logpath " + self.log_directory + \
-                " --logfhicl " + self.messagefacility_fhicl + " --display $DISPLAY & "
+                " --logfhicl " + messagefacility_fhicl_filename + " --display $DISPLAY & "
         else:
 
             cmd = "pmt.rb -p " + self.pmt_port + " -d " + pmtconfigname + \
@@ -1347,8 +1343,8 @@ class DAQInterface(Component):
                 break
             else:
                 if num_launch_procs_checks > 5:
-                    self.print_log("artdaq processes failed to launch")
-                    self.alert_and_recover("artdaq processes failed to launch")
+                    self.print_log("artdaq processes failed to launch; logfiles may contain info as to what happened")
+                    self.alert_and_recover("artdaq processes failed to launch; logfiles may contain info as to what happened")
                     return
 
         for procinfo in self.procinfos:
@@ -1444,7 +1440,7 @@ class DAQInterface(Component):
 
             for component, socket in self.daq_comp_list.items():
 
-                if self.debug_level >= 1:
+                if self.debug_level >= 2:
                     print "Searching for the FHiCL document for " + component + \
                         " given configuration \"" + self.config_for_run + \
                         "\""

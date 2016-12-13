@@ -23,14 +23,14 @@ def save_run_record_base(self):
         return
 
     for procinfo in self.procinfos:
-        # outf = open(outdir + "/" + procinfo.name + "_" +
-        #             procinfo.host + "_" +
-        #             procinfo.port + "_r" +
-        #             str(self.run_number_for_run) +
-        #             ".fcl", "w")
+
+        if procinfo.host == "localhost":
+            procinfo_host_to_record = os.environ["HOSTNAME"]
+        else:
+            procinfo_host_to_record = procinfo.host
 
         outf = open(outdir + "/" + procinfo.name + "_" +
-                    procinfo.host + "_" +
+                    procinfo_host_to_record + "_" +
                     procinfo.port + ".fcl", "w")
 
         outf.write(procinfo.fhicl_used)
@@ -38,7 +38,6 @@ def save_run_record_base(self):
 
     # For good measure, let's also save the DAQInterface configuration file
 
-#    config_saved_name = "config_r%d.txt" % (self.run_number_for_run)
     config_saved_name = "config.txt"
 
     Popen("cp -p " + self.config_filename + " " + outdir +
@@ -56,8 +55,8 @@ def save_run_record_base(self):
     # selected configuration, selected components, and commit
     # hashes of lbne-artdaq and lbnerc
 
-#    outf = open(outdir + "/metadata_r" +
-#                str(self.run_number_for_run) + ".txt", "w")
+    # JCF, Dec-4-2016: changed to metadata.txt, as this is executed
+    # before the start transition
 
     outf = open(outdir + "/metadata.txt", "w")
 
@@ -98,16 +97,7 @@ def save_run_record_base(self):
     outf.write("\n")
     outf.close()
 
-    if self.debug_level >= 1:
+    if self.debug_level >= 2:
         print "Saved run configuration records in %s" % \
             (outdir)
         print
-
-    # # Now that we're done creating the run record, remove write
-    # # permissions from the records directory
-
-    # os.chmod(self.record_directory, perms & (~stat.S_IWUSR))
-
-    # # As well as the run record subdirectory
-
-    # os.chmod(outdir, perms & (~stat.S_IWUSR))
