@@ -1,0 +1,156 @@
+services: {
+  scheduler: {
+    fileMode: NOMERGE
+    errorOnFailureToPut: false
+  }
+  NetMonTransportServiceInterface: {
+    service_provider: NetMonTransportService
+    max_fragment_size_words: 2097152
+  }
+
+  #SimpleMemoryCheck: { }
+}
+
+daq: {
+  max_fragment_size_words: 2097152
+  aggregator: {
+    mpi_buffer_count: 8
+    first_event_builder_rank: 2
+    event_builder_count: 2
+    expected_events_per_bunch: 1
+    print_event_store_stats: true
+    event_queue_depth: 20
+    event_queue_wait_time: 5
+    onmon_event_prescale: 1
+    xmlrpc_client_list: ";http://mu2edaq01.fnal.gov:5205/RPC2,3;http://mu2edaq01.fnal.gov:5206/RPC2,3;http://mu2edaq01.fnal.gov:5235/RPC2,4;http://mu2edaq01.fnal.gov:5236/RPC2,4;http://mu2edaq01.fnal.gov:5265/RPC2,5;http://mu2edaq01.fnal.gov:5266/RPC2,5"
+    file_size_MB: 0.0
+    file_duration: 0
+    file_event_count: 0
+    is_data_logger: true
+  }
+
+  metrics: {
+    aggFile: {
+      metricPluginType: "file"
+      level: 3
+      fileName: "/tmp/aggregator/agg_%UID%_metrics.log"
+      uniquify: true
+    }
+    # ganglia: {
+    #   metricPluginType: "ganglia"
+    #   level: %{ganglia_level}
+    #   reporting_interval: 15.0
+    # 
+    #   configFile: "/etc/ganglia/gmond.conf"
+    #   group: "ARTDAQ"
+    # }
+    # msgfac: {
+    #    level: %{mf_level}
+    #    metricPluginType: "msgFacility"
+    #    output_message_application_name: "ARTDAQ Metric"
+    #    output_message_severity: 0 
+    # }
+    # graphite: {
+    #   level: %{graphite_level}
+    #   metricPluginType: "graphite"
+    #   host: "localhost"
+    #   port: 20030
+    #   namespace: "artdaq."
+    # }
+  }
+
+  transfer_to_dispatcher: {
+
+    transferPluginType: Shmem
+
+    unique_label: "shared_memory_between_data_logger_and_dispatcher"
+
+    max_fragment_size_words: 2097152
+    first_event_builder_rank: 2
+  }
+
+}
+
+source: {
+  module_type: NetMonInput
+}
+outputs: {
+  normalOutput: {
+    module_type: RootOutput
+    fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%to.root"
+    compressionLevel: 0
+
+    fileSwitch:
+    {
+      force: true
+      boundary: Run
+    }
+  }
+
+  #normalOutputMod2: {
+  #  module_type: RootOutput
+  #  fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%to_mod2.root"
+  #  SelectEvents: { SelectEvents: [ pmod2 ] }
+  #  compressionLevel: 0
+  #}
+
+  #normalOutputMod3: {
+  #  module_type: RootOutput
+  #  fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%to_mod3.root"
+  #  SelectEvents: { SelectEvents: [ pmod3 ] }
+  #  compressionLevel: 0
+  #}
+
+}
+physics: {
+  analyzers: {
+
+
+   checkintegrity: {
+     module_type: CheckIntegrity
+     raw_data_label: daq
+     frag_type: TOY1
+   }
+
+  }
+
+  producers: {
+
+     
+
+     
+
+     # Decompression functionality can also be added...
+
+     BuildInfo:
+     {
+       module_type: ArtdaqDemoBuildInfo
+       instance_name: ArtdaqDemo
+     }
+   }
+
+  filters: {
+
+    prescaleMod2: {
+       module_type: NthEvent
+       nth: 2
+    }
+
+    prescaleMod3: {
+       module_type: NthEvent
+       nth: 3
+    }
+  }
+
+
+  p1: [  ] 
+  p2: [ BuildInfo ]
+  pmod2: [ prescaleMod2 ]
+  pmod3: [ prescaleMod3 ]
+
+  #a1: [ app, wf]
+
+  my_output_modules: [ normalOutput ]
+  #my_output_modules: [ normalOutputMod2, normalOutputMod3 ]
+}
+process_name: DAQAG
