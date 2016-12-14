@@ -7,7 +7,7 @@ xmlrpc_arg=
 translated_cmd=
 
 scriptdir="$(dirname "$0")"
-. $scriptdir/xmlrpc_setup.sh
+. $scriptdir/package_setup.sh xmlrpc_c
 
 xmlrpc_retval=$?
 

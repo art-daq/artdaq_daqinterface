@@ -7,11 +7,15 @@ fi
 
 runnum=$1
 
-artver="v2_01_02" 
-proddir=$HOME/products
+scriptdir="$(dirname "$0")"
+. $scriptdir/package_setup.sh art
 
-. $proddir/setup
-setup art $artver -q e10:prof
+art_retval=$?
+
+if [[ "$art_retval" != "0" ]]; then
+    echo "Problem attempting to setup art package" >&2
+    exit 40
+fi
 
 rootfiledir=/tmp
 runrecordsdir=$HOME/run_records
@@ -24,6 +28,7 @@ if [[ -z $rootfile ]]; then
 fi 
 
 if [[ -z $( which config_dumper ) ]]; then
+    echo
     echo "Unable to find config_dumper; you need to have your environment properly set up" >&2
     exit 30
 fi
