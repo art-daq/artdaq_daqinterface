@@ -184,11 +184,6 @@ function clean_shutdown() {
     else
 	echo "Skipping the terminate step"
     fi
-
-    endtime=$(date +%s)
-    runningtime=$(( $endtime - $starttime ))
-
-    echo $(basename $0)" completed; script was up for $runningtime seconds"
 }
 
 function check_output_file() {
@@ -230,5 +225,10 @@ check_run_records
 echo
 $( dirname $0 )/compare_run_record_and_rootfile.sh $runnum
 echo
+
+endtime=$(date +%s)
+runningtime=$(( $endtime - $starttime ))
+
+echo $(basename $0)" completed; script was up for $runningtime seconds"
 
 exit 0

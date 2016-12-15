@@ -54,7 +54,7 @@ class DAQInterface(Component):
     # Procinfo's functions)
 
     class Procinfo(object):
-        def __init__(self, name="", host="", port="-999", fhicl=None, fhicl_file_path = []):
+        def __init__(self, name, host, port, fhicl=None, fhicl_file_path = []):
             self.name = name
             self.port = port
             self.host = host
@@ -110,17 +110,18 @@ class DAQInterface(Component):
                         res = re.search(r"#include\s+\"(\S+)\"", line)
                         
                         if not res:
-                            raise Exception("Error in Procinfo::recursive_include: "
+                            raise Exception(self.make_paragraph("Error in Procinfo::recursive_include: "
                                             "unable to parse line \"%s\" in %s" %
-                                            (line, filename))
+                                            (line, filename)))
 
                         included_file = res.group(1)
 
                         if included_file[0] == "/":
                             if not os.path.exists(included_file):
-                                raise Exception("Error in Procinfo::recursive_include: "
-                                                "unable to find file %s" %
-                                                included_file)
+                                raise Exception(self.make_paragraph("Error in "
+                                                                    "Procinfo::recursive_include: "
+                                                                    "unable to find file %s" %
+                                                                    included_file))
                             else:
                                 self.recursive_include(included_file)
                         else:
@@ -135,10 +136,11 @@ class DAQInterface(Component):
                                 
                                 ffp_string = ":".join(self.ffp)
 
-                                raise Exception("Error in Procinfo::recursive_include: "
-                                                "unable to find file %s in list of "
-                                                "the following fhicl_file_paths: %s" %
-                                                (included_file, ffp_string))
+                                raise Exception(self.make_paragraph(
+                                        "Error in Procinfo::recursive_include: "
+                                        "unable to find file %s in list of "
+                                        "the following fhicl_file_paths: %s" %
+                                        (included_file, ffp_string)))
                             
     def date_and_time(self):
         return Popen("date", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
@@ -186,6 +188,24 @@ class DAQInterface(Component):
         total_cmd = " ; ".join( checked_cmds )
 
         return total_cmd
+
+    def make_paragraph(self, userstring, chars_per_line=75):
+        userstring.strip()
+ 
+        string_index = chars_per_line
+
+        userstring = string.replace(userstring, "\n", " ")
+
+        while len(userstring) - string_index > 0:
+
+            while not userstring[string_index].isspace():
+                string_index -= 1
+                assert string_index >= 0
+        
+            userstring = userstring[:string_index] + "\n" + userstring[string_index+1: ]
+            string_index += chars_per_line
+
+        return "\n" + userstring
 
     # JCF, 1/1/15
 
@@ -265,10 +285,10 @@ class DAQInterface(Component):
         self.config_dirname = None
 
         # This keeps a record of the last line presented by the
-        # display_lbne_artdaq_output() function, so it isn't
+        # display_artdaq_output() function, so it isn't
         # repeatedly printed to screen
 
-        self.last_lbne_artdaq_line = None
+        self.last_artdaq_line = None
 
         self.__do_boot = False
         self.__do_shutdown = False
@@ -326,12 +346,21 @@ class DAQInterface(Component):
 
         self.do_recover()
         
-        raise Exception("\n\n\"" + extrainfo + "\"\n\nDAQInterface has set the DAQ back in the ground state; after making any necessary adjustments suggested by the stack trace and error messages above, please kill and restart DAQInterface")
+        alertmsg = ""
+        
+        if not extrainfo is None:
+            alertmsg = "\n\n" + self.make_paragraph( extrainfo )
+
+        alertmsg += "\n\n" + self.make_paragraph("DAQInterface has set the DAQ back in the ground state; after making any\nnecessary adjustments suggested by the stack trace and error messages\nabove, please kill and restart DAQInterface")
+        raise Exception(alertmsg)
 
     def read_settings(self):
         if not os.path.exists( os.getcwd() + "/.settings"):
-            raise Exception("Unable to find \".settings\" file in current directory \"%s\"" % \
-                                os.getcwd())
+
+            raise Exception(self.make_paragraph("""Unable to find \".settings\" file in current directory
+\"%s\"; this is probably because you're not running DAQInterface out of its package's base directory.
+Please kill DAQInterface and run it out of the base directory.""" % \
+                        os.getcwd()))
 
         inf = open( os.getcwd() + "/.settings" )
         assert inf
@@ -352,8 +381,9 @@ class DAQInterface(Component):
                 res = re.search(r".*\[(.*)\].*", line)
 
                 if not res:
-                    raise Exception("Unable to parse package_hashes_to_save line in the settings file, %s" % \
-                                        (os.getcwd() + "/.settings"))
+                    raise Exception(self.make_paragraph(
+                            "Unable to parse package_hashes_to_save line in the settings file, %s" % \
+                                (os.getcwd() + "/.settings")))
 
                 package_hashes_to_save_unprocessed = res.group(1).split(",")
                 self.package_hashes_to_save = []
@@ -380,8 +410,10 @@ class DAQInterface(Component):
         if len(missing_vars) > 0:
             missing_vars_string = ", ".join(missing_vars)
             print
-            raise Exception("Unable to parse the following variables meant to be set in the settings file, %s" % \
-                                (os.getcwd() + "/.settings : " + missing_vars_string ) )
+            raise Exception(self.make_paragraph(
+                                "Unable to parse the following variables meant to be set in the "
+                                "settings file, %s" % \
+                                    (os.getcwd() + "/.settings : " + missing_vars_string ) ))
         
                     
 
@@ -545,28 +577,29 @@ class DAQInterface(Component):
 
         for procinfo in self.procinfos:
 
-            for progname in ["BoardReader", "EventBuilder", "Aggregator"]:
-                if progname in procinfo.name:
-                    outf.write(progname + "Main ")
+            for procname in ["BoardReader", "EventBuilder", "Aggregator"]:
+                if procname in procinfo.name:
+                    outf.write(procname + "Main ")
 
             outf.write(procinfo.host + " " + procinfo.port + "\n")
 
         outf.close()
 
-        if self.pmt_host != "localhost":
+        if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
             status = Popen("scp -p " + pmtconfigname + " " +
                            self.pmt_host + ":/tmp", shell=True).wait()
 
             if status != 0:
                 raise Exception("Exception in DAQInterface: unable to copy " +
-                                pmtconfigname + " to " + self.pmt_host)
+                                pmtconfigname + " to " + self.pmt_host + ":/tmp")
 
         cmds = []
 
         if not os.path.exists(self.daq_dir + "/" + self.daq_setup_script ):
-            raise Exception("Exception in DAQInterface: " +
-                            self.daq_setup_script + " script not found in " +
-                            self.daq_dir)
+            raise Exception(self.make_paragraph(
+                                "Exception in DAQInterface: " +
+                                self.daq_setup_script + " script not found in " +
+                                self.daq_dir))
 
         for logdir in ["pmt", "masterControl", "boardreader", "eventbuilder",
                        "aggregator"]:
@@ -601,10 +634,10 @@ class DAQInterface(Component):
 
         launchcmd = self.construct_checked_command( cmds )
 
-        if self.pmt_host != "localhost":
+        if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
             launchcmd = "ssh -f " + self.pmt_host + " '" + launchcmd + "'"
 
-        if self.debug_level >= 3:
+        if self.debug_level >= 2:
             print "PROCESS LAUNCH COMMANDS: "
             print launchcmd
             print
@@ -616,8 +649,7 @@ class DAQInterface(Component):
                 status = Popen(launchcmd, shell=True).wait()
 
         if status != 0:
-            self.alert_and_recover("Exception in DAQInterface: " +
-                                   "status error raised in pmt.rb call within Popen; command was \"%s\"" %
+            self.alert_and_recover("Status error raised in pmt.rb call; command was \"%s\". Please check logfile(s) for further information" %
                                    ("; ".join(cmds)))
 
 
@@ -630,7 +662,6 @@ class DAQInterface(Component):
 
         for procinfo in self.procinfos:
 
-            proctype = ""
             if "BoardReader" in procinfo.name:
                 proctype = "BoardReaderMain"
             elif "EventBuilder" in procinfo.name:
@@ -640,7 +671,7 @@ class DAQInterface(Component):
             else:
                 self.alert_and_recover("Exception in DAQInterface:"
                                        " unknown process type found"
-                                       " in procinfos.keys()")
+                                       " in procinfos")
 
             greptoken = proctype + " -p " + procinfo.port
 
@@ -660,14 +691,9 @@ class DAQInterface(Component):
                                    "please check messageviewer and/or the logfiles for error messages")
                     self.print_log(errmsg)
 
-            else:
-                if self.debug_level >= 4:
-                    print "Just checked for " + token + ", looks OK"
-
         if not is_all_ok and requireSuccess:
             self.alert_and_recover("Heartbeat failure "
                                    "of at least one artdaq process; please check messageviewer and/or the logfiles for error messages")
-            return is_all_ok
 
         return is_all_ok
 
@@ -707,13 +733,13 @@ class DAQInterface(Component):
 
     # JCF, 1/28/15
 
-    # The idea behind the "display_lbne_artdaq_output()" function is
+    # The idea behind the "display_artdaq_output()" function is
     # that in the runner() function, after checking that all artdaq
     # processes are alive, the PMT logfile is then examined for
     # red-flag terms like "exception" and "error", and any lines with
     # these terms get displayed
 
-    def display_lbne_artdaq_output(self):
+    def display_artdaq_output(self):
 
         keywords = ["error", "exception", "back-pressure", "MSG-e", "errno"]
 
@@ -749,8 +775,8 @@ class DAQInterface(Component):
             # "1" because we're using the "-1" option to grep
             line = lines[1].strip()
 
-            if line != self.last_lbne_artdaq_line:
-                self.last_lbne_artdaq_line = line
+            if line != self.last_artdaq_line:
+                self.last_artdaq_line = line
 
                 for tmpline in lines:
                     print tmpline.strip()
@@ -816,13 +842,8 @@ class DAQInterface(Component):
 
     # JCF, 12/2/14
 
-    # Given the directory name of a git repository, this will either
-    # return the most recent hash commit in the repo or, if a problem
-    # occurred, the "None" value
-
-    # If this function returns "None", your next action should be to
-    # return from the caller, so that the recover transition can occur
-    # immediately
+    # Given the directory name of a git repository, this will return
+    # the most recent hash commit in the repo
 
     def get_commit_hash(self, gitrepo):
 
@@ -839,7 +860,6 @@ class DAQInterface(Component):
 
         if len(proclines) != 1 or len(proclines[0].strip()) != 40:
             self.alert_and_recover("Commit hash for %s not found" % (gitrepo))
-            return None
 
         return proclines[0].strip()
 
@@ -849,9 +869,10 @@ class DAQInterface(Component):
         inf = open(self.config_filename)
 
         if not inf:
-            raise Exception("Exception in DAQInterface: " +
-                            "unable to locate configuration file \"" +
-                            self.config_filename + "\"")
+            raise Exception(self.make_paragraph(
+                                "Exception in DAQInterface: " +
+                                "unable to locate configuration file \"" +
+                                self.config_filename + "\""))
 
         memberDict = {"name": None, "host": None, "port": None, "fhicl": None}
 
@@ -945,7 +966,7 @@ class DAQInterface(Component):
                  self.num_eventbuilders(),
                  self.num_aggregators())
 
-            raise Exception(errmsg)
+            raise Exception(self.make_paragraph(errmsg))
 
         undefined_var = ""
 
@@ -962,7 +983,7 @@ class DAQInterface(Component):
             errmsg = "Error: \"%s\" undefined in " \
                 "DAQInterface config file" % \
                 (undefined_var)
-            raise Exception(errmsg)
+            raise Exception(self.make_paragraph(errmsg))
 
     # JCF, Dec-1-2016
 
@@ -1051,7 +1072,7 @@ class DAQInterface(Component):
             else:
                 self.alert_and_recover("Exception in DAQInterface:"
                                        " unknown process type found"
-                                       " in procinfos.keys()")
+                                       " in procinfos")
 
             dressed_fhicl = re.sub("'","\\'", procinfo.fhicl_used)
             runstring += dressed_fhicl
@@ -1138,7 +1159,7 @@ class DAQInterface(Component):
                 elif command == "Start":
                     self.procinfos[procinfo_index].lastreturned = \
                         self.procinfos[procinfo_index].server.daq.start(\
-                        str(self.run_number_for_run))
+                        str(self.run_number))
                 elif command == "Pause":
                     self.procinfos[procinfo_index].lastreturned = \
                         self.procinfos[procinfo_index].server.daq.pause()
@@ -1255,8 +1276,6 @@ class DAQInterface(Component):
 
             self.alert_and_recover("A problem occurred when trying to read the DAQInterface config file %s" %
                                    self.config_filename)
-            return
-
 
         # The name of the logfile isn't determined until pmt.rb has
         # been run
@@ -1266,7 +1285,6 @@ class DAQInterface(Component):
         self.boardreader_log_filenames = []
         self.eventbuilder_log_filenames = []
         self.aggregator_log_filenames = []
-
 
         includes_commit = "ff4f17871ff0ae0cca088e99b4e02c7cac535b36"
         commit_date = "Sep 21, 2016"
@@ -1283,10 +1301,10 @@ class DAQInterface(Component):
 
         if len(proclines) != 1:
             print
-            raise Exception("ERROR: DAQInterface expects a git commit hash of"
+            raise Exception(self.make_paragraph("ERROR: DAQInterface expects a git commit hash of"
                             " artdaq as new as or newer than %s (%s);"
                             " %s appears to be older" %
-                            (includes_commit, commit_date, artdaq_dir ))
+                                                (includes_commit, commit_date, artdaq_dir )))
 
 
         self.package_hash_dict = {}
@@ -1299,7 +1317,7 @@ class DAQInterface(Component):
             for compname, socket in self.daq_comp_list.items():
                 print "%s at %s:%s" % (compname, socket[0], socket[1])
 
-        for componame, socket in self.daq_comp_list.items():
+        for socket in self.daq_comp_list.values():
  
             self.procinfos.append(self.Procinfo("BoardReader",
                                                 socket[0],
@@ -1316,7 +1334,7 @@ class DAQInterface(Component):
             self.launch_procs()
 
             if self.debug_level >= 1:
-                print "Finished call to launch_procs(); will now check that artdaq processes are up..."
+                print "Finished call to launch_procs(); will now confirm that artdaq processes are up..."
 
         except Exception:
             self.print_log("DAQInterface caught an exception" +
@@ -1324,7 +1342,6 @@ class DAQInterface(Component):
             self.print_log(traceback.format_exc())
 
             self.alert_and_recover("An exception was thrown in launch_procs()")
-            return
 
         num_launch_procs_checks = 0
 
@@ -1343,9 +1360,7 @@ class DAQInterface(Component):
                 break
             else:
                 if num_launch_procs_checks > 5:
-                    self.print_log("artdaq processes failed to launch; logfiles may contain info as to what happened")
                     self.alert_and_recover("artdaq processes failed to launch; logfiles may contain info as to what happened")
-                    return
 
         for procinfo in self.procinfos:
 
@@ -1381,7 +1396,6 @@ class DAQInterface(Component):
                            "in do_boot()")
             self.print_log(traceback.format_exc())
             self.alert_and_recover("Problem obtaining logfile name(s)")
-            return
 
 
         # Figure out if we have the artdaq_mfextensions version expected by the artdaq used 
@@ -1405,9 +1419,9 @@ class DAQInterface(Component):
                 status = Popen(msgviewercmd, shell=True).wait()
             
                 if status != 0:
-                    raise Exception("Exception in DAQInterface: " +
+                    raise Exception(self.make_paragraph("Exception in DAQInterface: " +
                                     "status error raised in msgviewer call within Popen; tried the following commands: \"%s\"" %
-                                    " ; ".join(cmds) )
+                                    " ; ".join(cmds) ))
         else:
             print "artdaq_mfextensions %s, %s:%s, does not appear to be available- unable to launch the messageviewer window. This will not affect actual datataking, it just means you'll need to look at the logfiles to see artdaq output." % \
                 (version, equalifier, squalifier)
@@ -1433,73 +1447,64 @@ class DAQInterface(Component):
                        self.daq_comp_list, 1)
 
 
-        # Now contact the configuration manager, if running, for the
-        # list of URIs
+        for component, socket in self.daq_comp_list.items():
 
-        try:
+            if self.debug_level >= 2:
+                print "Searching for the FHiCL document for " + component + \
+                    " given configuration \"" + self.config_for_run + \
+                    "\""
+            
+            uri = self.config_dirname + "/" + self.config_for_run + "/" + component + "_hw_cfg.fcl"
 
-            for component, socket in self.daq_comp_list.items():
-
-                if self.debug_level >= 2:
-                    print "Searching for the FHiCL document for " + component + \
-                        " given configuration \"" + self.config_for_run + \
-                        "\""
-                uri = self.config_dirname + "/" + self.config_for_run + "/" + component + "_hw_cfg.fcl"
-
-                if not os.path.exists(uri):
-                    self.alert_and_recover("Unable to find desired uri %s" % (uri))
+            if not os.path.exists(uri):
+                self.alert_and_recover("Unable to find desired uri %s" % (uri))
                     
-                for i_proc in range(len(self.procinfos)):
+            for i_proc in range(len(self.procinfos)):
 
-                    if self.procinfos[i_proc].host == socket[0] and \
-                            self.procinfos[i_proc].port == socket[1]:
-                        self.procinfos[i_proc].ffp = self.fhicl_file_path
-                        self.procinfos[i_proc].update_fhicl(uri)
+                if self.procinfos[i_proc].host == socket[0] and \
+                        self.procinfos[i_proc].port == socket[1]:
+                    self.procinfos[i_proc].ffp = self.fhicl_file_path
+                    self.procinfos[i_proc].update_fhicl(uri)
 
+        support_tuples = [("Aggregator", self.num_aggregators()),
+                          ("EventBuilder", self.num_eventbuilders())]
 
-            support_tuples = [("Aggregator", self.num_aggregators()),
-                              ("EventBuilder", self.num_eventbuilders())]
+        for support_tuple in support_tuples:
 
-            for support_tuple in support_tuples:
+            proc_type, num_procs = support_tuple
 
-                proc_type, num_procs = support_tuple
+            aggregator_cntr = 0
+            rootfile_cntr = 0
 
-                aggregator_cntr = 0
-                rootfile_cntr = 0
+            for i_proc in range(len(self.procinfos)):
 
-                for i_proc in range(len(self.procinfos)):
+                if self.procinfos[i_proc].name == proc_type:
 
-                    if self.procinfos[i_proc].name == proc_type:
+                    if proc_type == "EventBuilder":
+                        fcl = "%s/%s/EventBuilder1.fcl" % (self.config_dirname,                             
+                                                           self.config_for_run)
+                    elif proc_type == "Aggregator":
+                        aggregator_cntr += 1
+                        if aggregator_cntr < num_procs:
+                            fcl = "%s/%s/Aggregator1.fcl" % (self.config_dirname,                             
+                                                             self.config_for_run)
+                        else:
+                            fcl = "%s/%s/Aggregator2.fcl" % (self.config_dirname,                             
+                                                             self.config_for_run)
+                    else:
+                        assert False
+                        
+                    self.procinfos[i_proc].update_fhicl(fcl)
+                        
+                    fhicl_before_sub = self.procinfos[i_proc].fhicl_used
+                    self.procinfos[i_proc].fhicl_used = re.sub("\.root", "_" + str(rootfile_cntr) + ".root",
+                                                               self.procinfos[i_proc].fhicl_used)
 
-                        if proc_type == "EventBuilder":
-                            fcl = "%s/%s/EventBuilder1.fcl" % (self.config_dirname,                             
-                                                               self.config_for_run)
-                        elif proc_type == "Aggregator":
-                            aggregator_cntr += 1
-                            if aggregator_cntr < num_procs:
-                                fcl = "%s/%s/Aggregator1.fcl" % (self.config_dirname,                             
-                                                                 self.config_for_run)
-                            else:
-                                fcl = "%s/%s/Aggregator2.fcl" % (self.config_dirname,                             
-                                                                 self.config_for_run)
+                    if self.procinfos[i_proc].fhicl_used != fhicl_before_sub:
+                        rootfile_cntr += 1
 
-                        self.procinfos[i_proc].update_fhicl(fcl)
-                            
-                        fhicl_before_sub = self.procinfos[i_proc].fhicl_used
-                        self.procinfos[i_proc].fhicl_used = re.sub("\.root", "_" + str(rootfile_cntr) + ".root",
-                                                                   self.procinfos[i_proc].fhicl_used)
-
-                        if self.procinfos[i_proc].fhicl_used != fhicl_before_sub:
-                            rootfile_cntr += 1
-
-        except Exception:
-            self.print_log("DAQInterface caught an exception " +
-                           "in do_config()")
-            self.print_log(traceback.format_exc())
-
-            self.alert_and_recover("A problem occurred with "
-                                   "the configuration manager")
-            return
+        for procinfo in self.procinfos:
+            assert not procinfo.fhicl is None and not procinfo.fhicl_used is None
 
         # JCF, 11/11/14
 
@@ -1578,25 +1583,6 @@ class DAQInterface(Component):
                 "data_receiver_count: " +
                 str(self.num_aggregators() - 1) + "\n",
                 self.procinfos[i_proc].fhicl_used)
-
-
-
-        if self.debug_level >= 2:
-            print
-            print
-            print "Output of DAQInterface configuration file %s is: " % \
-                (self.config_filename)
-
-            print "/"*70
-
-            for line in open(self.config_filename):
-                print "/ %s" % (line),
-
-            print "/"*70
-            print
-
-            print
-
         
         self.tmp_run_record = "/tmp/run_record_attempted"
         
@@ -1609,7 +1595,7 @@ class DAQInterface(Component):
 
         self.complete_state_change(self.name, "configuring")
 
-        self.display_lbne_artdaq_output()
+        self.display_artdaq_output()
 
         if self.debug_level >= 1:
             print "To see logfile(s), on %s run \"ls -ltr %s/pmt/%s\"" % \
@@ -1623,14 +1609,13 @@ class DAQInterface(Component):
 
     def do_start_running(self):
 
-        self.run_number_for_run = self.run_params["run_number"]
+        self.run_number = self.run_params["run_number"]
 
         print "%s: DAQInterface: \"Start\" transition underway for run %d" % \
-            (self.date_and_time(), self.run_number_for_run)
-
+            (self.date_and_time(), self.run_number)
         
         if os.path.exists( self.tmp_run_record ):
-            cmd = "cp -r %s %s/%s" % (self.tmp_run_record, self.record_directory, str(self.run_number_for_run))
+            cmd = "cp -r %s %s/%s" % (self.tmp_run_record, self.record_directory, str(self.run_number))
             status = Popen(cmd, shell = True).wait()
 
             if status != 0:
@@ -1641,7 +1626,6 @@ class DAQInterface(Component):
             self.alert_and_recover("Error in DAQInterface: unable to find temporary run records directory %s" % 
                                    self.tmp_run_record)
 
-
         self.put_config_info()
 
         self.do_command("Start")
@@ -1650,7 +1634,7 @@ class DAQInterface(Component):
 
         self.complete_state_change(self.name, "starting")
         print "\n%s: Start transition complete for run %s"  % \
-            (self.date_and_time(), str(self.run_number_for_run)) + \
+            (self.date_and_time(), str(self.run_number)) + \
             ", if running DAQInterface in " + \
             "the background, can press <enter> to return to shell prompt"
 
@@ -1665,7 +1649,7 @@ class DAQInterface(Component):
 
         self.complete_state_change(self.name, "stopping")
         print "\n%s: Stop transition complete for run %s; if running DAQInterface " % \
-            (self.date_and_time(), str(self.run_number_for_run) ) + \
+            (self.date_and_time(), str(self.run_number) ) + \
             "in the background, can press <enter> to return to shell prompt"
 
     def do_terminate(self):
@@ -1745,9 +1729,7 @@ class DAQInterface(Component):
             #     return
 
             try:
-
                 procinfo.server.daq.shutdown()
-
             except Exception:
                 # self.print_log("Exception caught during terminate transition " +
                 #                "sent to artdaq process %s " % (procinfo.name) +
@@ -1757,7 +1739,6 @@ class DAQInterface(Component):
                 return
 
             return
-
 
         threads = []
 
@@ -1777,7 +1758,6 @@ class DAQInterface(Component):
 
             self.alert_and_recover("An exception was thrown "
                                    "within kill_procs()")
-            return
 
         self.in_recovery = False
 
@@ -1836,7 +1816,7 @@ class DAQInterface(Component):
             self.check_proc_exceptions()
 
             if self.state(self.name) == "running":
-                self.display_lbne_artdaq_output()
+                self.display_artdaq_output()
 
 
 def get_args():  # no-coverage
