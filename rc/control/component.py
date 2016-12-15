@@ -64,6 +64,30 @@ class Component(ContextObject):
         #                   "varname": "state",
         #                   "value": newstate})
 
+    # JCF, Dec-15-2016
+
+    # revert_state_change should be called when a nonfatal error
+    # occurs during a transition and DAQInterface should go back to
+    # its original state before the transition request. Note that
+    # unlike "complete_state_change", there's no provision for the
+    # recover transition, as this can occur at any point in the state
+    # machine
+
+    def revert_state_change(self, name, requested):
+        if name != self.name:
+            return
+        oldstate = {"booting": "stopped",
+                    "shutting": "ready",
+                    "stopping": "running",
+                    "configuring": "booted",
+                    "starting": "ready",
+                    "pausing": "running",
+                    "resuming": "paused",
+                    "terminating": "ready"}.get(requested, requested)
+        trep = datetime.datetime.utcnow()
+        self.__state = oldstate
+
+
     def state_change(self, name, requested, state_args):
         if name != self.name:
             return

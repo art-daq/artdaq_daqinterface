@@ -1,4 +1,5 @@
 
+
 daq_setup_script: setupARTDAQDEMO
 log_directory: /tmp
 record_directory: /home/jcfree/run_records

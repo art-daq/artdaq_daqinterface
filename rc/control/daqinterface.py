@@ -299,10 +299,20 @@ class DAQInterface(Component):
         self.__do_pause_running = False
         self.__do_resume_running = False
 
-        self.read_settings()
+        try:
+            self.read_settings()
+        except:
+            print traceback.format_exc()
+            print self.make_paragraph(
+                    "An exception was thrown when trying to read DAQInterface settings; "
+                    "DAQInterface will exit. Look at the messages above, make any necessary "
+                    "changes, and restart.") + "\n"
+            sys.exit(1)
 
-        print "DAQInterface launched; if running DAQInterface in the background," \
-            " can press <enter> to return to shell prompt"
+        print self.make_paragraph("DAQInterface launched and now in \"%s\" state; if running "
+                                  "DAQInterface in the background,"
+                                  " can press <enter> to return to shell prompt" % 
+                                  (self.state(self.name)))
 
     get_config_info = get_config_info_base
     put_config_info = put_config_info_base
@@ -349,9 +359,9 @@ class DAQInterface(Component):
         alertmsg = ""
         
         if not extrainfo is None:
-            alertmsg = "\n\n" + self.make_paragraph( extrainfo )
+            alertmsg = "\n\n" + self.make_paragraph( "\"" + extrainfo + "\"")
 
-        alertmsg += "\n\n" + self.make_paragraph("DAQInterface has set the DAQ back in the ground state; after making any\nnecessary adjustments suggested by the stack trace and error messages\nabove, please kill and restart DAQInterface")
+        alertmsg += "\n" + self.make_paragraph("DAQInterface has set the DAQ back in the ground state; after making any\nnecessary adjustments suggested by the stack trace and error messages\nabove, please kill and restart DAQInterface")
         raise Exception(alertmsg)
 
     def read_settings(self):
@@ -371,7 +381,9 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         self.package_hashes_to_save = None
 
         for line in inf.readlines():
-            if "log_directory" in line:
+            if re.search(r"^\s*#", line):
+                continue
+            elif "log_directory" in line:
                 self.log_directory = line.split()[-1].strip()
             elif "record_directory" in line:
                 self.record_directory = line.split()[-1].strip()
@@ -411,7 +423,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             missing_vars_string = ", ".join(missing_vars)
             print
             raise Exception(self.make_paragraph(
-                                "Unable to parse the following variables meant to be set in the "
+                                "Unable to parse the following variable(s) meant to be set in the "
                                 "settings file, %s" % \
                                     (os.getcwd() + "/.settings : " + missing_vars_string ) ))
         
@@ -686,14 +698,15 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     errmsg = "process " + procinfo.name + \
                         " at " + procinfo.host + ":" + \
                         procinfo.port + " not found"
-                    self.print_log("Error in "
-                                   "DAQInterface::check_proc_heartbeats(): "
-                                   "please check messageviewer and/or the logfiles for error messages")
+                    self.print_log(
+                        self.make_paragraph("Error in DAQInterface::check_proc_heartbeats(): "
+                                            "please check messageviewer and/or the logfiles for error messages"))
                     self.print_log(errmsg)
 
         if not is_all_ok and requireSuccess:
-            self.alert_and_recover("Heartbeat failure "
-                                   "of at least one artdaq process; please check messageviewer and/or the logfiles for error messages")
+            self.alert_and_recover(
+                self.make_paragraph("Heartbeat failure of at least one artdaq process; please check messageviewer"
+                                    " and/or the logfiles for error messages"))
 
         return is_all_ok
 
@@ -879,7 +892,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         for line in inf.readlines():
 
             # Is this line a comment?
-            res = re.search(r"\s*#", line)
+            res = re.search(r"^\s*#", line)
             if res:
                 continue
 
@@ -1270,11 +1283,9 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         try:
             self.read_DAQInterface_config()
         except Exception:
-            self.print_log("DAQInterface caught an "
-                           "exception thrown by read_DAQInterface_config()")
             self.print_log(traceback.format_exc())
 
-            self.alert_and_recover("A problem occurred when trying to read the DAQInterface config file %s" %
+            self.alert_and_recover("An exception was thrown when trying to read the DAQInterface config file %s" %
                                    self.config_filename)
 
         # The name of the logfile isn't determined until pmt.rb has
@@ -1313,7 +1324,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             pkg_full_path = "%s/srcs/%s" % (self.daq_dir, pkgname.replace("-", "_"))
             self.package_hash_dict[pkgname] = self.get_commit_hash( pkg_full_path )
 
-        if self.debug_level >= 1:
+        if self.debug_level >= 2:
             for compname, socket in self.daq_comp_list.items():
                 print "%s at %s:%s" % (compname, socket[0], socket[1])
 
@@ -1337,8 +1348,6 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 print "Finished call to launch_procs(); will now confirm that artdaq processes are up..."
 
         except Exception:
-            self.print_log("DAQInterface caught an exception" +
-                           "in do_boot()")
             self.print_log(traceback.format_exc())
 
             self.alert_and_recover("An exception was thrown in launch_procs()")
@@ -1404,8 +1413,10 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         self.launch_messageviewer = self.have_needed_artdaq_mfextensions()
 
         if self.launch_messageviewer:
-            print "artdaq_mfextensions %s, %s:%s, appears to be available; if windowing is supported on your host you should see the messageviewer window pop up right now" % \
-                (version, equalifier, squalifier)
+            print self.make_paragraph("artdaq_mfextensions %s, %s:%s, appears to be available; "
+                                      "if windowing is supported on your host you should see the "
+                                      "messageviewer window pop up right now" % \
+                                          (version, equalifier, squalifier))
 
             cmds = []
             cmds.append(". %s/products/setup" % (self.daq_dir))
@@ -1423,8 +1434,11 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                                     "status error raised in msgviewer call within Popen; tried the following commands: \"%s\"" %
                                     " ; ".join(cmds) ))
         else:
-            print "artdaq_mfextensions %s, %s:%s, does not appear to be available- unable to launch the messageviewer window. This will not affect actual datataking, it just means you'll need to look at the logfiles to see artdaq output." % \
-                (version, equalifier, squalifier)
+            print self.make_paragraph("artdaq_mfextensions %s, %s:%s, does not appear to be available-"
+                                      " unable to launch the messageviewer window. This will not affect"
+                                      " actual datataking, it just means you'll need to look at the"
+                                      " logfiles to see artdaq output." % \
+                                          (version, equalifier, squalifier))
 
         self.complete_state_change(self.name, "booting")
 
@@ -1440,7 +1454,15 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         self.config_for_run = self.run_params["config"]
 
-        self.config_dirname, self.fhicl_file_path = self.get_config_info()
+        try:
+            self.config_dirname, self.fhicl_file_path = self.get_config_info()
+        except:
+            self.revert_state_change(self.name, self.state(self.name))
+            self.print_log(traceback.format_exc())
+            self.print_log(self.make_paragraph(
+                    "Exception thrown by get_config_info(); system remains in the "
+                    "\"%s\" state" % (self.state(self.name))))
+            return
 
         self.print_log("Config name: %s" % self.config_for_run, 1)
         self.print_log("Selected DAQ comps: %s" %
@@ -1457,7 +1479,18 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             uri = self.config_dirname + "/" + self.config_for_run + "/" + component + "_hw_cfg.fcl"
 
             if not os.path.exists(uri):
-                self.alert_and_recover("Unable to find desired uri %s" % (uri))
+                self.revert_state_change(self.name, self.state(self.name))
+
+                msg = "Unable to find desired file \"%s\" for component \"%s\"; system remains in the \"%s\" state." % \
+                    (uri, component, self.state(self.name))
+
+                msg += " Please either select a configuration which contains this component or " + \
+                    "terminate and then " + \
+                    "boot only with components which exist for configuration \"%s\"." % \
+                    (self.config_for_run)
+
+                self.print_log(self.make_paragraph(msg))
+                return
                     
             for i_proc in range(len(self.procinfos)):
 
@@ -1710,54 +1743,77 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         def attempted_stop(self, procinfo):
 
-            lastreturned=""
+            greptoken = procinfo.name + "Main -p " + procinfo.port
 
-            try:
-                lastreturned=procinfo.server.daq.stop()
-            except Exception:
-                # self.print_log("Exception caught during stop transition " +
-                #                "sent to artdaq process %s " % (procinfo.name) +
-                #                "at %s : %s during recovery procedure;" % (procinfo.host, procinfo.port) +
-                #                " ignored as kill command will be sent " +
-                #                "momentarily")
+            pid = self.get_pids(greptoken, procinfo.host)
+            
+            assert len(pid) <= 1
+
+            if len(pid) == 0:
+                self.print_log(
+                    "Didn't find PID for %s at %s:%s" % (procinfo.name, procinfo.host, procinfo.port), 2)
                 return
 
-            # if lastreturned != "Success":
-            #     self.print_log("Attempted stop sent to artdaq process %s " % (procinfo.name) +
-            #                    "at %s : %s during recovery procedure" % (procinfo.host, procinfo.port) +
-            #                    " returned \"%s\"; ignored as kill command will be sent momentarily" % (lastreturned))
+            if procinfo.lastreturned == "Running":
+                try:
+                    lastreturned=procinfo.server.daq.stop()
+                except Exception:
+                    print traceback.format_exc()
+                    self.print_log( self.make_paragraph( 
+                        "Exception caught during stop transition " +
+                        "sent to artdaq process %s " % (procinfo.name) +
+                        "at %s:%s during recovery procedure;" % (procinfo.host, procinfo.port) +
+                        " ignored as kill command will be sent momentarily"))
+                    return
+
+                if lastreturned == "Success":
+                    self.print_log("Successful stop sent to %s at %s:%s" % \
+                                       (procinfo.name, procinfo.host, procinfo.port), 2)
+                else:
+                    self.print_log( self.make_paragraph( 
+                            "Attempted stop sent to artdaq process %s " % (procinfo.name) + \
+                                "at %s:%s during recovery procedure" % (procinfo.host, procinfo.port) + \
+                                " returned \"%s\"; ignored as kill command will be sent momentarily" % \
+                                (lastreturned)))
+                    return
+            
+            # try:
+            #     lastreturned = procinfo.server.daq.shutdown()
+            # except Exception:
+            #     print traceback.format_exc()
+            #     self.print_log(self.make_paragraph(
+            #         "Exception caught during terminate transition " + \
+            #         "sent to artdaq process %s " % (procinfo.name) + \
+            #         "at %s : %s during recovery procedure;" % (procinfo.host, procinfo.port) + \
+            #         " ignored as kill command will be sent " + \
+            #         "momentarily"))
             #     return
 
-            try:
-                procinfo.server.daq.shutdown()
-            except Exception:
-                # self.print_log("Exception caught during terminate transition " +
-                #                "sent to artdaq process %s " % (procinfo.name) +
-                #                "at %s : %s during recovery procedure;" % (procinfo.host, procinfo.port) +
-                #                " ignored as kill command will be sent " +
-                #                "momentarily")
-                return
+            # self.print_log(self.make_paragraph(
+            #         "Return value from shutdown attempt on process %s at %s:%s is %s" % \
+            #             (procinfo.name, procinfo.host, procinfo.port, lastreturned)))
 
             return
 
         threads = []
 
-        for procinfo in self.procinfos:
-            t = Thread(target=attempted_stop, args=(self, procinfo))
-            threads.append(t)
-            t.start()
+        for name in ["BoardReader", "EventBuilder", "Aggregator"]:
 
-        for thread in threads:
-            t.join()
-                
+            for procinfo in self.procinfos:
+                if name in procinfo.name:
+                    t = Thread(target=attempted_stop, args=(self, procinfo))
+                    threads.append(t)
+                    t.start()
+
+            for thread in threads:
+                t.join()
                 
         try:
             self.kill_procs()
         except Exception:
             self.print_log(traceback.format_exc())
-
-            self.alert_and_recover("An exception was thrown "
-                                   "within kill_procs()")
+            self.print_log(self.make_paragraph("An exception was thrown "
+                                   "within kill_procs(); artdaq processes may not all have been killed"))
 
         self.in_recovery = False
 

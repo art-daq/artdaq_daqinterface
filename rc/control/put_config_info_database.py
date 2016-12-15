@@ -20,7 +20,7 @@ def put_config_info_base(self):
     if not os.path.exists( scriptdir ):
         self.alert_and_recover("Error: unable to find script directory \"%s\"; should be in the base directory of the package" % (scriptdir))
 
-    runnum = str(self.run_number_for_run)
+    runnum = str(self.run_number)
     runrecord = self.record_directory + "/" + runnum
 
 

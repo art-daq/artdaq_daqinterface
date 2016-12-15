@@ -11,8 +11,9 @@ def get_config_info_base(self):
     sourcemefile = os.environ["HOME"] + "/.database.bash.rc"
 
     if not os.path.exists( sourcemefile ):
-        self.alert_and_recover("Error: required file to source for configuration \"%s\" doesn't appear to exist" %
-                               (sourcemefile))
+        self.alert_and_recover(self.make_paragraph("Error: required file to source for configuration"
+                                                   " \"%s\" doesn't appear to exist" %
+                                                   (sourcemefile)))
 
     cmds = []
     cmds.append( ". " + sourcemefile )
@@ -25,16 +26,19 @@ def get_config_info_base(self):
     cfg_lines = proc.stdout.readlines()
     
     if len(cfg_lines) == 0:
-        print "Error: No lines of output"
-        self.alert_and_recover("Error: No lines of output from execution of the following: \"%s\"" % \
-                                   (cmd) )
-        return "", []
+        #self.alert_and_recover("Error: No lines of output from execution of the following: \n\"%s\"" % \
+            #                               ("; ".join(cmds) ))
+        raise Exception("Error: No lines of output from execution of the following: \n\"%s\"" % \
+                            ("; ".join(cmds) ))
+        #return "", []
 
     if ( "Return status: succeed" in cfg_lines[-1]):
         configdir = "%s/newconfig/" % (configbasedir)
         return configdir, [ configdir ]
     else:
-        print "Error, the output from get_config_info was \"%s\"" % ("".join( cfg_lines ))
-        self.alert_and_recover("Error: execution of the following \"%s\" resulted in "
-                               "the following output: \"%s\"" % (cmd, "".join( cfg_lines )))
-        return "", []
+        raise Exception("Error: execution of the following \"%s\" resulted in " \
+            "the following output: \"%s\"" % ("; ".join(cmds), "".join( cfg_lines )))
+        #self.alert_and_recover("Error: execution of the following \"%s\" resulted in " \
+            # "the following output: \"%s\"" % ("; ".join(cmds), "".join( cfg_lines )))
+    
+    return "", []
