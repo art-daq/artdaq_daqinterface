@@ -76,7 +76,7 @@ class DAQInterface(Component):
             # JCF, Jan-14-2016
 
             # Do NOT change the "lastreturned" string below without
-            # changing the commensurate string in check_proc_errors!
+            # changing the commensurate string in check_proc_transition!
 
             self.lastreturned = "DAQInterface: ARTDAQ PROCESS NOT YET CALLED"
             self.socketstring = "http://" + self.host + ":" + self.port \
@@ -420,7 +420,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         
                     
 
-    def check_proc_errors(self):
+    def check_proc_transition(self, target_state):
 
         is_all_ok = True
         
@@ -432,7 +432,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         for procinfo in self.procinfos:
 
-            if procinfo.lastreturned != "Success":
+            if procinfo.lastreturned != "Success" and procinfo.lastreturned != target_state:
 
                 redeemed=False
                 max_retries=20
@@ -689,6 +689,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     errmsg = "process " + procinfo.name + \
                         " at " + procinfo.host + ":" + \
                         procinfo.port + " not found"
+
                     self.print_log(
                         self.make_paragraph("Error in DAQInterface::check_proc_heartbeats(): "
                                             "please check messageviewer and/or the logfiles for error messages"))
@@ -1226,11 +1227,15 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         if self.debug_level >= 1:
             for procinfo in self.procinfos:
-                print "%s, returned string is: " % (procinfo.name)
+                print "%s at %s:%s, returned string is: " % \
+                    (procinfo.name, procinfo.host, procinfo.port)
                 print procinfo.lastreturned
                 print
 
-        self.check_proc_errors()
+        target_states = {"Init":"Ready", "Start":"Running", "Pause":"Paused", "Resume":"Running",
+                         "Stop":"Ready", "Shutdown":"Stopped"}
+
+        self.check_proc_transition( target_states[ command ] )
 
         if command != "Init" and command != "Start" and command != "Stop":
 
@@ -1255,13 +1260,20 @@ Please kill DAQInterface and run it out of the base directory.""" % \
     # functions which get called in the runner() function when a
     # transition is requested
 
-    def do_boot(self):
+    def do_boot(self, config_filename = None, daq_comp_list = None):
 
         print "%s: DAQInterface: \"Boot\" transition underway" % \
             (self.date_and_time())
 
-        self.daq_comp_list = self.run_params["daq_comp_list"]
-        self.config_filename = self.run_params["daqinterface_config"]
+        if not daq_comp_list:
+            self.daq_comp_list = self.run_params["daq_comp_list"]
+        else:
+            self.daq_comp_list = daq_comp_list
+
+        if not config_filename:
+            self.config_filename = self.run_params["daqinterface_config"]
+        else:
+            self.config_filename = config_filename
 
         self.reset_variables()
 
@@ -1421,12 +1433,15 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             "in the background, can press <enter> to return to shell prompt"
 
 
-    def do_config(self):
+    def do_config(self, config_for_run = None):
 
         print "%s: DAQInterface: \"Config\" transition underway" % \
             (self.date_and_time())
 
-        self.config_for_run = self.run_params["config"]
+        if not config_for_run:
+            self.config_for_run = self.run_params["config"]
+        else:
+            self.config_for_run = config_for_run
 
         try:
             self.config_dirname, self.fhicl_file_path = self.get_config_info()
@@ -1614,9 +1629,12 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             "in the background, can press <enter> to return to shell prompt"
 
 
-    def do_start_running(self):
+    def do_start_running(self, run_number = None):
 
-        self.run_number = self.run_params["run_number"]
+        if not run_number:
+            self.run_number = self.run_params["run_number"]
+        else:
+            self.run_number = run_number
 
         print "%s: DAQInterface: \"Start\" transition underway for run %d" % \
             (self.date_and_time(), self.run_number)
@@ -1841,7 +1859,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             self.do_command("Resume")
             self.__do_resume_running = False
 
-        elif self.state(self.name) != "stopped" and self.state(self.name) != "booting":
+        elif self.state(self.name) != "stopped" and self.state(self.name) != "booting" \
+                and self.state(self.name) != "terminating":
             self.check_proc_heartbeats()
             self.check_proc_exceptions()
 
@@ -1874,4 +1893,5 @@ def main():  # no-coverage
                 sleep(100)
         except: KeyboardInterrupt
 
-main()
+if __name__ == "__main__":
+    main()
