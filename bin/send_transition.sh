@@ -18,46 +18,46 @@ fi
 
 case $cmd in
     "boot")
-	test $# -gt 2 || badargs=true 
+	test $# -gt 1 || badargs=true 
 	translated_cmd="booting"
 	daqinterface_config_file=$2
 	
 	xmlrpc_arg="daqinterface_config:s/"${daqinterface_config_file}
 
-	shift
-	shift
-	components=$@
-	components_file=$( dirname $0 )"/../components.txt"
+	# shift
+	# shift
+	# components=$@
+	# components_file=$( dirname $0 )"/../components.txt"
 
-	if [[ ! -e $components_file ]]; then
-	    echo "Unable to find file containing allowed components, \"$components_file\"" >&2
-	    exit 10
-	fi
+	# if [[ ! -e $components_file ]]; then
+	#     echo "Unable to find file containing allowed components, \"$components_file\"" >&2
+	#     exit 10
+	# fi
 
-	xmlrpc_arg=${xmlrpc_arg}",daq_comp_list:struct/{"
+	# xmlrpc_arg=${xmlrpc_arg}",daq_comp_list:struct/{"
 
-	num_components=$( echo $components | wc -w)
-	comp_cntr=0
+	# num_components=$( echo $components | wc -w)
+	# comp_cntr=0
 
-	for comp in $components; do
+	# for comp in $components; do
 
-	    comp_cntr=$((comp_cntr + 1))
+	#     comp_cntr=$((comp_cntr + 1))
 
-	    comp_line=$( grep $comp $components_file )
+	#     comp_line=$( grep $comp $components_file )
 
-	    if [[ -n $comp_line ]]; then
-		host=$( echo $comp_line | awk '{print $2}' )
-		port=$( echo $comp_line | awk '{print $3}' )
-		xmlrpc_arg=${xmlrpc_arg}${comp}":array/(s/"${host}","${port}")"
+	#     if [[ -n $comp_line ]]; then
+	# 	host=$( echo $comp_line | awk '{print $2}' )
+	# 	port=$( echo $comp_line | awk '{print $3}' )
+	# 	xmlrpc_arg=${xmlrpc_arg}${comp}":array/(s/"${host}","${port}")"
 
-		test $comp_cntr != $num_components && xmlrpc_arg=${xmlrpc_arg}","
-	    else
-		echo "Unable to find listing for component \"$comp\" in $components_file" >&2
-		exit 20
-	    fi
-	done
+	# 	test $comp_cntr != $num_components && xmlrpc_arg=${xmlrpc_arg}","
+	#     else
+	# 	echo "Unable to find listing for component \"$comp\" in $components_file" >&2
+	# 	exit 20
+	#     fi
+	# done
 
-	xmlrpc_arg=${xmlrpc_arg}"}"
+	# xmlrpc_arg=${xmlrpc_arg}"}"
 	;;
     "config")
 	test $# == 2 || badargs=true 

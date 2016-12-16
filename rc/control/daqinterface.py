@@ -232,7 +232,6 @@ class DAQInterface(Component):
 
         self.procinfos = []
 
-
     # Constructor for DAQInterface begins here
 
     def __init__(self, logpath=None, name="toycomponent",
@@ -443,10 +442,11 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     "Stopped" in procinfo.lastreturned or
                     "Ready" in procinfo.lastreturned or
                     "Running" in procinfo.lastreturned or
-                    "Paused" in procinfo.lastreturned ):
+                    "Paused" in procinfo.lastreturned or
+                    "busy" in procinfo.lastreturned):
                     retry_counter += 1
                     sleep(1)
-                    if procinfo.lastreturned  == "Success":
+                    if procinfo.lastreturned  == "Success" or procinfo.lastreturned == target_state:
                         redeemed=True
 
                 if redeemed:
@@ -1255,20 +1255,17 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 (self.date_and_time(), command) + \
                 "in the background, can press <enter> to return to shell prompt"
 
+    def setdaqcomps(self, daq_comp_list):
+        self.daq_comp_list = daq_comp_list
 
     # do_boot(), do_config(), do_start_running(), etc., are the
     # functions which get called in the runner() function when a
     # transition is requested
 
-    def do_boot(self, config_filename = None, daq_comp_list = None):
+    def do_boot(self, config_filename = None):
 
         print "%s: DAQInterface: \"Boot\" transition underway" % \
             (self.date_and_time())
-
-        if not daq_comp_list:
-            self.daq_comp_list = self.run_params["daq_comp_list"]
-        else:
-            self.daq_comp_list = daq_comp_list
 
         if not config_filename:
             self.config_filename = self.run_params["daqinterface_config"]
@@ -1284,6 +1281,9 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
             self.alert_and_recover("An exception was thrown when trying to read the DAQInterface config file %s" %
                                    self.config_filename)
+
+        if not hasattr(self, "daq_comp_list") or not self.daq_comp_list or self.daq_comp_list == {}:
+            self.alert_and_recover("No list of components given; this needs to be set with the setdaqcomps call")
 
         includes_commit = "ff4f17871ff0ae0cca088e99b4e02c7cac535b36"
         commit_date = "Sep 21, 2016"

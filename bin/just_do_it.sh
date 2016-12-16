@@ -66,7 +66,9 @@ function main() {
 	exit 50
     fi
 
-    $scriptdir/sendcmd.sh boot $(dirname $0)/../docs/config_john.txt component01 component02
+    $scriptdir/setdaqcomps.sh component01 component02
+
+    $scriptdir/send_transition.sh boot $(dirname $0)/../docs/config_john.txt
 
     wait_until_no_longer booting
 
@@ -85,7 +87,7 @@ function main() {
     while (( $config_cntr < 1 )); do 
 
 	config_cntr=$(( config_cntr + 1 ))
-    $scriptdir/sendcmd.sh config $config
+    $scriptdir/send_transition.sh config $config
 
     wait_until_no_longer configuring
 
@@ -101,7 +103,7 @@ function main() {
 
     # Start the DAQ, and run it for the requested amount of time
 
-    $scriptdir/sendcmd.sh start $runnum
+    $scriptdir/send_transition.sh start $runnum
 
     wait_until_no_longer starting
 
@@ -141,7 +143,7 @@ function clean_shutdown() {
 
     if [[ "$state_true" == "1" ]]; then
 	
-	$scriptdir/sendcmd.sh stop
+	$scriptdir/send_transition.sh stop
 	wait_until_no_longer stopping
     fi
 
@@ -155,7 +157,7 @@ function clean_shutdown() {
 	exit 80
     fi
 
-    # $scriptdir/sendcmd.sh shutdown
+    # $scriptdir/send_transition.sh shutdown
     # wait_until_no_longer shutting
 
     # sleep 1
@@ -170,7 +172,7 @@ function clean_shutdown() {
 
     if true; then
 
-	$scriptdir/sendcmd.sh terminate
+	$scriptdir/send_transition.sh terminate
 
 	wait_until_no_longer terminating
 

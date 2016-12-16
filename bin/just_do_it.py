@@ -15,7 +15,8 @@ if len(sys.argv) != 2:
 run_number = sys.argv[1]
 
 with DAQInterface() as daqint:
-    daqint.do_boot("docs/config_john.txt", {"component01":("mu2edaq01.fnal.gov", "5305")})
+    daqint.setdaqcomps({"component01":("mu2edaq01.fnal.gov", "5305")})
+    daqint.do_boot("docs/config_john.txt")
     sleep(10)
     daqint.do_config("demo")
     daqint.do_start_running(int(run_number))

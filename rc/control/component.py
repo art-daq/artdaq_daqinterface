@@ -36,7 +36,8 @@ class Component(ContextObject):
             ("rpc_server",
              rpc_server(port=self.__rpc_port,
                         funcs={"state": self.state,
-                               "state_change": self.state_change})),
+                               "state_change": self.state_change,
+                               "setdaqcomps": self.setdaqcomps })),
             ("runner", threadable(func=self.runner))]
 
     def state(self, name):
@@ -86,6 +87,9 @@ class Component(ContextObject):
                     "terminating": "ready"}.get(requested, requested)
         trep = datetime.datetime.utcnow()
         self.__state = oldstate
+
+    def setdaqcomps(self, daqcomps):
+        pass
 
 
     def state_change(self, name, requested, state_args):
