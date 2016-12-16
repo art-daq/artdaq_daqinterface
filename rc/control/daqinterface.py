@@ -207,40 +207,31 @@ class DAQInterface(Component):
 
         return "\n" + userstring
 
-    # JCF, 1/1/15
+    # JCF, Dec-16-2016
 
-    # Basically, reset (and, if this is its first call, initialize)
-    # all DAQInterface configuration variables to their default
-    # values; this should be called both in the constructor as well as
-    # in do_config()
+    # The purpose of reset_variables is to reset those members that
+    # (A) aren't necessarily persistent to the process (thus excluding
+    # the paramters in .settings) and (B) won't necessarily be set
+    # explicitly during the transitions up from the "stopped"
+    # state. E.g., you wouldn't want to return to the "stopped" state
+    # with self.exception == True and then try a boot-config-start
+    # without self.exception being reset to False
 
-    def reset_DAQInterface_config(self):
+    def reset_variables(self):
 
-        # The build directory in which the lbne-artdaq package to be
-        # used is located
-        self.daq_dir = None
-
-        # The host on which artdaq's pmt.rb artdaq-process control
-        # script will run
-        self.pmt_host = None
-
-        # And its port
-
-        self.pmt_port = None
-
-        # A self.debug_level of 0 means minimal diagnostic output;
-        # higher values mean increasing diagnostic output
-
-        self.debug_level = 999
+        self.exception = False
+        self.in_recovery = False
+        self.last_artdaq_line = None
 
         # "procinfos" will be an array of Procinfo structures (defined
-        # below), where Procinfo contains all the info DAQInterface needs
-        # to know about an individual artdaq process: name, host, port,
-        # and FHiCL initialization document. Filled through a combination
-        # of info in the DAQInterface configuration file as well as Jon
-        # Paley's configuration manager
+        # below), where Procinfo contains all the info DAQInterface
+        # needs to know about an individual artdaq process: name,
+        # host, port, and FHiCL initialization document. Filled
+        # through a combination of info in the DAQInterface
+        # configuration file as well as the components list
 
         self.procinfos = []
+
 
     # Constructor for DAQInterface begins here
 
@@ -361,8 +352,8 @@ class DAQInterface(Component):
         if not extrainfo is None:
             alertmsg = "\n\n" + self.make_paragraph( "\"" + extrainfo + "\"")
 
-        alertmsg += "\n" + self.make_paragraph("DAQInterface has set the DAQ back in the ground state; after making any\nnecessary adjustments suggested by the stack trace and error messages\nabove, please kill and restart DAQInterface")
-        raise Exception(alertmsg)
+        alertmsg += "\n" + self.make_paragraph("DAQInterface has set the DAQ back in the \"stopped\" state; please make any necessary adjustments suggested by the stack trace and error messages above.")
+        self.print_log( alertmsg )
 
     def read_settings(self):
         if not os.path.exists( os.getcwd() + "/.settings"):
@@ -1272,13 +1263,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         self.daq_comp_list = self.run_params["daq_comp_list"]
         self.config_filename = self.run_params["daqinterface_config"]
 
-        self.exception = False
-
-        self.reset_DAQInterface_config()
-
-        # JCF, 11/6/14
-
-        self.procinfos = []    # Zero this out in case already filled
+        self.reset_variables()
 
         try:
             self.read_DAQInterface_config()
@@ -1287,15 +1272,6 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
             self.alert_and_recover("An exception was thrown when trying to read the DAQInterface config file %s" %
                                    self.config_filename)
-
-        # The name of the logfile isn't determined until pmt.rb has
-        # been run
-
-        self.log_filename_wildcard = None
-
-        self.boardreader_log_filenames = []
-        self.eventbuilder_log_filenames = []
-        self.aggregator_log_filenames = []
 
         includes_commit = "ff4f17871ff0ae0cca088e99b4e02c7cac535b36"
         commit_date = "Sep 21, 2016"
@@ -1316,7 +1292,6 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                             " artdaq as new as or newer than %s (%s);"
                             " %s appears to be older" %
                                                 (includes_commit, commit_date, artdaq_dir )))
-
 
         self.package_hash_dict = {}
 
@@ -1410,9 +1385,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         # Figure out if we have the artdaq_mfextensions version expected by the artdaq used 
         
         version, equalifier, squalifier = self.artdaq_mfextensions_info()
-        self.launch_messageviewer = self.have_needed_artdaq_mfextensions()
 
-        if self.launch_messageviewer:
+        if self.have_needed_artdaq_mfextensions():
             print self.make_paragraph("artdaq_mfextensions %s, %s:%s, appears to be available; "
                                       "if windowing is supported on your host you should see the "
                                       "messageviewer window pop up right now" % \
