@@ -23,8 +23,8 @@ from rc.io.timeoutclient import TimeoutServerProxy
 from rc.control.component import Component 
 from rc.control.deepsuppression import deepsuppression
 
-from rc.control.get_config_info_simple import get_config_info_base
-from rc.control.put_config_info_simple import put_config_info_base
+from rc.control.config_functions_local import get_config_info_base
+from rc.control.config_functions_local import put_config_info_base
 from rc.control.save_run_record import save_run_record_base
 from rc.control.start_datataking_noop import start_datataking_base
 from rc.control.stop_datataking_noop import stop_datataking_base
@@ -193,17 +193,37 @@ class DAQInterface(Component):
         userstring.strip()
  
         string_index = chars_per_line
+        previous_string_index = -1
+        ignore_algorithm = False
 
         userstring = string.replace(userstring, "\n", " ")
 
         while len(userstring) - string_index > 0:
 
-            while not userstring[string_index].isspace():
-                string_index -= 1
-                assert string_index >= 0
-        
-            userstring = userstring[:string_index] + "\n" + userstring[string_index+1: ]
+            if not ignore_algorithm:
+                while not userstring[string_index].isspace():
+                    string_index -= 1
+                    assert string_index >= 0
+            else:
+                while not userstring[string_index].isspace():
+                    string_index += 1
+                    if len(userstring) <= string_index:
+                        return "\n" + userstring
+                
+            if string_index != previous_string_index + chars_per_line: 
+                userstring = userstring[:string_index] + "\n" + userstring[string_index+1: ]
+
             string_index += chars_per_line
+
+            # If there's a token with no whitespace which is longer
+            # than chars_per_line characters (as may be the case with
+            # some full pathnames, e.g.) there's a risk of an infinite
+            # loop without the external logic below
+            
+            if previous_string_index == string_index:
+                ignore_algorithm = True
+        
+            previous_string_index = string_index
 
         return "\n" + userstring
 
@@ -1284,6 +1304,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         if not hasattr(self, "daq_comp_list") or not self.daq_comp_list or self.daq_comp_list == {}:
             self.alert_and_recover("No list of components given; this needs to be set with the setdaqcomps call")
+            return
 
         includes_commit = "ff4f17871ff0ae0cca088e99b4e02c7cac535b36"
         commit_date = "Sep 21, 2016"
@@ -1401,7 +1422,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         if self.have_needed_artdaq_mfextensions():
             print self.make_paragraph("artdaq_mfextensions %s, %s:%s, appears to be available; "
                                       "if windowing is supported on your host you should see the "
-                                      "messageviewer window pop up right now" % \
+                                      "messageviewer window pop up momentarily" % \
                                           (version, equalifier, squalifier))
 
             cmds = []
@@ -1468,7 +1489,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             uri = self.config_dirname + "/" + self.config_for_run + "/" + component + "_hw_cfg.fcl"
 
             if not os.path.exists(uri):
-                self.revert_state_change(self.name, self.state(self.name))
+                print "Didn't find uri %s" % (uri)
+
 
                 msg = "Unable to find desired file \"%s\" for component \"%s\"; system remains in the \"%s\" state." % \
                     (uri, component, self.state(self.name))
@@ -1479,6 +1501,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     (self.config_for_run)
 
                 self.print_log(self.make_paragraph(msg))
+
+                self.revert_state_change(self.name, self.state(self.name))
                 return
                     
             for i_proc in range(len(self.procinfos)):
