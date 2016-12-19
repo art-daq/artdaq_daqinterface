@@ -6,7 +6,7 @@ if [[ "$#" != "1" ]]; then
 fi
 
 config="demo"
-daqintconfig=$(dirname $0)/../docs/config_john.txt
+daqintconfig=$(dirname $0)/../docs/config.txt
 #daqintconfig="daqintconfig2"
 
 starttime=$(date +%s)
@@ -14,7 +14,7 @@ starttime=$(date +%s)
 daq_time_in_seconds=$1
 
 root_output_dir="/tmp"
-run_records_dir=$HOME/run_records
+run_records_dir=$( awk '/record_directory/ { print $2 }' .settings )
 
 if ! [[ $daq_time_in_seconds =~ ^[0-9-]+$ ]]; then
     echo 'Entered value for daq running time of "'$daq_time_in_seconds'" does not appear to be an integer'
