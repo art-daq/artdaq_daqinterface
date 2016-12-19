@@ -1,3 +1,0 @@
-component01 mu2edaq01.fnal.gov 5305
-component02 mu2edaq01.fnal.gov 5306
-component99 mu2edaq01.fnal.gov 5403

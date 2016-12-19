@@ -1,0 +1,2 @@
+component01 localhost 5305
+component02 localhost 5306

@@ -1242,7 +1242,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             print
             raise Exception(self.make_paragraph("ERROR: DAQInterface expects a git commit hash of"
                             " artdaq as new as or newer than %s (%s);"
-                            " %s appears to be older" %
+                            " %s appears to be older than this or to not exist at all" %
                                                 (includes_commit, commit_date, artdaq_dir )))
 
         self.package_hash_dict = {}
