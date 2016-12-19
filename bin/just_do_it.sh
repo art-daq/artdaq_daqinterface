@@ -6,6 +6,8 @@ if [[ "$#" != "1" ]]; then
 fi
 
 config="demo"
+daqintconfig=$(dirname $0)/../docs/config_john.txt
+#daqintconfig="daqintconfig2"
 
 starttime=$(date +%s)
 
@@ -68,7 +70,7 @@ function main() {
 
     $scriptdir/setdaqcomps.sh component01 component02
 
-    $scriptdir/send_transition.sh boot $(dirname $0)/../docs/config_john.txt
+    $scriptdir/send_transition.sh boot $daqintconfig
 
     wait_until_no_longer booting
 

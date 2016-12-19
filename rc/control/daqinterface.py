@@ -25,6 +25,7 @@ from rc.control.deepsuppression import deepsuppression
 
 from rc.control.config_functions_local import get_config_info_base
 from rc.control.config_functions_local import put_config_info_base
+from rc.control.config_functions_local import get_daqinterface_config_info_base
 from rc.control.save_run_record import save_run_record_base
 from rc.control.start_datataking_noop import start_datataking_base
 from rc.control.stop_datataking_noop import stop_datataking_base
@@ -326,6 +327,7 @@ class DAQInterface(Component):
 
     get_config_info = get_config_info_base
     put_config_info = put_config_info_base
+    get_daqinterface_config_info = get_daqinterface_config_info_base
     save_run_record = save_run_record_base
     start_datataking = start_datataking_base
     stop_datataking = stop_datataking_base
@@ -888,90 +890,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         return proclines[0].strip()
 
-    # The function to read in the DAQInterface configuration file
-
-    def read_DAQInterface_config(self):
-        inf = open(self.config_filename)
-
-        if not inf:
-            raise Exception(self.make_paragraph(
-                                "Exception in DAQInterface: " +
-                                "unable to locate configuration file \"" +
-                                self.config_filename + "\""))
-
-        memberDict = {"name": None, "host": None, "port": None, "fhicl": None}
-
-        for line in inf.readlines():
-
-            # Is this line a comment?
-            res = re.search(r"^\s*#", line)
-            if res:
-                continue
-
-            res = re.search(r"\s*PMT host\s*:\s*(\S+)", line)
-            if res:
-                self.pmt_host = res.group(1)
-                continue
-
-            res = re.search(r"\s*PMT port\s*:\s*(\S+)", line)
-            if res:
-                self.pmt_port = res.group(1)
-                continue
-
-            res = re.search(r"\s*DAQ directory\s*:\s*(\S+)",
-                            line)
-            if res:
-                self.daq_dir = res.group(1)
-                continue
-
-            res = re.search(r"\s*debug level\s*:\s*(\S+)",
-                            line)
-            if res:
-                self.debug_level = int(res.group(1))
-                continue
-
-            if "EventBuilder" in line or "Aggregator" in line:
-
-                res = re.search(r"\s*(\w+)\s+(\S+)\s*:\s*(\S+)", line)
-
-                if not res:
-                    raise Exception("Exception in DAQInterface: "
-                                    "problem parsing " + self.config_filename)
-
-                memberDict["name"] = res.group(1)
-                memberDict[res.group(2)] = res.group(3)
-
-                # Has the dictionary been filled s.t. we can use it to
-                # initalize a procinfo object?
-
-                # JCF, 11/13/14
-
-                # Note that if the configuration manager is running,
-                # then we expect the AggregatorMain applications to
-                # have a host and port specified in config.txt, but
-                # not a FHiCL document
-
-                # JCF, 3/19/15
-
-                # Now, we also expect only a host and port for
-                # EventBuilderMain applications as well
-
-                filled = True
-
-                for label, value in memberDict.items():
-                    if value is None and not label == "fhicl":
-                        filled = False
-
-                # If it has been filled, then initialize a Procinfo
-                # object, append it to procinfos, and reset the
-                # dictionary values to null strings
-
-                if filled:
-                    self.procinfos.append(self.Procinfo(memberDict["name"],
-                                                        memberDict["host"],
-                                                        memberDict["port"]))
-                    for varname in memberDict.keys():
-                        memberDict[varname] = None
+    def check_daqinterface_config_info(self):
 
         # Check that the configuration file actually contained the
         # definitions we wanted
@@ -1282,30 +1201,30 @@ Please kill DAQInterface and run it out of the base directory.""" % \
     # functions which get called in the runner() function when a
     # transition is requested
 
-    def do_boot(self, config_filename = None):
+    def do_boot(self, daqinterface_config = None):
 
         print "%s: DAQInterface: \"Boot\" transition underway" % \
             (self.date_and_time())
 
-        if not config_filename:
-            self.config_filename = self.run_params["daqinterface_config"]
-        else:
-            self.config_filename = config_filename
-
         self.reset_variables()
 
-        try:
-            self.read_DAQInterface_config()
-        except Exception:
-            self.print_log(traceback.format_exc())
+        if not daqinterface_config:
+            daqinterface_config = self.run_params["daqinterface_config"]
 
-            self.alert_and_recover("An exception was thrown when trying to read the DAQInterface config file %s" %
-                                   self.config_filename)
+        try:
+            self.daqinterface_config_file = self.get_daqinterface_config_info( daqinterface_config )
+        except Exception:
+            print (traceback.format_exc())
+            print "An exception was thrown when trying to read the DAQInterface configuration \"%s\"; system remains in the \"stopped\" state" % (daqinterface_config)
+            self.reset_variables()
+            return
+
+        self.check_daqinterface_config_info()
 
         if not hasattr(self, "daq_comp_list") or not self.daq_comp_list or self.daq_comp_list == {}:
             self.alert_and_recover("No list of components given; this needs to be set with the setdaqcomps call")
             return
-
+        
         includes_commit = "ff4f17871ff0ae0cca088e99b4e02c7cac535b36"
         commit_date = "Sep 21, 2016"
 

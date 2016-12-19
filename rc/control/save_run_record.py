@@ -40,7 +40,7 @@ def save_run_record_base(self):
 
     config_saved_name = "config.txt"
 
-    Popen("cp -p " + self.config_filename + " " + outdir +
+    Popen("cp -p " + self.daqinterface_config_file + " " + outdir +
           "/" + config_saved_name,
           shell=True, stdout=subprocess.PIPE).wait()
 

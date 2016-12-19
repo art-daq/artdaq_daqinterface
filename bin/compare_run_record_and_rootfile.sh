@@ -40,7 +40,7 @@ echo "NOTE: erasing any output to stderr from config_dumper; as long
 as config_dumper works correctly this won't affect the results of the
 test"
 
-config_dumper -P $rootfile 2> /dev/null | sed -r 's/\\n/\n/g'  | sed -r '1,/run_daqinterface_config/d;/"/,$d'  > $temporary_daqinterface_config_file 
+config_dumper -P $rootfile 2> /dev/null | sed -r 's/\\n/\n/g'  | sed -r '1,/run_daqinterface_config/d;/^\s*"\s*$/,$d;s/\\"/"/g'  > $temporary_daqinterface_config_file 
 
 if [[ ! -s $temporary_daqinterface_config_file ]]; then
     echo "It appears no DAQInterface config info was saved in $rootfile" 
@@ -71,6 +71,7 @@ res_metadata=$( diff --ignore-blank-lines $temporary_metadata_file $run_records_
 
 if [[ -z $res_config && -z $res_metadata ]]; then
     echo "Data in $rootfile and $runrecordsdir/$runnum agree"
+    rm -f $temporary_daqinterface_config_file $temporary_metadata_file
     exit 0
 fi
 
