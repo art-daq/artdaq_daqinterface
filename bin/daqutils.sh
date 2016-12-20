@@ -11,14 +11,16 @@
 # the boolean result of whether or not the DAQ is in the desired state
 # (effectively a pass-by-reference)
 
+if [[ -z $scriptdir ]]; then
+    scriptdir="$(dirname "$0")"
+fi
 
 function check_for_state() {                                                                                          
     local stateName=$1                                                                                                
     local __stateBoolVarname=$2                                                                                       
     local stateTrue="0"                                                                              
+    status_script=$scriptdir/status.sh
 
-    status_script="$(dirname "$0")"/status.sh
-    
     res=$( $status_script  | tail -1 | tr "'" " " | awk '{print $2}' )
 
     if [[ "$res" == "$stateName" ]]; then                                                                             

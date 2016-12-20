@@ -20,7 +20,7 @@ fi
 rootfiledir=/tmp
 runrecordsdir=$HOME/run_records
 
-rootfile=$(ls $rootfiledir/*_r$(printf "%06d" $runnum)_* )
+rootfile=$(ls -tr1 $rootfiledir/*_r$(printf "%06d" $runnum)_* | tail -1 )
 
 if [[ -z $rootfile ]]; then
     echo "Unable to find root file for run #${runnum} in directory \"${rootfiledir}\"" >&2

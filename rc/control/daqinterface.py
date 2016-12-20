@@ -320,9 +320,7 @@ class DAQInterface(Component):
                     "changes, and restart.") + "\n"
             sys.exit(1)
 
-        print self.make_paragraph("DAQInterface launched and now in \"%s\" state; if running "
-                                  "DAQInterface in the background,"
-                                  " can press <enter> to return to shell prompt" % 
+        print self.make_paragraph("DAQInterface launched and now in \"%s\" state" % 
                                   (self.state(self.name)))
 
     get_config_info = get_config_info_base
@@ -546,7 +544,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         checked_cmd = self.construct_checked_command( cmds )
         
-        status = Popen(checked_cmd, shell = True).wait()
+        with deepsuppression():
+            status = Popen(checked_cmd, shell = True).wait()
 
         if status == 0:
             return True
@@ -1075,8 +1074,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
     def do_command(self, command):
 
         if command != "Start" and command != "Init" and command != "Stop":
-            print "%s: DAQInterface: \"%s\" transition underway" % \
-                (self.date_and_time(), command)
+            print "\n%s: %s transition underway" % \
+                (self.date_and_time(), command.upper())
 
         # "process_command" is the function which will send a
         # transition to a single artdaq process, and be run on its own
@@ -1190,9 +1189,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 raise Exception("Unknown command")
 
             self.complete_state_change(self.name, verbing)
-            print "\n%s: %s transition complete; if running DAQInterface " % \
-                (self.date_and_time(), command) + \
-                "in the background, can press <enter> to return to shell prompt"
+            print "\n%s: %s transition complete" % (self.date_and_time(), command.upper())
 
     def setdaqcomps(self, daq_comp_list):
         self.daq_comp_list = daq_comp_list
@@ -1203,7 +1200,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
     def do_boot(self, daqinterface_config = None):
 
-        print "%s: DAQInterface: \"Boot\" transition underway" % \
+        print "\n%s: BOOT transition underway" % \
             (self.date_and_time())
 
         self.reset_variables()
@@ -1360,22 +1357,20 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                                     "status error raised in msgviewer call within Popen; tried the following commands: \"%s\"" %
                                     " ; ".join(cmds) ))
         else:
-            print self.make_paragraph("artdaq_mfextensions %s, %s:%s, does not appear to be available-"
+            print self.make_paragraph("artdaq_mfextensions %s, %s:%s, does not appear to be available in the products directory \"%s\" - "
                                       " unable to launch the messageviewer window. This will not affect"
                                       " actual datataking, it just means you'll need to look at the"
                                       " logfiles to see artdaq output." % \
-                                          (version, equalifier, squalifier))
+                                          (version, equalifier, squalifier, self.daq_dir + "/products"))
 
         self.complete_state_change(self.name, "booting")
 
-        print "\n%s: Boot transition complete; if running DAQInterface " % \
-            (self.date_and_time()) + \
-            "in the background, can press <enter> to return to shell prompt"
+        print "\n%s: BOOT transition complete" % (self.date_and_time()) 
 
 
     def do_config(self, config_for_run = None):
 
-        print "%s: DAQInterface: \"Config\" transition underway" % \
+        print "\n%s: CONFIG transition underway" % \
             (self.date_and_time())
 
         if not config_for_run:
@@ -1567,10 +1562,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 (self.pmt_host, self.log_directory,
                  self.log_filename_wildcard)
 
-        print "\n%s: Config transition complete; if running DAQInterface " % \
-            (self.date_and_time()) + \
-            "in the background, can press <enter> to return to shell prompt"
-
+        print "\n%s: CONFIG transition complete" % (self.date_and_time())
 
     def do_start_running(self, run_number = None):
 
@@ -1579,7 +1571,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         else:
             self.run_number = run_number
 
-        print "%s: DAQInterface: \"Start\" transition underway for run %d" % \
+        print "\n%s: START transition underway for run %d" % \
             (self.date_and_time(), self.run_number)
         
         if os.path.exists( self.tmp_run_record ):
@@ -1601,28 +1593,25 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         self.start_datataking()
 
         self.complete_state_change(self.name, "starting")
-        print "\n%s: Start transition complete for run %s"  % \
-            (self.date_and_time(), str(self.run_number)) + \
-            ", if running DAQInterface in " + \
-            "the background, can press <enter> to return to shell prompt"
+        print "\n%s: START transition complete for run %d" % \
+            (self.date_and_time(), self.run_number)
 
     def do_stop_running(self):
 
-        print "%s: DAQInterface: \"Stop\" transition underway" % \
-            (self.date_and_time())
+        print "\n%s: STOP transition underway for run %d" % \
+            (self.date_and_time(), self.run_number)
 
         self.stop_datataking()
 
         self.do_command("Stop")
 
         self.complete_state_change(self.name, "stopping")
-        print "\n%s: Stop transition complete for run %s; if running DAQInterface " % \
-            (self.date_and_time(), str(self.run_number) ) + \
-            "in the background, can press <enter> to return to shell prompt"
+        print "\n%s: STOP transition complete for run %d" % \
+            (self.date_and_time(), self.run_number)
 
     def do_terminate(self):
 
-        print "%s: DAQInterface: \"Terminate\" transition underway" % \
+        print "\n%s: TERMINATE transition underway" % \
             (self.date_and_time())
 
         print
@@ -1636,7 +1625,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                                "do_terminate()")
                 self.print_log(traceback.format_exc())
 
-                self.print_log("%s, returned string is: " % (procinfo.name,))
+                self.print_log("%s at %s:%s, returned string is: " % \
+                                   (procinfo.name, procinfo.host, procinfo.port))
                 self.print_log(procinfo.lastreturned)
 
                 self.alert_and_recover("An exception was thrown "
@@ -1644,7 +1634,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 return
             else:
                 if self.debug_level >= 1:
-                    print "%s, returned string is: " % (procinfo.name,)
+                    print "%s at %s:%s, returned string is: " % \
+                        (procinfo.name, procinfo.host, procinfo.port)
                     print procinfo.lastreturned
                     print
 
@@ -1660,9 +1651,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         self.complete_state_change(self.name, "terminating")
 
-        print "\n%s: Terminate transition complete; if running DAQInterface " % \
-            (self.date_and_time()) + \
-            "in the background, can press <enter> to return to shell prompt"
+        print "\n%s: TERMINATE transition complete" % (self.date_and_time())
 
         if self.debug_level >= 1:
             print "To see logfile(s), on %s run \"ls -ltr %s/pmt/%s\"" % \
@@ -1671,7 +1660,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
     def do_recover(self):
         print
-        print "%s: DAQInterface: \"Recover\" transition underway" % \
+        print "\n%s: RECOVER transition underway" % \
             (self.date_and_time())
 
         self.in_recovery = True
@@ -1754,9 +1743,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         self.complete_state_change(self.name, "recovering")
 
-        print "\n%s: Recover transition complete; if running DAQInterface " % \
-            (self.date_and_time()) + \
-            "in the background, can press <enter> to return to shell prompt"
+        print "\n%s: RECOVER transition complete" % (self.date_and_time())
 
     # Override of the parent class Component's runner function. As of
     # 5/30/14, called every 1s by control.py
