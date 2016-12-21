@@ -18,7 +18,7 @@ if [[ "$art_retval" != "0" ]]; then
 fi
 
 rootfiledir=/tmp
-runrecordsdir=$HOME/run_records
+runrecordsdir=$( cat .settings  | awk '/record_directory/ {print $2}' )
 
 rootfile=$(ls -tr1 $rootfiledir/*_r$(printf "%06d" $runnum)_* | tail -1 )
 
