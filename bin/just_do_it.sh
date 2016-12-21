@@ -82,6 +82,8 @@ function main() {
 	exit 51
     fi
 
+    sleep 2
+
     # Initialize the DAQ
 
     config_cntr=0
