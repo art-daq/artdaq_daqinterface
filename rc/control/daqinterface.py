@@ -969,12 +969,12 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             if host != "localhost" and host != os.environ["HOSTNAME"]:
                 cmd = "ssh -f " + host + " '" + cmd + "'"
 
-            proc = Popen(cmd, shell=True, stdout=subprocess.PIPE)
+            proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             proclines = proc.stdout.readlines()
             
             if len(proclines) != count:
                 raise Exception("Exception in DAQInterface: " +
-                                "problem seeking logfile(s)")
+                                "problem seeking logfile(s); message is \"%s\"" % "".join(proc.stderr.readlines()))
 
             for line in proclines:
 
