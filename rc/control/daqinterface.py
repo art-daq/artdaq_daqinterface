@@ -517,6 +517,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         if not os.path.exists( product_deps_filename ):
             self.alert_and_recover("Unable to find artdaq product_deps file \"%s\"; needed to determine artdaq_mfextensions version for messagefacility viewer")
+            return
 
         product_deps_file = open( product_deps_filename )
 
@@ -675,6 +676,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         if status != 0:
             self.alert_and_recover("Status error raised in pmt.rb call; command was \"%s\". Please check logfile(s) for further information" %
                                    ("; ".join(cmds)))
+            return
 
 
     # check_proc_heartbeats() will check that the expected artdaq
@@ -696,6 +698,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 self.alert_and_recover("Exception in DAQInterface:"
                                        " unknown process type found"
                                        " in procinfos")
+                return
 
             greptoken = proctype + " -p " + procinfo.port
 
@@ -720,6 +723,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             self.alert_and_recover(
                 self.make_paragraph("Heartbeat failure of at least one artdaq process; please check messageviewer"
                                     " and/or the logfiles for error messages"))
+            return
 
         return is_all_ok
 
@@ -756,6 +760,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         if not is_all_ok:
             self.alert_and_recover("One or more artdaq processes"
                                    " discovered to be in \"Error\" state")
+            return
 
     # JCF, 1/28/15
 
@@ -875,6 +880,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         if not os.path.exists(gitrepo):
             self.alert_and_recover("Expected git directory %s not found" % (gitrepo))
+            return
 
         cmds = []
         cmds.append("cd %s" % (gitrepo))
@@ -886,6 +892,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         if len(proclines) != 1 or len(proclines[0].strip()) != 40:
             self.alert_and_recover("Commit hash for %s not found" % (gitrepo))
+            return
 
         return proclines[0].strip()
 
@@ -1016,6 +1023,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 self.alert_and_recover("Exception in DAQInterface:"
                                        " unknown process type found"
                                        " in procinfos")
+                return
 
             dressed_fhicl = re.sub("'","\\'", procinfo.fhicl_used)
             runstring += dressed_fhicl
@@ -1275,6 +1283,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             self.print_log(traceback.format_exc())
 
             self.alert_and_recover("An exception was thrown in launch_procs()")
+            return
 
         num_launch_procs_checks = 0
 
@@ -1294,6 +1303,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             else:
                 if num_launch_procs_checks > 5:
                     self.alert_and_recover("artdaq processes failed to launch; logfiles may contain info as to what happened")
+                    return
 
         for procinfo in self.procinfos:
 
@@ -1329,6 +1339,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                            "in do_boot()")
             self.print_log(traceback.format_exc())
             self.alert_and_recover("Problem obtaining logfile name(s)")
+            return
 
 
         # Figure out if we have the artdaq_mfextensions version expected by the artdaq used 
@@ -1581,10 +1592,12 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             if status != 0:
                 self.alert_and_recover("Error in DAQInterface: a nonzero value was returned executing \"%s\"" %
                                        cmd)
+                return
                 
         else:
             self.alert_and_recover("Error in DAQInterface: unable to find temporary run records directory %s" % 
                                    self.tmp_run_record)
+            return
 
         self.put_config_info()
 
