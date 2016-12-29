@@ -40,6 +40,25 @@ class Component(ContextObject):
                                "setdaqcomps": self.setdaqcomps })),
             ("runner", threadable(func=self.runner))]
 
+        self.dict_state_to = {"booting": "booted",
+                    "shutting": "booted",
+                    "stopping": "ready",
+                    "configuring": "ready",
+                    "starting": "running",
+                    "pausing": "paused",
+                    "resuming": "running",
+                    "terminating": "stopped",
+                    "recovering": "stopped"}
+
+        self.dict_state_from = {"booting": "stopped",
+                    "shutting": "ready",
+                    "stopping": "running",
+                    "configuring": "booted",
+                    "starting": "ready",
+                    "pausing": "running",
+                    "resuming": "paused",
+                    "terminating": "ready"}
+
     def state(self, name):
         if name != self.name:
             return "unknown"
@@ -48,22 +67,9 @@ class Component(ContextObject):
     def complete_state_change(self, name, requested):
         if name != self.name:
             return
-        newstate = {"booting": "booted",
-                    "shutting": "booted",
-                    "stopping": "ready",
-                    "configuring": "ready",
-                    "starting": "running",
-                    "pausing": "paused",
-                    "resuming": "running",
-                    "terminating": "stopped",
-                    "recovering": "stopped"}.get(requested, requested)
+        newstate = self.dict_state_to.get(requested, requested)
         trep = datetime.datetime.utcnow()
         self.__state = newstate
-        # self.sender.send({"type": "moni",
-        #                   "service": self.name,
-        #                   "t": trep,
-        #                   "varname": "state",
-        #                   "value": newstate})
 
     # JCF, Dec-15-2016
 
@@ -77,14 +83,7 @@ class Component(ContextObject):
     def revert_state_change(self, name, requested):
         if name != self.name:
             return
-        oldstate = {"booting": "stopped",
-                    "shutting": "ready",
-                    "stopping": "running",
-                    "configuring": "booted",
-                    "starting": "ready",
-                    "pausing": "running",
-                    "resuming": "paused",
-                    "terminating": "ready"}.get(requested, requested)
+        oldstate = self.dict_state_from.get(requested, requested)
         trep = datetime.datetime.utcnow()
         self.__state = oldstate
 
@@ -96,24 +95,31 @@ class Component(ContextObject):
         if name != self.name:
             return
         trep = datetime.datetime.utcnow()
-        # send this now before we call out for transition
-        # self.sender.send({"type": "moni",
-        #                   "service": self.name,
-        #                   "t": trep,
-        #                   "varname": "state",
-        #                   "value": requested})
+
+        if requested in self.dict_state_from.keys() and \
+                self.__state != self.dict_state_from[ requested ]:
+
+            print "\nWARNING: Unable to accept transition request " \
+                "\"%s\" from current state \"%s\"; the command will have no effect." % \
+                (requested, self.__state)
+
+            allowed_transitions = []
+
+            for key, val in self.dict_state_from.items():
+                if val == self.__state:
+                    allowed_transitions.append( key )
+
+            assert len(allowed_transitions) > 0, "Zero allowed transitions"
+
+            print "Can accept the following transition request(s): " + \
+                ", ".join( allowed_transitions )
+            return
+
         # set out transition state now.
         self.__state = requested
         if requested == "starting":
             self.run_params = state_args
             self.start_running()
-            # if self.synchronous:
-            #     self.sender.send({"type": "moni",
-            #                       "service": self.name,
-            #                       "t": trep,
-            #                       "varname": "rundata",
-            #                       "value": assoc(self.run_params,
-            #                                      "tstart", trep)})
         if requested == "stopping":
             self.stop_running()
         if requested == "pausing":
@@ -147,11 +153,6 @@ class Component(ContextObject):
         """
         if self.__state == "running":
             self.__dummy_val += random.random() * 100 - 50
-            # self.sender.send({"type": "moni",
-            #                   "service": self.name,
-            #                   "t": str(datetime.datetime.utcnow()),
-            #                   "varname": "x",
-            #                   "value": self.__dummy_val})
 
     def boot(self):
         self.complete_state_change(self.name, "booting")
