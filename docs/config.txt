@@ -1,5 +1,5 @@
 
-DAQ directory: /home/jcfree/artdaq-demo-base-mrb
+DAQ directory: $HOME/artdaq-demo-base-mrb
 
 PMT host: localhost
 PMT port: 5400

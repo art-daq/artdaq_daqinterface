@@ -16,6 +16,7 @@ if [[ ! -e $PWD/.settings ]]; then
 fi
 
 proddir=$( cat $PWD/.settings | awk '/productsdir_for_bash_scripts/ { print $2 }' )
+proddir=$( echo $( eval echo $proddir ) )  # Expand environ variables in string
 
 if [[ -n $proddir ]]; then
 

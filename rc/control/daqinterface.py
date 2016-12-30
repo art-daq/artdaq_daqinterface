@@ -30,6 +30,8 @@ from rc.control.save_run_record import save_run_record_base
 from rc.control.start_datataking_noop import start_datataking_base
 from rc.control.stop_datataking_noop import stop_datataking_base
 
+from rc.control.utilities import expand_environment_variable_in_string
+
 class DAQInterface(Component):
     """
     DAQInterface: The intermediary between Run Control, the
@@ -391,6 +393,9 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         self.package_hashes_to_save = None
 
         for line in inf.readlines():
+
+            line = expand_environment_variable_in_string( line )
+
             if re.search(r"^\s*#", line):
                 continue
             elif "log_directory" in line:
@@ -606,7 +611,12 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 if procname in procinfo.name:
                     outf.write(procname + "Main ")
 
-            outf.write(procinfo.host + " " + procinfo.port + "\n")
+            if procinfo.host != "localhost":
+                host_to_write = procinfo.host
+            else:
+                host_to_write = os.environ["HOSTNAME"]
+
+            outf.write(host_to_write + " " + procinfo.port + "\n")
 
         outf.close()
 

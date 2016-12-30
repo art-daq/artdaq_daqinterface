@@ -2,6 +2,11 @@
 import os
 import re
 
+import sys
+sys.path.append( os.getcwd() )
+
+from rc.control.utilities import expand_environment_variable_in_string
+
 def get_config_info_base(self):
 
     config_dirname = os.getcwd() + "/simple_test_config"
@@ -34,6 +39,8 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
     memberDict = {"name": None, "host": None, "port": None, "fhicl": None}
 
     for line in inf.readlines():
+
+        line = expand_environment_variable_in_string( line )
 
         # Is this line a comment?
         res = re.search(r"^\s*#", line)

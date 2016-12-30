@@ -6,6 +6,11 @@ import re
 import os
 import string
 
+import sys
+sys.path.append( os.getcwd() )
+
+from rc.control.utilities import expand_environment_variable_in_string
+
 def config_basedir():
     return os.environ["HOME"] + "/daqarea/work-db-dir"
 
@@ -71,7 +76,6 @@ def put_config_info_base(self):
     cmds.append( "cp -rp " + runrecord + " . ")
     cmds.append( "chmod 777 " + runnum )
     cmds.append( "cat " + runnum + "/metadata.txt | awk -f $scriptdir/fhiclize_metadata_file.awk > " + runnum + "/metadata_r" + runnum + ".fcl" )
-    #cmds.append( "cat " + runnum + "/config.txt | awk -f $scriptdir/fhiclize_daqinterface_config_file.awk > " + runnum + "/config_r" + runnum + ".fcl" )
     cmds.append("cp -p " + runnum + "/config.txt " + runnum + "/config_r" + runnum + ".fcl")
     cmds.append( "rm -f " + runnum + "/*.txt")
     cmds.append( "for file in " + runnum + "/*.*.fcl ; do mv $file $( echo $file | sed -r 's/\./_/g;s/_fcl/\.fcl/' ) ; done")
@@ -113,6 +117,8 @@ def get_daqinterface_config_info_base(self, daqinterface_config_label):
             return []
 
     for line in inf.readlines():
+
+        line = expand_environment_variable_in_string( line )
 
         # Is this line a comment?
         res = re.search(r"^\s*#", line)
