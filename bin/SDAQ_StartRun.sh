@@ -11,6 +11,8 @@ basedir=$scriptdir/..
 cd $basedir
 
 run_records_dir=$( awk '/record_directory/ { print $2 }' $basedir/.settings )
+run_records_dir=$( echo $( eval echo $run_records_dir ) )  # Expand environ variables in string
+
 lastrun=$(ls -tr1 $run_records_dir | tail -1)
 runnum=$(( lastrun + 1 ))
 
