@@ -2,6 +2,6 @@
 
 daq_setup_script: setupARTDAQDEMO
 log_directory: /tmp
-record_directory: /home/jcfree/run_records
+record_directory: $HOME/run_records
 package_hashes_to_save: [ artdaq-demo, artdaq-core-demo, artdaq ]
-productsdir_for_bash_scripts: /home/jcfree/artdaq-demo-base/products/
+productsdir_for_bash_scripts: $HOME/artdaq-demo-base/products/
