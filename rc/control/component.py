@@ -57,7 +57,7 @@ class Component(ContextObject):
                     "starting": "ready",
                     "pausing": "running",
                     "resuming": "paused",
-                    "terminating": "ready"}
+                    "terminating": "ready|booted"}
 
     def state(self, name):
         if name != self.name:
@@ -97,7 +97,7 @@ class Component(ContextObject):
         trep = datetime.datetime.utcnow()
 
         if requested in self.dict_state_from.keys() and \
-                self.__state != self.dict_state_from[ requested ]:
+                self.__state not in self.dict_state_from[ requested ]:
 
             print "\nWARNING: Unable to accept transition request " \
                 "\"%s\" from current state \"%s\"; the command will have no effect." % \
