@@ -545,8 +545,10 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         version, equalifier, squalifier = self.artdaq_mfextensions_info()
 
         cmds = []
-        cmds.append(". %s/products/setup" % (self.daq_dir))
-        cmds.append("setup artdaq_mfextensions %s -q %s:%s:prof" % (version, equalifier, squalifier))
+        cmds.append("cd %s" % (self.daq_dir))
+        cmds.append(". %s" % (self.daq_setup_script))
+        cmds.append('if [[ "$ARTDAQ_MFEXTENSIONS_VERSION" == "%s" ]]; then true; else false; fi' % \
+                        (version))
 
         checked_cmd = self.construct_checked_command( cmds )
         
@@ -646,9 +648,6 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=30")
 
         if self.have_needed_artdaq_mfextensions():
-            version, equalifier, squalifier = self.artdaq_mfextensions_info()
-            cmds.append("setup artdaq_mfextensions %s -q prof:%s:%s" % \
-                            (version, equalifier, squalifier))
 
             messagefacility_fhicl_filename = os.getcwd() + "/MessageFacility.fcl" 
             
@@ -1363,10 +1362,9 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                                           (version, equalifier, squalifier))
 
             cmds = []
-            cmds.append(". %s/products/setup" % (self.daq_dir))
-            cmds.append("setup artdaq_mfextensions %s -q prof:%s:%s" % \
-                            (version, equalifier, squalifier))
-            cmds.append("msgviewer -c $ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/msgviewer.fcl 2>&1 > /dev/null &" )
+            cmds.append("cd %s" % (self.daq_dir))
+            cmds.append(". %s" % (self.daq_setup_script))
+            cmds.append("msgviewer -c $MRB_BUILDDIR/artdaq_mfextensions/bin/msgviewer.fcl 2>&1 > /dev/null &" )
 
             msgviewercmd = self.construct_checked_command( cmds )
 
