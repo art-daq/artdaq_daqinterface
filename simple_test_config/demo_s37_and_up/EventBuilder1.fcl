@@ -1,0 +1,118 @@
+
+services: {
+  scheduler: {
+    fileMode: NOMERGE
+    errorOnFailureToPut: false
+  }
+  NetMonTransportServiceInterface: {
+    service_provider: NetMonTransportService
+    first_data_receiver_rank: 4
+    mpi_buffer_count: 8
+    max_fragment_size_words: 2097152
+    data_receiver_count: 1
+    #broadcast_sends: true
+  }
+
+  #SimpleMemoryCheck: { }
+}
+
+daq: {
+  max_fragment_size_words: 2097152
+  event_builder: {
+    mpi_buffer_count: 16
+    first_fragment_receiver_rank: 0
+    fragment_receiver_count: 2
+    expected_fragments_per_event: 2
+    use_art: true
+    print_event_store_stats: true
+    verbose: false
+    send_triggers: false
+  }
+  metrics: {
+    evbFile: {
+      metricPluginType: "file"
+      level: 3
+      fileName: "/tmp/eventbuilder/evb_%UID%_metrics.log"
+      uniquify: true
+    }
+    # ganglia: {
+    #   metricPluginType: "ganglia"
+    #   level: %{ganglia_level}
+    #   reporting_interval: 15.0
+    # 
+    #   configFile: "/etc/ganglia/gmond.conf"
+    #   group: "ARTDAQ"
+    # }
+    # msgfac: {
+    #    level: %{mf_level}
+    #    metricPluginType: "msgFacility"
+    #    output_message_application_name: "ARTDAQ Metric"
+    #    output_message_severity: 0 
+    # }
+    # graphite: {
+    #   level: %{graphite_level}
+    #   metricPluginType: "graphite"
+    #   host: "localhost"
+    #   port: 20030
+    #   namespace: "artdaq."
+    # }
+  }
+} 
+
+outputs: {
+  rootMPIOutput: {
+    module_type: RootMPIOutput
+    #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
+    #outputCommands: [ "keep *", "drop artdaq::Fragments_daq_V1720_*", "drop artdaq::Fragments_daq_V1724_*" ]
+  }
+  #normalOutput: {
+  #  module_type: RootOutput
+  #  fileName: "/tmp/artdaqdemo_eb00_r%06r_sr%02s_%to.root"
+  #  compressionLevel: 0
+  #  #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
+  #  #outputCommands: [ "keep *", "drop artdaq::Fragments_daq_V1720_*", "drop artdaq::Fragments_daq_V1724_*" ]
+  #}
+}
+
+physics: {
+  analyzers: {
+
+  }
+
+  producers: {
+
+     
+
+     
+  }
+
+  filters: {
+
+    prescaleMod2: {
+       module_type: NthEvent
+       nth: 2
+    }
+
+    prescaleMod3: {
+       module_type: NthEvent
+       nth: 3
+    }
+  }
+
+  p1: [  ] 
+  pmod2: [ prescaleMod2 ]
+  pmod3: [ prescaleMod3 ]
+   
+
+  #a1: [ app, wf ]
+
+  my_output_modules: [ rootMPIOutput ]
+  #my_output_modules: [ normalOutput ]
+}
+source: {
+  module_type: RawInput
+  waiting_time: 2500000
+  resume_after_timeout: true
+  fragment_type_map: [[1, "missed"], [3, "V1720"], [4, "V1724"], [6, "TOY1"], [7, "TOY2"], [8, "ASCII"]]
+}
+process_name: DAQ
