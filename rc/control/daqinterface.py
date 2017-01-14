@@ -31,6 +31,7 @@ from rc.control.start_datataking_noop import start_datataking_base
 from rc.control.stop_datataking_noop import stop_datataking_base
 
 from rc.control.utilities import expand_environment_variable_in_string
+from rc.control.utilities import make_paragraph
 
 class DAQInterface(Component):
     """
@@ -113,7 +114,7 @@ class DAQInterface(Component):
                         res = re.search(r"#include\s+\"(\S+)\"", line)
                         
                         if not res:
-                            raise Exception(self.make_paragraph("Error in Procinfo::recursive_include: "
+                            raise Exception(make_paragraph("Error in Procinfo::recursive_include: "
                                             "unable to parse line \"%s\" in %s" %
                                             (line, filename)))
 
@@ -121,7 +122,7 @@ class DAQInterface(Component):
 
                         if included_file[0] == "/":
                             if not os.path.exists(included_file):
-                                raise Exception(self.make_paragraph("Error in "
+                                raise Exception(make_paragraph("Error in "
                                                                     "Procinfo::recursive_include: "
                                                                     "unable to find file %s" %
                                                                     included_file))
@@ -139,7 +140,7 @@ class DAQInterface(Component):
                                 
                                 ffp_string = ":".join(self.ffp)
 
-                                raise Exception(self.make_paragraph(
+                                raise Exception(make_paragraph(
                                         "Error in Procinfo::recursive_include: "
                                         "unable to find file %s in list of "
                                         "the following fhicl_file_paths: %s" %
@@ -191,44 +192,6 @@ class DAQInterface(Component):
         total_cmd = " ; ".join( checked_cmds )
 
         return total_cmd
-
-    def make_paragraph(self, userstring, chars_per_line=75):
-        userstring.strip()
- 
-        string_index = chars_per_line
-        previous_string_index = -1
-        ignore_algorithm = False
-
-        userstring = string.replace(userstring, "\n", " ")
-
-        while len(userstring) - string_index > 0:
-
-            if not ignore_algorithm:
-                while not userstring[string_index].isspace():
-                    string_index -= 1
-                    assert string_index >= 0
-            else:
-                while not userstring[string_index].isspace():
-                    string_index += 1
-                    if len(userstring) <= string_index:
-                        return "\n" + userstring
-                
-            if string_index != previous_string_index + chars_per_line: 
-                userstring = userstring[:string_index] + "\n" + userstring[string_index+1: ]
-
-            string_index += chars_per_line
-
-            # If there's a token with no whitespace which is longer
-            # than chars_per_line characters (as may be the case with
-            # some full pathnames, e.g.) there's a risk of an infinite
-            # loop without the external logic below
-            
-            if previous_string_index == string_index:
-                ignore_algorithm = True
-        
-            previous_string_index = string_index
-
-        return "\n" + userstring
 
     # JCF, Dec-16-2016
 
@@ -316,13 +279,13 @@ class DAQInterface(Component):
             self.read_settings()
         except:
             print traceback.format_exc()
-            print self.make_paragraph(
+            print make_paragraph(
                     "An exception was thrown when trying to read DAQInterface settings; "
                     "DAQInterface will exit. Look at the messages above, make any necessary "
                     "changes, and restart.") + "\n"
             sys.exit(1)
 
-        print self.make_paragraph("DAQInterface launched and now in \"%s\" state" % 
+        print make_paragraph("DAQInterface launched and now in \"%s\" state" % 
                                   (self.state(self.name)))
 
     get_config_info = get_config_info_base
@@ -371,15 +334,15 @@ class DAQInterface(Component):
         alertmsg = ""
         
         if not extrainfo is None:
-            alertmsg = "\n\n" + self.make_paragraph( "\"" + extrainfo + "\"")
+            alertmsg = "\n\n" + make_paragraph( "\"" + extrainfo + "\"")
 
-        alertmsg += "\n" + self.make_paragraph("DAQInterface has set the DAQ back in the \"stopped\" state; please make any necessary adjustments suggested by the stack trace and error messages above.")
+        alertmsg += "\n" + make_paragraph("DAQInterface has set the DAQ back in the \"stopped\" state; please make any necessary adjustments suggested by the stack trace and error messages above.")
         self.print_log( alertmsg )
 
     def read_settings(self):
         if not os.path.exists( os.getcwd() + "/.settings"):
 
-            raise Exception(self.make_paragraph("""Unable to find \".settings\" file in current directory
+            raise Exception(make_paragraph("""Unable to find \".settings\" file in current directory
 \"%s\"; this is probably because you're not running DAQInterface out of its package's base directory.
 Please kill DAQInterface and run it out of the base directory.""" % \
                         os.getcwd()))
@@ -408,7 +371,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 res = re.search(r".*\[(.*)\].*", line)
 
                 if not res:
-                    raise Exception(self.make_paragraph(
+                    raise Exception(make_paragraph(
                             "Unable to parse package_hashes_to_save line in the settings file, %s" % \
                                 (os.getcwd() + "/.settings")))
 
@@ -437,7 +400,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         if len(missing_vars) > 0:
             missing_vars_string = ", ".join(missing_vars)
             print
-            raise Exception(self.make_paragraph(
+            raise Exception(make_paragraph(
                                 "Unable to parse the following variable(s) meant to be set in the "
                                 "settings file, %s" % \
                                     (os.getcwd() + "/.settings : " + missing_vars_string ) ))
@@ -633,7 +596,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         cmds = []
 
         if not os.path.exists(self.daq_dir + "/" + self.daq_setup_script ):
-            raise Exception(self.make_paragraph(
+            raise Exception(make_paragraph(
                                 "Exception in DAQInterface: " +
                                 self.daq_setup_script + " script not found in " +
                                 self.daq_dir))
@@ -724,13 +687,13 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                         procinfo.port + " not found"
 
                     self.print_log(
-                        self.make_paragraph("Error in DAQInterface::check_proc_heartbeats(): "
+                        make_paragraph("Error in DAQInterface::check_proc_heartbeats(): "
                                             "please check messageviewer and/or the logfiles for error messages"))
                     self.print_log(errmsg)
 
         if not is_all_ok and requireSuccess:
             self.alert_and_recover(
-                self.make_paragraph("Heartbeat failure of at least one artdaq process; please check messageviewer"
+                make_paragraph("Heartbeat failure of at least one artdaq process; please check messageviewer"
                                     " and/or the logfiles for error messages"))
             return
 
@@ -925,7 +888,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                  self.num_eventbuilders(),
                  self.num_aggregators())
 
-            raise Exception(self.make_paragraph(errmsg))
+            raise Exception(make_paragraph(errmsg))
 
         undefined_var = ""
 
@@ -942,7 +905,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             errmsg = "Error: \"%s\" undefined in " \
                 "DAQInterface config file" % \
                 (undefined_var)
-            raise Exception(self.make_paragraph(errmsg))
+            raise Exception(make_paragraph(errmsg))
 
     # JCF, Dec-1-2016
 
@@ -1254,7 +1217,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         if len(proclines) != 1:
             print
-            raise Exception(self.make_paragraph("ERROR: DAQInterface expects a git commit hash of"
+            raise Exception(make_paragraph("ERROR: DAQInterface expects a git commit hash of"
                             " artdaq as new as or newer than %s (%s);"
                             " %s appears to be older than this or to not exist at all" %
                                                 (includes_commit, commit_date, artdaq_dir )))
@@ -1319,6 +1282,37 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             procinfo.server = TimeoutServerProxy(
                 procinfo.socketstring, 30)
 
+        # Figure out if we have the artdaq_mfextensions version expected by the artdaq used 
+        
+        version, equalifier, squalifier = self.artdaq_mfextensions_info()
+
+        if self.have_needed_artdaq_mfextensions():
+            print make_paragraph("artdaq_mfextensions %s, %s:%s, appears to be available; "
+                                      "if windowing is supported on your host you should see the "
+                                      "messageviewer window pop up momentarily" % \
+                                          (version, equalifier, squalifier))
+
+            cmds = []
+            cmds.append("cd %s" % (self.daq_dir))
+            cmds.append(". %s" % (self.daq_setup_script))
+            cmds.append("msgviewer -c $MRB_BUILDDIR/artdaq_mfextensions/bin/msgviewer.fcl 2>&1 > /dev/null &" )
+
+            msgviewercmd = self.construct_checked_command( cmds )
+
+            with deepsuppression():
+                status = Popen(msgviewercmd, shell=True).wait()
+            
+                if status != 0:
+                    raise Exception(make_paragraph("Exception in DAQInterface: " +
+                                    "status error raised in msgviewer call within Popen; tried the following commands: \"%s\"" %
+                                    " ; ".join(cmds) ))
+        else:
+            print make_paragraph("artdaq_mfextensions %s, %s:%s, does not appear to be available in the products directory \"%s\" - "
+                                      " unable to launch the messageviewer window. This will not affect"
+                                      " actual datataking, it just means you'll need to look at the"
+                                      " logfiles to see artdaq output." % \
+                                          (version, equalifier, squalifier, self.daq_dir + "/products"))
+
         # JCF, 3/5/15
 
         # Get our hands on the name of logfile so we can save its
@@ -1350,38 +1344,6 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             self.alert_and_recover("Problem obtaining logfile name(s)")
             return
 
-
-        # Figure out if we have the artdaq_mfextensions version expected by the artdaq used 
-        
-        version, equalifier, squalifier = self.artdaq_mfextensions_info()
-
-        if self.have_needed_artdaq_mfextensions():
-            print self.make_paragraph("artdaq_mfextensions %s, %s:%s, appears to be available; "
-                                      "if windowing is supported on your host you should see the "
-                                      "messageviewer window pop up momentarily" % \
-                                          (version, equalifier, squalifier))
-
-            cmds = []
-            cmds.append("cd %s" % (self.daq_dir))
-            cmds.append(". %s" % (self.daq_setup_script))
-            cmds.append("msgviewer -c $MRB_BUILDDIR/artdaq_mfextensions/bin/msgviewer.fcl 2>&1 > /dev/null &" )
-
-            msgviewercmd = self.construct_checked_command( cmds )
-
-            with deepsuppression():
-                status = Popen(msgviewercmd, shell=True).wait()
-            
-                if status != 0:
-                    raise Exception(self.make_paragraph("Exception in DAQInterface: " +
-                                    "status error raised in msgviewer call within Popen; tried the following commands: \"%s\"" %
-                                    " ; ".join(cmds) ))
-        else:
-            print self.make_paragraph("artdaq_mfextensions %s, %s:%s, does not appear to be available in the products directory \"%s\" - "
-                                      " unable to launch the messageviewer window. This will not affect"
-                                      " actual datataking, it just means you'll need to look at the"
-                                      " logfiles to see artdaq output." % \
-                                          (version, equalifier, squalifier, self.daq_dir + "/products"))
-
         self.complete_state_change(self.name, "booting")
 
         print "\n%s: BOOT transition complete" % (self.date_and_time()) 
@@ -1402,7 +1364,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         except:
             self.revert_state_change(self.name, self.state(self.name))
             self.print_log(traceback.format_exc())
-            self.print_log(self.make_paragraph(
+            self.print_log(make_paragraph(
                     "Exception thrown by get_config_info(); system remains in the "
                     "\"%s\" state" % (self.state(self.name))))
             return
@@ -1433,7 +1395,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     "boot only with components which exist for configuration \"%s\"." % \
                     (self.config_for_run)
 
-                self.print_log(self.make_paragraph(msg))
+                self.print_log(make_paragraph(msg))
 
                 self.revert_state_change(self.name, self.state(self.name))
                 return
@@ -1704,7 +1666,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     lastreturned=procinfo.server.daq.stop()
                 except Exception:
                     print traceback.format_exc()
-                    self.print_log( self.make_paragraph( 
+                    self.print_log( make_paragraph( 
                         "Exception caught during stop transition " +
                         "sent to artdaq process %s " % (procinfo.name) +
                         "at %s:%s during recovery procedure;" % (procinfo.host, procinfo.port) +
@@ -1715,7 +1677,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     self.print_log("Successful stop sent to %s at %s:%s" % \
                                        (procinfo.name, procinfo.host, procinfo.port), 2)
                 else:
-                    self.print_log( self.make_paragraph( 
+                    self.print_log( make_paragraph( 
                             "Attempted stop sent to artdaq process %s " % (procinfo.name) + \
                                 "at %s:%s during recovery procedure" % (procinfo.host, procinfo.port) + \
                                 " returned \"%s\"; ignored as kill command will be sent momentarily" % \
@@ -1726,7 +1688,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             #     lastreturned = procinfo.server.daq.shutdown()
             # except Exception:
             #     print traceback.format_exc()
-            #     self.print_log(self.make_paragraph(
+            #     self.print_log(make_paragraph(
             #         "Exception caught during terminate transition " + \
             #         "sent to artdaq process %s " % (procinfo.name) + \
             #         "at %s : %s during recovery procedure;" % (procinfo.host, procinfo.port) + \
@@ -1734,7 +1696,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             #         "momentarily"))
             #     return
 
-            # self.print_log(self.make_paragraph(
+            # self.print_log(make_paragraph(
             #         "Return value from shutdown attempt on process %s at %s:%s is %s" % \
             #             (procinfo.name, procinfo.host, procinfo.port, lastreturned)))
 
@@ -1757,7 +1719,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             self.kill_procs()
         except Exception:
             self.print_log(traceback.format_exc())
-            self.print_log(self.make_paragraph("An exception was thrown "
+            self.print_log(make_paragraph("An exception was thrown "
                                    "within kill_procs(); artdaq processes may not all have been killed"))
 
         self.in_recovery = False
