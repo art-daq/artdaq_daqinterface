@@ -108,7 +108,7 @@ function main() {
 
     # Start the DAQ, and run it for the requested amount of time
 
-    $scriptdir/send_transition.sh start $runnum
+    $scriptdir/send_transition.sh start
 
     wait_until_no_longer starting
 

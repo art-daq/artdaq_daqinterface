@@ -16,6 +16,7 @@ if [[ "$xmlrpc_retval" != "0" ]]; then
     exit 40
 fi
 
+
 case $cmd in
     "boot")
 	test $# -gt 1 || badargs=true 
@@ -29,9 +30,15 @@ case $cmd in
 	xmlrpc_arg="config:s/"$2
 	;;
     "start")
-	test $# == 2 || badargs=true 
+	test $# == 1 || badargs=true 
 	translated_cmd="starting"
-	xmlrpc_arg="run_number:i/"$2
+
+	run_records_dir=$( awk '/record_directory/ { print $2 }' .settings )
+	run_records_dir=$( echo $( eval echo $run_records_dir ) )  # Expand environ variables in string
+	
+	last_runnum=$( ls -tr1 $run_records_dir | tail -1 )
+
+	xmlrpc_arg="run_number:i/"$((last_runnum + 1))
 	;;
     "stop")
 	test $# == 1 || badargs=true 
