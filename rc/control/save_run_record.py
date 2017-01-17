@@ -1,6 +1,7 @@
 
 import os
 import stat
+import re
 import subprocess
 from subprocess import Popen
 import traceback
@@ -101,3 +102,73 @@ def save_run_record_base(self):
         print "Saved run configuration records in %s" % \
             (outdir)
         print
+
+def total_events_in_run_base(self):
+
+    data_logger_filenames = []
+    
+    if len(self.aggregator_log_filenames) > 0:
+
+        for log_filename in self.aggregator_log_filenames:
+            host, filename = log_filename.split(":")
+        
+            cmd = "grep -l \"is_data_logger\s*=\s*1\" " +  filename
+
+            if host != "localhost" and host != os.environ["HOSTNAME"]:
+                cmd = "ssh -f " + host + " '" + cmd + "'"
+            
+            proc = Popen(cmd, shell=True, stdout=subprocess.PIPE)
+            proclines = proc.stdout.readlines()
+            
+            if len(proclines) != 0:
+                assert len(proclines) == 1, "%s\n%s\nETC." % (proclines[0], proclines[1])
+                assert proclines[0].strip() == filename, "%s not the same as %s" % (proclines[0].strip(), filename)
+            else:
+                continue
+                
+            data_logger_filenames.append( log_filename )
+    else:
+        data_logger_filenames = self.eventbuilder_log_filenames
+
+    total = 0
+    fail_value = -999
+
+    for log_filename in data_logger_filenames:
+
+        cmd = "sed -r -n '/Subrun [0-9]+ in run " + str(self.run_number) + " has ended/s/.*There were ([0-9]+) events in this subrun.*/\\1/p' " + log_filename.split(":")[1]
+
+        if host != "localhost" and host != os.environ["HOSTNAME"]:
+            cmd = "ssh -f " + host + " \"" + cmd + "\""
+
+        proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proclines = proc.stdout.readlines()
+
+        proclines = [ line.strip() for line in proclines ]
+
+        warning_msg = "WARNING: unable to deduce the number of events in run " + \
+            str(self.run_number) + " by running the following command: \"" + \
+            cmd + "\""
+
+        if len(proclines) == 0:
+            print warning_msg
+            return fail_value
+
+        for line in proclines:
+            if not re.search(r"^[0-9]+$", line):
+                print warning_msg
+                return fail_value
+
+        for line in proclines:
+            total += int(line)
+        
+    return total
+
+def save_metadata_value_base(self, key, value):
+
+    outdir = "%s/%s" % (self.record_directory, str(self.run_number))
+    assert os.path.exists(outdir + "/metadata.txt")
+
+    outf = open(outdir + "/metadata.txt", "a")
+
+    outf.write("\n%s: %s\n" % (key, value))
+

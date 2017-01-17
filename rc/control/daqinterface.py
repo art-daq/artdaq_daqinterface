@@ -27,6 +27,8 @@ from rc.control.config_functions_local import get_config_info_base
 from rc.control.config_functions_local import put_config_info_base
 from rc.control.config_functions_local import get_daqinterface_config_info_base
 from rc.control.save_run_record import save_run_record_base
+from rc.control.save_run_record import total_events_in_run_base
+from rc.control.save_run_record import save_metadata_value_base
 from rc.control.start_datataking_noop import start_datataking_base
 from rc.control.stop_datataking_noop import stop_datataking_base
 
@@ -292,6 +294,8 @@ class DAQInterface(Component):
     put_config_info = put_config_info_base
     get_daqinterface_config_info = get_daqinterface_config_info_base
     save_run_record = save_run_record_base
+    total_events_in_run = total_events_in_run_base
+    save_metadata_value = save_metadata_value_base
     start_datataking = start_datataking_base
     stop_datataking = stop_datataking_base
 
@@ -1587,6 +1591,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         self.stop_datataking()
 
         self.do_command("Stop")
+
+        self.save_metadata_value("Total events", self.total_events_in_run())
 
         self.complete_state_change(self.name, "stopping")
         print "\n%s: STOP transition complete for run %d" % \
