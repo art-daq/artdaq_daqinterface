@@ -60,7 +60,17 @@
 	if ( $0 !~ /^\s*$/) {
 	    aggregators[++aggregator_cntr] = $1
 	    next
-	} 
+	} else {
+	    printf "\naggregator_logfiles: ["
+	    for (i = 1; i <= length(aggregators); ++i) {
+		if (i != length(aggregators)) {
+		    printf "\"%s\", ", aggregators[i]
+		} else {
+		    printf "\"%s\"]\n\n", aggregators[i]
+		}
+	    }
+	    aggregator_section_active = 0
+	}
     }
 
 
@@ -74,9 +84,12 @@
 	secondpart=substr($0, RSTART+1);
 	sub("^[ +]", "", secondpart)
 
-	if (firstpart ~ "Config name") {
-	    printf "config_name: \"%s\"\n", secondpart
-	    next
+	if (firstpart ~ "Config name" || firstpart ~ "Start time" ||
+	    firstpart ~ "Stop time" || firstpart ~ "Total events" ) {
+	    
+	    firstpart = tolower(firstpart)
+	    sub(" ", "_", firstpart)
+
 	} else if (firstpart ~ /Component #[0-9]/) {
 	    components[++component_cntr] = secondpart
 	    components_section_active = 1
@@ -111,16 +124,16 @@
     }
 }
 
-END {
+# END {
 
-    # This section exists because the last line is an aggregator logfile line
-    printf "\naggregator_logfiles: ["
-    for (i = 1; i <= length(aggregators); ++i) {
-	if (i != length(aggregators)) {
-	    printf "\"%s\", ", aggregators[i]
-	} else {
-	    printf "\"%s\"]\n", aggregators[i]
-	}
-    }
-    aggregator_section_active = 0
-}
+#     # This section exists because the last line is an aggregator logfile line
+#     printf "\naggregator_logfiles: ["
+#     for (i = 1; i <= length(aggregators); ++i) {
+# 	if (i != length(aggregators)) {
+# 	    printf "\"%s\", ", aggregators[i]
+# 	} else {
+# 	    printf "\"%s\"]\n", aggregators[i]
+# 	}
+#     }
+#     aggregator_section_active = 0
+# }

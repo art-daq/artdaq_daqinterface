@@ -1579,6 +1579,9 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         self.start_datataking()
 
+        self.save_metadata_value("Start time", \
+                                     Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
+
         self.complete_state_change(self.name, "starting")
         print "\n%s: START transition complete for run %d" % \
             (self.date_and_time(), self.run_number)
@@ -1588,11 +1591,17 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         print "\n%s: STOP transition underway for run %d" % \
             (self.date_and_time(), self.run_number)
 
+        self.save_metadata_value("Stop time", \
+                                     Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
+
+
         self.stop_datataking()
 
         self.do_command("Stop")
 
+
         self.save_metadata_value("Total events", self.total_events_in_run())
+        
 
         self.complete_state_change(self.name, "stopping")
         print "\n%s: STOP transition complete for run %d" % \
