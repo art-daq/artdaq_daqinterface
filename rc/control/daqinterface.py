@@ -611,7 +611,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                         "/" + logdir)
 
         cmds.append("cd " + self.daq_dir)
-        cmds.append("source " + self.daq_setup_script )
+        cmds.append("source ./" + self.daq_setup_script )
         cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=30")
 
         if self.have_needed_artdaq_mfextensions():
