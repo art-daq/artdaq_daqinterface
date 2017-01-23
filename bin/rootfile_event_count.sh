@@ -60,5 +60,5 @@ for file_location in $file_locations ; do
 
 done
 
-echo "Total events comes out to be $total_events" 
+echo $total_events
 
