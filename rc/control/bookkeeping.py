@@ -116,6 +116,18 @@ def bookkeeping_for_fhicl_documents_artdaq_v2_base(self):
                 self.num_eventbuilders() + \
                 self.num_aggregators() - 1
 
+            # JCF, Jan-24-2017
+     
+            # This is a kluge to account for the fact that the code can't
+            # yet handle more than one data logger
+
+            if transfer_source_rank == transfer_destination_rank:
+                transfer_source_rank -= 1
+
+            assert self.num_aggregators() == 2, "Code doesn't yet support multiple data loggers"
+
+
+
             transfer_code = self.procinfos[i_proc].fhicl_used[table_start:table_end]
             transfer_code = re.sub(r"source_rank\s*:\s*[0-9]+", 
                                    "source_rank: %d" % (transfer_source_rank),
