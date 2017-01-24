@@ -66,13 +66,25 @@ if [[ ! -e $run_records_metadata_file ]]; then
     exit 40
 fi
 
+# JCF, Jan-24-2017
+
+# We shouldn't complain if there's data added to the metadata file in
+# run records that doesn't appear in the saved metadata in the *.root
+# file if that data's added after the initialization of the artdaq
+# processes - so let's "clean out" variables added later before we
+# perform the comparison
+
+cleaned_run_records_metadata_file=/tmp/$(uuidgen)
+
+grep -E -v 'Total events|Start time|Stop time' $run_records_config_file > $cleaned_run_records_metadata_file
+
 res_config=$( diff --ignore-blank-lines $temporary_daqinterface_config_file $run_records_config_file )
-res_metadata=$( diff --ignore-blank-lines $temporary_metadata_file $run_records_metadata_file )
+res_metadata=$( diff --ignore-blank-lines $temporary_metadata_file $cleaned_run_records_metadata_file )
 
 
 if [[ -z $res_config && -z $res_metadata ]]; then
     echo "Data in $rootfile and $runrecordsdir/$runnum agree"
-    rm -f $temporary_daqinterface_config_file $temporary_metadata_file
+    rm -f $temporary_daqinterface_config_file $temporary_metadata_file $cleaned_run_records_metadata_file
     exit 0
 fi
 
@@ -86,6 +98,6 @@ if [[ -n $res_metadata ]]; then
     echo "Metadata file info inconsistent between $rootfile and $runrecordsdir/$runnum (see above for diff)"
 fi
 
-rm -f $temporary_daqinterface_config_file $temporary_metadata_file
+rm -f $temporary_daqinterface_config_file $temporary_metadata_file $cleaned_run_records_metadata_file
 
 exit 50
