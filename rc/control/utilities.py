@@ -56,3 +56,37 @@ def make_paragraph(userstring, chars_per_line=75):
         previous_string_index = string_index
 
     return "\n" + userstring
+
+def table_range(fhiclstring, tablename):
+
+    loc = string.find(fhiclstring, tablename)
+
+    if loc == -1:
+        return (-1, -1)
+
+    open_brace_loc = string.index(fhiclstring[loc:], "{")
+
+    close_braces_needed = 1
+    close_brace_loc = -1
+
+    for i_char, char in enumerate(fhiclstring[(loc+open_brace_loc+1):]):
+        #print char
+
+        if char == '{':
+            close_braces_needed += 1
+        elif char == '}':
+            close_braces_needed -= 1
+
+        #print close_braces_needed, i_char
+
+        if close_braces_needed == 0:
+            close_brace_loc = i_char
+            break
+
+    if close_brace_loc == -1:
+        raise Exception(
+            "Unable to find close brace for requested table \"%s\"" % \
+                tablename)
+
+    return (loc, loc + open_brace_loc + 1 + close_brace_loc + 1)
+

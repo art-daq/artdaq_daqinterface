@@ -5,18 +5,13 @@ services: {
   }
   NetMonTransportServiceInterface: {
     service_provider: NetMonTransportService
-    max_fragment_size_words: 2097152
   }
 
   #SimpleMemoryCheck: { }
 }
 
 daq: {
-  max_fragment_size_words: 2097152
   aggregator: {
-    mpi_buffer_count: 8
-    first_event_builder_rank: 2
-    event_builder_count: 2
     expected_events_per_bunch: 1
     print_event_store_stats: true
     event_queue_depth: 2
@@ -27,6 +22,12 @@ daq: {
     file_duration: 0
     file_event_count: 0
     is_dispatcher: true
+
+	sources: {
+		s2: { transferPluginType: MPI source_rank: 2 max_fragment_size_words: 2097152 host_map: [{rank: 0 host: "mu2edaq01.fnal.gov" portOffset: 5300},{rank: 1 host: "mu2edaq01.fnal.gov" portOffset: 5310},{rank: 2 host: "mu2edaq01.fnal.gov" portOffset: 5320},{rank: 3 host: "mu2edaq01.fnal.gov" portOffset: 5330},{rank: 4 host: "mu2edaq01.fnal.gov" portOffset: 5340},{rank: 5 host: "mu2edaq01.fnal.gov" portOffset: 5350}]}
+s3: { transferPluginType: MPI source_rank: 3 max_fragment_size_words: 2097152 host_map: [{rank: 0 host: "mu2edaq01.fnal.gov" portOffset: 5300},{rank: 1 host: "mu2edaq01.fnal.gov" portOffset: 5310},{rank: 2 host: "mu2edaq01.fnal.gov" portOffset: 5320},{rank: 3 host: "mu2edaq01.fnal.gov" portOffset: 5330},{rank: 4 host: "mu2edaq01.fnal.gov" portOffset: 5340},{rank: 5 host: "mu2edaq01.fnal.gov" portOffset: 5350}]}
+
+	}
   }
 
   metrics: {
@@ -60,13 +61,10 @@ daq: {
   }
 
   transfer_to_dispatcher: {
-
     transferPluginType: Shmem
-
-    unique_label: "shared_memory_between_data_logger_and_dispatcher"
-
+	source_rank: 4
+	destination_rank: 5
     max_fragment_size_words: 2097152
-    first_event_builder_rank: 2
   }
 
 }
@@ -78,21 +76,18 @@ outputs: {
   #normalOutput: {
   #  module_type: RootOutput
   #  fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%to.root"
-  #  compressionLevel: 0
   #}
 
   #normalOutputMod2: {
   #  module_type: RootOutput
   #  fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%to_mod2.root"
   #  SelectEvents: { SelectEvents: [ pmod2 ] }
-  #  compressionLevel: 0
   #}
 
   #normalOutputMod3: {
   #  module_type: RootOutput
   #  fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%to_mod3.root"
   #  SelectEvents: { SelectEvents: [ pmod3 ] }
-  #  compressionLevel: 0
   #}
 
 }
@@ -109,12 +104,6 @@ physics: {
   }
 
   producers: {
-
-     
-
-     
-
-     # Decompression functionality can also be added...
 
      BuildInfo:
      {
@@ -136,8 +125,6 @@ physics: {
     }
   }
 
-
-  p1: [  ] 
   p2: [ BuildInfo ]
   pmod2: [ prescaleMod2 ]
   pmod3: [ prescaleMod3 ]

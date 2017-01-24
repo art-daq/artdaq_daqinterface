@@ -31,7 +31,7 @@ from rc.control.save_run_record import total_events_in_run_base
 from rc.control.save_run_record import save_metadata_value_base
 from rc.control.start_datataking_noop import start_datataking_base
 from rc.control.stop_datataking_noop import stop_datataking_base
-from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v1_base
+from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v2_base
 
 
 from rc.control.utilities import expand_environment_variable_in_string
@@ -300,7 +300,7 @@ class DAQInterface(Component):
     save_metadata_value = save_metadata_value_base
     start_datataking = start_datataking_base
     stop_datataking = stop_datataking_base
-    bookkeeping_for_fhicl_documents = bookkeeping_for_fhicl_documents_artdaq_v1_base
+    bookkeeping_for_fhicl_documents = bookkeeping_for_fhicl_documents_artdaq_v2_base
 
     # The actual transition functions called by Run Control; note
     # these just set booleans which are tested in the runner()
@@ -1208,11 +1208,11 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             revert_failed_boot("when checking for the list of components meant to be provided by the \"setdaqcomps\" call")
             return
         
-#        includes_commit = "cd2e091960d9607ef61e3f7226c3aede90bc2e6e"
-#        commit_date = "Jan 12, 2017"
+        includes_commit = "cd2e091960d9607ef61e3f7226c3aede90bc2e6e"
+        commit_date = "Jan 12, 2017"
 
-        includes_commit = "ff4f17871ff0ae0cca088e99b4e02c7cac535b36"
-        commit_date = "Sep 21, 2016"
+#        includes_commit = "ff4f17871ff0ae0cca088e99b4e02c7cac535b36"
+#        commit_date = "Sep 21, 2016"
 
         artdaq_dir = self.daq_dir + "/srcs/artdaq"
 
