@@ -31,6 +31,8 @@ from rc.control.save_run_record import total_events_in_run_base
 from rc.control.save_run_record import save_metadata_value_base
 from rc.control.start_datataking_noop import start_datataking_base
 from rc.control.stop_datataking_noop import stop_datataking_base
+from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v1_base
+
 
 from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
@@ -298,7 +300,7 @@ class DAQInterface(Component):
     save_metadata_value = save_metadata_value_base
     start_datataking = start_datataking_base
     stop_datataking = stop_datataking_base
-
+    bookkeeping_for_fhicl_documents = bookkeeping_for_fhicl_documents_artdaq_v1_base
 
     # The actual transition functions called by Run Control; note
     # these just set booleans which are tested in the runner()
@@ -1206,6 +1208,9 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             revert_failed_boot("when checking for the list of components meant to be provided by the \"setdaqcomps\" call")
             return
         
+#        includes_commit = "cd2e091960d9607ef61e3f7226c3aede90bc2e6e"
+#        commit_date = "Jan 12, 2017"
+
         includes_commit = "ff4f17871ff0ae0cca088e99b4e02c7cac535b36"
         commit_date = "Sep 21, 2016"
 
@@ -1462,83 +1467,12 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         for procinfo in self.procinfos:
             assert not procinfo.fhicl is None and not procinfo.fhicl_used is None
 
-        # JCF, 11/11/14
-
-        # Now, set some variables which we'll use to replace
-        # pre-existing variables in the FHiCL documents before we send
-        # them to the artdaq processes
-
-        # First passthrough of procinfos: assemble the
-        # xmlrpc_client_list string, and figure out how many of each
-        # type of process there are
-
-        xmlrpc_client_list = "\""
-        numeral = ""
-
-        for procinfo in self.procinfos:
-            if "BoardReader" in procinfo.name:
-                numeral = "3"
-            elif "EventBuilder" in procinfo.name:
-                numeral = "4"
-            elif "Aggregator" in procinfo.name:
-                numeral = "5"
-
-            xmlrpc_client_list += ";http://" + procinfo.host + ":" + \
-                procinfo.port + "/RPC2," + numeral
-
-        xmlrpc_client_list += "\""
-
-        # Second passthrough: use this newfound info to modify the
-        # FHiCL code we'll send during the config transition
-
-        # Note that loops of the form "proc in self.procinfos" are
-        # pass-by-value rather than pass-by-reference, so I need to
-        # adopt a slightly cumbersome indexing notation
-
-        for i_proc in range(len(self.procinfos)):
-
-            self.procinfos[i_proc].fhicl_used = re.sub(
-                "first_event_builder_rank.*\n",
-                "first_event_builder_rank: " +
-                str(self.num_boardreaders()) + "\n",
-                self.procinfos[i_proc].fhicl_used)
-
-            self.procinfos[i_proc].fhicl_used = re.sub(
-                "event_builder_count.*\n",
-                "event_builder_count: " +
-                str(self.num_eventbuilders()) + "\n",
-                self.procinfos[i_proc].fhicl_used)
-
-            self.procinfos[i_proc].fhicl_used = re.sub(
-                "xmlrpc_client_list.*\n",
-                "xmlrpc_client_list: " +
-                xmlrpc_client_list + "\n",
-                self.procinfos[i_proc].fhicl_used)
-
-            self.procinfos[i_proc].fhicl_used = re.sub(
-                "first_data_receiver_rank.*\n",
-                "first_data_receiver_rank: " +
-                str(self.num_boardreaders() +
-                    self.num_eventbuilders()) + "\n",
-                self.procinfos[i_proc].fhicl_used)
-
-            self.procinfos[i_proc].fhicl_used = re.sub(
-                "expected_fragments_per_event.*\n",
-                "expected_fragments_per_event: " +
-                str(self.num_boardreaders()) + "\n",
-                self.procinfos[i_proc].fhicl_used)
-
-            self.procinfos[i_proc].fhicl_used = re.sub(
-                "fragment_receiver_count.*\n",
-                "fragment_receiver_count: " +
-                str(self.num_boardreaders()) + "\n",
-                self.procinfos[i_proc].fhicl_used)
-
-            self.procinfos[i_proc].fhicl_used = re.sub(
-                "data_receiver_count.*\n",
-                "data_receiver_count: " +
-                str(self.num_aggregators() - 1) + "\n",
-                self.procinfos[i_proc].fhicl_used)
+        try:
+            self.bookkeeping_for_fhicl_documents()
+        except Exception:
+            self.print_log(traceback.format_exc())
+            self.alert_and_recover("An exception was thrown when performing bookkeeping on the process FHiCL documents; see traceback above for more info")
+            return
         
         self.tmp_run_record = "/tmp/run_record_attempted"
         
