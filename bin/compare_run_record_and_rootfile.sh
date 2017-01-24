@@ -77,11 +77,13 @@ if [[ -z $res_config && -z $res_metadata ]]; then
 fi
 
 if [[ -n $res_config ]]; then
-    echo "DAQInterface configuration file info inconsistent between $rootfile and $runrecordsdir/$runnum "
+    echo $res_config
+    echo "DAQInterface configuration file info inconsistent between $rootfile and $runrecordsdir/$runnum (see above for diff)"
 fi
-
+ 
 if [[ -n $res_metadata ]]; then
-    echo "Metadata file info inconsistent between $rootfile and $runrecordsdir/$runnum "
+    echo $res_metadata
+    echo "Metadata file info inconsistent between $rootfile and $runrecordsdir/$runnum (see above for diff)"
 fi
 
 rm -f $temporary_daqinterface_config_file $temporary_metadata_file
