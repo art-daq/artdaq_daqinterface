@@ -34,6 +34,7 @@ from rc.control.stop_datataking_noop import stop_datataking_base
 
 from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
+from rc.control.utilities import get_pids
 
 class DAQInterface(Component):
     """
@@ -156,29 +157,6 @@ class DAQInterface(Component):
 
         if self.debug_level >= debuglevel:
             print "%s: %s" % (self.date_and_time(), printstr)
-
-    # JCF, 3/11/15
-
-    # "get_pids" is a simple utility function which will go to the
-    # requested host (defaults to the local host), and searches for a
-    # process by grep-ing for the passed greptoken in the process
-    # table returned by "ps aux". It returns a (possibly empty) list
-    # of the process IDs found
-
-    def get_pids(self, greptoken, host="localhost"):
-
-        cmd = 'ps aux | grep "%s" | grep -v grep' % (greptoken)
-
-        if host != "localhost":
-            cmd = "ssh -f " + host + " '" + cmd + "'"
-
-        proc = Popen(cmd, shell=True, stdout=subprocess.PIPE)
-
-        lines = proc.stdout.readlines()
-
-        pids = [line.split()[1] for line in lines]
-
-        return pids
 
     def construct_checked_command(self, cmds ):
 
@@ -531,7 +509,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
     def launch_procs(self):
 
         greptoken = "pmt.rb -p " + self.pmt_port
-        pids = self.get_pids(greptoken, self.pmt_host)
+        pids = get_pids(greptoken, self.pmt_host)
 
         if len(pids) != 0:
             raise Exception("\"pmt.rb -p %s\" was already running on %s" %
@@ -659,7 +637,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
             greptoken = proctype + " -p " + procinfo.port
 
-            pids = self.get_pids(greptoken, procinfo.host)
+            pids = get_pids(greptoken, procinfo.host)
 
             num_procs_found = len(pids)
 
@@ -784,7 +762,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         # Now, the commands which will clean up the pmt.rb + its child
         # artdaq processes
 
-        pmt_pids = self.get_pids("ruby.*pmt.rb -p " + str(self.pmt_port),
+        pmt_pids = get_pids("ruby.*pmt.rb -p " + str(self.pmt_port),
                                  self.pmt_host)
 
         if len(pmt_pids) > 0:
@@ -801,7 +779,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         for procinfo in self.procinfos:
             greptoken = procinfo.name + "Main -p " + procinfo.port
 
-            pids = self.get_pids(greptoken, procinfo.host)
+            pids = get_pids(greptoken, procinfo.host)
 
             if len(pids) > 0:
                 cmd = "kill -9 " + pids[0]
@@ -816,7 +794,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
                 sleep(1)
 
-                pids = self.get_pids(greptoken, procinfo.host)
+                pids = get_pids(greptoken, procinfo.host)
 
                 if len(pids) > 0:
                     self.print_log("Error in "
@@ -1697,7 +1675,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
             greptoken = procinfo.name + "Main -p " + procinfo.port
 
-            pid = self.get_pids(greptoken, procinfo.host)
+            pid = get_pids(greptoken, procinfo.host)
             
             assert len(pid) <= 1
 
@@ -1847,6 +1825,13 @@ def get_args():  # no-coverage
 
 
 def main():  # no-coverage
+
+    greptoken = "python.*daqinterface.py"
+    pids = get_pids(greptoken)
+
+    if len(pids) > 1:
+        print make_paragraph("Won't launch DAQInterface; it appears an instance is already running on this host (i.e., found more than one result when grepping for \"%s\" on the output of the \"ps aux\" command)" % (greptoken))
+        return
 
     args = get_args()
 
