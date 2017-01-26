@@ -969,7 +969,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                                        " in procinfos")
                 return
 
-            dressed_fhicl = re.sub("'","\\'", procinfo.fhicl_used)
+            dressed_fhicl = re.sub("'","\"", procinfo.fhicl_used)
             runstring += dressed_fhicl
             runstring += "\n  '\n"
         
