@@ -3,6 +3,9 @@ import os
 import re
 import string
 
+import subprocess
+from subprocess import Popen
+
 def expand_environment_variable_in_string(line):
 
     res = re.search(r"^(.*)(\$[A-Z]+)(.*)", line)
@@ -56,3 +59,27 @@ def make_paragraph(userstring, chars_per_line=75):
         previous_string_index = string_index
 
     return "\n" + userstring
+
+
+# JCF, 3/11/15
+
+# "get_pids" is a simple utility function which will go to the
+# requested host (defaults to the local host), and searches for a
+# process by grep-ing for the passed greptoken in the process
+# table returned by "ps aux". It returns a (possibly empty) list
+# of the process IDs found
+
+def get_pids(greptoken, host="localhost"):
+
+    cmd = 'ps aux | grep "%s" | grep -v grep' % (greptoken)
+
+    if host != "localhost":
+        cmd = "ssh -f " + host + " '" + cmd + "'"
+
+    proc = Popen(cmd, shell=True, stdout=subprocess.PIPE)
+
+    lines = proc.stdout.readlines()
+
+    pids = [line.split()[1] for line in lines]
+
+    return pids
