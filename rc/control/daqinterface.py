@@ -26,6 +26,7 @@ from rc.control.deepsuppression import deepsuppression
 from rc.control.config_functions_local import get_config_info_base
 from rc.control.config_functions_local import put_config_info_base
 from rc.control.config_functions_local import get_daqinterface_config_info_base
+from rc.control.config_functions_local import listdaqcomps_base
 from rc.control.save_run_record import save_run_record_base
 from rc.control.save_run_record import total_events_in_run_base
 from rc.control.save_run_record import save_metadata_value_base
@@ -35,6 +36,7 @@ from rc.control.stop_datataking_noop import stop_datataking_base
 from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_pids
+
 
 class DAQInterface(Component):
     """
@@ -271,6 +273,7 @@ class DAQInterface(Component):
     get_config_info = get_config_info_base
     put_config_info = put_config_info_base
     get_daqinterface_config_info = get_daqinterface_config_info_base
+    listdaqcomps = listdaqcomps_base
     save_run_record = save_run_record_base
     total_events_in_run = total_events_in_run_base
     save_metadata_value = save_metadata_value_base
@@ -917,8 +920,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             proclines = proc.stdout.readlines()
             
             if len(proclines) != count:
-                raise Exception("Exception in DAQInterface: " +
-                                "problem seeking logfile(s); message is \"%s\"" % "".join(proc.stderr.readlines()))
+                raise Exception("Exception in DAQInterface: " + \
+                                    "command \"%s\" on host \"%s\" yielded no results. Have the logfile directories been created?" % (cmd, host))
 
             for line in proclines:
 

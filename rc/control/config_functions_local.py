@@ -1,6 +1,7 @@
 
 import os
 import re
+import traceback
 
 import sys
 sys.path.append( os.getcwd() )
@@ -113,3 +114,32 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
                     memberDict[varname] = None
 
     return daqinterface_config_filename
+
+def listdaqcomps_base(self):
+
+    components_file = os.getcwd() + "/.components.txt"
+
+    try:
+        inf = open( components_file )
+    except:
+        print traceback.format_exc()
+        return 
+
+    lines = inf.readlines()
+
+    print
+    print "# of components found in listdaqcomps call: %d" % (len(lines))
+
+    lines.sort()
+    for line in lines:
+        component = line.split()[0].strip()
+        host = line.split()[1].strip()
+        
+        print "%s (runs on %s)" % (component, host)
+
+def main():
+    print "Calling listdaqcomps_base: "
+    listdaqcomps_base("ignored_argument")
+
+if __name__ == "__main__":
+    main()

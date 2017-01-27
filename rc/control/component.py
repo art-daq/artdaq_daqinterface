@@ -37,7 +37,8 @@ class Component(ContextObject):
              rpc_server(port=self.__rpc_port,
                         funcs={"state": self.state,
                                "state_change": self.state_change,
-                               "setdaqcomps": self.setdaqcomps })),
+                               "setdaqcomps": self.setdaqcomps,
+                               "listdaqcomps": self.listdaqcomps})),
             ("runner", threadable(func=self.runner))]
 
         self.dict_state_to = {"booting": "booted",
@@ -88,8 +89,10 @@ class Component(ContextObject):
         self.__state = oldstate
 
     def setdaqcomps(self, daqcomps):
-        pass
+        assert False, "This version of the function should not be called"
 
+    def listdaqcomps(self):
+        assert False, "This version of the function should not be called"
 
     def state_change(self, name, requested, state_args):
         if name != self.name:

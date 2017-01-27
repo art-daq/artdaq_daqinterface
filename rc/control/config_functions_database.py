@@ -189,3 +189,6 @@ def get_daqinterface_config_info_base(self, daqinterface_config_label):
         raise Exception("Problem executing the following command: \"%s\"" % (cmd))
     
     return newfclfile
+
+def listdaqcomps_base(self):
+    assert False, "listdaqcomps not yet implemented in case of database use"
