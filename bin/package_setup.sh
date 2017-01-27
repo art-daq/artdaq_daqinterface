@@ -20,7 +20,6 @@ proddir=$( echo $( eval echo $proddir ) )  # Expand environ variables in string
 
 if [[ -n $proddir ]]; then
 
-    export PRODUCTS=
     . $proddir/setup 
 
     if [[ "$?" != "0" ]]; then
