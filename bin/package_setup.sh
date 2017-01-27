@@ -23,18 +23,18 @@ if [[ -n $proddir ]]; then
     . $proddir/setup 
 
     if [[ "$?" != "0" ]]; then
-	echo "Attempted setup of $proddir failed; command will not work" >&2
+	echo -e "\n\nCommand will not work: attempted setup of $proddir failed" >&2
 	return 50
     fi
     
     num_packages=$(ups list -aK+ $packagename | wc -l )
 
     if [[ "$num_packages" == "0" ]]; then
-	echo "Unable to find any $packagename packages in ${proddir}; command will not work" >&2
+	echo -e "\n\nCommand will not work: unable to find any $packagename packages in the following products path(s) in use: " >&2
+	echo $PRODUCTS | tr ":" "\n" >&2
+	echo
 	return 60
     fi
-
-    #test "$num_packages" -gt "1" && echo "Warning: found more than one possible $packagename package in ${proddir}; will pick one package at random for setup" >&2
 
     setup_cmd=$( ups list -aK+ $packagename | sort -n | tail -1 | awk '{print "setup $packagename",$2," -q ", $4}' )
     eval $setup_cmd
