@@ -35,9 +35,9 @@ if [[ -n $proddir ]]; then
 	return 60
     fi
 
-    test "$num_packages" -gt "1" && echo "Warning: found more than one possible $packagename package in ${proddir}; will pick one package at random for setup" >&2
+    #test "$num_packages" -gt "1" && echo "Warning: found more than one possible $packagename package in ${proddir}; will pick one package at random for setup" >&2
 
-    setup_cmd=$( ups list -aK+ $packagename | tail -1 | awk '{print "setup $packagename",$2," -q ", $4}' )
+    setup_cmd=$( ups list -aK+ $packagename | sort -n | tail -1 | awk '{print "setup $packagename",$2," -q ", $4}' )
     eval $setup_cmd
 
     return 0
