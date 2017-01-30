@@ -1521,10 +1521,11 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 str(self.num_aggregators() - 1) + "\n",
                 self.procinfos[i_proc].fhicl_used)
         
-        self.tmp_run_record = "/tmp/run_record_attempted"
+        self.tmp_run_record = "/tmp/run_record_attempted_%s" % \
+            (os.environ["USER"])
         
         if os.path.exists(self.tmp_run_record):
-            shutil.rmtree("/tmp/run_record_attempted")
+            shutil.rmtree(self.tmp_run_record)
 
         try:
             self.save_run_record()            
