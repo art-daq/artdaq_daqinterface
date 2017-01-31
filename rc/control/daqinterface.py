@@ -916,12 +916,30 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             if host != "localhost" and host != os.environ["HOSTNAME"]:
                 cmd = "ssh -f " + host + " '" + cmd + "'"
 
-            proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            proclines = proc.stdout.readlines()
-            
-            if len(proclines) != count:
-                raise Exception("Exception in DAQInterface: " + \
-                                    "command \"%s\" on host \"%s\" yielded no results. Have the logfile directories been created?" % (cmd, host))
+            max_num_checks = 5
+            num_checks = 0
+            pause_between_checks = 2
+
+            while True:
+                proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                proclines = proc.stdout.readlines()
+
+                if len(proclines) != count:
+
+                    if num_checks < max_num_checks:
+                        num_checks += 1
+                    
+                        if self.debug_level >= 2:
+                            print "Didn't find expected logfiles with command \"%s\"; will wait %d seconds and then check again" % \
+                                (cmd, pause_between_checks)
+
+                        sleep(pause_between_checks)
+                        continue
+                    else:
+                        raise Exception("Exception in DAQInterface: " + \
+                                            "command \"%s\" on host \"%s\" yielded didn't print the expected number of logfiles. Have the logfile directories been created?" % (cmd, host))
+                else:
+                    break
 
             for line in proclines:
 
