@@ -14,7 +14,7 @@ from rc.control.utilities import expand_environment_variable_in_string
 def config_basedir():
     return os.environ["HOME"] + "/daqarea/work-db-dir"
 
-def setup_database_commands():
+def setup_database_commands(runhistory_save = False):
 
     if not os.path.exists( config_basedir() ):
         raise Exception("Error in %s: unable to locate expected database configuration directory \"%s\"" % \
@@ -29,6 +29,15 @@ def setup_database_commands():
     cmds = []
     cmds.append( ". " + sourcemefile )
     cmds.append( "cd %s" % (config_basedir()) )
+
+    # JCF, Jan-31-2017
+
+    # At Gennadiy's request, use a different database for saving
+    # config info as compared to retrieving it
+
+    if runhistory_save:
+        cmds.append( "ARTDAQ_DATABASE_URI=$( echo $ARTDAQ_DATABASE_URI | sed -r '/_db$/{s/_db$/_runhistory_db/;q};/.*/{s/$/_runhistory/;q}' )"  )
+
     return cmds
 
 def execute_commands_and_throw_if_problem(cmds):
@@ -67,7 +76,7 @@ def put_config_info_base(self):
     runnum = str(self.run_number)
     runrecord = self.record_directory + "/" + runnum
 
-    cmds = setup_database_commands()
+    cmds = setup_database_commands(True)
 
     cmds.append(" scriptdir=" + scriptdir)
     cmds.append( "tmpdir=$(uuidgen)")
@@ -192,3 +201,17 @@ def get_daqinterface_config_info_base(self, daqinterface_config_label):
 
 def listdaqcomps_base(self):
     assert False, "listdaqcomps not yet implemented in case of database use"
+
+def main():
+
+    print "Checking the setting of ARTDAQ_DATABASE_URI"
+    cmds = setup_database_commands(True)
+    cmds.append("echo $ARTDAQ_DATABASE_URI")
+    
+    proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    print proc.stdout.readlines()[-1]
+
+
+if __name__ == "__main__":
+    main()
