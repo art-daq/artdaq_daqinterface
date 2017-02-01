@@ -63,7 +63,7 @@ def get_config_info_base(self):
     execute_commands_and_throw_if_problem( cmds )
     
     configdir = "%s/newconfig/" % (config_basedir())
-    return configdir, [ configdir ]
+    return configdir, [ configdir, configdir + self.config_for_run, configdir + "common_code" ]
 
 
 def put_config_info_base(self):
