@@ -337,6 +337,10 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         self.daq_setup_script = None
         self.package_hashes_to_save = None
 
+        self.boardreader_timeout = 30
+        self.eventbuilder_timeout = 30
+        self.aggregator_timeout = 30
+
         for line in inf.readlines():
 
             line = expand_environment_variable_in_string( line )
@@ -364,6 +368,12 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     package = string.replace(package, "\"", "")
                     package = string.replace(package, " ", "") # strip() doesn't seem to work here
                     self.package_hashes_to_save.append(package)
+            elif "boardreader timeout" in line:
+                self.boardreader_timeout = int( line.split()[-1].strip() )
+            elif "eventbuilder timeout" in line:
+                self.eventbuilder_timeout = int( line.split()[-1].strip() )
+            elif "aggregator timeout" in line:
+                self.aggregator_timeout = int( line.split()[-1].strip() )
             
         missing_vars = []
 
@@ -1281,9 +1291,16 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         for procinfo in self.procinfos:
             
+            if "BoardReader" in procinfo.name:
+                timeout = self.boardreader_timeout
+            elif "EventBuilder" in procinfo.name:
+                timeout = self.eventbuilder_timeout
+            elif "Aggregator" in procinfo.name:
+                timeout = self.aggregator_timeout
+
             try:
                 procinfo.server = TimeoutServerProxy(
-                    procinfo.socketstring, 30)
+                    procinfo.socketstring, timeout)
             except Exception:
                 self.print_log(traceback.format_exc())
 
