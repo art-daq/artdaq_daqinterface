@@ -1369,7 +1369,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         try:
             self.config_dirname, self.fhicl_file_path = self.get_config_info()
         except:
-            revert_failed_transition("calling get_config_info()")
+            self.revert_failed_transition("calling get_config_info()")
             return
 
         self.print_log("Config name: %s" % self.config_for_run, 1)
