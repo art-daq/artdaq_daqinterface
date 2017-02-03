@@ -189,6 +189,7 @@ class DAQInterface(Component):
 
         self.exception = False
         self.in_recovery = False
+        self.heartbeat_failure = False
         self.last_artdaq_line = None
 
         # "procinfos" will be an array of Procinfo structures (defined
@@ -217,6 +218,7 @@ class DAQInterface(Component):
                            skip_init=False)
 
         self.in_recovery = False
+        self.heartbeat_failure = False
 
             
         # JCF, Nov-17-2015
@@ -256,6 +258,7 @@ class DAQInterface(Component):
         self.__do_terminate = False
         self.__do_pause_running = False
         self.__do_resume_running = False
+        self.__do_recover = False
 
         try:
             self.read_settings()
@@ -293,6 +296,9 @@ class DAQInterface(Component):
 
     def config(self):
         self.__do_config = True
+
+    def recover(self):
+        self.__do_recover = True
 
     def start_running(self):
         self.__do_start_running = True
@@ -435,18 +441,16 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     self.print_log( successmsg )
                     continue  # We're fine, continue on to the next process check
 
-                errmsg = "process " + procinfo.name + " at " + procinfo.host + \
-                    ":" + procinfo.port + " returned the following: \"" + \
+                errmsg = "Unexpected status message from process " + procinfo.name + " at " + procinfo.host + \
+                    ":" + procinfo.port + ": \"" + \
                     procinfo.lastreturned + "\""
-                self.print_log("Error in DAQInterface: ")
-                self.print_log(errmsg)
+                self.print_log(make_paragraph(errmsg))
 
                 is_all_ok = False
 
         if not is_all_ok:
-            self.alert_and_recover("At least one artdaq process "
-                                   "failed a transition")
-            return
+            raise Exception("At least one artdaq process failed a transition")
+
 
 
     # Utility functions used to count the different process types
@@ -584,6 +588,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         cmds.append("cd " + self.daq_dir)
         cmds.append("source ./" + self.daq_setup_script )
         cmds.append("which pmt.rb")  # Sanity check capable of returning nonzero
+#        print "JCF, Feb-1-2017: setting ARTDAQ_PROCESS_FAILURE_EXIT_DELAY to 120 for debug purposes"
+#        cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=120")
         cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=30")
 
         if self.have_needed_artdaq_mfextensions():
@@ -612,10 +618,10 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         if self.debug_level >= 2:
             print "PROCESS LAUNCH COMMANDS: "
-            print launchcmd
+            print "\n".join( cmds )
             print
 
-        if self.debug_level >= 2:
+        if self.debug_level >= 3:
             status = Popen(launchcmd, shell=True).wait()
         else:
             with deepsuppression():
@@ -643,10 +649,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             elif "Aggregator" in procinfo.name:
                 proctype = "AggregatorMain"
             else:
-                self.alert_and_recover("Exception in DAQInterface:"
-                                       " unknown process type found"
-                                       " in procinfos")
-                return
+                assert False
 
             greptoken = proctype + " -p " + procinfo.port
 
@@ -658,19 +661,20 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 is_all_ok = False
 
                 if requireSuccess:
-                    errmsg = "process " + procinfo.name + \
+                    errmsg = "Expected process " + procinfo.name + \
                         " at " + procinfo.host + ":" + \
                         procinfo.port + " not found"
 
-                    self.print_log(
-                        make_paragraph("Error in DAQInterface::check_proc_heartbeats(): "
-                                            "please check messageviewer and/or the logfiles for error messages"))
+#                    self.print_log(
+#                        make_paragraph("Error in DAQInterface::check_proc_heartbeats(): "
+#                                            "please check messageviewer and/or the logfiles for error messages"))
                     self.print_log(errmsg)
 
         if not is_all_ok and requireSuccess:
+            self.heartbeat_failure = True
             self.alert_and_recover(
-                make_paragraph("Heartbeat failure of at least one artdaq process; please check messageviewer"
-                                    " and/or the logfiles for error messages"))
+                make_paragraph("At least one artdaq process died unexpectedly; please check messageviewer"
+                               " and/or the logfiles for error messages"))
             return
 
         return is_all_ok
@@ -694,8 +698,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 procinfo.lastreturned = procinfo.server.daq.status()
             except Exception:
                 self.exception = True
-                exceptstring = "Exception caught in DAQInterface attempt to query status of artdaq process %s at %s:%s ; most likely reason is process no longer exists" % \
-                    (procinfo.name, procinfo.host, procinfo.port)              
+                exceptstring = make_paragraph("Exception caught in DAQInterface attempt to query status of artdaq process %s at %s:%s; most likely reason is process no longer exists" % \
+                    (procinfo.name, procinfo.host, procinfo.port))              
                 self.print_log(exceptstring)
 
             if procinfo.lastreturned == "Error":
@@ -810,10 +814,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 pids = get_pids(greptoken, procinfo.host)
 
                 if len(pids) > 0:
-                    self.print_log("Error in "
-                                   "DAQInterface::kill_procs(): ")
-                    self.print_log("Appeared to be unable to kill \"%s\""
-                                   " on %s" % (greptoken, procinfo.host))
+                    self.print_log("Appeared to be unable to kill %s at %s:%s during cleanup" % \
+                                       (procinfo.name, procinfo.host, procinfo.port))
 
         self.procinfos = []
 
@@ -1159,7 +1161,11 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         target_states = {"Init":"Ready", "Start":"Running", "Pause":"Paused", "Resume":"Running",
                          "Stop":"Ready", "Shutdown":"Stopped"}
 
-        self.check_proc_transition( target_states[ command ] )
+        try:
+            self.check_proc_transition( target_states[ command ] )
+        except Exception:
+            raise Exception("An exception was thrown during the %s transition as at least one of the artdaq processes didn't achieve its desired state" % (command))
+
 
         if command != "Init" and command != "Start" and command != "Stop":
 
@@ -1715,54 +1721,95 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             greptoken = procinfo.name + "Main -p " + procinfo.port
 
             pid = get_pids(greptoken, procinfo.host)
-            
-            assert len(pid) <= 1
 
             if len(pid) == 0:
-                self.print_log(
-                    "Didn't find PID for %s at %s:%s" % (procinfo.name, procinfo.host, procinfo.port), 2)
+                if self.debug_level >= 2 or not self.heartbeat_failure:
+                    self.print_log(
+                        "Didn't find PID for %s at %s:%s" % (procinfo.name, procinfo.host, procinfo.port), 2)
                 return
 
-            if procinfo.lastreturned == "Running":
+            try:
+                procstatus = procinfo.server.daq.status()
+            except Exception:
+                self.print_log("Unable to determine state of artdaq process %s at %s:%s" % \
+                                   (procinfo.name, procinfo.host, procinfo.port))
+                return
+
+            if procstatus == "Running":
+
                 try:
                     lastreturned=procinfo.server.daq.stop()
+                    
+                    self.print_log("Called stop on %s at %s:%s without an exception; returned string was \"%s\"" % \
+                                       (procinfo.name, procinfo.host, procinfo.port, lastreturned), 2)
                 except Exception:
                     print traceback.format_exc()
                     self.print_log( make_paragraph( 
-                        "Exception caught during stop transition " +
-                        "sent to artdaq process %s " % (procinfo.name) +
+                        "Exception caught during stop transition sent to artdaq process %s " % (procinfo.name) +
                         "at %s:%s during recovery procedure;" % (procinfo.host, procinfo.port) +
-                        " ignored as kill command will be sent momentarily"))
+                        " it's possible the process no longer existed"))
                     return
 
                 if lastreturned == "Success":
                     self.print_log("Successful stop sent to %s at %s:%s" % \
                                        (procinfo.name, procinfo.host, procinfo.port), 2)
                 else:
-                    self.print_log( make_paragraph( 
+                    self.print_log( make_paragraph( \
                             "Attempted stop sent to artdaq process %s " % (procinfo.name) + \
                                 "at %s:%s during recovery procedure" % (procinfo.host, procinfo.port) + \
-                                " returned \"%s\"; ignored as kill command will be sent momentarily" % \
+                                " returned \"%s\"" % \
                                 (lastreturned)))
                     return
-            
-            # try:
-            #     lastreturned = procinfo.server.daq.shutdown()
-            # except Exception:
-            #     print traceback.format_exc()
-            #     self.print_log(make_paragraph(
-            #         "Exception caught during terminate transition " + \
-            #         "sent to artdaq process %s " % (procinfo.name) + \
-            #         "at %s : %s during recovery procedure;" % (procinfo.host, procinfo.port) + \
-            #         " ignored as kill command will be sent " + \
-            #         "momentarily"))
-            #     return
 
-            # self.print_log(make_paragraph(
-            #         "Return value from shutdown attempt on process %s at %s:%s is %s" % \
-            #             (procinfo.name, procinfo.host, procinfo.port, lastreturned)))
+                # JCF, Feb-3-2017
+
+                # After issuing stop, update procstatus for the
+                # "should-I-send-a-shutdown" check
+
+                try:
+                    procstatus = procinfo.server.daq.status()
+                except Exception:
+                    self.print_log("Unable to determine state of artdaq process %s at %s:%s" % \
+                                       (procinfo.name, procinfo.host, procinfo.port))
+                    procstatus = "qwerty"
+                    return
+
+            # JCF, Feb-2-2017
+
+            # Shutdown is much less important than Stop, thus fewer checks are needed
+
+            if procstatus == "Ready":
+                try:
+                    lastreturned=procinfo.server.daq.shutdown()
+                except Exception:
+                    print traceback.format_exc()
+                    self.print_log( make_paragraph( 
+                            "Exception caught during shutdown transition sent to artdaq process %s " % (procinfo.name) +
+                            "at %s:%s during recovery procedure;" % (procinfo.host, procinfo.port) +
+                            " it's possible the process no longer existed"), 2)
+                    return
 
             return
+
+        # JCF, Feb-1-2017
+
+        # If an artdaq process has died, the others might follow
+        # soon after - if this is the case, then wait a few
+        # seconds to give them a chance to die before trying to
+        # send them transitions (i.e., so they don't die AFTER a
+        # transition is sent, causing more errors)
+
+        if self.heartbeat_failure:
+            sleep_on_heartbeat_failure = 15
+
+            if self.debug_level >= 2:
+                self.print_log(
+                    make_paragraph(
+                        "A process previously was found to be missing; " +
+                        "therefore will wait %d seconds before attempting to send the normal transitions as part of recovery" % \
+                            (sleep_on_heartbeat_failure)))
+            sleep(sleep_on_heartbeat_failure)  
+
 
         threads = []
 
@@ -1815,6 +1862,10 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             elif self.__do_config:
                 self.do_config()
                 self.__do_config = False
+
+            elif self.__do_recover:
+                self.do_recover()
+                self.__do_recover = False
 
             elif self.__do_start_running:
                 self.do_start_running()
