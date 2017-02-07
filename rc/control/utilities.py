@@ -43,8 +43,7 @@ def make_paragraph(userstring, chars_per_line=75):
                 if len(userstring) <= string_index:
                     return "\n" + userstring
 
-        if string_index != previous_string_index + chars_per_line: 
-            userstring = userstring[:string_index] + "\n" + userstring[string_index+1: ]
+        userstring = userstring[:string_index] + "\n" + userstring[string_index+1: ]
 
         string_index += chars_per_line
 
@@ -83,3 +82,20 @@ def get_pids(greptoken, host="localhost"):
     pids = [line.split()[1] for line in lines]
 
     return pids
+
+def main():
+
+    sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
+
+    paragraphed_string=make_paragraph( sample_string )
+
+    print
+    print "Sample string: "
+    print sample_string
+
+    print
+    print "Paragraphed string: "
+    print paragraphed_string
+
+if __name__ == "__main__":
+    main()

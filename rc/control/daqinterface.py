@@ -324,7 +324,7 @@ class DAQInterface(Component):
         if not extrainfo is None:
             alertmsg = "\n\n" + make_paragraph( "\"" + extrainfo + "\"")
 
-        alertmsg += "\n" + make_paragraph("DAQInterface has set the DAQ back in the \"stopped\" state; please make any necessary adjustments suggested by the stack trace and error messages above.")
+        alertmsg += "\n" + make_paragraph("DAQInterface has set the DAQ back in the \"stopped\" state; please make any necessary adjustments suggested by the messages above.")
         self.print_log( alertmsg )
 
     def read_settings(self):
@@ -588,8 +588,6 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         cmds.append("cd " + self.daq_dir)
         cmds.append("source ./" + self.daq_setup_script )
         cmds.append("which pmt.rb")  # Sanity check capable of returning nonzero
-#        print "JCF, Feb-1-2017: setting ARTDAQ_PROCESS_FAILURE_EXIT_DELAY to 120 for debug purposes"
-#        cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=120")
         cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=30")
 
         if self.have_needed_artdaq_mfextensions():
@@ -672,9 +670,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         if not is_all_ok and requireSuccess:
             self.heartbeat_failure = True
-            self.alert_and_recover(
-                make_paragraph("At least one artdaq process died unexpectedly; please check messageviewer"
-                               " and/or the logfiles for error messages"))
+            self.alert_and_recover("At least one artdaq process died unexpectedly; please check messageviewer"
+                                   " and/or the logfiles for error messages")
             return
 
         return is_all_ok
@@ -1110,11 +1107,13 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
                 pi = self.procinfos[procinfo_index]
 
-                self.print_log(traceback.format_exc())
+                if "timeout: timed out" in traceback.format_exc():
+                    output_message = "Timeout sending %s transition to artdaq process %s at %s:%s \n" % (command, pi.name, pi.host, pi.port)
+                else:
+                    self.print_log(traceback.format_exc())
+                    
+                    output_message = "Exception caught sending %s transition to artdaq process %s at %s:%s \n" % (command, pi.name, pi.host, pi.port)
 
-                output_message = "Exception caught in " \
-                    "process_command(\"%s\") for artdaq process %s at %s:%s \n" % \
-                    (command, pi.name, pi.host, pi.port)
                 self.print_log(output_message)
             
             return  # From process_command
@@ -1335,8 +1334,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 status = Popen(msgviewercmd, shell=True).wait()
             
                 if status != 0:
-                    self.alert_and_recover(make_paragraph("Status error raised in msgviewer call within Popen; tried the following commands: \"%s\"" %
-                                    " ; ".join(cmds) ))
+                    self.alert_and_recover("Status error raised in msgviewer call within Popen; tried the following commands: \"%s\"" %
+                                    " ; ".join(cmds) )
                     return
         else:
             print make_paragraph("artdaq_mfextensions %s, %s:%s, does not appear to be available in the products directory \"%s\" - "
@@ -1743,11 +1742,12 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     self.print_log("Called stop on %s at %s:%s without an exception; returned string was \"%s\"" % \
                                        (procinfo.name, procinfo.host, procinfo.port, lastreturned), 2)
                 except Exception:
-                    print traceback.format_exc()
+                    if "ProtocolError" not in traceback.format_exc():
+                        print traceback.format_exc()
                     self.print_log( make_paragraph( 
                         "Exception caught during stop transition sent to artdaq process %s " % (procinfo.name) +
                         "at %s:%s during recovery procedure;" % (procinfo.host, procinfo.port) +
-                        " it's possible the process no longer existed"))
+                        " it's possible the process no longer existed\n"))
                     return
 
                 if lastreturned == "Success":
@@ -1786,7 +1786,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     self.print_log( make_paragraph( 
                             "Exception caught during shutdown transition sent to artdaq process %s " % (procinfo.name) +
                             "at %s:%s during recovery procedure;" % (procinfo.host, procinfo.port) +
-                            " it's possible the process no longer existed"), 2)
+                            " it's possible the process no longer existed\n"), 2)
                     return
 
             return
@@ -1800,7 +1800,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         # transition is sent, causing more errors)
 
         if self.heartbeat_failure:
-            sleep_on_heartbeat_failure = 15
+            sleep_on_heartbeat_failure = 0
 
             if self.debug_level >= 2:
                 self.print_log(

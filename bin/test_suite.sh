@@ -9,17 +9,20 @@
 
 # This script expects simple_test_config/demo/component01_hw_cfg.fcl to exist
 
-# This script expects the variables "change_after_N_seconds" and
-# "nADCcounts_after_N_seconds" to exist in that file, but to be
-# commented out
+# This script expects the variables "change_after_N_seconds",
+# "nADCcounts_after_N_seconds", "exit_after_N_seconds",
+# "abort_after_N_seconds" and "exception_after_N_seconds" to exist in
+# the above file
 
 # This script will modify simple_test_config/demo/component01_hw_cfg.fcl
 
-# Also, I'd like to add a timed exception throw at some point, but
-# that functionality doesn't (yet) exist in artdaq-demo
+standard_test=true
+boardreader_hangs_test=true
+process_killed_test=true
+boardreader_aborts_test=true
+boardreader_exits_test=true
+boardreader_throws_test=true
 
-# Could also try overwhelming the system by setting
-# nADCcounts_after_N_seconds to a huge value
 
 if [[ ! -e bin/just_do_it.sh ]]; then
     echo "Can't find bin/just_do_it.sh; are you in the base directory of artdaq-utilities-daqinterface?" >&2
@@ -39,20 +42,10 @@ fi
 # Make sure this isn't a shorter time period than when the ToySimulator's pathologies are timed to kick in
 runtime=10
 
-echo "WILL TRY REGULAR RUNNING FOR $runtime SECONDS "
-
-./bin/just_do_it.sh $runtime
-
-if [[ "$?" != "0" ]]; then
-    echo "just_do_it.sh RETURNED NONZERO FOR REGULAR RUNNING; SKIPPING FURTHER TESTS" >&2
-    exit 30
-fi
-
-echo "WILL TRY SIMULATING A HANG FROM ONE OF THE BOARDREADERS"
 
 boardreader_fhicl=simple_test_config/demo/component01_hw_cfg.fcl
 
-for needed_variable in change_after_N_seconds nADCcounts_after_N_seconds ; do
+for needed_variable in change_after_N_seconds nADCcounts_after_N_seconds abort_after_N_seconds exit_after_N_seconds exception_after_N_seconds ; do
 
     if [[ -z $( grep -l $needed_variable $boardreader_fhicl ) ]]; then
 	echo "Unable to find needed variable \"$needed_variable\" in ${boardreader_fhicl}; exiting..." >&2
@@ -60,16 +53,92 @@ for needed_variable in change_after_N_seconds nADCcounts_after_N_seconds ; do
     fi
 done
 
-sed -r -i 's/.*change_after_N_seconds.*/change_after_N_seconds: 5/' $boardreader_fhicl
-sed -r -i 's/.*nADCcounts_after_N_seconds.*/nADCcounts_after_N_seconds: -1/' $boardreader_fhicl
 
-./bin/just_do_it.sh $runtime
+if $standard_test; then
 
-echo "WILL RUN INDEFINITELY - THIS GIVES YOU AN OPPORTUNITY TO EXTERNALLY KILL AN ARTDAQ PROCESS TO SEE WHAT HAPPENS"
+    echo "WILL TRY REGULAR RUNNING FOR $runtime SECONDS "
 
-sed -r -i 's/.*change_after_N_seconds.*/#change_after_N_seconds: 5/' $boardreader_fhicl
-sed -r -i 's/.*nADCcounts_after_N_seconds.*/#nADCcounts_after_N_seconds: -1/' $boardreader_fhicl
+    sed -r -i 's/.*change_after_N_seconds.*/#change_after_N_seconds: 5/' $boardreader_fhicl
+    sed -r -i 's/.*nADCcounts_after_N_seconds.*/#nADCcounts_after_N_seconds: -1/' $boardreader_fhicl
+    sed -r -i 's/.*abort_after_N_seconds.*/#abort_after_N_seconds: true/' $boardreader_fhicl
+    sed -r -i 's/.*exit_after_N_seconds.*/#exit_after_N_seconds: true/' $boardreader_fhicl
+    sed -r -i 's/.*exception_after_N_seconds.*/#exception_after_N_seconds: true/' $boardreader_fhicl
 
-./bin/just_do_it.sh 0
+    ./bin/just_do_it.sh $runtime
+
+    if [[ "$?" != "0" ]]; then
+	echo "just_do_it.sh RETURNED NONZERO FOR REGULAR RUNNING; SKIPPING FURTHER TESTS" >&2
+	exit 30
+    fi
+fi
+
+if $boardreader_hangs_test; then
+
+    echo "WILL TRY SIMULATING A HANG FROM ONE OF THE BOARDREADERS"
+
+    sed -r -i 's/.*change_after_N_seconds.*/change_after_N_seconds: 5/' $boardreader_fhicl
+    sed -r -i 's/.*nADCcounts_after_N_seconds.*/nADCcounts_after_N_seconds: -1/' $boardreader_fhicl
+    sed -r -i 's/.*abort_after_N_seconds.*/#abort_after_N_seconds: true/' $boardreader_fhicl
+    sed -r -i 's/.*exit_after_N_seconds.*/#exit_after_N_seconds: true/' $boardreader_fhicl
+    sed -r -i 's/.*exception_after_N_seconds.*/#exception_after_N_seconds: true/' $boardreader_fhicl
+
+    ./bin/just_do_it.sh $runtime
+
+fi
+
+if $process_killed_test; then
+
+    echo "WILL RUN INDEFINITELY - THIS GIVES YOU AN OPPORTUNITY TO EXTERNALLY KILL AN ARTDAQ PROCESS TO SEE WHAT HAPPENS"
+
+    sed -r -i 's/.*change_after_N_seconds.*/#change_after_N_seconds: 5/' $boardreader_fhicl
+    sed -r -i 's/.*nADCcounts_after_N_seconds.*/#nADCcounts_after_N_seconds: -1/' $boardreader_fhicl
+    sed -r -i 's/.*abort_after_N_seconds.*/#abort_after_N_seconds: true/' $boardreader_fhicl
+    sed -r -i 's/.*exit_after_N_seconds.*/#exit_after_N_seconds: true/' $boardreader_fhicl
+    sed -r -i 's/.*exception_after_N_seconds.*/#exception_after_N_seconds: true/' $boardreader_fhicl
+
+    ./bin/just_do_it.sh 0
+
+fi
+
+if $boardreader_aborts_test; then
+
+    echo "WILL REQUEST THAT TOYSIMULATOR CALL STD::ABORT"
+
+    sed -r -i 's/.*change_after_N_seconds.*/change_after_N_seconds: 5/' $boardreader_fhicl
+    sed -r -i 's/.*nADCcounts_after_N_seconds.*/#nADCcounts_after_N_seconds: -1/' $boardreader_fhicl
+    sed -r -i 's/.*abort_after_N_seconds.*/abort_after_N_seconds: true/' $boardreader_fhicl
+    sed -r -i 's/.*exit_after_N_seconds.*/#exit_after_N_seconds: true/' $boardreader_fhicl
+    sed -r -i 's/.*exception_after_N_seconds.*/#exception_after_N_seconds: true/' $boardreader_fhicl
+    
+    ./bin/just_do_it.sh 0
+fi
+
+if $boardreader_exits_test; then
+
+    echo "WILL REQUEST THAT TOYSIMULATOR CALL STD::EXIT"
+
+    sed -r -i 's/.*change_after_N_seconds.*/change_after_N_seconds: 5/' $boardreader_fhicl
+    sed -r -i 's/.*nADCcounts_after_N_seconds.*/#nADCcounts_after_N_seconds: -1/' $boardreader_fhicl
+    sed -r -i 's/.*abort_after_N_seconds.*/#abort_after_N_seconds: true/' $boardreader_fhicl
+    sed -r -i 's/.*exit_after_N_seconds.*/exit_after_N_seconds: true/' $boardreader_fhicl
+    sed -r -i 's/.*exception_after_N_seconds.*/#exception_after_N_seconds: true/' $boardreader_fhicl
+    
+    ./bin/just_do_it.sh 0
+fi
+
+
+if $boardreader_throws_test; then
+
+    echo "WILL REQUEST THAT TOYSIMULATOR THROWS AN EXCEPTION"
+
+    sed -r -i 's/.*change_after_N_seconds.*/change_after_N_seconds: 5/' $boardreader_fhicl
+    sed -r -i 's/.*nADCcounts_after_N_seconds.*/#nADCcounts_after_N_seconds: -1/' $boardreader_fhicl
+    sed -r -i 's/.*abort_after_N_seconds.*/#abort_after_N_seconds: true/' $boardreader_fhicl
+    sed -r -i 's/.*exit_after_N_seconds.*/#exit_after_N_seconds: true/' $boardreader_fhicl
+    sed -r -i 's/.*exception_after_N_seconds.*/exception_after_N_seconds: true/' $boardreader_fhicl
+    
+    ./bin/just_do_it.sh 0
+fi
+
 
 exit 0
