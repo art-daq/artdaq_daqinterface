@@ -59,7 +59,6 @@ def make_paragraph(userstring, chars_per_line=75):
 
     return "\n" + userstring
 
-
 # JCF, 3/11/15
 
 # "get_pids" is a simple utility function which will go to the
@@ -83,6 +82,39 @@ def get_pids(greptoken, host="localhost"):
 
     return pids
 
+def table_range(fhiclstring, tablename):
+
+    loc = string.find(fhiclstring, tablename)
+
+    if loc == -1:
+        return (-1, -1)
+
+    open_brace_loc = string.index(fhiclstring[loc:], "{")
+
+    close_braces_needed = 1
+    close_brace_loc = -1
+
+    for i_char, char in enumerate(fhiclstring[(loc+open_brace_loc+1):]):
+        #print char
+
+        if char == '{':
+            close_braces_needed += 1
+        elif char == '}':
+            close_braces_needed -= 1
+
+        #print close_braces_needed, i_char
+
+        if close_braces_needed == 0:
+            close_brace_loc = i_char
+            break
+
+    if close_brace_loc == -1:
+        raise Exception(
+            "Unable to find close brace for requested table \"%s\"" % \
+                tablename)
+
+    return (loc, loc + open_brace_loc + 1 + close_brace_loc + 1)
+
 def main():
 
     sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
@@ -99,3 +131,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
