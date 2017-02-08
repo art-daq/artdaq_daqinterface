@@ -1328,7 +1328,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             cmds = []
             cmds.append("cd %s" % (self.daq_dir))
             cmds.append(". %s" % (self.daq_setup_script))
-            cmds.append("if [[ -n $ARTDAQ_MFEXTENSIONS_FQ_DIR ]]; then export MSGVIEWERDIR=$ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/  ; else export MSGVIEWERDIR=/mu2e/ups/artdaq_mfextensions/v1_01_03/slf6.x86_64.e10.s41.prof/bin ; fi")
+            cmds.append("if [[ -n $ARTDAQ_MFEXTENSIONS_FQ_DIR ]]; then export MSGVIEWERDIR=$ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/  ; else export MSGVIEWERDIR=$MRB_BUILDDIR/artdaq_mfextensions/bin ; fi")
             cmds.append("which msgviewer")
             cmds.append("msgviewer -c $MSGVIEWERDIR/msgviewer.fcl 2>&1 > /dev/null &" )
 
