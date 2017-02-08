@@ -41,9 +41,9 @@ hardware_poll_interval_us: 1000000 # If hardware monitoring thread is enabled, h
     
 nADCcounts: 40
 
-change_after_N_seconds: 5
+#change_after_N_seconds: 5
 #nADCcounts_after_N_seconds: -1
-abort_after_N_seconds: true
+#abort_after_N_seconds: true
 #exit_after_N_seconds: true
 #exception_after_N_seconds: true
 
