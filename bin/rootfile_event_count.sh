@@ -47,7 +47,9 @@ for file_location in $file_locations ; do
     agg_host=$( echo $file_location | sed -r -n 's/(.*):.*/\1/p' )
     agg_dir=$( echo $file_location | sed -r -n 's/.*:(.*)/\1/p' )
 
-    cmd="tmpfile=/tmp/"$(uuidgen)".C ; echo '{TChain chain(\"Events\"); chain.Add(\""$agg_dir"/*_r*"$runnum"_*.root\"); cout << chain.GetEntries() << endl;}' > \$tmpfile; cd "$proddir"/.. ; . "$setupscript"; root -q -b -l \$tmpfile ; rm -f \$tmpfile"
+    runnum_padded=$( printf "%06d" $runnum )
+
+    cmd="tmpfile=/tmp/"$(uuidgen)".C ; echo '{TChain chain(\"Events\"); chain.Add(\""$agg_dir"/*_r"${runnum_padded}"_*.root\"); cout << chain.GetEntries() << endl;}' > \$tmpfile; cd "$proddir"/.. ; . "$setupscript"; root -q -b -l \$tmpfile ; rm -f \$tmpfile"
 
     nevents=$( ssh $agg_host "$cmd" | tail -1 )
 
