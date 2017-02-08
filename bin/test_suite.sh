@@ -56,7 +56,7 @@ done
 
 if $standard_test; then
 
-    echo "WILL TRY REGULAR RUNNING FOR $runtime SECONDS "
+    echo $(date) "WILL TRY REGULAR RUNNING FOR $runtime SECONDS "
 
     sed -r -i 's/.*change_after_N_seconds.*/#change_after_N_seconds: 5/' $boardreader_fhicl
     sed -r -i 's/.*nADCcounts_after_N_seconds.*/#nADCcounts_after_N_seconds: -1/' $boardreader_fhicl
@@ -74,7 +74,7 @@ fi
 
 if $boardreader_hangs_test; then
 
-    echo "WILL TRY SIMULATING A HANG FROM ONE OF THE BOARDREADERS"
+    echo $(date) "WILL TRY SIMULATING A HANG FROM ONE OF THE BOARDREADERS"
 
     sed -r -i 's/.*change_after_N_seconds.*/change_after_N_seconds: 5/' $boardreader_fhicl
     sed -r -i 's/.*nADCcounts_after_N_seconds.*/nADCcounts_after_N_seconds: -1/' $boardreader_fhicl
@@ -88,7 +88,7 @@ fi
 
 if $process_killed_test; then
 
-    echo "WILL RUN INDEFINITELY - THIS GIVES YOU AN OPPORTUNITY TO EXTERNALLY KILL AN ARTDAQ PROCESS TO SEE WHAT HAPPENS"
+    echo $(date) "WILL RUN INDEFINITELY - THIS GIVES YOU AN OPPORTUNITY TO EXTERNALLY KILL AN ARTDAQ PROCESS TO SEE WHAT HAPPENS"
 
     sed -r -i 's/.*change_after_N_seconds.*/#change_after_N_seconds: 5/' $boardreader_fhicl
     sed -r -i 's/.*nADCcounts_after_N_seconds.*/#nADCcounts_after_N_seconds: -1/' $boardreader_fhicl
@@ -102,7 +102,7 @@ fi
 
 if $boardreader_aborts_test; then
 
-    echo "WILL REQUEST THAT TOYSIMULATOR CALL STD::ABORT"
+    echo $(date) "WILL REQUEST THAT TOYSIMULATOR CALL STD::ABORT"
 
     sed -r -i 's/.*change_after_N_seconds.*/change_after_N_seconds: 5/' $boardreader_fhicl
     sed -r -i 's/.*nADCcounts_after_N_seconds.*/#nADCcounts_after_N_seconds: -1/' $boardreader_fhicl
@@ -115,7 +115,7 @@ fi
 
 if $boardreader_exits_test; then
 
-    echo "WILL REQUEST THAT TOYSIMULATOR CALL STD::EXIT"
+    echo $(date) "WILL REQUEST THAT TOYSIMULATOR CALL STD::EXIT"
 
     sed -r -i 's/.*change_after_N_seconds.*/change_after_N_seconds: 5/' $boardreader_fhicl
     sed -r -i 's/.*nADCcounts_after_N_seconds.*/#nADCcounts_after_N_seconds: -1/' $boardreader_fhicl
@@ -129,7 +129,7 @@ fi
 
 if $boardreader_throws_test; then
 
-    echo "WILL REQUEST THAT TOYSIMULATOR THROWS AN EXCEPTION"
+    echo $(date) "WILL REQUEST THAT TOYSIMULATOR THROWS AN EXCEPTION"
 
     sed -r -i 's/.*change_after_N_seconds.*/change_after_N_seconds: 5/' $boardreader_fhicl
     sed -r -i 's/.*nADCcounts_after_N_seconds.*/#nADCcounts_after_N_seconds: -1/' $boardreader_fhicl

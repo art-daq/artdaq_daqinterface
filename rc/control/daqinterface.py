@@ -1225,9 +1225,6 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         includes_commit = "cd2e091960d9607ef61e3f7226c3aede90bc2e6e"
         commit_date = "Jan 12, 2017"
 
-#        includes_commit = "ff4f17871ff0ae0cca088e99b4e02c7cac535b36"
-#        commit_date = "Sep 21, 2016"
-
         artdaq_dir = self.daq_dir + "/srcs/artdaq"
 
         cmds = []
@@ -1661,66 +1658,70 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                         "Didn't find PID for %s at %s:%s" % (procinfo.name, procinfo.host, procinfo.port), 2)
                 return
 
+            def send_recover_command(command):
+                
+                try:
+                    if command == "stop":
+                        lastreturned=procinfo.server.daq.stop()
+                    elif command == "shutdown":
+                        lastreturned=procinfo.server.daq.shutdown()
+                    else:
+                        assert False
+
+                    self.print_log("Called %s on %s at %s:%s without an exception; returned string was \"%s\"" % \
+                                       (command, procinfo.name, procinfo.host, procinfo.port, lastreturned), 2)
+                except Exception:
+                    raise
+
+                if lastreturned == "Success":
+                    self.print_log("Successful %s sent to %s at %s:%s" % \
+                                       (command, procinfo.name, procinfo.host, procinfo.port), 2)
+                else:
+                    raise Exception( make_paragraph( \
+                            "Attempted %s sent to artdaq process %s " % (command, procinfo.name) + \
+                                "at %s:%s during recovery procedure" % (procinfo.host, procinfo.port) + \
+                                " returned \"%s\"" % \
+                                (lastreturned)))
+
             try:
                 procstatus = procinfo.server.daq.status()
             except Exception:
-                self.print_log("Unable to determine state of artdaq process %s at %s:%s" % \
-                                   (procinfo.name, procinfo.host, procinfo.port))
+                self.print_log(make_paragraph("Unable to determine state of artdaq process %s at %s:%s; will not be able to complete its stop-and-shutdown" % \
+                                   (procinfo.name, procinfo.host, procinfo.port)))
                 return
 
             if procstatus == "Running":
 
                 try:
-                    lastreturned=procinfo.server.daq.stop()
-                    
-                    self.print_log("Called stop on %s at %s:%s without an exception; returned string was \"%s\"" % \
-                                       (procinfo.name, procinfo.host, procinfo.port, lastreturned), 2)
+                    send_recover_command("stop")
                 except Exception:
                     if "ProtocolError" not in traceback.format_exc():
                         print traceback.format_exc()
                     self.print_log( make_paragraph( 
-                        "Exception caught during stop transition sent to artdaq process %s " % (procinfo.name) +
-                        "at %s:%s during recovery procedure;" % (procinfo.host, procinfo.port) +
-                        " it's possible the process no longer existed\n"))
+                            "Exception caught during stop transition sent to artdaq process %s " % (procinfo.name) +
+                            "at %s:%s during recovery procedure;" % (procinfo.host, procinfo.port) +
+                            " it's possible the process no longer existed\n"))
+                        
                     return
-
-                if lastreturned == "Success":
-                    self.print_log("Successful stop sent to %s at %s:%s" % \
-                                       (procinfo.name, procinfo.host, procinfo.port), 2)
-                else:
-                    self.print_log( make_paragraph( \
-                            "Attempted stop sent to artdaq process %s " % (procinfo.name) + \
-                                "at %s:%s during recovery procedure" % (procinfo.host, procinfo.port) + \
-                                " returned \"%s\"" % \
-                                (lastreturned)))
-                    return
-
-                # JCF, Feb-3-2017
-
-                # After issuing stop, update procstatus for the
-                # "should-I-send-a-shutdown" check
-
+                    
                 try:
                     procstatus = procinfo.server.daq.status()
                 except Exception:
-                    self.print_log("Unable to determine state of artdaq process %s at %s:%s" % \
+                    self.print_log("Unable to determine state of artdaq process %s at %s:%s; will not be able to complete its stop-and-shutdown" % \
                                        (procinfo.name, procinfo.host, procinfo.port))
-                    procstatus = "qwerty"
                     return
 
-            # JCF, Feb-2-2017
-
-            # Shutdown is much less important than Stop, thus fewer checks are needed
-
             if procstatus == "Ready":
+
                 try:
-                    lastreturned=procinfo.server.daq.shutdown()
+                    send_recover_command("shutdown")
                 except Exception:
-                    print traceback.format_exc()
+                    if "ProtocolError" not in traceback.format_exc():
+                        print traceback.format_exc()
                     self.print_log( make_paragraph( 
                             "Exception caught during shutdown transition sent to artdaq process %s " % (procinfo.name) +
                             "at %s:%s during recovery procedure;" % (procinfo.host, procinfo.port) +
-                            " it's possible the process no longer existed\n"), 2)
+                            " it's possible the process no longer existed\n"))
                     return
 
             return
@@ -1855,6 +1856,10 @@ def main():  # no-coverage
 
     if len(pids) > 1:
         print make_paragraph("Won't launch DAQInterface; it appears an instance is already running on this host (i.e., found more than one result when grepping for \"%s\" on the output of the \"ps aux\" command)" % (greptoken))
+        return
+
+    if "DAQINTLOGDIR" not in os.environ.keys():
+        print make_paragraph("Won't launch DAQInterface; you first need to run \"source sourceme\" from the base directory of this package")
         return
 
     args = get_args()
