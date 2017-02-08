@@ -706,7 +706,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 errmsg = "\"Error\" state returned by process %s at %s:%s; please check messageviewer and/or the logfiles for error messages" % \
                     (procinfo.name, procinfo.host, procinfo.port)
 
-                self.print_log(errmsg)
+                self.print_log(make_paragraph(errmsg))
 
         if not is_all_ok:
             self.alert_and_recover("One or more artdaq processes"
@@ -1858,8 +1858,11 @@ def main():  # no-coverage
         print make_paragraph("Won't launch DAQInterface; it appears an instance is already running on this host (i.e., found more than one result when grepping for \"%s\" on the output of the \"ps aux\" command)" % (greptoken))
         return
 
+    if not os.path.exists("./bin"):
+        print make_paragraph("Won't launch DAQInterface; you need to be in the base directory of this package")
+
     if "DAQINTLOGDIR" not in os.environ.keys():
-        print make_paragraph("Won't launch DAQInterface; you first need to run \"source sourceme\" from the base directory of this package")
+        print make_paragraph("Won't launch DAQInterface; you first need to run \"source source_me\" from the base directory of this package")
         return
 
     args = get_args()

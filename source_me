@@ -1,0 +1,27 @@
+
+if [[ ! -e ./bin ]]; then
+   echo "You need to be in the base directory of the package to source this"
+   return 1
+fi
+
+if [[ -n $DAQINTLOGDIR ]]; then
+   echo "You appear to have already sourced this script in this shell; will do nothing"
+   return 2
+fi
+
+export DAQINTLOGDIR=/tmp/daqinterface
+
+mkdir -p $DAQINTLOGDIR
+daqintlog=$DAQINTLOGDIR/DI.log
+
+alias DAQInterface="stdbuf -oL ./rc/control/daqinterface.py 2>&1 | tee -a $daqintlog"
+
+export PATH=$PWD/bin:$PATH
+
+echo
+echo "-Source of this file was successful"
+echo "-Output will be logged in $daqintlog"
+echo "-To launch, when in $PWD, just type \"DAQInterface\" (excluding quotes)"  
+echo
+return 0
+
