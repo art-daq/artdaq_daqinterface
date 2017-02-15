@@ -1403,22 +1403,24 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         self.print_log("Selected DAQ comps: %s" %
                        self.daq_comp_list, 1)
 
-
         for component, socket in self.daq_comp_list.items():
 
-            if self.debug_level >= 2:
-                print "Searching for the FHiCL document for " + component + \
-                    " given configuration \"" + self.config_for_run + \
-                    "\""
+            self.print_log( make_paragraph( 
+                "Searching for the FHiCL document for %s in directory %s given configuration \"%s\"" % \
+                (component, self.config_dirname, self.config_for_run)), 2)
+
+            component_fhicl = "the_file_is_not_yet_found"
             
-            uri = self.config_dirname + "/" + self.config_for_run + "/" + component + "_hw_cfg.fcl"
-
-            if not os.path.exists(uri):
-                print "Didn't find uri %s" % (uri)
-
+            for dirname, dummy, filenames in os.walk( self.config_dirname ):
+                for filename in filenames:
+                    if filename == component + "_hw_cfg.fcl":
+                        component_fhicl = dirname + "/" + filename
+            
+            if not os.path.exists(component_fhicl):
                 self.revert_state_change(self.name, self.state(self.name))
-                msg = "Unable to find desired file \"%s\" for component \"%s\"; system remains in the \"%s\" state." % \
-                    (uri, component, self.state(self.name))
+
+                msg = "Unable to find FHiCL document for component \"%s\" after searching in directory %s; system remains in the \"%s\" state." % \
+                    (component, self.config_dirname, self.state(self.name))
 
                 msg += " Please either select a configuration which contains this component or " + \
                     "terminate and then " + \
@@ -1427,8 +1429,9 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
                 self.print_log(make_paragraph(msg))
 
-                self.revert_state_change(self.name, self.state(self.name))
                 return
+
+            config_subdirname = os.path.dirname(component_fhicl)
                     
             try:
                 for i_proc in range(len(self.procinfos)):
@@ -1436,7 +1439,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     if self.procinfos[i_proc].host == socket[0] and \
                             self.procinfos[i_proc].port == socket[1]:
                         self.procinfos[i_proc].ffp = self.fhicl_file_path
-                        self.procinfos[i_proc].update_fhicl(uri)
+                        self.procinfos[i_proc].update_fhicl(component_fhicl)
             except Exception:
                 self.print_log(traceback.format_exc())
                 self.alert_and_recover("An exception was thrown when creating the process FHiCL documents; see traceback above for more info")
@@ -1458,16 +1461,13 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 if self.procinfos[i_proc].name == proc_type:
 
                     if proc_type == "EventBuilder":
-                        fcl = "%s/%s/EventBuilder1.fcl" % (self.config_dirname,                             
-                                                           self.config_for_run)
+                        fcl = "%s/EventBuilder1.fcl" % (config_subdirname)
                     elif proc_type == "Aggregator":
                         aggregator_cntr += 1
                         if aggregator_cntr < num_procs:
-                            fcl = "%s/%s/Aggregator1.fcl" % (self.config_dirname,                             
-                                                             self.config_for_run)
+                            fcl = "%s/Aggregator1.fcl" % (config_subdirname)
                         else:
-                            fcl = "%s/%s/Aggregator2.fcl" % (self.config_dirname,                             
-                                                             self.config_for_run)
+                            fcl = "%s/Aggregator2.fcl" % (config_subdirname)
                     else:
                         assert False
                         
@@ -1549,7 +1549,12 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                                    self.tmp_run_record)
             return
 
-        self.put_config_info()
+        try:
+            self.put_config_info()
+        except Exception:
+            self.print_log(traceback.format_exc())
+            self.alert_and_recover("An exception was thrown when trying to save configuration info; see traceback above for more info")
+            return
 
         try:
             self.do_command("Start")
