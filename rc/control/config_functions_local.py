@@ -15,13 +15,13 @@ def get_config_info_base(self):
     config_dirname_subdir = config_dirname + self.config_for_run + "/"
 
     if not os.path.exists( config_dirname_subdir ):
-        raise Exception(make_paragraph("Error: unable to find expected directory of FHiCL configuration files \"%s\"; this probably means you're not running out of DAQInterface's base directory" % (config_dirname_subdir) ))
+        raise Exception(make_paragraph("Error: unable to find expected directory of FHiCL configuration files \"%s\"; this may mean you're not running out of DAQInterface's base directory" % (config_dirname_subdir) ))
 
     ffp = []
     ffp.append( config_dirname_subdir )
     ffp.append( "%s/common_code" % (config_dirname))
 
-    return config_dirname, ffp
+    return config_dirname_subdir, ffp
 
 # put_config_info_base should be a no-op 
 

@@ -118,7 +118,13 @@ class DAQInterface(Component):
                     if "#include" not in line:
                         self.fhicl_used += line
                     else:
-                        res = re.search(r"#include\s+\"(\S+)\"", line)
+                        res = re.search(r"^\s*#.*#include", line)
+
+                        if res:
+                            self.fhicl_used += line
+                            continue
+
+                        res = re.search(r"^\s*#include\s+\"(\S+)\"", line)
                         
                         if not res:
                             raise Exception(make_paragraph("Error in Procinfo::recursive_include: "
@@ -131,8 +137,8 @@ class DAQInterface(Component):
                             if not os.path.exists(included_file):
                                 raise Exception(make_paragraph("Error in "
                                                                     "Procinfo::recursive_include: "
-                                                                    "unable to find file %s" %
-                                                                    included_file))
+                                                                    "unable to find file %s included in %s" %
+                                                               (included_file, filename)))
                             else:
                                 self.recursive_include(included_file)
                         else:
@@ -1472,6 +1478,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                         assert False
                         
                     try:
+                        self.procinfos[i_proc].ffp = self.fhicl_file_path
                         self.procinfos[i_proc].update_fhicl(fcl)
                     except Exception:
                         self.print_log(traceback.format_exc())

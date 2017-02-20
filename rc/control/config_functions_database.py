@@ -64,7 +64,7 @@ def get_config_info_base(self):
     
     configdir = "%s/newconfig/" % (config_basedir())
 
-    return configdir, [fhicl_dir for fhicl_dir, dummy, dummy in os.walk(self.config_dirname)]
+    return configdir, [fhicl_dir for fhicl_dir, dummy, dummy in os.walk(configdir)]
 
 
 def put_config_info_base(self):

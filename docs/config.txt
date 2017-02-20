@@ -1,5 +1,5 @@
 
-DAQ directory: $HOME/artdaq-demo-base-mrb
+DAQ directory: $HOME/path_to_daq_base_directory_not_yet_defined
 
 PMT host: localhost
 PMT port: 5400
@@ -8,14 +8,14 @@ PMT port: 5400
 debug level: 1
 
 EventBuilder host: localhost
-EventBuilder port: 5235
+EventBuilder port: 5435
 
 EventBuilder host: localhost
-EventBuilder port: 5236
+EventBuilder port: 5436
 
 Aggregator host: localhost
-Aggregator port: 5265
+Aggregator port: 5465
 
 Aggregator host: localhost
-Aggregator port: 5266
+Aggregator port: 5466
 
