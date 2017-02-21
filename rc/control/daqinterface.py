@@ -1150,7 +1150,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     t.start()
 
             for thread in threads:
-                t.join()
+                thread.join()
 
         if self.exception:
             raise Exception("An exception was thrown "
@@ -1772,7 +1772,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     t.start()
 
             for thread in threads:
-                t.join()
+                thread.join()
                 
         try:
             self.kill_procs()
