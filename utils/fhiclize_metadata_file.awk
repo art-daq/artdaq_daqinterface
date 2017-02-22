@@ -93,11 +93,9 @@
 	    boardreader_section_active = 1
 	    next
 	} else if (firstpart ~ "eventbuilder logfiles") {
-	    print "Eventbuilder section now active"
 	    eventbuilder_section_active = 1
 	    next
 	} else if (firstpart ~ "aggregator logfiles") {
-	    print "Aggregator section now active"
 	    aggregator_section_active = 1
 	    next
 	} else {
