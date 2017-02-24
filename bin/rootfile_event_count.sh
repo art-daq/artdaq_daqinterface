@@ -36,7 +36,7 @@ file_locations=""
 for file in $recorddir/$runnum/Aggregator*.fcl ; do
 
     agg_host=$( echo $file | sed -r 's/.*Aggregator_(.*)_.*/\1/' )
-    agg_dir=$( sed -r -n '/^\s*#/d;/fileName.*\.root/s/.*fileName.*(\/.*\/).*/\1/p' $file )
+    agg_dir=$( sed -r -n '/^\s*#/d;/fileName.*\.root/s/.*fileName[^/]*(\/.*\/).*/\1/p' $file )
     if [[ -n $agg_dir && ! $file_locations =~ "${agg_host}:${agg_dir}" ]]; then
 	file_locations="${agg_host}:${agg_dir} ${file_locations}"
     fi
