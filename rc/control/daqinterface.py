@@ -693,7 +693,19 @@ Please kill DAQInterface and run it out of the base directory.""" % \
     # queried, the artdaq process can return an "Error" state, as
     # opposed to the usual DAQ states ("Ready", "Running", etc.)
 
+    # Feb-26-2017
+
+    # Note that "exceptions" in the context of the function name
+    # check_proc_exceptions() refers to an exception being thrown
+    # within a fragment generator, resulting in the artdaq process
+    # returning an "Error" when queried. It's not the same thing as
+    # what the self.exception variable denotes, which is that a
+    # literal Python exception got thrown at some point.
+
     def check_proc_exceptions(self):
+
+        if self.exception:
+            return
 
         is_all_ok = True
 
