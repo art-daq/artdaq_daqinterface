@@ -1239,25 +1239,6 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         if not hasattr(self, "daq_comp_list") or not self.daq_comp_list or self.daq_comp_list == {}:
             revert_failed_boot("when checking for the list of components meant to be provided by the \"setdaqcomps\" call")
             return
-        
-        includes_commit = "cd2e091960d9607ef61e3f7226c3aede90bc2e6e"
-        commit_date = "Jan 12, 2017"
-
-        artdaq_dir = self.daq_dir + "/srcs/artdaq"
-
-        cmds = []
-        cmds.append("cd " + artdaq_dir )
-        cmds.append("git log | grep %s" % (includes_commit))
-
-        proc = Popen(";".join(cmds), shell=True,
-                     stdout=subprocess.PIPE)
-        proclines = proc.stdout.readlines()
-
-        if len(proclines) != 1:
-            print
-            revert_failed_boot("when checking to see whether the version of artdaq in %s had a git commit hash as new as or newer than %s (%s)" % \
-                                        (artdaq_dir, includes_commit, commit_date))
-            return
 
         self.package_hash_dict = {}
 

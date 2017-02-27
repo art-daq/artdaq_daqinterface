@@ -115,6 +115,25 @@ def table_range(fhiclstring, tablename):
 
     return (loc, loc + open_brace_loc + 1 + close_brace_loc + 1)
 
+
+def commit_check_throws_if_failure(packagedir, commit_hash, date, request_after):
+
+    assert os.path.exists( packagedir ), "Directory %s doesn't appear to exist; a check should occur earlier in the program for this" % (packagedir)
+
+    cmds = []
+    cmds.append("cd " + packagedir )
+    cmds.append("git log | grep %s" % (commit_hash))
+
+    proc = Popen(";".join(cmds), shell=True,
+                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proclines = proc.stdout.readlines()
+
+    if request_after and len(proclines) != 1:
+        raise Exception("Unable to find expected git commit hash %s (%s) in directory \"%s\"; this means the version of code in that directory isn't the one expected" % (commit_hash, date, packagedir))
+    elif not request_after and len(proclines) != 0:
+        raise Exception("Unexpectedly found git commit hash %s (%s) in directory \"%s\"; this means the version of code in that directory isn't the one expected" % (commit_hash, date, packagedir))
+
+
 def main():
 
     sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
