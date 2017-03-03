@@ -38,6 +38,7 @@ from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v2_bas
 from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_pids
+from rc.control.utilities import is_msgviewer_running
 
 
 class DAQInterface(Component):
@@ -1318,7 +1319,10 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         
         version, equalifier, squalifier = self.artdaq_mfextensions_info()
 
-        if self.have_needed_artdaq_mfextensions():
+        if self.have_needed_artdaq_mfextensions() and is_msgviewer_running():
+            print make_paragraph("An instance of messageviewer already appears to be running; " + \
+                                     "messages will be sent to the existing messageviewer")
+        elif self.have_needed_artdaq_mfextensions():
             print make_paragraph("artdaq_mfextensions %s, %s:%s, appears to be available; "
                                       "if windowing is supported on your host you should see the "
                                       "messageviewer window pop up momentarily" % \
@@ -1795,40 +1799,48 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 pass
 
             elif self.__do_boot:
-                self.do_boot()
                 self.__do_boot = False
+                self.do_boot()
 
             elif self.__do_shutdown:
-                self.do_command("Shutdown")
                 self.__do_shutdown = False
+                self.do_command("Shutdown")
+
 
             elif self.__do_config:
-                self.do_config()
                 self.__do_config = False
+                self.do_config()
+
 
             elif self.__do_recover:
-                self.do_recover()
                 self.__do_recover = False
+                self.do_recover()
+
 
             elif self.__do_start_running:
-                self.do_start_running()
                 self.__do_start_running = False
+                self.do_start_running()
+
 
             elif self.__do_stop_running:
-                self.do_stop_running()
                 self.__do_stop_running = False
+                self.do_stop_running()
+
 
             elif self.__do_terminate:
-                self.do_terminate()
                 self.__do_terminate = False
+                self.do_terminate()
+
 
             elif self.__do_pause_running:
-                self.do_command("Pause")
                 self.__do_pause_running = False
+                self.do_command("Pause")
+
 
             elif self.__do_resume_running:
-                self.do_command("Resume")
                 self.__do_resume_running = False
+                self.do_command("Resume")
+
 
             elif self.state(self.name) != "stopped" and self.state(self.name) != "booting" \
                     and self.state(self.name) != "terminating":
