@@ -597,7 +597,12 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         cmds.append("cd " + self.daq_dir)
         cmds.append("source ./" + self.daq_setup_script )
         cmds.append("which pmt.rb")  # Sanity check capable of returning nonzero
-        cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=30")
+
+        # 30-Jan-2017, KAB: increased the amount of time that pmt.rb provides daqinterface
+        # to react to errors.  This should be longer than the sum of the individual
+        # process timeouts.
+        cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=120")
+
 
         if self.have_needed_artdaq_mfextensions():
 
@@ -635,8 +640,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 status = Popen(launchcmd, shell=True).wait()
 
         if status != 0:
-            raise Exception(make_paragraph("Status error raised; commands were \"%s\". If logfiles exist, please check them for more information. Also try running the commands interactively in a new terminal for more info." %
-                            ("; ".join(cmds))))
+            raise Exception("Status error raised; commands were \"\n%s\n\". If logfiles exist, please check them for more information. Also try running the commands interactively in a new terminal for more info." %
+                            ("\n".join(cmds)))
             return
 
 
@@ -804,7 +809,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
             for pmt_pid in pmt_pids:
 
-                cmd = "kill %s" % (pmt_pid)
+                cmd = "kill %s; sleep 2; kill -9 %s" % (pmt_pid, pmt_pid)
 
                 if self.pmt_host != "localhost":
                     cmd = "ssh -f " + self.pmt_host + " '" + cmd + "'"

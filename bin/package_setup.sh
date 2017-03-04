@@ -9,6 +9,16 @@ if [[ -z $packagename ]]; then
     return 70
 fi
 
+# 27-Jan-2017, KAB, if the requested package is already set up, let's assume that it's OK to use it
+# (probably better tests that can be used...)
+upcasePackageName=`echo ${packagename} | tr [a-z] [A-Z]`
+prodDirEnvVar="${upcasePackageName}_DIR"
+#echo $prodDirEnvVar
+#echo ${!prodDirEnvVar}
+if [[ -n "${!prodDirEnvVar}" ]]; then
+    return
+fi
+
 
 if [[ ! -e $PWD/.settings ]]; then
     echo "Unable to find .settings file in $PWD; this script should be executed from DAQInterface's base directory" >&2
