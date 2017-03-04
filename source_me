@@ -9,7 +9,7 @@ if [[ -n $DAQINTLOGDIR ]]; then
    return 2
 fi
 
-export DAQINTLOGDIR=/tmp/daqinterface
+export DAQINTLOGDIR=/tmp/daqinterface_${USER}
 
 mkdir -p $DAQINTLOGDIR
 daqintlog=$DAQINTLOGDIR/DI.log
