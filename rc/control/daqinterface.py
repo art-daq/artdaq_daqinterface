@@ -376,8 +376,12 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                             "Unable to parse package_hashes_to_save line in the settings file, %s" % \
                                 (os.getcwd() + "/.settings")))
 
-                package_hashes_to_save_unprocessed = res.group(1).split(",")
                 self.package_hashes_to_save = []
+
+                if res.group(1).strip() == "":
+                    continue
+
+                package_hashes_to_save_unprocessed = res.group(1).split(",")
 
                 for ip, package in enumerate(package_hashes_to_save_unprocessed):
                     package = string.replace(package, "\"", "")
