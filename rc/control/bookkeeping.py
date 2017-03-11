@@ -229,4 +229,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v2_base(self):
                 transfer_code + \
                 self.procinfos[i_proc].fhicl_used[table_end:]
 
+    for i_proc in range(len(self.procinfos)):
+        self.procinfos[i_proc].fhicl_used = re.sub("expected_fragments_per_event\s*:\s*[0-9]+", 
+                                                   "expected_fragments_per_event: %d" % (self.num_boardreaders()), 
+                                                   self.procinfos[i_proc].fhicl_used)
 
