@@ -115,19 +115,65 @@ def table_range(fhiclstring, tablename):
 
     return (loc, loc + open_brace_loc + 1 + close_brace_loc + 1)
 
+
+def commit_check_throws_if_failure(packagedir, commit_hash, date, request_after):
+
+    assert os.path.exists( packagedir ), "Directory %s doesn't appear to exist; a check should occur earlier in the program for this" % (packagedir)
+
+    cmds = []
+    cmds.append("cd " + packagedir )
+    cmds.append("git log | grep %s" % (commit_hash))
+
+    proc = Popen(";".join(cmds), shell=True,
+                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proclines = proc.stdout.readlines()
+
+    if request_after and len(proclines) != 1:
+        raise Exception("Unable to find expected git commit hash %s (%s) in directory \"%s\"; this means the version of code in that directory isn't the one expected" % (commit_hash, date, packagedir))
+    elif not request_after and len(proclines) != 0:
+        raise Exception("Unexpectedly found git commit hash %s (%s) in directory \"%s\"; this means the version of code in that directory isn't the one expected" % (commit_hash, date, packagedir))
+
+def is_msgviewer_running():
+    
+    tty = Popen("tty", shell=True,
+                     stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+
+    if "/dev/" in tty:
+        tty = string.replace(tty, "/dev/", "")
+
+    for line in Popen("ps u", shell=True, 
+                      stdout=subprocess.PIPE).stdout.readlines():
+        if "msgviewer" in line and tty in line:
+            return True
+
+    return False
+
+
+
 def main():
 
-    sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
+    paragraphed_string_test = False
+    msgviewer_check_test = True
 
-    paragraphed_string=make_paragraph( sample_string )
+    if paragraphed_string_test:
+        sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
 
-    print
-    print "Sample string: "
-    print sample_string
+        paragraphed_string=make_paragraph( sample_string )
 
-    print
-    print "Paragraphed string: "
-    print paragraphed_string
+        print
+        print "Sample string: "
+        print sample_string
+
+        print
+        print "Paragraphed string: "
+        print paragraphed_string
+
+    if msgviewer_check_test:
+        if is_msgviewer_running():
+            print "A msgviewer appears to be running"
+        else:
+            print "A msgviewer doesn't appear to be running"
+        
 
 if __name__ == "__main__":
     main()

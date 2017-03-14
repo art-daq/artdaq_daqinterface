@@ -57,23 +57,13 @@
     }
 
     if (aggregator_section_active) {
+
 	if ( $0 !~ /^\s*$/) {
 	    aggregators[++aggregator_cntr] = $1
 	    next
-	} else {
-	    printf "\naggregator_logfiles: ["
-	    for (i = 1; i <= length(aggregators); ++i) {
-		if (i != length(aggregators)) {
-		    printf "\"%s\", ", aggregators[i]
-		} else {
-		    printf "\"%s\"]\n\n", aggregators[i]
-		}
-	    }
-	    aggregator_section_active = 0
-	}
+	} 
+	# Printing of the aggregator logfiles array is handled at END{}
     }
-
-
 
     # Get the key / value pair; if there isn't one, then just continue
 
@@ -124,16 +114,16 @@
     }
 }
 
-# END {
+END {
 
-#     # This section exists because the last line is an aggregator logfile line
-#     printf "\naggregator_logfiles: ["
-#     for (i = 1; i <= length(aggregators); ++i) {
-# 	if (i != length(aggregators)) {
-# 	    printf "\"%s\", ", aggregators[i]
-# 	} else {
-# 	    printf "\"%s\"]\n", aggregators[i]
-# 	}
-#     }
-#     aggregator_section_active = 0
-# }
+    # This section exists because the last line is an aggregator logfile line
+    printf "\naggregator_logfiles: ["
+    for (i = 1; i <= length(aggregators); ++i) {
+	if (i != length(aggregators)) {
+	    printf "\"%s\", ", aggregators[i]
+	} else {
+	    printf "\"%s\"]\n", aggregators[i]
+	}
+    }
+    aggregator_section_active = 0
+}

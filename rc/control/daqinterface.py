@@ -38,6 +38,7 @@ from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v2_bas
 from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_pids
+from rc.control.utilities import is_msgviewer_running
 
 
 class DAQInterface(Component):
@@ -118,7 +119,13 @@ class DAQInterface(Component):
                     if "#include" not in line:
                         self.fhicl_used += line
                     else:
-                        res = re.search(r"#include\s+\"(\S+)\"", line)
+                        res = re.search(r"^\s*#.*#include", line)
+
+                        if res:
+                            self.fhicl_used += line
+                            continue
+
+                        res = re.search(r"^\s*#include\s+\"(\S+)\"", line)
                         
                         if not res:
                             raise Exception(make_paragraph("Error in Procinfo::recursive_include: "
@@ -131,8 +138,8 @@ class DAQInterface(Component):
                             if not os.path.exists(included_file):
                                 raise Exception(make_paragraph("Error in "
                                                                     "Procinfo::recursive_include: "
-                                                                    "unable to find file %s" %
-                                                                    included_file))
+                                                                    "unable to find file %s included in %s" %
+                                                               (included_file, filename)))
                             else:
                                 self.recursive_include(included_file)
                         else:
@@ -369,8 +376,12 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                             "Unable to parse package_hashes_to_save line in the settings file, %s" % \
                                 (os.getcwd() + "/.settings")))
 
-                package_hashes_to_save_unprocessed = res.group(1).split(",")
                 self.package_hashes_to_save = []
+
+                if res.group(1).strip() == "":
+                    continue
+
+                package_hashes_to_save_unprocessed = res.group(1).split(",")
 
                 for ip, package in enumerate(package_hashes_to_save_unprocessed):
                     package = string.replace(package, "\"", "")
@@ -590,7 +601,12 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         cmds.append("cd " + self.daq_dir)
         cmds.append("source ./" + self.daq_setup_script )
         cmds.append("which pmt.rb")  # Sanity check capable of returning nonzero
-        cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=30")
+
+        # 30-Jan-2017, KAB: increased the amount of time that pmt.rb provides daqinterface
+        # to react to errors.  This should be longer than the sum of the individual
+        # process timeouts.
+        cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=120")
+
 
         if self.have_needed_artdaq_mfextensions():
 
@@ -628,8 +644,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 status = Popen(launchcmd, shell=True).wait()
 
         if status != 0:
-            raise Exception(make_paragraph("Status error raised; commands were \"%s\". If logfiles exist, please check them for more information. Also try running the commands interactively in a new terminal for more info." %
-                            ("; ".join(cmds))))
+            raise Exception("Status error raised; commands were \"\n%s\n\". If logfiles exist, please check them for more information. Also try running the commands interactively in a new terminal for more info." %
+                            ("\n".join(cmds)))
             return
 
 
@@ -687,7 +703,19 @@ Please kill DAQInterface and run it out of the base directory.""" % \
     # queried, the artdaq process can return an "Error" state, as
     # opposed to the usual DAQ states ("Ready", "Running", etc.)
 
+    # Feb-26-2017
+
+    # Note that "exceptions" in the context of the function name
+    # check_proc_exceptions() refers to an exception being thrown
+    # within a fragment generator, resulting in the artdaq process
+    # returning an "Error" when queried. It's not the same thing as
+    # what the self.exception variable denotes, which is that a
+    # literal Python exception got thrown at some point.
+
     def check_proc_exceptions(self):
+
+        if self.exception:
+            return
 
         is_all_ok = True
 
@@ -785,7 +813,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
             for pmt_pid in pmt_pids:
 
-                cmd = "kill %s" % (pmt_pid)
+                cmd = "kill %s; sleep 2; kill -9 %s" % (pmt_pid, pmt_pid)
 
                 if self.pmt_host != "localhost":
                     cmd = "ssh -f " + self.pmt_host + " '" + cmd + "'"
@@ -1144,7 +1172,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     t.start()
 
             for thread in threads:
-                t.join()
+                thread.join()
 
         if self.exception:
             raise Exception("An exception was thrown "
@@ -1220,25 +1248,6 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         if not hasattr(self, "daq_comp_list") or not self.daq_comp_list or self.daq_comp_list == {}:
             revert_failed_boot("when checking for the list of components meant to be provided by the \"setdaqcomps\" call")
-            return
-        
-        includes_commit = "cd2e091960d9607ef61e3f7226c3aede90bc2e6e"
-        commit_date = "Jan 12, 2017"
-
-        artdaq_dir = self.daq_dir + "/srcs/artdaq"
-
-        cmds = []
-        cmds.append("cd " + artdaq_dir )
-        cmds.append("git log | grep %s" % (includes_commit))
-
-        proc = Popen(";".join(cmds), shell=True,
-                     stdout=subprocess.PIPE)
-        proclines = proc.stdout.readlines()
-
-        if len(proclines) != 1:
-            print
-            revert_failed_boot("when checking to see whether the version of artdaq in %s had a git commit hash as new as or newer than %s (%s)" % \
-                                        (artdaq_dir, includes_commit, commit_date))
             return
 
         self.package_hash_dict = {}
@@ -1319,7 +1328,10 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         
         version, equalifier, squalifier = self.artdaq_mfextensions_info()
 
-        if self.have_needed_artdaq_mfextensions():
+        if self.have_needed_artdaq_mfextensions() and is_msgviewer_running():
+            print make_paragraph("An instance of messageviewer already appears to be running; " + \
+                                     "messages will be sent to the existing messageviewer")
+        elif self.have_needed_artdaq_mfextensions():
             print make_paragraph("artdaq_mfextensions %s, %s:%s, appears to be available; "
                                       "if windowing is supported on your host you should see the "
                                       "messageviewer window pop up momentarily" % \
@@ -1403,22 +1415,24 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         self.print_log("Selected DAQ comps: %s" %
                        self.daq_comp_list, 1)
 
-
         for component, socket in self.daq_comp_list.items():
 
-            if self.debug_level >= 2:
-                print "Searching for the FHiCL document for " + component + \
-                    " given configuration \"" + self.config_for_run + \
-                    "\""
+            self.print_log( make_paragraph( 
+                "Searching for the FHiCL document for %s in directory %s given configuration \"%s\"" % \
+                (component, self.config_dirname, self.config_for_run)), 2)
+
+            component_fhicl = "the_file_is_not_yet_found"
             
-            uri = self.config_dirname + "/" + self.config_for_run + "/" + component + "_hw_cfg.fcl"
-
-            if not os.path.exists(uri):
-                print "Didn't find uri %s" % (uri)
-
+            for dirname, dummy, filenames in os.walk( self.config_dirname ):
+                for filename in filenames:
+                    if filename == component + "_hw_cfg.fcl":
+                        component_fhicl = dirname + "/" + filename
+            
+            if not os.path.exists(component_fhicl):
                 self.revert_state_change(self.name, self.state(self.name))
-                msg = "Unable to find desired file \"%s\" for component \"%s\"; system remains in the \"%s\" state." % \
-                    (uri, component, self.state(self.name))
+
+                msg = "Unable to find FHiCL document for component \"%s\" after searching in directory %s; system remains in the \"%s\" state." % \
+                    (component, self.config_dirname, self.state(self.name))
 
                 msg += " Please either select a configuration which contains this component or " + \
                     "terminate and then " + \
@@ -1427,8 +1441,9 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
                 self.print_log(make_paragraph(msg))
 
-                self.revert_state_change(self.name, self.state(self.name))
                 return
+
+            config_subdirname = os.path.dirname(component_fhicl)
                     
             try:
                 for i_proc in range(len(self.procinfos)):
@@ -1436,7 +1451,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     if self.procinfos[i_proc].host == socket[0] and \
                             self.procinfos[i_proc].port == socket[1]:
                         self.procinfos[i_proc].ffp = self.fhicl_file_path
-                        self.procinfos[i_proc].update_fhicl(uri)
+                        self.procinfos[i_proc].update_fhicl(component_fhicl)
             except Exception:
                 self.print_log(traceback.format_exc())
                 self.alert_and_recover("An exception was thrown when creating the process FHiCL documents; see traceback above for more info")
@@ -1458,20 +1473,18 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 if self.procinfos[i_proc].name == proc_type:
 
                     if proc_type == "EventBuilder":
-                        fcl = "%s/%s/EventBuilder1.fcl" % (self.config_dirname,                             
-                                                           self.config_for_run)
+                        fcl = "%s/EventBuilder1.fcl" % (config_subdirname)
                     elif proc_type == "Aggregator":
                         aggregator_cntr += 1
                         if aggregator_cntr < num_procs:
-                            fcl = "%s/%s/Aggregator1.fcl" % (self.config_dirname,                             
-                                                             self.config_for_run)
+                            fcl = "%s/Aggregator1.fcl" % (config_subdirname)
                         else:
-                            fcl = "%s/%s/Aggregator2.fcl" % (self.config_dirname,                             
-                                                             self.config_for_run)
+                            fcl = "%s/Aggregator2.fcl" % (config_subdirname)
                     else:
                         assert False
                         
                     try:
+                        self.procinfos[i_proc].ffp = self.fhicl_file_path
                         self.procinfos[i_proc].update_fhicl(fcl)
                     except Exception:
                         self.print_log(traceback.format_exc())
@@ -1549,7 +1562,12 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                                    self.tmp_run_record)
             return
 
-        self.put_config_info()
+        try:
+            self.put_config_info()
+        except Exception:
+            self.print_log(traceback.format_exc())
+            self.alert_and_recover("An exception was thrown when trying to save configuration info; see traceback above for more info")
+            return
 
         try:
             self.do_command("Start")
@@ -1760,7 +1778,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     t.start()
 
             for thread in threads:
-                t.join()
+                thread.join()
                 
         try:
             self.kill_procs()
@@ -1790,40 +1808,48 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 pass
 
             elif self.__do_boot:
-                self.do_boot()
                 self.__do_boot = False
+                self.do_boot()
 
             elif self.__do_shutdown:
-                self.do_command("Shutdown")
                 self.__do_shutdown = False
+                self.do_command("Shutdown")
+
 
             elif self.__do_config:
-                self.do_config()
                 self.__do_config = False
+                self.do_config()
+
 
             elif self.__do_recover:
-                self.do_recover()
                 self.__do_recover = False
+                self.do_recover()
+
 
             elif self.__do_start_running:
-                self.do_start_running()
                 self.__do_start_running = False
+                self.do_start_running()
+
 
             elif self.__do_stop_running:
-                self.do_stop_running()
                 self.__do_stop_running = False
+                self.do_stop_running()
+
 
             elif self.__do_terminate:
-                self.do_terminate()
                 self.__do_terminate = False
+                self.do_terminate()
+
 
             elif self.__do_pause_running:
-                self.do_command("Pause")
                 self.__do_pause_running = False
+                self.do_command("Pause")
+
 
             elif self.__do_resume_running:
-                self.do_command("Resume")
                 self.__do_resume_running = False
+                self.do_command("Resume")
+
 
             elif self.state(self.name) != "stopped" and self.state(self.name) != "booting" \
                     and self.state(self.name) != "terminating":

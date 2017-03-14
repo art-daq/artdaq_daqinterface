@@ -36,7 +36,7 @@ file_locations=""
 for file in $recorddir/$runnum/Aggregator*.fcl ; do
 
     agg_host=$( echo $file | sed -r 's/.*Aggregator_(.*)_.*/\1/' )
-    agg_dir=$( sed -r -n '/^\s*#/d;/fileName.*\.root/s/.*fileName.*(\/.*\/).*/\1/p' $file )
+    agg_dir=$( sed -r -n '/^\s*#/d;/fileName.*\.root/s/.*fileName[^/]*(\/.*\/).*/\1/p' $file )
     if [[ -n $agg_dir && ! $file_locations =~ "${agg_host}:${agg_dir}" ]]; then
 	file_locations="${agg_host}:${agg_dir} ${file_locations}"
     fi
@@ -51,7 +51,11 @@ for file_location in $file_locations ; do
 
     cmd="tmpfile=/tmp/"$(uuidgen)".C ; echo '{TChain chain(\"Events\"); chain.Add(\""$agg_dir"/*_r"${runnum_padded}"_*.root\"); cout << chain.GetEntries() << endl;}' > \$tmpfile; cd "$proddir"/.. ; . "$setupscript"; root -q -b -l \$tmpfile ; rm -f \$tmpfile"
 
-    nevents=$( ssh $agg_host "$cmd" | tail -1 )
+    if [[ "$agg_host" != "localhost" && "$agg_host" != $HOSTNAME ]]; then
+	nevents=$( ssh $agg_host "$cmd" | tail -1 )
+    else
+	nevents=$( eval "$cmd" | tail -1 )
+    fi
 
     if [[ $nevents =~ ^[0-9]+$ ]]; then
 	total_events=$(( total_events + nevents ))

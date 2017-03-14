@@ -9,7 +9,7 @@ if [[ -n $DAQINTLOGDIR ]]; then
    return 2
 fi
 
-export DAQINTLOGDIR=/tmp/daqinterface
+export DAQINTLOGDIR=/tmp/daqinterface_${USER}
 
 mkdir -p $DAQINTLOGDIR
 daqintlog=$DAQINTLOGDIR/DI.log
@@ -19,9 +19,11 @@ alias DAQInterface="stdbuf -oL ./rc/control/daqinterface.py 2>&1 | tee -a $daqin
 export PATH=$PWD/bin:$PATH
 
 echo
-echo "-Source of this file was successful"
-echo "-Output will be logged in $daqintlog"
-echo "-To launch, when in $PWD, just type \"DAQInterface\" (excluding quotes)"  
+echo "* Source of this file was successful"
+echo "* Output will be logged in $daqintlog"
+echo "* To launch, when in $PWD, just type \"DAQInterface\" (excluding quotes)" 
+echo "* Help is available at https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Artdaq-daqinterface"
+ 
 echo
 return 0
 
