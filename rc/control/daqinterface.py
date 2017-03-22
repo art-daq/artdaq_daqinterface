@@ -226,6 +226,8 @@ class DAQInterface(Component):
                            rpc_port=rpc_port,
                            skip_init=False)
 
+        self.manage_processes = True
+
         self.in_recovery = False
         self.heartbeat_failure = False
 
@@ -1270,59 +1272,61 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         self.procinfos.sort()
 
-        # Now, with the info on hand about the processes contained in
-        # procinfos, actually launch them
+        if self.manage_processes:
 
-        try:
-            self.launch_procs()
-
-            if self.debug_level >= 1:
-                print "Finished call to launch_procs(); will now confirm that artdaq processes are up..."
-
-        except Exception:
-            self.print_log(traceback.format_exc())
-
-            self.alert_and_recover("An exception was thrown in launch_procs(), see traceback above for more info")
-            return
-
-        num_launch_procs_checks = 0
-
-        while True:
-
-            num_launch_procs_checks += 1
-
-            # "False" here means "don't consider it an error if all
-            # processes aren't found"
-
-            if self.check_proc_heartbeats(False):
-
-                if self.debug_level > 0:
-                    print "All processes appear to be up"
-
-                break
-            else:
-                if num_launch_procs_checks > 5:
-                    self.alert_and_recover("artdaq processes failed to launch; logfiles may contain info as to what happened")
-                    return
-
-        for procinfo in self.procinfos:
-            
-            if "BoardReader" in procinfo.name:
-                timeout = self.boardreader_timeout
-            elif "EventBuilder" in procinfo.name:
-                timeout = self.eventbuilder_timeout
-            elif "Aggregator" in procinfo.name:
-                timeout = self.aggregator_timeout
+            # Now, with the info on hand about the processes contained in
+            # procinfos, actually launch them
 
             try:
-                procinfo.server = TimeoutServerProxy(
-                    procinfo.socketstring, timeout)
+                self.launch_procs()
+
+                if self.debug_level >= 1:
+                    print "Finished call to launch_procs(); will now confirm that artdaq processes are up..."
+
             except Exception:
                 self.print_log(traceback.format_exc())
 
-                self.alert_and_recover("Problem creating server with socket \"%s\"" % \
-                                           procinfo.socketstring)
+                self.alert_and_recover("An exception was thrown in launch_procs(), see traceback above for more info")
                 return
+
+            num_launch_procs_checks = 0
+
+            while True:
+
+                num_launch_procs_checks += 1
+
+                # "False" here means "don't consider it an error if all
+                # processes aren't found"
+
+                if self.check_proc_heartbeats(False):
+
+                    if self.debug_level > 0:
+                        print "All processes appear to be up"
+
+                    break
+                else:
+                    if num_launch_procs_checks > 5:
+                        self.alert_and_recover("artdaq processes failed to launch; logfiles may contain info as to what happened")
+                        return
+
+            for procinfo in self.procinfos:
+
+                if "BoardReader" in procinfo.name:
+                    timeout = self.boardreader_timeout
+                elif "EventBuilder" in procinfo.name:
+                    timeout = self.eventbuilder_timeout
+                elif "Aggregator" in procinfo.name:
+                    timeout = self.aggregator_timeout
+
+                try:
+                    procinfo.server = TimeoutServerProxy(
+                        procinfo.socketstring, timeout)
+                except Exception:
+                    self.print_log(traceback.format_exc())
+
+                    self.alert_and_recover("Problem creating server with socket \"%s\"" % \
+                                               procinfo.socketstring)
+                    return
 
         # Figure out if we have the artdaq_mfextensions version expected by the artdaq used 
         
@@ -1520,12 +1524,14 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             self.print_log(make_paragraph(
                     "WARNING: an exception was thrown when attempting to save the run record. While datataking may be able to proceed, this may also indicate a serious problem"))
 
-        try:
-            self.do_command("Init")
-        except Exception:
-            self.print_log(traceback.format_exc())
-            self.alert_and_recover("An exception was thrown when attempting to send the \"init\" transition to the artdaq processes; see traceback above for more info")
-            return
+        if self.manage_processes:
+
+            try:
+                self.do_command("Init")
+            except Exception:
+                self.print_log(traceback.format_exc())
+                self.alert_and_recover("An exception was thrown when attempting to send the \"init\" transition to the artdaq processes; see traceback above for more info")
+                return
 
         self.complete_state_change(self.name, "configuring")
 
@@ -1569,12 +1575,14 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             self.alert_and_recover("An exception was thrown when trying to save configuration info; see traceback above for more info")
             return
 
-        try:
-            self.do_command("Start")
-        except Exception:
-            self.print_log(traceback.format_exc())
-            self.alert_and_recover("An exception was thrown when attempting to send the \"start\" transition to the artdaq processes; see traceback above for more info")
-            return
+        if self.manage_processes:
+
+            try:
+                self.do_command("Start")
+            except Exception:
+                self.print_log(traceback.format_exc())
+                self.alert_and_recover("An exception was thrown when attempting to send the \"start\" transition to the artdaq processes; see traceback above for more info")
+                return
 
         self.start_datataking()
 
@@ -1596,12 +1604,14 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         self.stop_datataking()
 
-        try:
-            self.do_command("Stop")
-        except Exception:
-            self.print_log(traceback.format_exc())
-            self.alert_and_recover("An exception was thrown when attempting to send the \"stop\" transition to the artdaq processes; see traceback above for more info")
-            return
+        if self.manage_processes:
+
+            try:
+                self.do_command("Stop")
+            except Exception:
+                self.print_log(traceback.format_exc())
+                self.alert_and_recover("An exception was thrown when attempting to send the \"stop\" transition to the artdaq processes; see traceback above for more info")
+                return
 
 
         self.save_metadata_value("Total events", self.total_events_in_run())
@@ -1618,38 +1628,40 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         print
 
-        for procinfo in self.procinfos:
+        if self.manage_processes:
+
+            for procinfo in self.procinfos:
+
+                try:
+                    procinfo.lastreturned = procinfo.server.daq.shutdown()
+                except Exception:
+                    self.print_log("DAQInterface caught an exception in "
+                                   "do_terminate()")
+                    self.print_log(traceback.format_exc())
+
+                    self.print_log("%s at %s:%s, returned string is: " % \
+                                       (procinfo.name, procinfo.host, procinfo.port))
+                    self.print_log(procinfo.lastreturned)
+
+                    self.alert_and_recover("An exception was thrown "
+                                           "during the terminate transition")
+                    return
+                else:
+                    if self.debug_level >= 1:
+                        print "%s at %s:%s, returned string is: " % \
+                            (procinfo.name, procinfo.host, procinfo.port)
+                        print procinfo.lastreturned
+                        print
 
             try:
-                procinfo.lastreturned = procinfo.server.daq.shutdown()
+                self.kill_procs()
             except Exception:
                 self.print_log("DAQInterface caught an exception in "
                                "do_terminate()")
                 self.print_log(traceback.format_exc())
-
-                self.print_log("%s at %s:%s, returned string is: " % \
-                                   (procinfo.name, procinfo.host, procinfo.port))
-                self.print_log(procinfo.lastreturned)
-
                 self.alert_and_recover("An exception was thrown "
-                                       "during the terminate transition")
+                                       "within kill_procs()")
                 return
-            else:
-                if self.debug_level >= 1:
-                    print "%s at %s:%s, returned string is: " % \
-                        (procinfo.name, procinfo.host, procinfo.port)
-                    print procinfo.lastreturned
-                    print
-
-        try:
-            self.kill_procs()
-        except Exception:
-            self.print_log("DAQInterface caught an exception in "
-                           "do_terminate()")
-            self.print_log(traceback.format_exc())
-            self.alert_and_recover("An exception was thrown "
-                                   "within kill_procs()")
-            return
 
         self.complete_state_change(self.name, "terminating")
 
@@ -1746,46 +1758,49 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     return
 
             return
+        
 
-        # JCF, Feb-1-2017
+        if self.manage_processes:
 
-        # If an artdaq process has died, the others might follow
-        # soon after - if this is the case, then wait a few
-        # seconds to give them a chance to die before trying to
-        # send them transitions (i.e., so they don't die AFTER a
-        # transition is sent, causing more errors)
+            # JCF, Feb-1-2017
 
-        if self.heartbeat_failure:
-            sleep_on_heartbeat_failure = 0
+            # If an artdaq process has died, the others might follow
+            # soon after - if this is the case, then wait a few
+            # seconds to give them a chance to die before trying to
+            # send them transitions (i.e., so they don't die AFTER a
+            # transition is sent, causing more errors)
 
-            if self.debug_level >= 2:
-                self.print_log(
-                    make_paragraph(
-                        "A process previously was found to be missing; " +
-                        "therefore will wait %d seconds before attempting to send the normal transitions as part of recovery" % \
-                            (sleep_on_heartbeat_failure)))
-            sleep(sleep_on_heartbeat_failure)  
+            if self.heartbeat_failure:
+                sleep_on_heartbeat_failure = 0
+
+                if self.debug_level >= 2:
+                    self.print_log(
+                        make_paragraph(
+                            "A process previously was found to be missing; " +
+                            "therefore will wait %d seconds before attempting to send the normal transitions as part of recovery" % \
+                                (sleep_on_heartbeat_failure)))
+                sleep(sleep_on_heartbeat_failure)  
 
 
-        threads = []
+            threads = []
 
-        for name in ["BoardReader", "EventBuilder", "Aggregator"]:
+            for name in ["BoardReader", "EventBuilder", "Aggregator"]:
 
-            for procinfo in self.procinfos:
-                if name in procinfo.name:
-                    t = Thread(target=attempted_stop, args=(self, procinfo))
-                    threads.append(t)
-                    t.start()
+                for procinfo in self.procinfos:
+                    if name in procinfo.name:
+                        t = Thread(target=attempted_stop, args=(self, procinfo))
+                        threads.append(t)
+                        t.start()
 
-            for thread in threads:
-                thread.join()
-                
-        try:
-            self.kill_procs()
-        except Exception:
-            self.print_log(traceback.format_exc())
-            self.print_log(make_paragraph("An exception was thrown "
-                                   "within kill_procs(); artdaq processes may not all have been killed"))
+                for thread in threads:
+                    thread.join()
+
+            try:
+                self.kill_procs()
+            except Exception:
+                self.print_log(traceback.format_exc())
+                self.print_log(make_paragraph("An exception was thrown "
+                                       "within kill_procs(); artdaq processes may not all have been killed"))
 
         self.in_recovery = False
 
@@ -1851,8 +1866,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 self.do_command("Resume")
 
 
-            elif self.state(self.name) != "stopped" and self.state(self.name) != "booting" \
-                    and self.state(self.name) != "terminating":
+            elif self.manage_processes and self.state(self.name) != "stopped" and \
+                    self.state(self.name) != "booting" and self.state(self.name) != "terminating":
                 self.check_proc_heartbeats()
                 self.check_proc_exceptions()
 
