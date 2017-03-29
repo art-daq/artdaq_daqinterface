@@ -492,10 +492,11 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         return num_aggregators
 
     def artdaq_mfextensions_info(self):
+
         product_deps_filename = "%s/srcs/artdaq/ups/product_deps" % (self.daq_dir)
 
         if not os.path.exists( product_deps_filename ):
-            self.alert_and_recover("Unable to find artdaq product_deps file \"%s\"; needed to determine artdaq_mfextensions version for messagefacility viewer")
+            raise Exception("Unable to find artdaq product_deps file \"%s\"; needed to determine artdaq_mfextensions version for messagefacility viewer")
             return
 
         product_deps_file = open( product_deps_filename )
@@ -1334,40 +1335,47 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         # Figure out if we have the artdaq_mfextensions version expected by the artdaq used 
         
-        version, equalifier, squalifier = self.artdaq_mfextensions_info()
+        try:
 
-        if self.have_needed_artdaq_mfextensions() and is_msgviewer_running():
-            print make_paragraph("An instance of messageviewer already appears to be running; " + \
-                                     "messages will be sent to the existing messageviewer")
-        elif self.have_needed_artdaq_mfextensions():
-            print make_paragraph("artdaq_mfextensions %s, %s:%s, appears to be available; "
-                                      "if windowing is supported on your host you should see the "
-                                      "messageviewer window pop up momentarily" % \
-                                          (version, equalifier, squalifier))
+            version, equalifier, squalifier = self.artdaq_mfextensions_info()
 
-            cmds = []
-            cmds.append("cd %s" % (self.daq_dir))
-            cmds.append(". %s" % (self.daq_setup_script))
-            cmds.append("if [[ -n $ARTDAQ_MFEXTENSIONS_FQ_DIR ]]; then export MSGVIEWERDIR=$ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/  ; else export MSGVIEWERDIR=$MRB_BUILDDIR/artdaq_mfextensions/bin ; fi")
-            cmds.append("which msgviewer")
-            cmds.append("msgviewer -c $MSGVIEWERDIR/msgviewer.fcl 2>&1 > /dev/null &" )
+            if self.have_needed_artdaq_mfextensions() and is_msgviewer_running():
+                print make_paragraph("An instance of messageviewer already appears to be running; " + \
+                                         "messages will be sent to the existing messageviewer")
+            elif self.have_needed_artdaq_mfextensions():
+                print make_paragraph("artdaq_mfextensions %s, %s:%s, appears to be available; "
+                                          "if windowing is supported on your host you should see the "
+                                          "messageviewer window pop up momentarily" % \
+                                              (version, equalifier, squalifier))
 
-            msgviewercmd = self.construct_checked_command( cmds )
+                cmds = []
+                cmds.append("cd %s" % (self.daq_dir))
+                cmds.append(". %s" % (self.daq_setup_script))
+                cmds.append("if [[ -n $ARTDAQ_MFEXTENSIONS_FQ_DIR ]]; then export MSGVIEWERDIR=$ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/  ; else export MSGVIEWERDIR=$MRB_BUILDDIR/artdaq_mfextensions/bin ; fi")
+                cmds.append("which msgviewer")
+                cmds.append("msgviewer -c $MSGVIEWERDIR/msgviewer.fcl 2>&1 > /dev/null &" )
 
-            with deepsuppression():
+                msgviewercmd = self.construct_checked_command( cmds )
 
-                status = Popen(msgviewercmd, shell=True).wait()
-            
-                if status != 0:
-                    self.alert_and_recover("Status error raised in msgviewer call within Popen; tried the following commands: \"%s\"" %
-                                    " ; ".join(cmds) )
-                    return
-        else:
-            print make_paragraph("artdaq_mfextensions %s, %s:%s, does not appear to be available in the products directory \"%s\" - "
-                                      " unable to launch the messageviewer window. This will not affect"
-                                      " actual datataking, it just means you'll need to look at the"
-                                      " logfiles to see artdaq output." % \
-                                          (version, equalifier, squalifier, self.daq_dir + "/products"))
+                with deepsuppression():
+
+                    status = Popen(msgviewercmd, shell=True).wait()
+
+                    if status != 0:
+                        self.alert_and_recover("Status error raised in msgviewer call within Popen; tried the following commands: \"%s\"" %
+                                        " ; ".join(cmds) )
+                        return
+            else:
+                print make_paragraph("artdaq_mfextensions %s, %s:%s, does not appear to be available in the products directory \"%s\" - "
+                                          " unable to launch the messageviewer window. This will not affect"
+                                          " actual datataking, it just means you'll need to look at the"
+                                          " logfiles to see artdaq output." % \
+                                              (version, equalifier, squalifier, self.daq_dir + "/products"))
+
+        except Exception:
+            self.print_log(traceback.format_exc())
+            self.alert_and_recover("Problem during messageviewer launch stage")
+            return
 
         # JCF, 3/5/15
 
