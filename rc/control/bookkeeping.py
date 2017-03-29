@@ -96,6 +96,11 @@ def bookkeeping_for_fhicl_documents_artdaq_v2_base(self):
     commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
                                        "c3d1ce5ce07a83793f91efc0744b19aa8d5caf5c", "Jan 12, 2017", True)
 
+    if self.num_aggregators() > 1:
+        num_data_loggers = self.num_aggregators() - 1  # "-1" is for the dispatcher
+    else:
+        num_data_loggers = self.num_aggregators()
+
     # JCF, Jan-24-2017
     # Will need to think about how to handle max_fragment_size_words...
     max_fragment_size_words = 2097152
@@ -157,7 +162,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v2_base(self):
                 self.num_eventbuilders()
             destination_node_last = self.num_boardreaders() + \
                 self.num_eventbuilders() + \
-                self.num_aggregators() - 1  # "-1" is for the dispatcher
+                num_data_loggers  
 
         elif "Aggregator" in self.procinfos[i_proc].name:
             source_node_first = self.num_boardreaders()
@@ -201,8 +206,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v2_base(self):
             agg_count += 1
 
             transfer_destination_rank = self.num_boardreaders() + \
-                self.num_eventbuilders() + \
-                self.num_aggregators() - 1
+                self.num_eventbuilders() + num_data_loggers
 
             # JCF, Jan-24-2017
      
@@ -212,9 +216,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v2_base(self):
             if transfer_source_rank == transfer_destination_rank:
                 transfer_source_rank -= 1
 
-            assert self.num_aggregators() == 2, "Code doesn't yet support multiple data loggers"
-
-
+            assert num_data_loggers < 2, "Code doesn't yet support multiple data loggers"
 
             transfer_code = self.procinfos[i_proc].fhicl_used[table_start:table_end]
             transfer_code = re.sub(r"source_rank\s*:\s*[0-9]+", 

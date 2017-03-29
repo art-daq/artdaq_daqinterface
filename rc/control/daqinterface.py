@@ -892,8 +892,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 "%d BoardReaderMains, %d EventBuilderMains " \
                 "(expect 0 BoardReaderMains, >0 EventBuilderMains)" % \
                 (self.num_boardreaders(),
-                 self.num_eventbuilders(),
-                 self.num_aggregators())
+                 self.num_eventbuilders())
 
             raise Exception(make_paragraph(errmsg))
 
@@ -1134,6 +1133,11 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                         self.procinfos[procinfo_index].server.daq.shutdown()
                 else:
                     raise Exception("Unknown command")
+
+                if "with ParameterSet" in self.procinfos[procinfo_index].lastreturned:
+                    self.procinfos[procinfo_index].lastreturned = self.procinfos[procinfo_index].lastreturned[0:200] + \
+                        " // REMAINDER TRUNCATED BY DAQINTERFACE, SEE %s FOR FULL FHiCL DOCUMENT" % (self.tmp_run_record)
+
             except Exception:
                 self.exception = True
 
@@ -1480,7 +1484,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                         fcl = "%s/EventBuilder1.fcl" % (config_subdirname)
                     elif proc_type == "Aggregator":
                         aggregator_cntr += 1
-                        if aggregator_cntr < num_procs:
+                        if num_procs == 1 or aggregator_cntr < num_procs:
                             fcl = "%s/Aggregator1.fcl" % (config_subdirname)
                         else:
                             fcl = "%s/Aggregator2.fcl" % (config_subdirname)
