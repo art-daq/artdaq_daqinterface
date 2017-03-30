@@ -27,6 +27,7 @@ from rc.control.config_functions_local import get_config_info_base
 from rc.control.config_functions_local import put_config_info_base
 from rc.control.config_functions_local import get_daqinterface_config_info_base
 from rc.control.config_functions_local import listdaqcomps_base
+from rc.control.config_functions_local import listconfigs_base
 from rc.control.save_run_record import save_run_record_base
 from rc.control.save_run_record import total_events_in_run_base
 from rc.control.save_run_record import save_metadata_value_base
@@ -288,6 +289,7 @@ class DAQInterface(Component):
     put_config_info = put_config_info_base
     get_daqinterface_config_info = get_daqinterface_config_info_base
     listdaqcomps = listdaqcomps_base
+    listconfigs = listconfigs_base
     save_run_record = save_run_record_base
     total_events_in_run = total_events_in_run_base
     save_metadata_value = save_metadata_value_base

@@ -203,6 +203,9 @@ def get_daqinterface_config_info_base(self, daqinterface_config_label):
 def listdaqcomps_base(self):
     assert False, "listdaqcomps not yet implemented in case of database use"
 
+def listconfigs_base(self):
+    assert False, "listconfigs not yet implemented in case of database use"
+
 def main():
 
     print "Checking the setting of ARTDAQ_DATABASE_URI"

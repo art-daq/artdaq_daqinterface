@@ -9,10 +9,16 @@ sys.path.append( os.getcwd() )
 from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
 
+def get_config_parentdir():
+    parentdir = os.getcwd() + "/simple_test_config"
+    assert os.path.exists(parentdir), "Expected configuration directory %s doesn't appear to exist" % (parentdir)
+    return parentdir
+
+
 def get_config_info_base(self):
 
-    config_dirname = os.getcwd() + "/simple_test_config/"
-    config_dirname_subdir = config_dirname + self.config_for_run + "/"
+    config_dirname = get_config_parentdir()
+    config_dirname_subdir = config_dirname + "/" + self.config_for_run + "/"
 
     if not os.path.exists( config_dirname_subdir ):
         raise Exception(make_paragraph("Error: unable to find expected directory of FHiCL configuration files \"%s\"; this may mean you're not running out of DAQInterface's base directory" % (config_dirname_subdir) ))
@@ -137,6 +143,23 @@ def listdaqcomps_base(self):
         host = line.split()[1].strip()
         
         print "%s (runs on %s)" % (component, host)
+
+def listconfigs_base(self):
+    subdirs = next(os.walk(get_config_parentdir()))[1]
+    configs = [subdir for subdir in subdirs if subdir != "common_code" ]
+
+    listconfigs_file="/tmp/listconfigs.txt"
+
+    outf = open(listconfigs_file, "w")
+
+    print "Available configurations: "
+    for config in sorted(configs):
+        print config
+        outf.write("%s\n" % config)
+
+    print
+    print "See file \"%s\" for saved record of the above configurations" % (listconfigs_file)
+
 
 def main():
     print "Calling listdaqcomps_base: "
