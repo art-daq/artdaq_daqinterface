@@ -152,6 +152,7 @@ def listconfigs_base(self):
 
     outf = open(listconfigs_file, "w")
 
+    print
     print "Available configurations: "
     for config in sorted(configs):
         print config
@@ -159,7 +160,7 @@ def listconfigs_base(self):
 
     print
     print "See file \"%s\" for saved record of the above configurations" % (listconfigs_file)
-
+    print
 
 def main():
     print "Calling listdaqcomps_base: "
