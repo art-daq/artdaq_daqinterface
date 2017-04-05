@@ -1549,8 +1549,6 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         self.complete_state_change(self.name, "configuring")
 
-        self.display_artdaq_output()
-
         if self.debug_level >= 1:
             print "To see logfile(s), on %s run \"ls -ltr %s/pmt/%s\"" % \
                 (self.pmt_host, self.log_directory,
@@ -1885,8 +1883,6 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 self.check_proc_heartbeats()
                 self.check_proc_exceptions()
 
-                if self.state(self.name) == "running":
-                    self.display_artdaq_output()
         except Exception:
             self.in_recovery = True
             self.alert_and_recover(traceback.format_exc())
