@@ -1020,7 +1020,11 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         for procinfo in self.procinfos:
             if "BoardReader" in procinfo.name:
                 boardreader_cntr += 1
-                runstring += "\n\n  BOARDREADER_" + procinfo.host.replace(".","_") + "_" + str(procinfo.port) + ": '\n"
+
+                fhicl_readable_hostname = procinfo.host
+                fhicl_readable_hostname = fhicl_readable_hostname.replace(".","_")
+                fhicl_readable_hostname = fhicl_readable_hostname.replace("-","_")
+                runstring += "\n\n  BOARDREADER_" + fhicl_readable_hostname + "_" + str(procinfo.port) + ": '\n"
             elif "EventBuilder" in procinfo.name:
                 eventbuilder_cntr += 1
                 runstring += "\n\n  EVENTBUILDER_" + procinfo.host.replace(".","_") + "_" + str(procinfo.port) + ": '\n"
