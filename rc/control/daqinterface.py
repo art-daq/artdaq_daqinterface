@@ -523,7 +523,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         cmds = []
         cmds.append("cd %s" % (self.daq_dir))
-        cmds.append(". %s" % (self.daq_setup_script))
+        cmds.append(". ./%s" % (self.daq_setup_script))
         cmds.append('if [[ "$ARTDAQ_MFEXTENSIONS_VERSION" == "%s" ]]; then true; else false; fi' % \
                         (version))
 
@@ -1356,7 +1356,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
                 cmds = []
                 cmds.append("cd %s" % (self.daq_dir))
-                cmds.append(". %s" % (self.daq_setup_script))
+                cmds.append(". ./%s" % (self.daq_setup_script))
                 cmds.append("if [[ -n $ARTDAQ_MFEXTENSIONS_FQ_DIR ]]; then export MSGVIEWERDIR=$ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/  ; else export MSGVIEWERDIR=$MRB_BUILDDIR/artdaq_mfextensions/bin ; fi")
                 cmds.append("which msgviewer")
                 cmds.append("msgviewer -c $MSGVIEWERDIR/msgviewer.fcl 2>&1 > /dev/null &" )
