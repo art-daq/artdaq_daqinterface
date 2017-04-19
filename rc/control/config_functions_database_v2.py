@@ -11,6 +11,7 @@ sys.path.append(os.environ["PYTHONPATH"] + "/../bin/")
 
 from rc.control.utilities import expand_environment_variable_in_string
 from conftool import exportConfiguration
+from conftool import getListOfAvailableRunConfigurationPrefixes
 
 def config_basedir(self):
     return "/daq/database/tmp/%s" % (self.config_for_run)
@@ -39,7 +40,13 @@ def listdaqcomps_base(self):
     assert False, "%s not yet implemented" % (listdaqcomps_base.__name__)
 
 def listconfigs_base(self):
-    assert False, "%s not yet implemented" % (listconfigs_base.__name__)
+    print
+    print "Available configurations: "
+
+    with open("/tmp/listconfigs.txt", "w") as outf:
+        for config in getListOfAvailableRunConfigurationPrefixes():
+            outf.write(config + "\n")
+            print config
 
 def main():
 
@@ -64,4 +71,3 @@ def main():
         
 if __name__ == "__main__":
     main()
-
