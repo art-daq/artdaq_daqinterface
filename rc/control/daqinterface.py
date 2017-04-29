@@ -1498,7 +1498,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                         fcl = "%s/EventBuilder1.fcl" % (config_subdirname)
                     elif proc_type == "Aggregator":
                         aggregator_cntr += 1
-                        if num_procs == 1 or aggregator_cntr < num_procs:
+                        if aggregator_cntr == 1:
                             fcl = "%s/Aggregator1.fcl" % (config_subdirname)
                         else:
                             fcl = "%s/Aggregator2.fcl" % (config_subdirname)
