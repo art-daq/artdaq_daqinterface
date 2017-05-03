@@ -3,6 +3,9 @@ import string
 import re
 import os
 
+import sys
+sys.path.append( os.getcwd() )
+
 from rc.control.utilities import table_range
 from rc.control.utilities import commit_check_throws_if_failure
 
@@ -247,8 +250,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v2_base(self):
 
 def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
+    send_1_over_N = True
+
     commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
-                                       "a5a74a162ac5edc1369989c6ed5fec14359f3ada", "Apr 28, 2017", True)
+                                       "eb751f6cc124e6be37b640a0625c6309ce9b3457", "May 3, 2017", True)
 
     num_data_loggers = 1
 
@@ -274,7 +279,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     proc_hosts_string = ", ".join( proc_hosts )
 
-    def create_sources_or_destinations_string(nodetype, first, last):
+    def create_sources_or_destinations_string(nodetype, first, last, nth = 1, this_node_index = -1):
 
         if nodetype == "sources":
             prefix = "s"
@@ -286,21 +291,39 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         nodes = []
 
         for i in range(first, last):
-            nodes.append( 
-                "%s%d: { transferPluginType: MPI %s_rank: %d max_fragment_size_words: %d host_map: [%s]}" % \
+            if nth == 1:
+                nodes.append( 
+                    "%s%d: { transferPluginType: MPI %s_rank: %d max_fragment_size_words: %d host_map: [%s]}" % \
                     (prefix, i, nodetype[:-1], i, max_fragment_size_words, \
-                    proc_hosts_string))
+                     proc_hosts_string))
+            else:
+
+                if nodetype == "destinations":
+                    assert (last - first) == nth, "Problem with the NthEvent logic in the program: first node is %d, last is %d, but nth is %d" % (first, last, nth)
+
+                    offset = (i - first) 
+                elif nodetype == "sources":
+                    offset = this_node_index
+
+                nodes.append( 
+                    "%s%d: { transferPluginType: NthEvent nth: %d offset: %d physical_transfer_plugin: { transferPluginType: MPI %s_rank: %d max_fragment_size_words: %d } host_map: [%s]}" % \
+                    (prefix, i, nth, offset, nodetype[:-1], i, max_fragment_size_words, \
+                     proc_hosts_string))
 
         return "\n".join( nodes )
 
-    source_node_first = -1
-    source_node_last = -1
-    destination_node_first = -1
-    destination_node_last = -1
-    
     agg_count = 0
 
     for i_proc in range(len(self.procinfos)):
+
+        source_node_first = -1
+        source_node_last = -1
+        destination_node_first = -1
+        destination_node_last = -1
+
+        is_data_logger = False
+        is_dispatcher = False
+
         if "BoardReader" in self.procinfos[i_proc].name:
             destination_node_first = self.num_boardreaders()
             destination_node_last = destination_node_first + \
@@ -317,6 +340,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
             agg_count += 1
             if agg_count <= num_data_loggers:
+
+                is_data_logger = True
+
                 source_node_first = self.num_boardreaders()
                 source_node_last = self.num_boardreaders() + \
                                    self.num_eventbuilders()
@@ -328,6 +354,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                          self.num_eventbuilders() + \
                                          self.num_aggregators()
             else:
+                
+                is_dispatcher = True
+
                 source_node_first = self.num_boardreaders() + \
                                     self.num_eventbuilders()
                 source_node_last = source_node_first + num_data_loggers
@@ -343,15 +372,29 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 node_first = destination_node_first
                 node_last = destination_node_last
 
+            nth = 1
+            
+            if send_1_over_N:
+                if (is_data_logger and tablename == "destinations") or \
+                   (is_dispatcher and tablename == "sources"):
+                    nth = self.num_aggregators() - num_data_loggers
+
             (table_start, table_end) = \
                 table_range(self.procinfos[i_proc].fhicl_used, \
                                 tablename)
 
             if table_start != -1 and table_end != -1:
+                
+                node_index = -1
+
+                if is_dispatcher:
+                    node_index = agg_count - num_data_loggers - 1
+                    assert node_index >= 0
+
                 self.procinfos[i_proc].fhicl_used = \
                     self.procinfos[i_proc].fhicl_used[:table_start] + \
                     "\n" + tablename + ": { \n" + \
-                    create_sources_or_destinations_string(tablename, node_first, node_last) + \
+                    create_sources_or_destinations_string(tablename, node_first, node_last, nth, node_index) + \
                     "\n } \n" + \
                     self.procinfos[i_proc].fhicl_used[table_end:]
 
@@ -361,3 +404,27 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                    self.procinfos[i_proc].fhicl_used)
 
 
+def main():
+    
+    test_table_range = True
+
+    if test_table_range:
+
+        filename = "%s/simple_test_config/multiple_dispatchers/Aggregator2.fcl" % os.getcwd()
+
+        inf = open( filename )
+        
+        inf_contents = inf.read()
+
+        print "From file " + filename
+
+        for tablename in ["sources", "destinations"]:
+            (table_start, table_end) = table_range( inf_contents, tablename )
+            
+            print "Seven characters centered on table_start: \"" + inf_contents[(table_start - 3):(table_start+4)] + "\""
+            print "Seven characters centered on table_end: \"" + inf_contents[(table_end - 3):(table_end+4)] + "\""
+            print "The table_start: \"" + inf_contents[(table_start):(table_start+1)] + "\""
+            print "The table_end: \"" + inf_contents[(table_end ):(table_end+1)] + "\""
+
+if __name__ == "__main__":
+    main()
