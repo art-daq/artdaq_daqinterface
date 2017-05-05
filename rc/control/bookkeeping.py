@@ -253,7 +253,11 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     send_1_over_N = True
 
     commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
+                                       "44e97f0d6e591523b5866a95f2b4080610c41b1b", "Apr 29, 2017", True)
+
+    commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq_demo", \
                                        "eb751f6cc124e6be37b640a0625c6309ce9b3457", "May 3, 2017", True)
+
 
     num_data_loggers = 1
 
