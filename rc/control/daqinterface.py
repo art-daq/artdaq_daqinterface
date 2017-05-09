@@ -232,6 +232,7 @@ class DAQInterface(Component):
         self.in_recovery = False
         self.heartbeat_failure = False
 
+        self.daqinterface_base_dir = os.getcwd()
             
         # JCF, Nov-17-2015
 
@@ -1248,6 +1249,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             (self.date_and_time())
 
         self.reset_variables()
+        os.chdir(self.daqinterface_base_dir)
 
         if not daqinterface_config:
             daqinterface_config = self.run_params["daqinterface_config"]
@@ -1421,6 +1423,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         print "\n%s: CONFIG transition underway" % \
             (self.date_and_time())
+
+        os.chdir(self.daqinterface_base_dir)
 
         if not config_for_run:
             self.config_for_run = self.run_params["config"]
