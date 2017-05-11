@@ -6,6 +6,8 @@ import string
 import subprocess
 from subprocess import Popen
 
+from time import sleep
+
 def expand_environment_variable_in_string(line):
 
     res = re.search(r"^(.*)(\$[A-Z]+)(.*)", line)
@@ -148,12 +150,30 @@ def is_msgviewer_running():
 
     return False
 
+def execute_command_in_xterm(home, cmd):
+    
+    if home != os.environ["HOME"]:
+        Popen("cp -p ~/.Xauthority %s" % (home), shell=True).wait()
+
+    # JCF, May-11-2017
+
+    # The following chant to xterm is influenced both by Ron's
+    # implementation of xt_cmd.sh in artdaq-demo as well as the info
+    # found at
+    # https://superuser.com/questions/363614/leave-xterm-open-after-task-is-complete
+
+    fullcmd = "env -i SHELL=/bin/bash PATH=/usr/bin:/bin LOGNAME=%s USER=%s  DISPLAY=%s  REALHOME=%s HOME=%s KRB5CCNAME=%s  xterm -geometry 100x33+720+0 -sl 2500 -e \"%s ; read \" &" % (os.environ["LOGNAME"], os.environ["USER"], os.environ["DISPLAY"], os.environ["HOME"], \
+                                                                                                                                                                                                       home, os.environ["KRB5CCNAME"], cmd)
+
+    print fullcmd
+    Popen(fullcmd, shell=True).wait()
 
 
 def main():
 
     paragraphed_string_test = False
-    msgviewer_check_test = True
+    msgviewer_check_test = False
+    execute_command_in_xterm_test = True
 
     if paragraphed_string_test:
         sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
@@ -174,6 +194,9 @@ def main():
         else:
             print "A msgviewer doesn't appear to be running"
         
+    if execute_command_in_xterm_test:
+        execute_command_in_xterm(os.environ["PWD"], "echo Hello world")
+
 
 if __name__ == "__main__":
     main()
