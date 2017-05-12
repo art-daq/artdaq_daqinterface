@@ -35,12 +35,14 @@ from rc.control.start_datataking_noop import start_datataking_base
 from rc.control.stop_datataking_noop import stop_datataking_base
 from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v2_base
 
+from rc.control.online_monitoring import launch_art_procs_base
+from rc.control.online_monitoring import kill_art_procs_base
 
 from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_pids
 from rc.control.utilities import is_msgviewer_running
-
+from rc.control.utilities import execute_command_in_xterm
 
 class DAQInterface(Component):
     """
@@ -297,6 +299,8 @@ class DAQInterface(Component):
     start_datataking = start_datataking_base
     stop_datataking = stop_datataking_base
     bookkeeping_for_fhicl_documents = bookkeeping_for_fhicl_documents_artdaq_v2_base
+    launch_art_procs = launch_art_procs_base
+    kill_art_procs = kill_art_procs_base
 
     # The actual transition functions called by Run Control; note
     # these just set booleans which are tested in the runner()
@@ -1554,6 +1558,13 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 self.print_log(traceback.format_exc())
                 self.alert_and_recover("An exception was thrown when attempting to send the \"init\" transition to the artdaq processes; see traceback above for more info")
                 return
+
+            try:
+                #self.kill_art_procs()
+                self.launch_art_procs(self.daqinterface_config_file)
+            except Exception:
+                self.print_log(traceback.format_exc())
+                self.print_log(make_paragraph("WARNING: an exception was caught when trying to launch the online monitoring processes; online monitoring won't work though this will not affect actual datataking"))
 
         self.complete_state_change(self.name, "configuring")
 

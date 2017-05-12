@@ -165,7 +165,7 @@ def execute_command_in_xterm(home, cmd):
     fullcmd = "env -i SHELL=/bin/bash PATH=/usr/bin:/bin LOGNAME=%s USER=%s  DISPLAY=%s  REALHOME=%s HOME=%s KRB5CCNAME=%s  xterm -geometry 100x33+720+0 -sl 2500 -e \"%s ; read \" &" % (os.environ["LOGNAME"], os.environ["USER"], os.environ["DISPLAY"], os.environ["HOME"], \
                                                                                                                                                                                                        home, os.environ["KRB5CCNAME"], cmd)
 
-    print fullcmd
+    #print fullcmd
     Popen(fullcmd, shell=True).wait()
 
 
@@ -196,6 +196,7 @@ def main():
         
     if execute_command_in_xterm_test:
         execute_command_in_xterm(os.environ["PWD"], "echo Hello world")
+        execute_command_in_xterm(os.environ["PWD"], "echo You should see an xclock appear; xclock ")
 
 
 if __name__ == "__main__":
