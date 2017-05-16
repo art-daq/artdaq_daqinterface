@@ -855,15 +855,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         self.procinfos = []
 
-        # We've killed the artdaq processes, now let's kill any online
-        # monitoring art processes
-
-        art_xterm_pids = get_pids("xterm.*art -c")
-
-        for art_xterm_pid in art_xterm_pids:
-            cmd = "kill %s; sleep 2; kill -9 %s" % (art_xterm_pid, art_xterm_pid)
-            Popen(cmd, shell=True, stdout=subprocess.PIPE,
-                  stderr=subprocess.STDOUT)
+        self.kill_art_procs()
 
         return
 
@@ -1569,7 +1561,6 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 return
 
             try:
-                #self.kill_art_procs()
                 self.launch_art_procs(self.daqinterface_config_file)
             except Exception:
                 self.print_log(traceback.format_exc())

@@ -78,8 +78,13 @@ def launch_art_procs_base(self, filename):
         print self.art_pids
 
 def kill_art_procs_base(self):
-    for pid in self.art_pids:
-        Popen("kill %s" % pid, shell = True)
+
+    art_xterm_pids = get_pids("xterm.*art -c")
+
+    for art_xterm_pid in art_xterm_pids:
+        cmd = "kill %s; sleep 2; kill -9 %s" % (art_xterm_pid, art_xterm_pid)
+        Popen(cmd, shell=True, stdout=subprocess.PIPE,
+              stderr=subprocess.STDOUT)
 
     self.art_pids = []
 
