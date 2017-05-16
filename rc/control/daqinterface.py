@@ -42,7 +42,6 @@ from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_pids
 from rc.control.utilities import is_msgviewer_running
-from rc.control.utilities import execute_command_in_xterm
 
 class DAQInterface(Component):
     """
@@ -1586,14 +1585,16 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             (self.date_and_time(), self.run_number)
         
         if os.path.exists( self.tmp_run_record ):
-            cmd = "cp -r %s %s/%s" % (self.tmp_run_record, self.record_directory, str(self.run_number))
+            run_record_directory = "%s/%s" % \
+                (self.record_directory, str(self.run_number))
+
+            cmd = "cp -r %s %s" % (self.tmp_run_record, run_record_directory)
             status = Popen(cmd, shell = True).wait()
 
             if status != 0:
                 self.alert_and_recover("Error in DAQInterface: a nonzero value was returned executing \"%s\"" %
                                        cmd)
                 return
-                
         else:
             self.alert_and_recover("Error in DAQInterface: unable to find temporary run records directory %s" % 
                                    self.tmp_run_record)
@@ -1619,6 +1620,12 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         self.save_metadata_value("Start time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
+
+        if self.debug_level >=1:
+            print
+            print "Run info can be found locally at %s" % \
+                (run_record_directory)
+            print
 
         self.complete_state_change(self.name, "starting")
         print "\n%s: START transition complete for run %d" % \
