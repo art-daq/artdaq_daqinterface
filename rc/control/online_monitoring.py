@@ -5,6 +5,8 @@ import re
 import subprocess
 from subprocess import Popen
 
+from time import sleep
+
 import sys
 sys.path.append( os.getcwd() )
 
@@ -20,25 +22,58 @@ def launch_art_procs_base(self, filename):
     
     self.art_pids = []
 
+    art_process_search_string = ":[0-9][0-9]\s*art -c"
+
     for line in inf.readlines():
         res = re.search(r"^\s*art\s*:\s*(\S+)", line)
         
         if res:
-            art_pids_before = get_pids("art -c")
 
-            execute_command_in_xterm(os.environ["PWD"], \
-                                         "cd %s; . %s ; art -c %s" % \
-                                         (self.daq_dir, self.daq_setup_script, res.group(1)))
+            art_pids_before = get_pids(art_process_search_string)
 
-            art_pids_after = get_pids("art -c")
+            num_art_attempts = 2
+
+            cmds = []
+            cmds.append("cd %s" % (self.daq_dir))
+            cmds.append(". %s" % (self.daq_setup_script))
+            cmds.append("art -c %s" % (res.group(1)))
             
-            new_art_proc = list( set(art_pids_after) - set(art_pids_before) )
+            # There will be max_checks*check_period seconds for the art
+            # process to appear before an attempt is considered a
+            # failure
 
-            assert len(new_art_proc) == 1, "Failure in logic for finding art process ID"
-            
-            self.art_pids.append( new_art_proc[0] )
+            max_checks = 6
+            check_period = 1
 
-    if self.debug_level > 1:
+            for i_attempt in range(num_art_attempts):
+
+                attempt_succeeded = False
+
+                execute_command_in_xterm(os.environ["PWD"], \
+                                             "; ".join(cmds))
+                
+                for i_check in range(max_checks):
+                    art_pids_after = get_pids(art_process_search_string)
+
+                    new_art_proc = list( set(art_pids_after) - set(art_pids_before) )
+
+                    if len(new_art_proc) != 1:
+
+                        if self.debug_level >= 2:
+                            print "Check #%d unsuccessful, found %d new processes" % \
+                                (i_check+1, len(new_art_proc))
+                        sleep(check_period)
+                    else:
+                        self.art_pids.append( new_art_proc[0] )
+                        attempt_succeeded = True
+                        break
+                
+                if attempt_succeeded:
+                    break
+                else:
+                    print "Attempt %d of %d: new art monitoring process did not appear as expected using FHiCL document %s" % (i_attempt+1, num_art_attempts, res.group(1))
+
+    if self.debug_level >= 2:
         print "art_pids: "
         print self.art_pids
 
@@ -47,3 +82,27 @@ def kill_art_procs_base(self):
         Popen("kill %s" % pid, shell = True)
 
     self.art_pids = []
+
+def main():
+    
+    test_launch_art_procs_base = True
+
+    if test_launch_art_procs_base:
+
+        class MockDAQInterface:
+            daq_dir = "/home/jcfree/artdaq-demo_v2_09_01"
+            daq_setup_script = "setupARTDAQDEMO"
+            debug_level = 3
+
+        mockdaqint = MockDAQInterface()
+        testfile = "/home/jcfree/artdaq-utilities-daqinterface/docs/config.txt"
+
+
+        print "Assuming DAQ directory is %s, setup script is %s, input file is %s" % \
+            (mockdaqint.daq_dir, mockdaqint.daq_setup_script, testfile)
+
+        launch_art_procs_base( mockdaqint, testfile )
+        
+
+if __name__ == "__main__":
+    main()

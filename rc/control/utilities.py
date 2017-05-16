@@ -163,11 +163,9 @@ def execute_command_in_xterm(home, cmd):
     # https://superuser.com/questions/363614/leave-xterm-open-after-task-is-complete
 
     fullcmd = "env -i SHELL=/bin/bash PATH=/usr/bin:/bin LOGNAME=%s USER=%s  DISPLAY=%s  REALHOME=%s HOME=%s KRB5CCNAME=%s  xterm -geometry 100x33+720+0 -sl 2500 -e \"%s ; read \" &" % (os.environ["LOGNAME"], os.environ["USER"], os.environ["DISPLAY"], os.environ["HOME"], \
-                                                                                                                                                                                                       home, os.environ["KRB5CCNAME"], cmd)
+                                                                                                                                                                                              home, os.environ["KRB5CCNAME"], cmd)
 
-    #print fullcmd
-    Popen(fullcmd, shell=True).wait()
-
+    status = Popen(fullcmd, shell=True).wait()
 
 def main():
 
