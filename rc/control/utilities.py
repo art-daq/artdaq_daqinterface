@@ -97,14 +97,11 @@ def table_range(fhiclstring, tablename):
     close_brace_loc = -1
 
     for i_char, char in enumerate(fhiclstring[(loc+open_brace_loc+1):]):
-        #print char
 
         if char == '{':
             close_braces_needed += 1
         elif char == '}':
             close_braces_needed -= 1
-
-        #print close_braces_needed, i_char
 
         if close_braces_needed == 0:
             close_brace_loc = i_char
@@ -152,8 +149,14 @@ def is_msgviewer_running():
 
 def execute_command_in_xterm(home, cmd):
     
+    if not os.path.exists( os.environ["HOME"] + "/.Xauthority"):
+        raise Exception("Unable to find .Xauthority file in home directory")
+
     if home != os.environ["HOME"]:
-        Popen("cp -p ~/.Xauthority %s" % (home), shell=True).wait()
+        status = Popen("cp -p ~/.Xauthority %s" % (home), shell=True).wait()
+        if status != 0:
+            raise Exception("Unable to copy .Xauthority file into directory %s; do you have write permissions there?" % (home))
+
 
     # JCF, May-11-2017
 
@@ -165,7 +168,7 @@ def execute_command_in_xterm(home, cmd):
     fullcmd = "env -i SHELL=/bin/bash PATH=/usr/bin:/bin LOGNAME=%s USER=%s  DISPLAY=%s  REALHOME=%s HOME=%s KRB5CCNAME=%s  xterm -geometry 100x33+720+0 -sl 2500 -e \"%s ; read \" &" % (os.environ["LOGNAME"], os.environ["USER"], os.environ["DISPLAY"], os.environ["HOME"], \
                                                                                                                                                                                               home, os.environ["KRB5CCNAME"], cmd)
 
-    status = Popen(fullcmd, shell=True).wait()
+    Popen(fullcmd, shell=True).wait()
 
 def main():
 
