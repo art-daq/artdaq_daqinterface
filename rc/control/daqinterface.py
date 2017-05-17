@@ -600,21 +600,21 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 raise Exception("Exception in DAQInterface: unable to copy " +
                                 pmtconfigname + " to " + self.pmt_host + ":/tmp")
 
-        cmds = []
+        self.launch_cmds = []
 
         for logdir in ["pmt", "masterControl", "boardreader", "eventbuilder",
                        "aggregator"]:
-            cmds.append("mkdir -p -m 0777 " + self.log_directory +
-                        "/" + logdir)
+            self.launch_cmds.append("mkdir -p -m 0777 " + self.log_directory +
+                                    "/" + logdir)
 
-        cmds.append("cd " + self.daq_dir)
-        cmds.append("source ./" + self.daq_setup_script )
-        cmds.append("which pmt.rb")  # Sanity check capable of returning nonzero
+        self.launch_cmds.append("cd " + self.daq_dir)
+        self.launch_cmds.append("source ./" + self.daq_setup_script )
+        self.launch_cmds.append("which pmt.rb")  # Sanity check capable of returning nonzero
 
         # 30-Jan-2017, KAB: increased the amount of time that pmt.rb provides daqinterface
         # to react to errors.  This should be longer than the sum of the individual
         # process timeouts.
-        cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=120")
+        self.launch_cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=120")
 
 
         if self.have_needed_artdaq_mfextensions():
@@ -634,16 +634,16 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 " --logpath " + self.log_directory + \
                 " --display $DISPLAY & "
    
-        cmds.append(cmd)
+        self.launch_cmds.append(cmd)
 
-        launchcmd = self.construct_checked_command( cmds )
+        launchcmd = self.construct_checked_command( self.launch_cmds )
 
         if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
             launchcmd = "ssh -f " + self.pmt_host + " '" + launchcmd + "'"
 
         if self.debug_level >= 2:
             print "PROCESS LAUNCH COMMANDS: "
-            print "\n".join( cmds )
+            print "\n".join( self.launch_cmds )
             print
 
         if self.debug_level >= 3:
@@ -653,8 +653,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 status = Popen(launchcmd, shell=True).wait()
 
         if status != 0:
-            raise Exception("Status error raised; commands were \"\n%s\n\". If logfiles exist, please check them for more information. Also try running the commands interactively in a new terminal for more info." %
-                            ("\n".join(cmds)))
+            raise Exception("Status error raised; commands were \"\n%s\n\n\". If logfiles exist, please check them for more information. Also try running the commands interactively in a new terminal for more info." %
+                            ("\n".join(self.launch_cmds)))
             return
 
 
@@ -1324,7 +1324,9 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     break
                 else:
                     if num_launch_procs_checks > 5:
-                        self.alert_and_recover("artdaq processes failed to launch; logfiles may contain info as to what happened")
+                        print make_paragraph("artdaq processes failed to launch; logfiles may contain info as to what happened. You can also try logging into this host via a new terminal, and interactively executing the following commands: ")
+                        print "\n".join(self.launch_cmds)
+                        self.alert_and_recover("Scroll above the output from the \"RECOVER\" transition for more info")
                         return
 
             for procinfo in self.procinfos:
