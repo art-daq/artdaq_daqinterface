@@ -5,9 +5,22 @@ if [[ "$#" != "1" ]]; then
     exit 0
 fi
 
+scriptdir="$(dirname "$0")"
+
 config="demo"
-daqintconfig=$(dirname $0)/../docs/config.txt
-#daqintconfig="daqintconfig2"
+daqintconfig=$scriptdir/../docs/config.txt
+
+
+rm -f /tmp/listconfigs.txt
+$scriptdir/listconfigs.sh 
+
+if [[ "$?" == "0" ]]; then
+    config=$( grep "^${config}[0-9]*$" /tmp/listconfigs.txt  | sort -n | tail -1 )
+else
+    echo "There was a problem getting a list of configurations" >&2
+    exit 110
+fi
+
 
 starttime=$(date +%s)
 
@@ -28,8 +41,6 @@ runnum=$(( lastrun + 1 ))
 # See below for definition of "clean_shutdown" function
 
 trap "clean_shutdown" SIGHUP SIGINT SIGTERM
-
-scriptdir="$(dirname "$0")"
 
 daqutils_script=$scriptdir/daqutils.sh
 
@@ -239,14 +250,14 @@ function check_event_count() {
     events_in_rootfiles=$( $( dirname $0 )/rootfile_event_count.sh $runnum )
 
     if ! [[ "$?" == "0" ]]; then 
-	echo "Unable to determine the # of events from the expected *.root files" >&2
-	return
+    	echo "Unable to determine the # of events from the expected *.root files" >&2
+    	return
     fi
 
     if [[ "$events_in_metadata" == "$events_in_rootfiles" ]]; then
-	echo "Event count in saved metadata and event count in *.root files agree (${events_in_metadata})" 
+    	echo "Event count in saved metadata and event count in *.root files agree (${events_in_metadata})" 
     else
-	echo "Event count in saved metadata (${events_in_metadata}) and event count in *.root files (${events_in_rootfiles}) don't agree" >&2
+    	echo "Event count in saved metadata (${events_in_metadata}) and event count in *.root files (${events_in_rootfiles}) don't agree" >&2
     fi
 
 }
