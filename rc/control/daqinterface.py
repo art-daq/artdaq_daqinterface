@@ -1938,7 +1938,8 @@ def main():  # no-coverage
     pids = get_pids(greptoken)
 
     if len(pids) > 1:
-        print make_paragraph("Won't launch DAQInterface; it appears an instance is already running on this host (i.e., found more than one result when grepping for \"%s\" on the output of the \"ps aux\" command)" % (greptoken))
+        print make_paragraph("Won't launch DAQInterface; it appears an instance is already running on this host according to this command:" )
+        print "\nps aux | grep \"%s\" | grep -v grep\n" % (greptoken)
         return
 
     if not os.path.exists("./bin"):
