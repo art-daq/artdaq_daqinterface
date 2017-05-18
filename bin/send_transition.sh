@@ -36,9 +36,9 @@ case $cmd in
 	run_records_dir=$( awk '/record_directory/ { print $2 }' .settings )
 	run_records_dir=$( echo $( eval echo $run_records_dir ) )  # Expand environ variables in string
 	
-	last_runnum=$( ls -tr1 $run_records_dir | tail -1 )
+        highest_runnum=$( ls -1 $run_records_dir | sort -n | tail -1 )
 
-	xmlrpc_arg="run_number:i/"$((last_runnum + 1))
+	xmlrpc_arg="run_number:i/"$((highest_runnum + 1))
 	;;
     "stop")
 	test $# == 1 || badargs=true 
