@@ -38,7 +38,8 @@ class Component(ContextObject):
                         funcs={"state": self.state,
                                "state_change": self.state_change,
                                "setdaqcomps": self.setdaqcomps,
-                               "listdaqcomps": self.listdaqcomps})),
+                               "listdaqcomps": self.listdaqcomps,
+                               "listconfigs":self.listconfigs})),
             ("runner", threadable(func=self.runner))]
 
         self.dict_state_to = {"booting": "booted",
@@ -92,6 +93,9 @@ class Component(ContextObject):
         assert False, "This version of the function should not be called"
 
     def listdaqcomps(self):
+        assert False, "This version of the function should not be called"
+
+    def listconfigs(self):
         assert False, "This version of the function should not be called"
 
     def state_change(self, name, requested, state_args):

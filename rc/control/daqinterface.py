@@ -27,6 +27,7 @@ from rc.control.config_functions_local import get_config_info_base
 from rc.control.config_functions_local import put_config_info_base
 from rc.control.config_functions_local import get_daqinterface_config_info_base
 from rc.control.config_functions_local import listdaqcomps_base
+from rc.control.config_functions_local import listconfigs_base
 from rc.control.save_run_record import save_run_record_base
 from rc.control.save_run_record import total_events_in_run_base
 from rc.control.save_run_record import save_metadata_value_base
@@ -34,12 +35,13 @@ from rc.control.start_datataking_noop import start_datataking_base
 from rc.control.stop_datataking_noop import stop_datataking_base
 from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v2_base
 
+from rc.control.online_monitoring import launch_art_procs_base
+from rc.control.online_monitoring import kill_art_procs_base
 
 from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_pids
 from rc.control.utilities import is_msgviewer_running
-
 
 class DAQInterface(Component):
     """
@@ -226,9 +228,12 @@ class DAQInterface(Component):
                            rpc_port=rpc_port,
                            skip_init=False)
 
+        self.manage_processes = True
+
         self.in_recovery = False
         self.heartbeat_failure = False
 
+        self.daqinterface_base_dir = os.getcwd()
             
         # JCF, Nov-17-2015
 
@@ -286,12 +291,15 @@ class DAQInterface(Component):
     put_config_info = put_config_info_base
     get_daqinterface_config_info = get_daqinterface_config_info_base
     listdaqcomps = listdaqcomps_base
+    listconfigs = listconfigs_base
     save_run_record = save_run_record_base
     total_events_in_run = total_events_in_run_base
     save_metadata_value = save_metadata_value_base
     start_datataking = start_datataking_base
     stop_datataking = stop_datataking_base
     bookkeeping_for_fhicl_documents = bookkeeping_for_fhicl_documents_artdaq_v2_base
+    launch_art_procs = launch_art_procs_base
+    kill_art_procs = kill_art_procs_base
 
     # The actual transition functions called by Run Control; note
     # these just set booleans which are tested in the runner()
@@ -490,10 +498,11 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         return num_aggregators
 
     def artdaq_mfextensions_info(self):
+
         product_deps_filename = "%s/srcs/artdaq/ups/product_deps" % (self.daq_dir)
 
         if not os.path.exists( product_deps_filename ):
-            self.alert_and_recover("Unable to find artdaq product_deps file \"%s\"; needed to determine artdaq_mfextensions version for messagefacility viewer")
+            raise Exception("Unable to find artdaq product_deps file \"%s\"; needed to determine artdaq_mfextensions version for messagefacility viewer")
             return
 
         product_deps_file = open( product_deps_filename )
@@ -518,7 +527,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         cmds = []
         cmds.append("cd %s" % (self.daq_dir))
-        cmds.append(". %s" % (self.daq_setup_script))
+        cmds.append(". ./%s" % (self.daq_setup_script))
         cmds.append('if [[ "$ARTDAQ_MFEXTENSIONS_VERSION" == "%s" ]]; then true; else false; fi' % \
                         (version))
 
@@ -591,21 +600,21 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 raise Exception("Exception in DAQInterface: unable to copy " +
                                 pmtconfigname + " to " + self.pmt_host + ":/tmp")
 
-        cmds = []
+        self.launch_cmds = []
 
         for logdir in ["pmt", "masterControl", "boardreader", "eventbuilder",
                        "aggregator"]:
-            cmds.append("mkdir -p -m 0777 " + self.log_directory +
-                        "/" + logdir)
+            self.launch_cmds.append("mkdir -p -m 0777 " + self.log_directory +
+                                    "/" + logdir)
 
-        cmds.append("cd " + self.daq_dir)
-        cmds.append("source ./" + self.daq_setup_script )
-        cmds.append("which pmt.rb")  # Sanity check capable of returning nonzero
+        self.launch_cmds.append("cd " + self.daq_dir)
+        self.launch_cmds.append("source ./" + self.daq_setup_script )
+        self.launch_cmds.append("which pmt.rb")  # Sanity check capable of returning nonzero
 
         # 30-Jan-2017, KAB: increased the amount of time that pmt.rb provides daqinterface
         # to react to errors.  This should be longer than the sum of the individual
         # process timeouts.
-        cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=120")
+        self.launch_cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=120")
 
 
         if self.have_needed_artdaq_mfextensions():
@@ -625,16 +634,16 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 " --logpath " + self.log_directory + \
                 " --display $DISPLAY & "
    
-        cmds.append(cmd)
+        self.launch_cmds.append(cmd)
 
-        launchcmd = self.construct_checked_command( cmds )
+        launchcmd = self.construct_checked_command( self.launch_cmds )
 
         if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
             launchcmd = "ssh -f " + self.pmt_host + " '" + launchcmd + "'"
 
         if self.debug_level >= 2:
             print "PROCESS LAUNCH COMMANDS: "
-            print "\n".join( cmds )
+            print "\n".join( self.launch_cmds )
             print
 
         if self.debug_level >= 3:
@@ -644,8 +653,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 status = Popen(launchcmd, shell=True).wait()
 
         if status != 0:
-            raise Exception("Status error raised; commands were \"\n%s\n\". If logfiles exist, please check them for more information. Also try running the commands interactively in a new terminal for more info." %
-                            ("\n".join(cmds)))
+            raise Exception("Status error raised; commands were \"\n%s\n\n\". If logfiles exist, please check them for more information. Also try running the commands interactively in a new terminal for more info." %
+                            ("\n".join(self.launch_cmds)))
             return
 
 
@@ -846,6 +855,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         self.procinfos = []
 
+        self.kill_art_procs()
+
         return
 
     # JCF, 12/2/14
@@ -890,8 +901,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 "%d BoardReaderMains, %d EventBuilderMains " \
                 "(expect 0 BoardReaderMains, >0 EventBuilderMains)" % \
                 (self.num_boardreaders(),
-                 self.num_eventbuilders(),
-                 self.num_aggregators())
+                 self.num_eventbuilders())
 
             raise Exception(make_paragraph(errmsg))
 
@@ -1016,7 +1026,11 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         for procinfo in self.procinfos:
             if "BoardReader" in procinfo.name:
                 boardreader_cntr += 1
-                runstring += "\n\n  BOARDREADER_" + procinfo.host.replace(".","_") + "_" + str(procinfo.port) + ": '\n"
+
+                fhicl_readable_hostname = procinfo.host
+                fhicl_readable_hostname = fhicl_readable_hostname.replace(".","_")
+                fhicl_readable_hostname = fhicl_readable_hostname.replace("-","_")
+                runstring += "\n\n  BOARDREADER_" + fhicl_readable_hostname + "_" + str(procinfo.port) + ": '\n"
             elif "EventBuilder" in procinfo.name:
                 eventbuilder_cntr += 1
                 runstring += "\n\n  EVENTBUILDER_" + procinfo.host.replace(".","_") + "_" + str(procinfo.port) + ": '\n"
@@ -1132,6 +1146,11 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                         self.procinfos[procinfo_index].server.daq.shutdown()
                 else:
                     raise Exception("Unknown command")
+
+                if "with ParameterSet" in self.procinfos[procinfo_index].lastreturned:
+                    self.procinfos[procinfo_index].lastreturned = self.procinfos[procinfo_index].lastreturned[0:200] + \
+                        " // REMAINDER TRUNCATED BY DAQINTERFACE, SEE %s FOR FULL FHiCL DOCUMENT" % (self.tmp_run_record)
+
             except Exception:
                 self.exception = True
 
@@ -1235,6 +1254,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             (self.date_and_time())
 
         self.reset_variables()
+        os.chdir(self.daqinterface_base_dir)
 
         if not daqinterface_config:
             daqinterface_config = self.run_params["daqinterface_config"]
@@ -1270,96 +1290,107 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         self.procinfos.sort()
 
-        # Now, with the info on hand about the processes contained in
-        # procinfos, actually launch them
+        if self.manage_processes:
 
-        try:
-            self.launch_procs()
-
-            if self.debug_level >= 1:
-                print "Finished call to launch_procs(); will now confirm that artdaq processes are up..."
-
-        except Exception:
-            self.print_log(traceback.format_exc())
-
-            self.alert_and_recover("An exception was thrown in launch_procs(), see traceback above for more info")
-            return
-
-        num_launch_procs_checks = 0
-
-        while True:
-
-            num_launch_procs_checks += 1
-
-            # "False" here means "don't consider it an error if all
-            # processes aren't found"
-
-            if self.check_proc_heartbeats(False):
-
-                if self.debug_level > 0:
-                    print "All processes appear to be up"
-
-                break
-            else:
-                if num_launch_procs_checks > 5:
-                    self.alert_and_recover("artdaq processes failed to launch; logfiles may contain info as to what happened")
-                    return
-
-        for procinfo in self.procinfos:
-            
-            if "BoardReader" in procinfo.name:
-                timeout = self.boardreader_timeout
-            elif "EventBuilder" in procinfo.name:
-                timeout = self.eventbuilder_timeout
-            elif "Aggregator" in procinfo.name:
-                timeout = self.aggregator_timeout
+            # Now, with the info on hand about the processes contained in
+            # procinfos, actually launch them
 
             try:
-                procinfo.server = TimeoutServerProxy(
-                    procinfo.socketstring, timeout)
+                self.launch_procs()
+
+                if self.debug_level >= 1:
+                    print "Finished call to launch_procs(); will now confirm that artdaq processes are up..."
+
             except Exception:
                 self.print_log(traceback.format_exc())
 
-                self.alert_and_recover("Problem creating server with socket \"%s\"" % \
-                                           procinfo.socketstring)
+                self.alert_and_recover("An exception was thrown in launch_procs(), see traceback above for more info")
                 return
+
+            num_launch_procs_checks = 0
+
+            while True:
+
+                num_launch_procs_checks += 1
+
+                # "False" here means "don't consider it an error if all
+                # processes aren't found"
+
+                if self.check_proc_heartbeats(False):
+
+                    if self.debug_level > 0:
+                        print "All processes appear to be up"
+
+                    break
+                else:
+                    if num_launch_procs_checks > 5:
+                        print make_paragraph("artdaq processes failed to launch; logfiles may contain info as to what happened. You can also try logging into this host via a new terminal, and interactively executing the following commands: ")
+                        print "\n".join(self.launch_cmds)
+                        self.alert_and_recover("Scroll above the output from the \"RECOVER\" transition for more info")
+                        return
+
+            for procinfo in self.procinfos:
+
+                if "BoardReader" in procinfo.name:
+                    timeout = self.boardreader_timeout
+                elif "EventBuilder" in procinfo.name:
+                    timeout = self.eventbuilder_timeout
+                elif "Aggregator" in procinfo.name:
+                    timeout = self.aggregator_timeout
+
+                try:
+                    procinfo.server = TimeoutServerProxy(
+                        procinfo.socketstring, timeout)
+                except Exception:
+                    self.print_log(traceback.format_exc())
+
+                    self.alert_and_recover("Problem creating server with socket \"%s\"" % \
+                                               procinfo.socketstring)
+                    return
 
         # Figure out if we have the artdaq_mfextensions version expected by the artdaq used 
         
-        version, equalifier, squalifier = self.artdaq_mfextensions_info()
+        try:
 
-        if self.have_needed_artdaq_mfextensions() and is_msgviewer_running():
-            print make_paragraph("An instance of messageviewer already appears to be running; " + \
-                                     "messages will be sent to the existing messageviewer")
-        elif self.have_needed_artdaq_mfextensions():
-            print make_paragraph("artdaq_mfextensions %s, %s:%s, appears to be available; "
-                                      "if windowing is supported on your host you should see the "
-                                      "messageviewer window pop up momentarily" % \
-                                          (version, equalifier, squalifier))
+            version, equalifier, squalifier = self.artdaq_mfextensions_info()
 
-            cmds = []
-            cmds.append("cd %s" % (self.daq_dir))
-            cmds.append(". %s" % (self.daq_setup_script))
-            cmds.append("if [[ -n $ARTDAQ_MFEXTENSIONS_FQ_DIR ]]; then export MSGVIEWERDIR=$ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/  ; else export MSGVIEWERDIR=$MRB_BUILDDIR/artdaq_mfextensions/bin ; fi")
-            cmds.append("which msgviewer")
-            cmds.append("msgviewer -c $MSGVIEWERDIR/msgviewer.fcl 2>&1 > /dev/null &" )
+            if self.have_needed_artdaq_mfextensions() and is_msgviewer_running():
+                print make_paragraph("An instance of messageviewer already appears to be running; " + \
+                                         "messages will be sent to the existing messageviewer")
+            elif self.have_needed_artdaq_mfextensions():
+                print make_paragraph("artdaq_mfextensions %s, %s:%s, appears to be available; "
+                                          "if windowing is supported on your host you should see the "
+                                          "messageviewer window pop up momentarily" % \
+                                              (version, equalifier, squalifier))
 
-            msgviewercmd = self.construct_checked_command( cmds )
+                cmds = []
+                cmds.append("cd %s" % (self.daq_dir))
+                cmds.append(". ./%s" % (self.daq_setup_script))
+                cmds.append("if [[ -n $ARTDAQ_MFEXTENSIONS_FQ_DIR ]]; then export MSGVIEWERDIR=$ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/  ; else export MSGVIEWERDIR=$MRB_BUILDDIR/artdaq_mfextensions/bin ; fi")
+                cmds.append("which msgviewer")
+                cmds.append("msgviewer -c $MSGVIEWERDIR/msgviewer.fcl 2>&1 > /dev/null &" )
 
-            with deepsuppression():
+                msgviewercmd = self.construct_checked_command( cmds )
 
-                status = Popen(msgviewercmd, shell=True).wait()
-            
-                if status != 0:
-                    self.alert_and_recover("Status error raised in msgviewer call within Popen; tried the following commands: \"%s\"" %
-                                    " ; ".join(cmds) )
-                    return
-        else:
-            print make_paragraph("artdaq_mfextensions %s, %s:%s, does not appear to be available in the products directory \"%s\" - "
-                                      " unable to launch the messageviewer window. This will not affect"
-                                      " actual datataking, it just means you'll need to look at the"
-                                      " logfiles to see artdaq output." % \
-                                          (version, equalifier, squalifier, self.daq_dir + "/products"))
+                with deepsuppression():
+
+                    status = Popen(msgviewercmd, shell=True).wait()
+
+                    if status != 0:
+                        self.alert_and_recover("Status error raised in msgviewer call within Popen; tried the following commands: \"%s\"" %
+                                        " ; ".join(cmds) )
+                        return
+            else:
+                print make_paragraph("artdaq_mfextensions %s, %s:%s, does not appear to be available in the products directory \"%s\" - "
+                                          " unable to launch the messageviewer window. This will not affect"
+                                          " actual datataking, it just means you'll need to look at the"
+                                          " logfiles to see artdaq output." % \
+                                              (version, equalifier, squalifier, self.daq_dir + "/products"))
+
+        except Exception:
+            self.print_log(traceback.format_exc())
+            self.alert_and_recover("Problem during messageviewer launch stage")
+            return
 
         # JCF, 3/5/15
 
@@ -1399,6 +1430,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         print "\n%s: CONFIG transition underway" % \
             (self.date_and_time())
+
+        os.chdir(self.daqinterface_base_dir)
 
         if not config_for_run:
             self.config_for_run = self.run_params["config"]
@@ -1476,7 +1509,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                         fcl = "%s/EventBuilder1.fcl" % (config_subdirname)
                     elif proc_type == "Aggregator":
                         aggregator_cntr += 1
-                        if aggregator_cntr < num_procs:
+                        if aggregator_cntr == 1:
                             fcl = "%s/Aggregator1.fcl" % (config_subdirname)
                         else:
                             fcl = "%s/Aggregator2.fcl" % (config_subdirname)
@@ -1520,16 +1553,22 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             self.print_log(make_paragraph(
                     "WARNING: an exception was thrown when attempting to save the run record. While datataking may be able to proceed, this may also indicate a serious problem"))
 
-        try:
-            self.do_command("Init")
-        except Exception:
-            self.print_log(traceback.format_exc())
-            self.alert_and_recover("An exception was thrown when attempting to send the \"init\" transition to the artdaq processes; see traceback above for more info")
-            return
+        if self.manage_processes:
+
+            try:
+                self.do_command("Init")
+            except Exception:
+                self.print_log(traceback.format_exc())
+                self.alert_and_recover("An exception was thrown when attempting to send the \"init\" transition to the artdaq processes; see traceback above for more info")
+                return
+
+            try:
+                self.launch_art_procs(self.daqinterface_config_file)
+            except Exception:
+                self.print_log(traceback.format_exc())
+                self.print_log(make_paragraph("WARNING: an exception was caught when trying to launch the online monitoring processes; online monitoring won't work though this will not affect actual datataking"))
 
         self.complete_state_change(self.name, "configuring")
-
-        self.display_artdaq_output()
 
         if self.debug_level >= 1:
             print "To see logfile(s), on %s run \"ls -ltr %s/pmt/%s\"" % \
@@ -1549,14 +1588,16 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             (self.date_and_time(), self.run_number)
         
         if os.path.exists( self.tmp_run_record ):
-            cmd = "cp -r %s %s/%s" % (self.tmp_run_record, self.record_directory, str(self.run_number))
+            run_record_directory = "%s/%s" % \
+                (self.record_directory, str(self.run_number))
+
+            cmd = "cp -r %s %s" % (self.tmp_run_record, run_record_directory)
             status = Popen(cmd, shell = True).wait()
 
             if status != 0:
                 self.alert_and_recover("Error in DAQInterface: a nonzero value was returned executing \"%s\"" %
                                        cmd)
                 return
-                
         else:
             self.alert_and_recover("Error in DAQInterface: unable to find temporary run records directory %s" % 
                                    self.tmp_run_record)
@@ -1569,17 +1610,25 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             self.alert_and_recover("An exception was thrown when trying to save configuration info; see traceback above for more info")
             return
 
-        try:
-            self.do_command("Start")
-        except Exception:
-            self.print_log(traceback.format_exc())
-            self.alert_and_recover("An exception was thrown when attempting to send the \"start\" transition to the artdaq processes; see traceback above for more info")
-            return
+        if self.manage_processes:
+
+            try:
+                self.do_command("Start")
+            except Exception:
+                self.print_log(traceback.format_exc())
+                self.alert_and_recover("An exception was thrown when attempting to send the \"start\" transition to the artdaq processes; see traceback above for more info")
+                return
 
         self.start_datataking()
 
         self.save_metadata_value("Start time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
+
+        if self.debug_level >=1:
+            print
+            print "Run info can be found locally at %s" % \
+                (run_record_directory)
+            print
 
         self.complete_state_change(self.name, "starting")
         print "\n%s: START transition complete for run %d" % \
@@ -1596,12 +1645,14 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         self.stop_datataking()
 
-        try:
-            self.do_command("Stop")
-        except Exception:
-            self.print_log(traceback.format_exc())
-            self.alert_and_recover("An exception was thrown when attempting to send the \"stop\" transition to the artdaq processes; see traceback above for more info")
-            return
+        if self.manage_processes:
+
+            try:
+                self.do_command("Stop")
+            except Exception:
+                self.print_log(traceback.format_exc())
+                self.alert_and_recover("An exception was thrown when attempting to send the \"stop\" transition to the artdaq processes; see traceback above for more info")
+                return
 
 
         self.save_metadata_value("Total events", self.total_events_in_run())
@@ -1618,38 +1669,40 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         print
 
-        for procinfo in self.procinfos:
+        if self.manage_processes:
+
+            for procinfo in self.procinfos:
+
+                try:
+                    procinfo.lastreturned = procinfo.server.daq.shutdown()
+                except Exception:
+                    self.print_log("DAQInterface caught an exception in "
+                                   "do_terminate()")
+                    self.print_log(traceback.format_exc())
+
+                    self.print_log("%s at %s:%s, returned string is: " % \
+                                       (procinfo.name, procinfo.host, procinfo.port))
+                    self.print_log(procinfo.lastreturned)
+
+                    self.alert_and_recover("An exception was thrown "
+                                           "during the terminate transition")
+                    return
+                else:
+                    if self.debug_level >= 1:
+                        print "%s at %s:%s, returned string is: " % \
+                            (procinfo.name, procinfo.host, procinfo.port)
+                        print procinfo.lastreturned
+                        print
 
             try:
-                procinfo.lastreturned = procinfo.server.daq.shutdown()
+                self.kill_procs()
             except Exception:
                 self.print_log("DAQInterface caught an exception in "
                                "do_terminate()")
                 self.print_log(traceback.format_exc())
-
-                self.print_log("%s at %s:%s, returned string is: " % \
-                                   (procinfo.name, procinfo.host, procinfo.port))
-                self.print_log(procinfo.lastreturned)
-
                 self.alert_and_recover("An exception was thrown "
-                                       "during the terminate transition")
+                                       "within kill_procs()")
                 return
-            else:
-                if self.debug_level >= 1:
-                    print "%s at %s:%s, returned string is: " % \
-                        (procinfo.name, procinfo.host, procinfo.port)
-                    print procinfo.lastreturned
-                    print
-
-        try:
-            self.kill_procs()
-        except Exception:
-            self.print_log("DAQInterface caught an exception in "
-                           "do_terminate()")
-            self.print_log(traceback.format_exc())
-            self.alert_and_recover("An exception was thrown "
-                                   "within kill_procs()")
-            return
 
         self.complete_state_change(self.name, "terminating")
 
@@ -1746,46 +1799,49 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     return
 
             return
+        
 
-        # JCF, Feb-1-2017
+        if self.manage_processes:
 
-        # If an artdaq process has died, the others might follow
-        # soon after - if this is the case, then wait a few
-        # seconds to give them a chance to die before trying to
-        # send them transitions (i.e., so they don't die AFTER a
-        # transition is sent, causing more errors)
+            # JCF, Feb-1-2017
 
-        if self.heartbeat_failure:
-            sleep_on_heartbeat_failure = 0
+            # If an artdaq process has died, the others might follow
+            # soon after - if this is the case, then wait a few
+            # seconds to give them a chance to die before trying to
+            # send them transitions (i.e., so they don't die AFTER a
+            # transition is sent, causing more errors)
 
-            if self.debug_level >= 2:
-                self.print_log(
-                    make_paragraph(
-                        "A process previously was found to be missing; " +
-                        "therefore will wait %d seconds before attempting to send the normal transitions as part of recovery" % \
-                            (sleep_on_heartbeat_failure)))
-            sleep(sleep_on_heartbeat_failure)  
+            if self.heartbeat_failure:
+                sleep_on_heartbeat_failure = 0
+
+                if self.debug_level >= 2:
+                    self.print_log(
+                        make_paragraph(
+                            "A process previously was found to be missing; " +
+                            "therefore will wait %d seconds before attempting to send the normal transitions as part of recovery" % \
+                                (sleep_on_heartbeat_failure)))
+                sleep(sleep_on_heartbeat_failure)  
 
 
-        threads = []
+            threads = []
 
-        for name in ["BoardReader", "EventBuilder", "Aggregator"]:
+            for name in ["BoardReader", "EventBuilder", "Aggregator"]:
 
-            for procinfo in self.procinfos:
-                if name in procinfo.name:
-                    t = Thread(target=attempted_stop, args=(self, procinfo))
-                    threads.append(t)
-                    t.start()
+                for procinfo in self.procinfos:
+                    if name in procinfo.name:
+                        t = Thread(target=attempted_stop, args=(self, procinfo))
+                        threads.append(t)
+                        t.start()
 
-            for thread in threads:
-                thread.join()
-                
-        try:
-            self.kill_procs()
-        except Exception:
-            self.print_log(traceback.format_exc())
-            self.print_log(make_paragraph("An exception was thrown "
-                                   "within kill_procs(); artdaq processes may not all have been killed"))
+                for thread in threads:
+                    thread.join()
+
+            try:
+                self.kill_procs()
+            except Exception:
+                self.print_log(traceback.format_exc())
+                self.print_log(make_paragraph("An exception was thrown "
+                                       "within kill_procs(); artdaq processes may not all have been killed"))
 
         self.in_recovery = False
 
@@ -1851,13 +1907,11 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 self.do_command("Resume")
 
 
-            elif self.state(self.name) != "stopped" and self.state(self.name) != "booting" \
-                    and self.state(self.name) != "terminating":
+            elif self.manage_processes and self.state(self.name) != "stopped" and \
+                    self.state(self.name) != "booting" and self.state(self.name) != "terminating":
                 self.check_proc_heartbeats()
                 self.check_proc_exceptions()
 
-                if self.state(self.name) == "running":
-                    self.display_artdaq_output()
         except Exception:
             self.in_recovery = True
             self.alert_and_recover(traceback.format_exc())
@@ -1884,7 +1938,8 @@ def main():  # no-coverage
     pids = get_pids(greptoken)
 
     if len(pids) > 1:
-        print make_paragraph("Won't launch DAQInterface; it appears an instance is already running on this host (i.e., found more than one result when grepping for \"%s\" on the output of the \"ps aux\" command)" % (greptoken))
+        print make_paragraph("Won't launch DAQInterface; it appears an instance is already running on this host according to this command:" )
+        print "\nps aux | grep \"%s\" | grep -v grep\n" % (greptoken)
         return
 
     if not os.path.exists("./bin"):

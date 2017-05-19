@@ -6,6 +6,8 @@ import string
 import subprocess
 from subprocess import Popen
 
+from time import sleep
+
 def expand_environment_variable_in_string(line):
 
     res = re.search(r"^(.*)(\$[A-Z]+)(.*)", line)
@@ -95,14 +97,11 @@ def table_range(fhiclstring, tablename):
     close_brace_loc = -1
 
     for i_char, char in enumerate(fhiclstring[(loc+open_brace_loc+1):]):
-        #print char
 
         if char == '{':
             close_braces_needed += 1
         elif char == '}':
             close_braces_needed -= 1
-
-        #print close_braces_needed, i_char
 
         if close_braces_needed == 0:
             close_brace_loc = i_char
@@ -148,12 +147,34 @@ def is_msgviewer_running():
 
     return False
 
+def execute_command_in_xterm(home, cmd):
+    
+    if not os.path.exists( os.environ["HOME"] + "/.Xauthority"):
+        raise Exception("Unable to find .Xauthority file in home directory")
 
+    if home != os.environ["HOME"]:
+        status = Popen("cp -p ~/.Xauthority %s" % (home), shell=True).wait()
+        if status != 0:
+            raise Exception("Unable to copy .Xauthority file into directory %s; do you have write permissions there?" % (home))
+
+
+    # JCF, May-11-2017
+
+    # The following chant to xterm is influenced both by Ron's
+    # implementation of xt_cmd.sh in artdaq-demo as well as the info
+    # found at
+    # https://superuser.com/questions/363614/leave-xterm-open-after-task-is-complete
+
+    fullcmd = "env -i SHELL=/bin/bash PATH=/usr/bin:/bin LOGNAME=%s USER=%s  DISPLAY=%s  REALHOME=%s HOME=%s KRB5CCNAME=%s  xterm -geometry 100x33+720+0 -sl 2500 -e \"%s ; read \" &" % (os.environ["LOGNAME"], os.environ["USER"], os.environ["DISPLAY"], os.environ["HOME"], \
+                                                                                                                                                                                              home, os.environ["KRB5CCNAME"], cmd)
+
+    Popen(fullcmd, shell=True).wait()
 
 def main():
 
     paragraphed_string_test = False
-    msgviewer_check_test = True
+    msgviewer_check_test = False
+    execute_command_in_xterm_test = True
 
     if paragraphed_string_test:
         sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
@@ -174,6 +195,10 @@ def main():
         else:
             print "A msgviewer doesn't appear to be running"
         
+    if execute_command_in_xterm_test:
+        execute_command_in_xterm(os.environ["PWD"], "echo Hello world")
+        execute_command_in_xterm(os.environ["PWD"], "echo You should see an xclock appear; xclock ")
+
 
 if __name__ == "__main__":
     main()

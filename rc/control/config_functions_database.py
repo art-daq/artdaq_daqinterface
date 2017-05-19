@@ -203,15 +203,59 @@ def get_daqinterface_config_info_base(self, daqinterface_config_label):
 def listdaqcomps_base(self):
     assert False, "listdaqcomps not yet implemented in case of database use"
 
+def listconfigs_base(self):
+    cmds = setup_database_commands()
+
+    parser_script = "%s/utils/list_global_configs_parse.awk" % (os.getcwd())
+
+    assert os.path.exists( parser_script ), \
+        "Unable to find %s; are you in DAQInterface's base directory?" % \
+        (parser_script)
+
+    cmds.append("conftool.sh -o list_global_configs | awk -f %s | sort" % \
+                    (parser_script))
+
+    proc = Popen("; ".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    lines = proc.stdout.readlines()
+
+    listconfigs_file="/tmp/listconfigs.txt"
+
+    outf = open(listconfigs_file, "w")
+
+
+    print
+    print "Available configurations:"
+
+    for line in lines:
+        if "RUN_CONFIG: " in line:
+            formatted_line = line.replace("RUN_CONFIG: ", "")
+            formatted_line = formatted_line.strip()
+            print formatted_line
+            outf.write("%s\n" % (formatted_line))
+
+    print
+    print "See file \"%s\" for saved record of the above configurations" % (listconfigs_file)
+    print
+
 def main():
 
-    print "Checking the setting of ARTDAQ_DATABASE_URI"
-    cmds = setup_database_commands(True)
-    cmds.append("echo $ARTDAQ_DATABASE_URI")
-    
-    proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    artdaq_database_uri_test = False
+    listconfigs_test = False
 
-    print proc.stdout.readlines()[-1]
+    if artdaq_database_uri_test:
+        print "Checking the setting of ARTDAQ_DATABASE_URI"
+        cmds = setup_database_commands(True)
+        cmds.append("echo $ARTDAQ_DATABASE_URI")
+    
+        proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        print proc.stdout.readlines()[-1]
+
+    if listconfigs_test:
+        print "Calling listconfigs_base"
+        listconfigs_base("ignored_argument")
+        
 
 
 if __name__ == "__main__":
