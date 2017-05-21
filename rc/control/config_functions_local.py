@@ -77,7 +77,8 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
             self.debug_level = int(res.group(1))
             continue
 
-        if "EventBuilder" in line or "Aggregator" in line:
+        if "EventBuilder" in line or "Aggregator" in line or \
+                "DataLogger" in line or "Dispatcher" in line:
 
             res = re.search(r"\s*(\w+)\s+(\S+)\s*:\s*(\S+)", line)
 

@@ -5,6 +5,8 @@ if [[ $# != 1 ]]; then
     exit 10
 fi
 
+#set -x
+
 runnum=$1
 
 recorddir=$( awk '/record_directory/ { print $2} ' .settings )
@@ -22,10 +24,9 @@ fi
 # of the products directory used by the bash scripts...even
 # potentially on other hosts
 
-proddir=$( cat $PWD/.settings | awk '/productsdir_for_bash_scripts/ { print $2 }' )
-proddir=$( echo $( eval echo $proddir ) )  # Expand environ variables in string
-
-setupscript=$( cat $PWD/.settings | awk '/daq_setup_script/ { print $2 }' )
+setupscript_dirname=$( cat $PWD/docs/config.txt | awk '/DAQ +directory/ { print $3 }'  )
+setupscript_basename=$( cat $PWD/.settings | awk '/daq_setup_script/ { print $2 }' )
+setupscript=$setupscript_dirname/$setupscript_basename
 
 cd $recorddir/$runnum
 
@@ -33,13 +34,15 @@ total_events=0
 
 file_locations=""
 
-for file in $recorddir/$runnum/Aggregator*.fcl ; do
+for proctype in Aggregator DataLogger ; do
+    for file in $( ls $recorddir/$runnum/${proctype}*.fcl 2>/dev/null ) ; do
 
-    agg_host=$( echo $file | sed -r 's/.*Aggregator_(.*)_.*/\1/' )
-    agg_dir=$( sed -r -n '/^\s*#/d;/fileName.*\.root/s/.*fileName[^/]*(\/.*\/).*/\1/p' $file )
-    if [[ -n $agg_dir && ! $file_locations =~ "${agg_host}:${agg_dir}" ]]; then
-	file_locations="${agg_host}:${agg_dir} ${file_locations}"
-    fi
+	agg_host=$( echo $file | sed -r 's/.*'${proctype}'_(.*)_.*/\1/' )
+	agg_dir=$( sed -r -n '/^\s*#/d;/fileName.*\.root/s/.*fileName[^/]*(\/.*\/).*/\1/p' $file )
+	if [[ -n $agg_dir && ! $file_locations =~ "${agg_host}:${agg_dir}" ]]; then
+	    file_locations="${agg_host}:${agg_dir} ${file_locations}"
+	fi
+    done
 done
 
 for file_location in $file_locations ; do
@@ -49,7 +52,7 @@ for file_location in $file_locations ; do
 
     runnum_padded=$( printf "%06d" $runnum )
 
-    cmd="tmpfile=/tmp/"$(uuidgen)".C ; echo '{TChain chain(\"Events\"); chain.Add(\""$agg_dir"/*_r"${runnum_padded}"_*.root\"); cout << chain.GetEntries() << endl;}' > \$tmpfile; cd "$proddir"/.. ; . "$setupscript"; root -q -b -l \$tmpfile ; rm -f \$tmpfile"
+    cmd="tmpfile=/tmp/"$(uuidgen)".C ; echo '{TChain chain(\"Events\"); chain.Add(\""$agg_dir"/*_r"${runnum_padded}"_*.root\"); cout << chain.GetEntries() << endl;}' > \$tmpfile;  . "$setupscript"; root -q -b -l \$tmpfile ; rm -f \$tmpfile"
 
     if [[ "$agg_host" != "localhost" && "$agg_host" != $HOSTNAME ]]; then
 	nevents=$( ssh $agg_host "$cmd" | tail -1 )

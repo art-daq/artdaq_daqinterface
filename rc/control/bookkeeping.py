@@ -252,38 +252,42 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     send_1_over_N = True
 
-    commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
-                                       "44e97f0d6e591523b5866a95f2b4080610c41b1b", "Apr 29, 2017", True)
-
-    commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq_demo", \
-                                       "eb751f6cc124e6be37b640a0625c6309ce9b3457", "May 3, 2017", True)
-
-
-    num_data_loggers = 1
-
     # JCF, Jan-24-2017
     # Will need to think about how to handle max_fragment_size_words...
     max_fragment_size_words = 2097152
 
+    commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
+                                       "9a63dfd8660bfbba43acadcfa1ed4d362610be2f", "May 9, 2017", True)
+
+    commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq_demo", \
+                                       "af675decd1ffe2755bdb531760f0b315dc1d073b", "May 9, 2017", True)
+
+    num_data_loggers = 0
+    num_dispatchers = 0
+
+    for procinfo in self.procinfos:
+        if "DataLogger" in procinfo.name:
+            num_data_loggers += 1
+        elif "Dispatcher" in procinfo.name:
+            num_dispatchers += 1
+
     proc_hosts = []
 
-    for proctype in ["BoardReader", "EventBuilder", "Aggregator" ]:
-        for procinfo in self.procinfos:
-            if proctype in procinfo.name:
-                num_existing = len(proc_hosts)
+    for procinfo in self.procinfos:
+        num_existing = len(proc_hosts)
 
-                if procinfo.host == "localhost":
-                    host_to_display = os.environ["HOSTNAME"]
-                else:
-                    host_to_display = procinfo.host
+        if procinfo.host == "localhost":
+            host_to_display = os.environ["HOSTNAME"]
+        else:
+            host_to_display = procinfo.host
 
-                proc_hosts.append( 
-                    "{rank: %d host: \"%s\" portOffset: %d}" % \
-                        (num_existing, host_to_display, 6300 + 10*num_existing))
+        proc_hosts.append( 
+            "{rank: %d host: \"%s\" portOffset: %d}" % \
+                (num_existing, host_to_display, 6300 + 10*num_existing))
 
     proc_hosts_string = ", ".join( proc_hosts )
 
-    def create_sources_or_destinations_string(nodetype, first, last, nth = 1, this_node_index = -1):
+    def create_sources_or_destinations_string(nodetype, first, last, nth = -1, this_node_index = -1):
 
         if nodetype == "sources":
             prefix = "s"
@@ -295,7 +299,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         nodes = []
 
         for i in range(first, last):
-            if nth == 1:
+            if nth == -1:
                 nodes.append( 
                     "%s%d: { transferPluginType: MPI %s_rank: %d max_fragment_size_words: %d host_map: [%s]}" % \
                     (prefix, i, nodetype[:-1], i, max_fragment_size_words, \
@@ -316,7 +320,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         return "\n".join( nodes )
 
-    agg_count = 0
+    if send_1_over_N:
+        current_dispatcher_index = 0
 
     for i_proc in range(len(self.procinfos)):
 
@@ -340,32 +345,28 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 self.num_eventbuilders()
             destination_node_last = destination_node_first + num_data_loggers  
 
-        elif "Aggregator" in self.procinfos[i_proc].name:
+        elif "DataLogger" in self.procinfos[i_proc].name:
+            is_data_logger = True
 
-            agg_count += 1
-            if agg_count <= num_data_loggers:
+            source_node_first = self.num_boardreaders()
+            source_node_last = self.num_boardreaders() + \
+                               self.num_eventbuilders()
 
-                is_data_logger = True
+            destination_node_first = self.num_boardreaders() + \
+                                     self.num_eventbuilders() + \
+                                     num_data_loggers
+            destination_node_last =  self.num_boardreaders() + \
+                                     self.num_eventbuilders() + \
+                                     num_data_loggers + \
+                                     num_dispatchers
+        elif "Dispatcher" in self.procinfos[i_proc].name:
+            is_dispatcher = True
 
-                source_node_first = self.num_boardreaders()
-                source_node_last = self.num_boardreaders() + \
-                                   self.num_eventbuilders()
-
-                destination_node_first = self.num_boardreaders() + \
-                                         self.num_eventbuilders() + \
-                                         num_data_loggers
-                destination_node_last =  self.num_boardreaders() + \
-                                         self.num_eventbuilders() + \
-                                         self.num_aggregators()
-            else:
-                
-                is_dispatcher = True
-
-                source_node_first = self.num_boardreaders() + \
-                                    self.num_eventbuilders()
-                source_node_last = source_node_first + num_data_loggers
+            source_node_first = self.num_boardreaders() + \
+                                self.num_eventbuilders()
+            source_node_last = source_node_first + num_data_loggers
         else:
-            assert False
+            assert False, "Process type not recognized"
 
         for tablename in [ "sources", "destinations" ]:
 
@@ -376,13 +377,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 node_first = destination_node_first
                 node_last = destination_node_last
 
-            nth = 1
-            
-            if send_1_over_N:
-                if (is_data_logger and tablename == "destinations") or \
-                   (is_dispatcher and tablename == "sources"):
-                    nth = self.num_aggregators() - num_data_loggers
-
+ 
             (table_start, table_end) = \
                 table_range(self.procinfos[i_proc].fhicl_used, \
                                 tablename)
@@ -390,11 +385,23 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             if table_start != -1 and table_end != -1:
                 
                 node_index = -1
+                nth = -1
 
-                if is_dispatcher:
-                    node_index = agg_count - num_data_loggers - 1
-                    assert node_index >= 0
+                if send_1_over_N:
+                    if is_data_logger and tablename == "destinations":
+                        nth = num_dispatchers
+                    elif is_dispatcher and tablename == "sources":
+                        nth = num_dispatchers
+                        node_index = current_dispatcher_index
+                        current_dispatcher_index += 1
 
+                print self.procinfos[i_proc].port
+                print tablename
+                print node_first
+                print node_last
+                print num_dispatchers
+                print node_index
+                
                 self.procinfos[i_proc].fhicl_used = \
                     self.procinfos[i_proc].fhicl_used[:table_start] + \
                     "\n" + tablename + ": { \n" + \
