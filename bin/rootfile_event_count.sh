@@ -24,8 +24,8 @@ fi
 # of the products directory used by the bash scripts...even
 # potentially on other hosts
 
-setupscript_dirname=$( cat $PWD/docs/config.txt | awk '/DAQ +directory/ { print $3 }'  )
-setupscript_basename=$( cat $PWD/.settings | awk '/daq_setup_script/ { print $2 }' )
+setupscript_dirname=$( cat $PWD/docs/config.txt | awk '/^ *DAQ +directory/ { print $3 }'  )
+setupscript_basename=$( cat $PWD/.settings | awk '/^ *daq_setup_script/ { print $2 }' )
 setupscript=$setupscript_dirname/$setupscript_basename
 
 cd $recorddir/$runnum
