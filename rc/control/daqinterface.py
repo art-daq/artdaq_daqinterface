@@ -33,7 +33,7 @@ from rc.control.save_run_record import total_events_in_run_base
 from rc.control.save_run_record import save_metadata_value_base
 from rc.control.start_datataking_noop import start_datataking_base
 from rc.control.stop_datataking_noop import stop_datataking_base
-from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v3_base
+from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v2_base
 
 from rc.control.online_monitoring import launch_art_procs_base
 from rc.control.online_monitoring import kill_art_procs_base
@@ -300,7 +300,7 @@ class DAQInterface(Component):
     save_metadata_value = save_metadata_value_base
     start_datataking = start_datataking_base
     stop_datataking = stop_datataking_base
-    bookkeeping_for_fhicl_documents = bookkeeping_for_fhicl_documents_artdaq_v3_base
+    bookkeeping_for_fhicl_documents = bookkeeping_for_fhicl_documents_artdaq_v2_base
     launch_art_procs = launch_art_procs_base
     kill_art_procs = kill_art_procs_base
 
