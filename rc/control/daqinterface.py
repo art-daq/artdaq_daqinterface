@@ -33,7 +33,7 @@ from rc.control.save_run_record import total_events_in_run_base
 from rc.control.save_run_record import save_metadata_value_base
 from rc.control.start_datataking_noop import start_datataking_base
 from rc.control.stop_datataking_noop import stop_datataking_base
-from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v2_base
+from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v3_base
 
 from rc.control.online_monitoring import launch_art_procs_base
 from rc.control.online_monitoring import kill_art_procs_base
@@ -103,12 +103,15 @@ class DAQInterface(Component):
 
         def __lt__(self, other):
             if self.name != other.name:
-                if self.name == "BoardReader":
+
+                processes_upstream_to_downstream = \
+                    ["BoardReader", "EventBuilder", "Aggregator", "DataLogger", "Dispatcher"]
+
+                if processes_upstream_to_downstream.index(self.name) < \
+                        processes_upstream_to_downstream.index(other.name):
                     return True
-                elif self.name == "EventBuilder":
-                    if other.name == "Aggregator":
-                        return True
-                return False
+                else:
+                    return False
             else:
                 if int(self.port) < int(other.port):
                     return True
@@ -297,7 +300,7 @@ class DAQInterface(Component):
     save_metadata_value = save_metadata_value_base
     start_datataking = start_datataking_base
     stop_datataking = stop_datataking_base
-    bookkeeping_for_fhicl_documents = bookkeeping_for_fhicl_documents_artdaq_v2_base
+    bookkeeping_for_fhicl_documents = bookkeeping_for_fhicl_documents_artdaq_v3_base
     launch_art_procs = launch_art_procs_base
     kill_art_procs = kill_art_procs_base
 
@@ -447,6 +450,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 while retry_counter < max_retries and ( 
                     "ARTDAQ PROCESS NOT YET CALLED" in procinfo.lastreturned or
                     "Stopped" in procinfo.lastreturned or
+                    "Booted" in procinfo.lastreturned or
                     "Ready" in procinfo.lastreturned or
                     "Running" in procinfo.lastreturned or
                     "Paused" in procinfo.lastreturned or
@@ -493,7 +497,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
     def num_aggregators(self):
         num_aggregators = 0
         for procinfo in self.procinfos:
-            if "Aggregator" in procinfo.name:
+            if "Aggregator" in procinfo.name or "DataLogger" in procinfo.name \
+                    or "Dispatcher" in procinfo.name:
                 num_aggregators += 1
         return num_aggregators
 
@@ -583,6 +588,10 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 if procname in procinfo.name:
                     outf.write(procname + "Main ")
 
+            for procname in ["DataLogger", "Dispatcher"]:
+                if procname in procinfo.name:
+                    outf.write("AggregatorMain ")
+
             if procinfo.host != "localhost":
                 host_to_write = procinfo.host
             else:
@@ -671,7 +680,9 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 proctype = "BoardReaderMain"
             elif "EventBuilder" in procinfo.name:
                 proctype = "EventBuilderMain"
-            elif "Aggregator" in procinfo.name:
+            elif "Aggregator" in procinfo.name or \
+                    "DataLogger" in procinfo.name or \
+                    "Dispatcher" in procinfo.name:
                 proctype = "AggregatorMain"
             else:
                 assert False
@@ -830,7 +841,11 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         for procinfo in self.procinfos:
-            greptoken = procinfo.name + "Main -p " + procinfo.port
+            
+            if procinfo.name == "DataLogger" or procinfo.name == "Dispatcher":
+                greptoken = "AggregatorMain -p " + procinfo.port
+            else:
+                greptoken = procinfo.name + "Main -p " + procinfo.port
 
             pids = get_pids(greptoken, procinfo.host)
 
@@ -951,8 +966,14 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         else:
             assert False
 
+        translator = { "BoardReader":"BoardReader", 
+                       "EventBuilder":"EventBuilder",
+                       "Aggregator":"Aggregator",
+                       "DataLogger":"Aggregator",
+                       "Dispatcher":"Aggregator" }
+
         for procinfo in self.procinfos:
-            if procname == procinfo.name:
+            if (procname == translator[ procinfo.name ] ):
                 if procinfo.host in host_count.keys():
                     host_count[procinfo.host] += 1
                 else:
@@ -1019,29 +1040,14 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         runstring = "\n\nrun_documents: {\n"
         
-        boardreader_cntr = 0
-        eventbuilder_cntr = 0
-        aggregator_cntr = 0
-
         for procinfo in self.procinfos:
-            if "BoardReader" in procinfo.name:
-                boardreader_cntr += 1
 
-                fhicl_readable_hostname = procinfo.host
-                fhicl_readable_hostname = fhicl_readable_hostname.replace(".","_")
-                fhicl_readable_hostname = fhicl_readable_hostname.replace("-","_")
-                runstring += "\n\n  BOARDREADER_" + fhicl_readable_hostname + "_" + str(procinfo.port) + ": '\n"
-            elif "EventBuilder" in procinfo.name:
-                eventbuilder_cntr += 1
-                runstring += "\n\n  EVENTBUILDER_" + procinfo.host.replace(".","_") + "_" + str(procinfo.port) + ": '\n"
-            elif "Aggregator" in procinfo.name:
-                aggregator_cntr += 1
-                runstring += "\n\n  AGGREGATOR_" + procinfo.host.replace(".","_") + "_" + str(procinfo.port) + ": '\n"
-            else:
-                self.alert_and_recover("Exception in DAQInterface:"
-                                       " unknown process type found"
-                                       " in procinfos")
-                return
+            fhicl_readable_hostname = procinfo.host
+            fhicl_readable_hostname = fhicl_readable_hostname.replace(".","_")
+            fhicl_readable_hostname = fhicl_readable_hostname.replace("-","_")
+
+            runstring += "\n\n  " + procinfo.name.upper() + "_" + fhicl_readable_hostname + \
+                "_" + str(procinfo.port) + ": '\n"
 
             dressed_fhicl = re.sub("'","\"", procinfo.fhicl_used)
             runstring += dressed_fhicl
@@ -1121,7 +1127,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             try:
 
                 if command == "Init":
-                    if not "Aggregator" in self.procinfos[procinfo_index].name:
+                    if not "Aggregator" in self.procinfos[procinfo_index].name and \
+                            not "DataLogger" in self.procinfos[procinfo_index].name:
                         self.procinfos[procinfo_index].lastreturned = \
                             self.procinfos[procinfo_index].server.daq.init(self.procinfos[procinfo_index].fhicl_used)
                     else:
@@ -1175,7 +1182,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         # next we send stop to all the eventbuilders, and finally we
         # send stop to all the aggregators
 
-        proctypes_in_order = ["Aggregator", "EventBuilder","BoardReader"]
+        proctypes_in_order = ["Dispatcher", "DataLogger", "Aggregator", "EventBuilder","BoardReader"]
 
         if command == "Stop" or command == "Pause" or command == "Terminate":
             proctypes_in_order.reverse()
@@ -1324,7 +1331,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     break
                 else:
                     if num_launch_procs_checks > 5:
-                        print make_paragraph("artdaq processes failed to launch; logfiles may contain info as to what happened. You can also try logging into this host via a new terminal, and interactively executing the following commands: ")
+                        print make_paragraph("artdaq processes failed to launch; logfiles may contain info as to what happened. For troubleshooting, you can also try logging into this host via a new terminal, and interactively executing the following commands: ")
                         print "\n".join(self.launch_cmds)
                         self.alert_and_recover("Scroll above the output from the \"RECOVER\" transition for more info")
                         return
@@ -1335,7 +1342,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     timeout = self.boardreader_timeout
                 elif "EventBuilder" in procinfo.name:
                     timeout = self.eventbuilder_timeout
-                elif "Aggregator" in procinfo.name:
+                elif "Aggregator" in procinfo.name or "DataLogger" in procinfo.name \
+                        or "Dispatcher" in procinfo.name:
                     timeout = self.aggregator_timeout
 
                 try:
@@ -1490,16 +1498,10 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 self.alert_and_recover("An exception was thrown when creating the process FHiCL documents; see traceback above for more info")
                 return
                 
+        for proc_type in ["EventBuilder", "Aggregator", "DataLogger", "Dispatcher"]:
 
-        support_tuples = [("Aggregator", self.num_aggregators()),
-                          ("EventBuilder", self.num_eventbuilders())]
-
-        for support_tuple in support_tuples:
-
-            proc_type, num_procs = support_tuple
-
-            aggregator_cntr = 0
             rootfile_cntr = 0
+            unspecified_aggregator_cntr = 0
 
             for i_proc in range(len(self.procinfos)):
 
@@ -1508,11 +1510,15 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     if proc_type == "EventBuilder":
                         fcl = "%s/EventBuilder1.fcl" % (config_subdirname)
                     elif proc_type == "Aggregator":
-                        aggregator_cntr += 1
-                        if aggregator_cntr == 1:
+                        unspecified_aggregator_cntr += 1
+                        if unspecified_aggregator_cntr == 1:
                             fcl = "%s/Aggregator1.fcl" % (config_subdirname)
                         else:
                             fcl = "%s/Aggregator2.fcl" % (config_subdirname)
+                    elif proc_type == "DataLogger":
+                        fcl = "%s/Aggregator1.fcl" % (config_subdirname)
+                    elif proc_type == "Dispatcher":
+                        fcl = "%s/Aggregator2.fcl" % (config_subdirname)
                     else:
                         assert False
                         
@@ -1722,7 +1728,10 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         def attempted_stop(self, procinfo):
 
-            greptoken = procinfo.name + "Main -p " + procinfo.port
+            if procinfo.name == "DataLogger" or procinfo.name == "Dispatcher":
+                greptoken = "AggregatorMain -p " + procinfo.port
+            else:
+                greptoken = procinfo.name + "Main -p " + procinfo.port
 
             pid = get_pids(greptoken, procinfo.host)
 
@@ -1825,7 +1834,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
             threads = []
 
-            for name in ["BoardReader", "EventBuilder", "Aggregator"]:
+            for name in ["BoardReader", "EventBuilder", "Aggregator", "DataLogger", "Dispatcher"]:
 
                 for procinfo in self.procinfos:
                     if name in procinfo.name:
