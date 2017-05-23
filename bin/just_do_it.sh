@@ -35,8 +35,8 @@ if ! [[ $daq_time_in_seconds =~ ^[0-9-]+$ ]]; then
     exit 10
 fi
 
-lastrun=$(ls -tr1 $run_records_dir | tail -1)
-runnum=$(( lastrun + 1 ))
+highest_runnum=$( ls -1 $run_records_dir | sort -n | tail -1 )
+runnum=$(( highest_runnum + 1 ))
 
 # See below for definition of "clean_shutdown" function
 
