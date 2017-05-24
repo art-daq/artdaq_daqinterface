@@ -9,3 +9,8 @@ productsdir_for_bash_scripts: $HOME/path_to_product_dir_not_yet_defined/products
 boardreader timeout: 10
 eventbuilder timeout: 20
 aggregator timeout: 80
+
+max_fragment_size_bytes: 1000000
+all_events_to_all_dispatchers: false
+
+

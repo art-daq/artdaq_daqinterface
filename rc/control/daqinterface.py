@@ -407,7 +407,20 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 self.aggregator_timeout = int( line.split()[-1].strip() )
             elif "boardreader priorities" in line:
                 self.boardreader_priorities = [regexp.strip() for regexp in line.split()[2:] if ":" not in regexp]
-            
+            elif "max_fragment_size_bytes" in line:
+                self.max_fragment_size_bytes = int( line.split()[-1].strip())
+                if self.max_fragment_size_bytes % 8 != 0:
+                    raise Exception("Value for \"max_fragment_size_bytes\" in .settings should be a multiple of 8")
+            elif "all_events_to_all_dispatchers" in line:
+                token = line.split()[-1].strip()
+                
+                if "true" in token or "True" in token:
+                    self.all_events_to_all_dispatchers = True
+                elif "false" in token or "False" in token:
+                    self.all_events_to_all_dispatchers = False
+                else:
+                    raise Exception("all_events_to_all_dispatchers must be set to either [Tt]rue or [Ff]alse")
+
         missing_vars = []
 
         if self.log_directory is None:

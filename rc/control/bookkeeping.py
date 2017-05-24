@@ -99,6 +99,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v2_base(self):
     commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
                                        "c3d1ce5ce07a83793f91efc0744b19aa8d5caf5c", "Jan 12, 2017", True)
 
+    commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
+                                       "9a63dfd8660bfbba43acadcfa1ed4d362610be2f", "May 9, 2017", False)
+
     if self.num_aggregators() > 1:
         num_data_loggers = self.num_aggregators() - 1  # "-1" is for the dispatcher
     else:
@@ -106,9 +109,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v2_base(self):
 
     assert num_data_loggers == 1, "Currently only have the logic to handle one data logger"
 
-    # JCF, Jan-24-2017
-    # Will need to think about how to handle max_fragment_size_words...
-    max_fragment_size_words = 2097152
+    max_fragment_size_words = self.max_fragment_size_bytes / 8
 
     proc_hosts = []
 
@@ -252,9 +253,13 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     send_1_over_N = True
 
-    # JCF, Jan-24-2017
-    # Will need to think about how to handle max_fragment_size_words...
-    max_fragment_size_words = 2097152
+    try:
+        if self.all_events_to_all_dispatchers:
+            send_1_over_N = False
+    except Exception:
+        pass # We don't care if variable above is undefined
+
+    max_fragment_size_words = self.max_fragment_size_bytes / 8
 
     commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
                                        "9a63dfd8660bfbba43acadcfa1ed4d362610be2f", "May 9, 2017", True)
