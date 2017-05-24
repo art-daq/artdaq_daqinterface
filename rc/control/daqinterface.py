@@ -74,7 +74,7 @@ class DAQInterface(Component):
             self.host = host
             self.fhicl = fhicl     # Name of the input FHiCL document
             self.ffp = fhicl_file_path
-            self.priority = -1
+            self.priority = 999
 
             # FHiCL code actually sent to the process
 
@@ -405,6 +405,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 self.eventbuilder_timeout = int( line.split()[-1].strip() )
             elif "aggregator timeout" in line:
                 self.aggregator_timeout = int( line.split()[-1].strip() )
+            elif "boardreader priorities" in line:
+                self.boardreader_priorities = [regexp.strip() for regexp in line.split()[2:] if ":" not in regexp]
             
         missing_vars = []
 
@@ -1197,7 +1199,19 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 if proctype in procinfo.name:
                     priorities_used[ procinfo.priority ] = "We only care about the key in this dict"
 
-            for priority in sorted(priorities_used.iterkeys(), reverse = True):
+            # JCF, May-24-2017
+
+            # It's not yet clear if reversing the priority of
+            # processes WITHIN a process type when halting datataking
+            # makes sense the same way it makes sense to reverse the
+            # priorities of the process types themselves
+
+            if command == "Stop" or command == "Pause" or command == "Terminate":
+                priority_rankings = sorted(priorities_used.iterkeys(), reverse = True)
+            else:
+                priority_rankings = sorted(priorities_used.iterkeys())
+
+            for priority in priority_rankings:
                 for i_procinfo, procinfo in enumerate(self.procinfos):
                     if proctype in procinfo.name and priority == procinfo.priority:
                         t = Thread(target=process_command, args=(self, i_procinfo, command))
@@ -1290,15 +1304,23 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             pkg_full_path = "%s/srcs/%s" % (self.daq_dir, pkgname.replace("-", "_"))
             self.package_hash_dict[pkgname] = self.get_commit_hash( pkg_full_path )
 
-        if self.debug_level >= 2:
-            for compname, socket in self.daq_comp_list.items():
-                print "%s at %s:%s" % (compname, socket[0], socket[1])
 
-        for socket in self.daq_comp_list.values():
+        for compname, socket in self.daq_comp_list.items():
+
+            if self.debug_level >= 2:
+                print "%s at %s:%s" % (compname, socket[0], socket[1])
  
             self.procinfos.append(self.Procinfo("BoardReader",
                                                 socket[0],
                                                 socket[1]))
+
+            try:
+                for priority, regexp in enumerate(self.boardreader_priorities):
+                    if re.search(regexp, compname):
+                        self.procinfos[-1].priority = priority
+
+            except NameError:
+                pass  # It's not an error if there were no boardreader priorities read in from .settings
 
         # See the Procinfo.__lt__ function for details on sorting
 
