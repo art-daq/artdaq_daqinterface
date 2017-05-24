@@ -74,6 +74,7 @@ class DAQInterface(Component):
             self.host = host
             self.fhicl = fhicl     # Name of the input FHiCL document
             self.ffp = fhicl_file_path
+            self.priority = -1
 
             # FHiCL code actually sent to the process
 
@@ -1190,15 +1191,21 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         for proctype in proctypes_in_order:
 
             threads = []
+            priorities_used = {}
 
-            for i_procinfo, procinfo in enumerate(self.procinfos):
+            for procinfo in self.procinfos:
                 if proctype in procinfo.name:
-                    t = Thread(target=process_command, args=(self, i_procinfo, command))
-                    threads.append(t)
-                    t.start()
+                    priorities_used[ procinfo.priority ] = "We only care about the key in this dict"
 
-            for thread in threads:
-                thread.join()
+            for priority in sorted(priorities_used.iterkeys(), reverse = True):
+                for i_procinfo, procinfo in enumerate(self.procinfos):
+                    if proctype in procinfo.name and priority == procinfo.priority:
+                        t = Thread(target=process_command, args=(self, i_procinfo, command))
+                        threads.append(t)
+                        t.start()
+
+                for thread in threads:
+                    thread.join()
 
         if self.exception:
             raise Exception("An exception was thrown "
@@ -1832,18 +1839,24 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 sleep(sleep_on_heartbeat_failure)  
 
 
-            threads = []
-
             for name in ["BoardReader", "EventBuilder", "Aggregator", "DataLogger", "Dispatcher"]:
+
+                threads = []
+                priorities_used = {}
 
                 for procinfo in self.procinfos:
                     if name in procinfo.name:
-                        t = Thread(target=attempted_stop, args=(self, procinfo))
-                        threads.append(t)
-                        t.start()
+                        priorities_used[ procinfo.priority ] = "We only care about the key in the dict"
 
-                for thread in threads:
-                    thread.join()
+                for priority in sorted(priorities_used.iterkeys(), reverse = True):
+                    for procinfo in self.procinfos:
+                        if name in procinfo.name and priority == procinfo.priority:
+                            t = Thread(target=attempted_stop, args=(self, procinfo))
+                            threads.append(t)
+                            t.start()
+
+                    for thread in threads:
+                        thread.join()
 
             try:
                 self.kill_procs()

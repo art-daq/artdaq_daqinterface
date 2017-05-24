@@ -395,13 +395,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                         node_index = current_dispatcher_index
                         current_dispatcher_index += 1
 
-                print self.procinfos[i_proc].port
-                print tablename
-                print node_first
-                print node_last
-                print num_dispatchers
-                print node_index
-                
                 self.procinfos[i_proc].fhicl_used = \
                     self.procinfos[i_proc].fhicl_used[:table_start] + \
                     "\n" + tablename + ": { \n" + \
