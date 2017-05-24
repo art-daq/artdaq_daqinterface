@@ -1319,7 +1319,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     if re.search(regexp, compname):
                         self.procinfos[-1].priority = priority
 
-            except NameError:
+            except Exception:
                 pass  # It's not an error if there were no boardreader priorities read in from .settings
 
         # See the Procinfo.__lt__ function for details on sorting
