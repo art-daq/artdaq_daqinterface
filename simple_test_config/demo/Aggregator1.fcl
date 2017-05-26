@@ -1,145 +1,143 @@
- 
 services: {
- 
-scheduler: {
- 
-fileMode: NOMERGE  
- 
-errorOnFailureToPut: false  
-
-} 
-NetMonTransportServiceInterface: {
- 
-service_provider: NetMonTransportService  
-
+  scheduler: {
+    fileMode: NOMERGE
+    errorOnFailureToPut: false
+  }
+  NetMonTransportServiceInterface: {
+    service_provider: NetMonTransportService
+  }
 }
-} 
+
 daq: {
- 
-aggregator: {
- 
-expected_events_per_bunch: 1  
- 
-print_event_store_stats: true  
- 
-event_queue_depth: 20  
- 
-event_queue_wait_time: 5  
- 
-onmon_event_prescale: 1  
- 
-xmlrpc_client_list: ";http://mu2edaq01.fnal.gov:5205/RPC2,3;http://mu2edaq01.fnal.gov:5206/RPC2,3;http://mu2edaq01.fnal.gov:5235/RPC2,4;http://mu2edaq01.fnal.gov:5236/RPC2,4;http://mu2edaq01.fnal.gov:5265/RPC2,5;http://mu2edaq01.fnal.gov:5266/RPC2,5"  
- 
-subrun_size_MB: -1  
- 
-subrun_duration: -1  
- 
-subrun_event_count: 0  
- 
-is_data_logger: true  
- 
-sources: {
+  aggregator: {
+    expected_events_per_bunch: 1
+    print_event_store_stats: true
+    event_queue_depth: 20
+    event_queue_wait_time: 5
+    onmon_event_prescale: 1
+    xmlrpc_client_list: ";http://woof.fnal.gov:5205/RPC2,3;http://woof.fnal.gov:5206/RPC2,3;http://woof.fnal.gov:5235/RPC2,4;http://woof.fnal.gov:5236/RPC2,4;http://woof.fnal.gov:5265/RPC2,5;http://woof.fnal.gov:5266/RPC2,5"
+    subrun_size_MB: -1
+    subrun_duration: -1
+    subrun_event_count: 0
+    is_data_logger: true
+
+	sources: {
+		s2: { transferPluginType: MPI source_rank: 2 max_fragment_size_words: 2097152 host_map: [{rank: 0 host: "woof.fnal.gov" portOffset: 5300},{rank: 1 host: "woof.fnal.gov" portOffset: 5310},{rank: 2 host: "woof.fnal.gov" portOffset: 5320},{rank: 3 host: "woof.fnal.gov" portOffset: 5330},{rank: 4 host: "woof.fnal.gov" portOffset: 5340},{rank: 5 host: "woof.fnal.gov" portOffset: 5350}]}
+s3: { transferPluginType: MPI source_rank: 3 max_fragment_size_words: 2097152 host_map: [{rank: 0 host: "woof.fnal.gov" portOffset: 5300},{rank: 1 host: "woof.fnal.gov" portOffset: 5310},{rank: 2 host: "woof.fnal.gov" portOffset: 5320},{rank: 3 host: "woof.fnal.gov" portOffset: 5330},{rank: 4 host: "woof.fnal.gov" portOffset: 5340},{rank: 5 host: "woof.fnal.gov" portOffset: 5350}]}
+
+	}
+
+	broadcast_sends: true
+	destinations: {	
+	  d5: { transferPluginType: MPI destination_rank: 5 max_fragment_size_words: 2097152 host_map: [{rank: 0 host: "woof.fnal.gov" portOffset: 5300},{rank: 1 host: "woof.fnal.gov" portOffset: 5310},{rank: 2 host: "woof.fnal.gov" portOffset: 5320},{rank: 3 host: "woof.fnal.gov" portOffset: 5330},{rank: 4 host: "woof.fnal.gov" portOffset: 5340},{rank: 5 host: "woof.fnal.gov" portOffset: 5350}]}
+
+    }
+  }
+
+  metrics: {
+    aggFile: {
+      metricPluginType: "file"
+      level: 3
+      fileName: "/tmp/aggregator/agg_%UID%_metrics.log"
+      uniquify: true
+    }
+    # ganglia: {
+    #   metricPluginType: "ganglia"
+    #   level: %{ganglia_level}
+    #   reporting_interval: 15.0
+    # 
+    #   configFile: "/etc/ganglia/gmond.conf"
+    #   group: "ARTDAQ"
+    # }
+    # msgfac: {
+    #    level: %{mf_level}
+    #    metricPluginType: "msgFacility"
+    #    output_message_application_name: "ARTDAQ Metric"
+    #    output_message_severity: 0 
+    # }
+    # graphite: {
+    #   level: %{graphite_level}
+    #   metricPluginType: "graphite"
+    #   host: "localhost"
+    #   port: 20030
+    #   namespace: "artdaq."
+    # }
+  }
 
 }
-} 
-metrics: {
- 
-aggFile: {
- 
-metricPluginType: file  
- 
-level: 3  
- 
-fileName: "/tmp/aggregator/agg_%UID%_metrics.log"  
- 
-uniquify: true  
 
-}
-} 
-transfer_to_dispatcher: {
- 
-transferPluginType: Shmem  
- 
-source_rank: 4  
- 
-destination_rank: 5  
- 
-max_fragment_size_words: 2097152  
-
-}
-} 
 source: {
- 
-module_type: NetMonInput  
-
-} 
+  module_type: NetMonInput
+}
 outputs: {
- 
-normalOutput: {
- 
-module_type: RootOutput  
- 
-fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%to.root"  
- 
-fileProperties: {
- 
-maxSubRuns: 1  
- 
-maxRuns: 1  
+  normalOutput: {
+    module_type: RootOutput
+    fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%to_%#.root"
+    fileProperties: { maxSubRuns: 1 maxRuns: 1  }
+    fastCloning: false
+    compressionLevel: 3
+  }
 
-} 
-fastCloning: false  
+  #normalOutputMod2: {
+  #  module_type: RootOutput
+  #  fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%to_%#_mod2.root"
+  #  SelectEvents: { SelectEvents: [ pmod2 ] }
+  #   fileProperties: { maxSubRuns: 1 maxRuns: 1  }
+  #  fastCloning: false
+  #  compressionLevel: 3
+  #}
+
+  #normalOutputMod3: {
+  #  module_type: RootOutput
+  #  fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%to_%#_mod3.root"
+  #  SelectEvents: { SelectEvents: [ pmod3 ] }
+  #   fileProperties: { maxSubRuns: 1 maxRuns: 1  }
+  #  fastCloning: false
+  #  compressionLevel: 3
+  #}
 
 }
-} 
 physics: {
- 
-analyzers: {
- 
-checkintegrity: {
- 
-module_type: CheckIntegrity  
- 
-raw_data_label: daq  
- 
-frag_type: TOY1  
+  analyzers: {
 
+
+   checkintegrity: {
+     module_type: CheckIntegrity
+     raw_data_label: daq
+     frag_type: TOY1
+   }
+
+  }
+
+  producers: {
+
+     BuildInfo:
+     {
+       module_type: ArtdaqDemoBuildInfo
+       instance_name: ArtdaqDemo
+     }
+   }
+
+  filters: {
+
+    prescaleMod2: {
+       module_type: NthEvent
+       nth: 2
+    }
+
+    prescaleMod3: {
+       module_type: NthEvent
+       nth: 3
+    }
+  }
+
+  p2: [ BuildInfo ]
+  pmod2: [ prescaleMod2 ]
+  pmod3: [ prescaleMod3 ]
+
+  #a1: [ app, wf]
+
+  my_output_modules: [ normalOutput ]
+  #my_output_modules: [ normalOutputMod2, normalOutputMod3 ]
 }
-} 
-producers: {
- 
-BuildInfo: {
- 
-module_type: ArtdaqDemoBuildInfo  
- 
-instance_name: ArtdaqDemo  
-
-}
-} 
-filters: {
- 
-prescaleMod2: {
- 
-module_type: NthEvent  
- 
-nth: 2  
-
-} 
-prescaleMod3: {
- 
-module_type: NthEvent  
- 
-nth: 3  
-
-}
-} 
-p2: [BuildInfo]  
- 
-pmod2: [prescaleMod2]  
- 
-pmod3: [prescaleMod3]  
- 
-my_output_modules: [normalOutput]  
-
-} 
-process_name: DAQAG  
+process_name: DAQAG

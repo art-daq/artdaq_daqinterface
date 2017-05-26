@@ -8,14 +8,14 @@ PMT port: 5400
 debug level: 1
 
 EventBuilder host: localhost
-EventBuilder port: 5435
+EventBuilder port: 5235
 
 EventBuilder host: localhost
-EventBuilder port: 5436
+EventBuilder port: 5236
 
-Aggregator host: localhost
-Aggregator port: 5465
+DataLogger host: localhost
+DataLogger port: 5265
 
-Aggregator host: localhost
-Aggregator port: 5466
+Dispatcher host: localhost
+Dispatcher port: 5266
 
