@@ -7,16 +7,13 @@ services: {
   NetMonTransportServiceInterface: {
     service_provider: NetMonTransportService
     #broadcast_sends: true
-	destinations: {	
-	  d4: { transferPluginType: MPI destination_rank: 4 max_fragment_size_words: 2097152 host_map: [{rank: 0 host: "woof.fnal.gov" portOffset: 5300},{rank: 1 host: "woof.fnal.gov" portOffset: 5310},{rank: 2 host: "woof.fnal.gov" portOffset: 5320},{rank: 3 host: "woof.fnal.gov" portOffset: 5330},{rank: 4 host: "woof.fnal.gov" portOffset: 5340},{rank: 5 host: "woof.fnal.gov" portOffset: 5350}]}
-
-    }
+	destinations: {	}
   }
 }
 
 daq: {
   event_builder: {
-	expected_fragments_per_event: 2
+	expected_fragments_per_event: 0  # Will be set by DAQInterface
 	use_art: true
 	print_event_store_stats: true
 	max_incomplete_events: 75 # Same as boardreader sync interval
@@ -25,11 +22,7 @@ daq: {
 
 	use_routing_master: false
 
-	sources: {
-		s0: { transferPluginType: MPI source_rank: 0 max_fragment_size_words: 2097152 host_map: [{rank: 0 host: "woof.fnal.gov" portOffset: 5300},{rank: 1 host: "woof.fnal.gov" portOffset: 5310},{rank: 2 host: "woof.fnal.gov" portOffset: 5320},{rank: 3 host: "woof.fnal.gov" portOffset: 5330},{rank: 4 host: "woof.fnal.gov" portOffset: 5340},{rank: 5 host: "woof.fnal.gov" portOffset: 5350}]}
-s1: { transferPluginType: MPI source_rank: 1 max_fragment_size_words: 2097152 host_map: [{rank: 0 host: "woof.fnal.gov" portOffset: 5300},{rank: 1 host: "woof.fnal.gov" portOffset: 5310},{rank: 2 host: "woof.fnal.gov" portOffset: 5320},{rank: 3 host: "woof.fnal.gov" portOffset: 5330},{rank: 4 host: "woof.fnal.gov" portOffset: 5340},{rank: 5 host: "woof.fnal.gov" portOffset: 5350}]}
-
-	}
+	sources: { }
   }
   metrics: {
 	evbFile: {
@@ -80,8 +73,6 @@ physics: {
   pmod2: [ prescaleMod2 ]
   pmod3: [ prescaleMod3 ]
    
-
-  #a1: [ app, wf ]
 
   my_output_modules: [ rootMPIOutput ]
   #my_output_modules: [ normalOutput ]
