@@ -12,8 +12,8 @@ daq: {
   aggregator: {
     expected_events_per_bunch: 1
     print_event_store_stats: true
-    event_queue_depth: 20
-    event_queue_wait_time: 5
+    event_queue_depth: 2
+    event_queue_wait_time: 1
     onmon_event_prescale: 1
     xmlrpc_client_list: ""
     subrun_size_MB: -1
