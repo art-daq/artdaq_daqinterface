@@ -149,7 +149,7 @@ def listconfigs_base(self):
     subdirs = next(os.walk(get_config_parentdir()))[1]
     configs = [subdir for subdir in subdirs if subdir != "common_code" ]
 
-    listconfigs_file="/tmp/listconfigs.txt"
+    listconfigs_file="/tmp/listconfigs_" + os.environ["USER"] + ".txt"
 
     outf = open(listconfigs_file, "w")
 

@@ -90,7 +90,7 @@ def listconfigs_base(self):
     print
     print "Available configurations: "
 
-    with open("/tmp/listconfigs.txt", "w") as outf:
+    with open("/tmp/listconfigs_" + os.environ["USER"] + ".txt", "w") as outf:
         for config in getListOfAvailableRunConfigurationPrefixes():
             outf.write(config + "\n")
             print config
