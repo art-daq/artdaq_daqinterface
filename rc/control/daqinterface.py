@@ -1212,17 +1212,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 if proctype in procinfo.name:
                     priorities_used[ procinfo.priority ] = "We only care about the key in this dict"
 
-            # JCF, May-24-2017
-
-            # It's not yet clear if reversing the priority of
-            # processes WITHIN a process type when halting datataking
-            # makes sense the same way it makes sense to reverse the
-            # priorities of the process types themselves
-
-            if command == "Stop" or command == "Pause" or command == "Terminate":
-                priority_rankings = sorted(priorities_used.iterkeys(), reverse = True)
-            else:
-                priority_rankings = sorted(priorities_used.iterkeys())
+            priority_rankings = sorted(priorities_used.iterkeys())
 
             for priority in priority_rankings:
                 for i_procinfo, procinfo in enumerate(self.procinfos):
