@@ -31,8 +31,10 @@ from rc.control.config_functions_local import listconfigs_base
 from rc.control.save_run_record import save_run_record_base
 from rc.control.save_run_record import total_events_in_run_base
 from rc.control.save_run_record import save_metadata_value_base
-from rc.control.start_datataking_noop import start_datataking_base
-from rc.control.stop_datataking_noop import stop_datataking_base
+from rc.control.all_functions_noop import start_datataking_base
+from rc.control.all_functions_noop import stop_datataking_base
+from rc.control.all_functions_noop import do_enable_base
+from rc.control.all_functions_noop import do_disable_base
 from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v3_base
 
 from rc.control.online_monitoring import launch_art_procs_base
@@ -277,6 +279,8 @@ class DAQInterface(Component):
         self.__do_pause_running = False
         self.__do_resume_running = False
         self.__do_recover = False
+        self.__do_enable = False
+        self.__do_disable = False
 
         try:
             self.read_settings()
@@ -304,6 +308,8 @@ class DAQInterface(Component):
     bookkeeping_for_fhicl_documents = bookkeeping_for_fhicl_documents_artdaq_v3_base
     launch_art_procs = launch_art_procs_base
     kill_art_procs = kill_art_procs_base
+    do_enable = do_enable_base
+    do_disable = do_disable_base
 
     # The actual transition functions called by Run Control; note
     # these just set booleans which are tested in the runner()
@@ -335,6 +341,12 @@ class DAQInterface(Component):
 
     def resume_running(self):
         self.__do_resume_running = True
+
+    def enable(self):
+        self.__do_enable = True
+
+    def disable(self):
+        self.__do_disable = True
 
     def alert_and_recover(self, extrainfo=None):
 
@@ -1953,6 +1965,13 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 self.__do_resume_running = False
                 self.do_command("Resume")
 
+            elif self.__do_enable:
+                self.__do_enable = False
+                self.do_enable()
+
+            elif self.__do_disable:
+                self.__do_disable = False
+                self.do_disable()
 
             elif self.manage_processes and self.state(self.name) != "stopped" and \
                     self.state(self.name) != "booting" and self.state(self.name) != "terminating":

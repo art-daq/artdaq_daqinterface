@@ -40,6 +40,14 @@ case $cmd in
 
 	xmlrpc_arg="run_number:i/"$((highest_runnum + 1))
 	;;
+    "enable")
+	test $# == 1 || badargs=true
+        translated_cmd="enabling"
+	;;
+    "disable")
+	test $# == 1 || badargs=true
+        translated_cmd="disabling"
+	;;
     "stop")
 	test $# == 1 || badargs=true 
 	translated_cmd="stopping"

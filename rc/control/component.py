@@ -143,6 +143,10 @@ class Component(ContextObject):
             self.resume_running()
         if requested == "terminating":
             self.terminate()
+        if requested == "enabling":
+            self.enable()
+        if requested == "disabling":
+            self.disable()
         if requested == "recovering":
             self.recover()
 
@@ -226,6 +230,12 @@ class Component(ContextObject):
         Be sure to report when your transition is complete.
         """
         self.complete_state_change(self.name, "recovering")
+
+    def enable(self):
+        pass
+
+    def disable(self):
+        pass
 
 
 def get_args():  # no-coverage
