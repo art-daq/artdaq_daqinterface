@@ -123,7 +123,9 @@ class Component(ContextObject):
             return
 
         # set out transition state now.
-        self.__state = requested
+        if requested != "enabling" and requested != "disabling":
+            self.__state = requested
+
         if requested == "starting":
             self.run_params = state_args
             self.start_running()
