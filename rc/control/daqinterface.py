@@ -108,7 +108,7 @@ class DAQInterface(Component):
             if self.name != other.name:
 
                 processes_upstream_to_downstream = \
-                    ["BoardReader", "EventBuilder", "Aggregator", "DataLogger", "Dispatcher"]
+                    ["BoardReader", "EventBuilder", "Aggregator", "DataLogger", "Dispatcher", "RoutingMaster"]
 
                 if processes_upstream_to_downstream.index(self.name) < \
                         processes_upstream_to_downstream.index(other.name):
@@ -379,6 +379,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         self.boardreader_timeout = 30
         self.eventbuilder_timeout = 30
         self.aggregator_timeout = 30
+        self.routingmaster_timeout = 30
 
         for line in inf.readlines():
 
@@ -612,7 +613,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         for procinfo in self.procinfos:
 
-            for procname in ["BoardReader", "EventBuilder", "Aggregator"]:
+            for procname in ["BoardReader", "EventBuilder", "Aggregator", "RoutingMaster"]:
                 if procname in procinfo.name:
                     outf.write(procname + "Main ")
 
@@ -708,6 +709,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 proctype = "BoardReaderMain"
             elif "EventBuilder" in procinfo.name:
                 proctype = "EventBuilderMain"
+            elif "RoutingMaster" in procinfo.name:
+                proctype = "RoutingMasterMain"
             elif "Aggregator" in procinfo.name or \
                     "DataLogger" in procinfo.name or \
                     "Dispatcher" in procinfo.name:
@@ -997,6 +1000,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         translator = { "BoardReader":"BoardReader", 
                        "EventBuilder":"EventBuilder",
                        "Aggregator":"Aggregator",
+                       "RoutingMaster":"RoutingMaster",
                        "DataLogger":"Aggregator",
                        "Dispatcher":"Aggregator" }
 
@@ -1210,7 +1214,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         # next we send stop to all the eventbuilders, and finally we
         # send stop to all the aggregators
 
-        proctypes_in_order = ["Dispatcher", "DataLogger", "Aggregator", "EventBuilder","BoardReader"]
+        proctypes_in_order = ["Dispatcher", "DataLogger", "Aggregator", "EventBuilder","BoardReader", "RoutingMaster"]
 
         if command == "Stop" or command == "Pause" or command == "Terminate":
             proctypes_in_order.reverse()
@@ -1386,6 +1390,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     timeout = self.boardreader_timeout
                 elif "EventBuilder" in procinfo.name:
                     timeout = self.eventbuilder_timeout
+                elif "RoutingMaster" in procinfo.name:
+                    timeout = self.routingmaster_timeout
                 elif "Aggregator" in procinfo.name or "DataLogger" in procinfo.name \
                         or "Dispatcher" in procinfo.name:
                     timeout = self.aggregator_timeout
@@ -1542,10 +1548,11 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 self.alert_and_recover("An exception was thrown when creating the process FHiCL documents; see traceback above for more info")
                 return
                 
-        for proc_type in ["EventBuilder", "Aggregator", "DataLogger", "Dispatcher"]:
+        for proc_type in ["EventBuilder", "Aggregator", "DataLogger", "Dispatcher", "RoutingMaster"]:
 
             rootfile_cntr = 0
             unspecified_aggregator_cntr = 0
+            unspecified_routingmaster_cntr = 0
 
             for i_proc in range(len(self.procinfos)):
 
@@ -1563,6 +1570,12 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                         fcl = "%s/Aggregator1.fcl" % (config_subdirname)
                     elif proc_type == "Dispatcher":
                         fcl = "%s/Aggregator2.fcl" % (config_subdirname)
+                    elif proc_type == "RoutingMaster":
+                        unspecified_routingmaster_cntr += 1
+                        if unspecified_routingmaster_cntr == 1:
+                            fcl = "%s/RoutingMaster1.fcl" % (config_subdirname)
+                        else:
+                            fcl = "%s/RoutingMaster2.fcl" % (config_subdirname)
                     else:
                         assert False
                         
@@ -1876,7 +1889,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 sleep(sleep_on_heartbeat_failure)  
 
 
-            for name in ["BoardReader", "EventBuilder", "Aggregator", "DataLogger", "Dispatcher"]:
+            for name in ["BoardReader", "EventBuilder", "Aggregator", "DataLogger", "Dispatcher", "RoutingMaster"]:
 
                 threads = []
                 priorities_used = {}

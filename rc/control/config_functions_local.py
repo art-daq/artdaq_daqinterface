@@ -78,7 +78,8 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
             continue
 
         if "EventBuilder" in line or "Aggregator" in line or \
-                "DataLogger" in line or "Dispatcher" in line:
+                "DataLogger" in line or "Dispatcher" in line or \
+                "RoutingMaster" in line:
 
             res = re.search(r"\s*(\w+)\s+(\S+)\s*:\s*(\S+)", line)
 

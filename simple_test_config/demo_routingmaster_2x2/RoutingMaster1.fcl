@@ -1,0 +1,50 @@
+  daq: {
+  policy: {
+  	  policy: "NoOp"
+	  receiver_ranks: [2,3]
+  }
+
+  sender_ranks: [0,1]
+
+  	use_routing_master: true
+	routing_master_hostname: "mu2edaq01.fnal.gov"
+	routing_timeout_ms: 500
+	table_update_interval_ms: 1000
+	table_ack_retry_count: 5
+
+	
+	
+	
+	
+	
+
+  metrics: {
+	rmFile: {
+	  metricPluginType: "file"
+	  level: 3
+	  fileName: "/tmp/RoutingMaster/rm_%UID%_metrics.log"
+	  uniquify: true
+	}
+	 ganglia: {
+	   metricPluginType: "ganglia"
+	   level: 3
+	   reporting_interval: 15.0
+	 
+	   configFile: "/etc/ganglia/gmond.conf"
+	   group: "ARTDAQ"
+	 }
+	# msgfac: {
+	#    level: %{mf_level}
+	#    metricPluginType: "msgFacility"
+	#    output_message_application_name: "ARTDAQ Metric"
+	#    output_message_severity: 0 
+	# }
+	# graphite: {
+	#   level: %{graphite_level}
+	#   metricPluginType: "graphite"
+	#   host: "localhost"
+	#   port: 20030
+	#   namespace: "artdaq."
+	# }
+  }
+}

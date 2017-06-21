@@ -370,6 +370,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             source_node_first = self.num_boardreaders() + \
                                 self.num_eventbuilders()
             source_node_last = source_node_first + num_data_loggers
+        elif "RoutingMaster" in self.procinfos[i_proc].name:
+            pass
         else:
             assert False, "Process type not recognized"
 
