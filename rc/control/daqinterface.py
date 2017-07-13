@@ -208,6 +208,7 @@ class DAQInterface(Component):
         self.in_recovery = False
         self.heartbeat_failure = False
         self.last_artdaq_line = None
+        self.manage_processes = True
 
         # "procinfos" will be an array of Procinfo structures (defined
         # below), where Procinfo contains all the info DAQInterface

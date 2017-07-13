@@ -77,6 +77,16 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
             self.debug_level = int(res.group(1))
             continue
 
+        res = re.search(r"\s*manage processes\s*:\s*[tT]rue",
+                        line)
+        if res:
+            self.manage_processes = True
+
+        res = re.search(r"\s*manage processes\s*:\s*[fF]alse",
+                        line)
+        if res:
+            self.manage_processes = False
+
         if "EventBuilder" in line or "Aggregator" in line or \
                 "DataLogger" in line or "Dispatcher" in line or \
                 "RoutingMaster" in line:
