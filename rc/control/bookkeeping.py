@@ -264,9 +264,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
                                        "68cb53e576dd6afea7950ca6286a08f5f329b966", "May 9, 2017", True)
 
-    commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq_demo", \
-                                       "86141f4d5a8fc961100fd3ea548b3dd714f4b8e1", "May 9, 2017", True)
-
     num_data_loggers = 0
     num_dispatchers = 0
 
