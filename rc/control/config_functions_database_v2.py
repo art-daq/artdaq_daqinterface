@@ -118,7 +118,7 @@ def main():
         print "Directory where the FHiCL documents are located: " + mydir
 
     if put_config_info_test:
-        print "Calling get_config_info_base"
+        print "Calling put_config_info_base"
 
         class MockDAQInterface:
             run_number = 73
