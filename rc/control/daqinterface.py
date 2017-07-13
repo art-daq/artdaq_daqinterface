@@ -657,11 +657,20 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         if self.have_needed_artdaq_mfextensions():
 
+            write_new_file = True
+
             messagefacility_fhicl_filename = os.getcwd() + "/MessageFacility.fcl" 
-            
-            messagefacility_fhicl_file = open(messagefacility_fhicl_filename, "w")
-            messagefacility_fhicl_file.write( 'udp : { type : "UDP" threshold : "INFO" port : 30000 host : "%s" }  ' % (socket.gethostname()) )
-            messagefacility_fhicl_file.close()
+            desired_contents = 'udp : { type : "UDP" threshold : "INFO" port : 30000 host : "%s" }  ' % \
+                               (socket.gethostname())
+
+            if os.path.exists( messagefacility_fhicl_filename ):
+                with open( messagefacility_fhicl_filename ) as inf_mf:
+                    if inf_mf.read() == desired_contents:
+                        write_new_file = False
+         
+            if write_new_file:
+                with open(messagefacility_fhicl_filename, "w") as outf_mf:
+                    outf_mf.write( desired_contents )
 
             cmd = "pmt.rb -p " + self.pmt_port + " -d " + pmtconfigname + \
                 " --logpath " + self.log_directory + \
