@@ -18,6 +18,7 @@ sys.path.append(os.environ["PYTHONPATH"] + "/../bin/")
 from rc.control.utilities import expand_environment_variable_in_string
 from conftool import exportConfiguration
 from conftool import getListOfAvailableRunConfigurationPrefixes
+from conftool import getListOfAvailableRunConfigurations
 from conftool import archiveRunConfiguration
 
 def config_basedir(self):
@@ -91,7 +92,7 @@ def listconfigs_base(self):
     print "Available configurations: "
 
     with open("/tmp/listconfigs_" + os.environ["USER"] + ".txt", "w") as outf:
-        for config in getListOfAvailableRunConfigurationPrefixes():
+        for config in getListOfAvailableRunConfigurations():
             outf.write(config + "\n")
             print config
 
