@@ -60,7 +60,7 @@ def put_config_info_base(self):
     cmds.append( "chmod 777 " + runnum )
     cmds.append( "cat " + runnum + "/metadata.txt | awk -f $scriptdir/fhiclize_metadata_file.awk > " + runnum + "/metadata.fcl" )
     cmds.append( "rm -f " + runnum + "/*.txt")
-    cmds.append("cp -p %s/bin/schema.fcl ." % os.environ["ARTDAQ_DATABASE_FQ_DIR"])
+    cmds.append("cp -p %s/conf/schema.fcl ." % os.environ["ARTDAQ_DATABASE_FQ_DIR"])
     
     status = Popen( "; ".join( cmds ), shell=True).wait()
 
