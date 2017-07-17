@@ -67,6 +67,8 @@ def save_run_record_base(self):
             enumerate(sorted(self.daq_comp_list)):
         outf.write("Component #%d: %s\n" % (i_comp, component))
 
+    outf.write("DAQInterface directory: %s\n" % ( os.getcwd() ))
+
     # Now save the commit hashes we determined during
     # initialization
 
