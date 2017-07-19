@@ -6,11 +6,11 @@ record_directory: $HOME/run_records
 package_hashes_to_save: [ artdaq-demo, artdaq-core-demo, artdaq ]
 productsdir_for_bash_scripts: $HOME/path_to_product_dir_not_yet_defined/products
 
-boardreader timeout: 10
-eventbuilder timeout: 20
-aggregator timeout: 80
+boardreader timeout: 60
+eventbuilder timeout: 30
+aggregator timeout: 30
 
 max_fragment_size_bytes: 1000000
 all_events_to_all_dispatchers: true
 
-
+boardreader priorities: component01
