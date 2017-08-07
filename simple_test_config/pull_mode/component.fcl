@@ -1,4 +1,6 @@
-  daq: {
+BEGIN_PROLOG
+
+component_standard: {
   fragment_receiver: {
 	mpi_sync_interval: 50
 
@@ -9,7 +11,7 @@
 	sleep_on_stop_us: 0
 
 	 # Possible values are: Ignored, Single, Buffer, Window
-	request_mode: "Ignored"
+	request_mode: "Single"
 
 	data_buffer_depth_fragments: 1000
 	data_buffer_depth_mb: 1000
@@ -38,7 +40,7 @@
         # applied! If requests are not desired, but a separate readout
         # thread is, set this to true and request_mode to ignored.
 
-	separate_data_thread: false 
+	separate_data_thread: true
 
 	# Whether a thread should be started which periodically calls
         # checkHWStatus_, a user-defined function which should be used
@@ -52,14 +54,12 @@
 	hardware_poll_interval_us: 0 
 
         generator: ToySimulator
-	  fragment_type: TOY2
-	  fragment_id: 1
-	  board_id: 1
-	  starting_fragment_id: 1
-	  random_seed: 2899
-	  sleep_on_stop_us: 500000 
+	  fragment_type: TOY1
+	  starting_fragment_id: 0
+	  random_seed: 8250
+	  sleep_on_stop_us: 0 
 	  nADCcounts: 40
-	  throttle_usecs: 100000
+	  throttle_usecs: 10000
 	  distribution_type: 1
 	  timestamp_scale_factor: 1
 
@@ -77,3 +77,41 @@
 	}
   }
 }
+
+component01_standard: @local::component_standard  
+component01_standard.fragment_receiver.fragment_id: 0  
+component01_standard.fragment_receiver.board_id: 0  
+ 
+component02_standard: @local::component_standard  
+component02_standard.fragment_receiver.fragment_id: 1  
+component02_standard.fragment_receiver.board_id: 1  
+ 
+component03_standard: @local::component_standard  
+component03_standard.fragment_receiver.fragment_id: 2  
+component03_standard.fragment_receiver.board_id: 2  
+ 
+component04_standard: @local::component_standard  
+component04_standard.fragment_receiver.fragment_id: 3  
+component04_standard.fragment_receiver.board_id: 3  
+ 
+component05_standard: @local::component_standard  
+component05_standard.fragment_receiver.fragment_id: 4  
+component05_standard.fragment_receiver.board_id: 4  
+ 
+component06_standard: @local::component_standard  
+component06_standard.fragment_receiver.fragment_id: 5  
+component06_standard.fragment_receiver.board_id: 5  
+ 
+component07_standard: @local::component_standard  
+component07_standard.fragment_receiver.fragment_id: 6  
+component07_standard.fragment_receiver.board_id: 6  
+ 
+component08_standard: @local::component_standard  
+component08_standard.fragment_receiver.fragment_id: 7  
+component08_standard.fragment_receiver.board_id: 7  
+ 
+component09_standard: @local::component_standard  
+component09_standard.fragment_receiver.fragment_id: 8  
+component09_standard.fragment_receiver.board_id: 8  
+
+END_PROLOG

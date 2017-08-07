@@ -18,6 +18,7 @@ sys.path.append(os.environ["PYTHONPATH"] + "/../bin/")
 from rc.control.utilities import expand_environment_variable_in_string
 from conftool import exportConfiguration
 from conftool import getListOfAvailableRunConfigurationPrefixes
+from conftool import getListOfAvailableRunConfigurations
 from conftool import archiveRunConfiguration
 
 def config_basedir(self):
@@ -60,7 +61,7 @@ def put_config_info_base(self):
     cmds.append( "chmod 777 " + runnum )
     cmds.append( "cat " + runnum + "/metadata.txt | awk -f $scriptdir/fhiclize_metadata_file.awk > " + runnum + "/metadata.fcl" )
     cmds.append( "rm -f " + runnum + "/*.txt")
-    cmds.append("cp -p %s/bin/schema.fcl ." % os.environ["ARTDAQ_DATABASE_FQ_DIR"])
+    cmds.append("cp -p %s/conf/schema.fcl ." % os.environ["ARTDAQ_DATABASE_FQ_DIR"])
     
     status = Popen( "; ".join( cmds ), shell=True).wait()
 
@@ -90,8 +91,8 @@ def listconfigs_base(self):
     print
     print "Available configurations: "
 
-    with open("/tmp/listconfigs.txt", "w") as outf:
-        for config in getListOfAvailableRunConfigurationPrefixes():
+    with open("/tmp/listconfigs_" + os.environ["USER"] + ".txt", "w") as outf:
+        for config in getListOfAvailableRunConfigurations():
             outf.write(config + "\n")
             print config
 
@@ -117,7 +118,7 @@ def main():
         print "Directory where the FHiCL documents are located: " + mydir
 
     if put_config_info_test:
-        print "Calling get_config_info_base"
+        print "Calling put_config_info_base"
 
         class MockDAQInterface:
             run_number = 73

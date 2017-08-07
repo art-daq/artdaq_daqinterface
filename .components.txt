@@ -1,2 +1,9 @@
 component01 localhost 5305
 component02 localhost 5306
+component03 localhost 5307
+component04 localhost 5308
+component05 localhost 5309
+component06 localhost 5310
+component07 localhost 5311
+component08 localhost 5312
+component09 localhost 5313

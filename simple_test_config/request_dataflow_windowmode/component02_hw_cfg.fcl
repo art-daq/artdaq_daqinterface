@@ -8,25 +8,27 @@
 
 	sleep_on_stop_us: 0
 
-	 # Possible values are: Ignored, Single, Buffer, Window
-	request_mode: "Ignored"
-
 	data_buffer_depth_fragments: 1000
 	data_buffer_depth_mb: 1000
+
+	# Where to listen for requests
 
 	request_port: 3001
 	request_address: "227.128.12.26" # Multicast request address
 
+	requests_enabled: true
+	request_mode: window
+
 	# Request message contains tzero. Window will be from tzero -
 	# offset to tzero + width
 
-	request_window_offset: 0 
-	request_window_width: 0
+	request_window_offset: 1 
+	request_window_width: 2
 
 	# How long to wait before discarding request messages that are
         # outside the available data
 	
-	stale_request_timeout: "0xFFFFFFFF" 
+	stale_request_timeout: 100 
 	
 	# If request windows are unique, avoids a copy operation, but
 	# the same data point cannot be used for two requests. If this
@@ -38,7 +40,7 @@
         # applied! If requests are not desired, but a separate readout
         # thread is, set this to true and request_mode to ignored.
 
-	separate_data_thread: false 
+	separate_data_thread: true
 
 	# Whether a thread should be started which periodically calls
         # checkHWStatus_, a user-defined function which should be used
@@ -59,9 +61,9 @@
 	  random_seed: 2899
 	  sleep_on_stop_us: 500000 
 	  nADCcounts: 40
-	  throttle_usecs: 100000
+	  throttle_usecs: 50000
 	  distribution_type: 1
-	  timestamp_scale_factor: 1
+	  timestamp_scale_factor: 5
 
         destinations: { }
 

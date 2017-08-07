@@ -65,7 +65,13 @@
 
         destinations: { }
 
-	use_routing_master: false
+	routing_table_config: {
+	  use_routing_master: true
+          routing_master_hostname: "localhost"
+          routing_timeout_ms: 500
+          table_update_interval_ms: 1000
+          table_ack_retry_count: 5
+       	}
   }
 
   metrics: {

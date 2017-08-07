@@ -18,9 +18,21 @@ daq: {
 	print_event_store_stats: true
 	max_incomplete_events: 75 # Same as boardreader sync interval
 	verbose: false
-	send_requests: true
+	#	send_requests: true
+	send_requests: false
 
-	use_routing_master: false
+	routing_token_config: {
+	  use_routing_master: true
+          routing_master_hostname: "mu2edaq01.fnal.gov"
+	  routing_timeout_ms: 500
+          table_update_interval_ms: 1000
+          table_ack_retry_count: 5
+
+#	  table_update_port: 36556
+#	  table_update_address: "227.128.12.29"
+#          routing_token_port: 36555
+#          table_acknowledge_port: 36557
+       	}
 
 	sources: { }
   }
@@ -39,14 +51,6 @@ outputs: {
     module_type: RootMPIOutput
     #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
   }
-  #normalOutput: {
-  #  module_type: RootOutput
-  #  fileName: "/tmp/artdaqdemo_eb00_r%06r_sr%02s_%to_%#.root"
-  #  #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
-  #  fileProperties: { maxSubRuns: 1 maxRuns: 1  }
-  #  compressionLevel: 3
-  #  fastCloning: false
- #}
 }
 
 physics: {
@@ -75,7 +79,6 @@ physics: {
    
 
   my_output_modules: [ rootMPIOutput ]
-  #my_output_modules: [ normalOutput ]
 }
 source: {
   module_type: DemoInput

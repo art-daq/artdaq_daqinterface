@@ -77,8 +77,19 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
             self.debug_level = int(res.group(1))
             continue
 
+        res = re.search(r"\s*manage processes\s*:\s*[tT]rue",
+                        line)
+        if res:
+            self.manage_processes = True
+
+        res = re.search(r"\s*manage processes\s*:\s*[fF]alse",
+                        line)
+        if res:
+            self.manage_processes = False
+
         if "EventBuilder" in line or "Aggregator" in line or \
-                "DataLogger" in line or "Dispatcher" in line:
+                "DataLogger" in line or "Dispatcher" in line or \
+                "RoutingMaster" in line:
 
             res = re.search(r"\s*(\w+)\s+(\S+)\s*:\s*(\S+)", line)
 
@@ -149,7 +160,7 @@ def listconfigs_base(self):
     subdirs = next(os.walk(get_config_parentdir()))[1]
     configs = [subdir for subdir in subdirs if subdir != "common_code" ]
 
-    listconfigs_file="/tmp/listconfigs.txt"
+    listconfigs_file="/tmp/listconfigs_" + os.environ["USER"] + ".txt"
 
     outf = open(listconfigs_file, "w")
 

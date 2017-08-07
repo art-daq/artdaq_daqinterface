@@ -31,8 +31,10 @@ from rc.control.config_functions_local import listconfigs_base
 from rc.control.save_run_record import save_run_record_base
 from rc.control.save_run_record import total_events_in_run_base
 from rc.control.save_run_record import save_metadata_value_base
-from rc.control.start_datataking_noop import start_datataking_base
-from rc.control.stop_datataking_noop import stop_datataking_base
+from rc.control.all_functions_noop import start_datataking_base
+from rc.control.all_functions_noop import stop_datataking_base
+from rc.control.all_functions_noop import do_enable_base
+from rc.control.all_functions_noop import do_disable_base
 from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v3_base
 
 from rc.control.online_monitoring import launch_art_procs_base
@@ -106,7 +108,7 @@ class DAQInterface(Component):
             if self.name != other.name:
 
                 processes_upstream_to_downstream = \
-                    ["BoardReader", "EventBuilder", "Aggregator", "DataLogger", "Dispatcher"]
+                    ["BoardReader", "EventBuilder", "Aggregator", "DataLogger", "Dispatcher", "RoutingMaster"]
 
                 if processes_upstream_to_downstream.index(self.name) < \
                         processes_upstream_to_downstream.index(other.name):
@@ -206,6 +208,7 @@ class DAQInterface(Component):
         self.in_recovery = False
         self.heartbeat_failure = False
         self.last_artdaq_line = None
+        self.manage_processes = True
 
         # "procinfos" will be an array of Procinfo structures (defined
         # below), where Procinfo contains all the info DAQInterface
@@ -277,6 +280,8 @@ class DAQInterface(Component):
         self.__do_pause_running = False
         self.__do_resume_running = False
         self.__do_recover = False
+        self.__do_enable = False
+        self.__do_disable = False
 
         try:
             self.read_settings()
@@ -304,6 +309,8 @@ class DAQInterface(Component):
     bookkeeping_for_fhicl_documents = bookkeeping_for_fhicl_documents_artdaq_v3_base
     launch_art_procs = launch_art_procs_base
     kill_art_procs = kill_art_procs_base
+    do_enable = do_enable_base
+    do_disable = do_disable_base
 
     # The actual transition functions called by Run Control; note
     # these just set booleans which are tested in the runner()
@@ -336,6 +343,12 @@ class DAQInterface(Component):
     def resume_running(self):
         self.__do_resume_running = True
 
+    def enable(self):
+        self.__do_enable = True
+
+    def disable(self):
+        self.__do_disable = True
+
     def alert_and_recover(self, extrainfo=None):
 
         self.do_recover()
@@ -367,6 +380,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         self.boardreader_timeout = 30
         self.eventbuilder_timeout = 30
         self.aggregator_timeout = 30
+        self.routingmaster_timeout = 30
 
         for line in inf.readlines():
 
@@ -600,7 +614,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         for procinfo in self.procinfos:
 
-            for procname in ["BoardReader", "EventBuilder", "Aggregator"]:
+            for procname in ["BoardReader", "EventBuilder", "Aggregator", "RoutingMaster"]:
                 if procname in procinfo.name:
                     outf.write(procname + "Main ")
 
@@ -644,11 +658,20 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         if self.have_needed_artdaq_mfextensions():
 
+            write_new_file = True
+
             messagefacility_fhicl_filename = os.getcwd() + "/MessageFacility.fcl" 
-            
-            messagefacility_fhicl_file = open(messagefacility_fhicl_filename, "w")
-            messagefacility_fhicl_file.write( 'udp : { type : "UDP" threshold : "INFO" port : 30000 host : "%s" }  ' % (socket.gethostname()) )
-            messagefacility_fhicl_file.close()
+            desired_contents = 'udp : { type : "UDP" threshold : "INFO" port : 30000 host : "%s" }  ' % \
+                               (socket.gethostname())
+
+            if os.path.exists( messagefacility_fhicl_filename ):
+                with open( messagefacility_fhicl_filename ) as inf_mf:
+                    if inf_mf.read() == desired_contents:
+                        write_new_file = False
+         
+            if write_new_file:
+                with open(messagefacility_fhicl_filename, "w") as outf_mf:
+                    outf_mf.write( desired_contents )
 
             cmd = "pmt.rb -p " + self.pmt_port + " -d " + pmtconfigname + \
                 " --logpath " + self.log_directory + \
@@ -696,6 +719,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 proctype = "BoardReaderMain"
             elif "EventBuilder" in procinfo.name:
                 proctype = "EventBuilderMain"
+            elif "RoutingMaster" in procinfo.name:
+                proctype = "RoutingMasterMain"
             elif "Aggregator" in procinfo.name or \
                     "DataLogger" in procinfo.name or \
                     "Dispatcher" in procinfo.name:
@@ -985,6 +1010,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         translator = { "BoardReader":"BoardReader", 
                        "EventBuilder":"EventBuilder",
                        "Aggregator":"Aggregator",
+                       "RoutingMaster":"RoutingMaster",
                        "DataLogger":"Aggregator",
                        "Dispatcher":"Aggregator" }
 
@@ -1198,7 +1224,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         # next we send stop to all the eventbuilders, and finally we
         # send stop to all the aggregators
 
-        proctypes_in_order = ["Dispatcher", "DataLogger", "Aggregator", "EventBuilder","BoardReader"]
+        proctypes_in_order = ["Dispatcher", "DataLogger", "Aggregator", "EventBuilder","BoardReader", "RoutingMaster"]
 
         if command == "Stop" or command == "Pause" or command == "Terminate":
             proctypes_in_order.reverse()
@@ -1212,17 +1238,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 if proctype in procinfo.name:
                     priorities_used[ procinfo.priority ] = "We only care about the key in this dict"
 
-            # JCF, May-24-2017
-
-            # It's not yet clear if reversing the priority of
-            # processes WITHIN a process type when halting datataking
-            # makes sense the same way it makes sense to reverse the
-            # priorities of the process types themselves
-
-            if command == "Stop" or command == "Pause" or command == "Terminate":
-                priority_rankings = sorted(priorities_used.iterkeys(), reverse = True)
-            else:
-                priority_rankings = sorted(priorities_used.iterkeys())
+            priority_rankings = sorted(priorities_used.iterkeys())
 
             for priority in priority_rankings:
                 for i_procinfo, procinfo in enumerate(self.procinfos):
@@ -1384,6 +1400,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                     timeout = self.boardreader_timeout
                 elif "EventBuilder" in procinfo.name:
                     timeout = self.eventbuilder_timeout
+                elif "RoutingMaster" in procinfo.name:
+                    timeout = self.routingmaster_timeout
                 elif "Aggregator" in procinfo.name or "DataLogger" in procinfo.name \
                         or "Dispatcher" in procinfo.name:
                     timeout = self.aggregator_timeout
@@ -1540,10 +1558,11 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 self.alert_and_recover("An exception was thrown when creating the process FHiCL documents; see traceback above for more info")
                 return
                 
-        for proc_type in ["EventBuilder", "Aggregator", "DataLogger", "Dispatcher"]:
+        for proc_type in ["EventBuilder", "Aggregator", "DataLogger", "Dispatcher", "RoutingMaster"]:
 
             rootfile_cntr = 0
             unspecified_aggregator_cntr = 0
+            unspecified_routingmaster_cntr = 0
 
             for i_proc in range(len(self.procinfos)):
 
@@ -1561,6 +1580,12 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                         fcl = "%s/Aggregator1.fcl" % (config_subdirname)
                     elif proc_type == "Dispatcher":
                         fcl = "%s/Aggregator2.fcl" % (config_subdirname)
+                    elif proc_type == "RoutingMaster":
+                        unspecified_routingmaster_cntr += 1
+                        if unspecified_routingmaster_cntr == 1:
+                            fcl = "%s/RoutingMaster1.fcl" % (config_subdirname)
+                        else:
+                            fcl = "%s/RoutingMaster2.fcl" % (config_subdirname)
                     else:
                         assert False
                         
@@ -1874,7 +1899,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 sleep(sleep_on_heartbeat_failure)  
 
 
-            for name in ["BoardReader", "EventBuilder", "Aggregator", "DataLogger", "Dispatcher"]:
+            for name in ["BoardReader", "EventBuilder", "Aggregator", "DataLogger", "Dispatcher", "RoutingMaster"]:
 
                 threads = []
                 priorities_used = {}
@@ -1963,6 +1988,13 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 self.__do_resume_running = False
                 self.do_command("Resume")
 
+            elif self.__do_enable:
+                self.__do_enable = False
+                self.do_enable()
+
+            elif self.__do_disable:
+                self.__do_disable = False
+                self.do_disable()
 
             elif self.manage_processes and self.state(self.name) != "stopped" and \
                     self.state(self.name) != "booting" and self.state(self.name) != "terminating":

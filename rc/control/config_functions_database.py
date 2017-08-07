@@ -219,7 +219,7 @@ def listconfigs_base(self):
 
     lines = proc.stdout.readlines()
 
-    listconfigs_file="/tmp/listconfigs.txt"
+    listconfigs_file="/tmp/listconfigs_" + os.environ["USER"] + ".txt"
 
     outf = open(listconfigs_file, "w")
 
