@@ -9,6 +9,14 @@ if [[ -n $DAQINTLOGDIR ]]; then
    return 2
 fi
 
+# Eric F: "I hacked all my code on a host with no name"
+
+if [[ -z $HOSTNAME ]]; then
+   echo "HOSTNAME not defined, will define it here"
+   export HOSTNAME=$( hostname )
+   echo "HOSTNAME is now set to $HOSTNAME"
+fi
+
 export DAQINTLOGDIR=/tmp/daqinterface_${USER}
 
 mkdir -p $DAQINTLOGDIR
