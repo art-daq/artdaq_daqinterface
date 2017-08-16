@@ -1,4 +1,6 @@
 
+# This is a meaningless statement on this line
+
 DAQ directory: /home/jcfree/artdaq-demo-base-mrb
 
 #PMT host: mu2edaq01.fnal.gov
