@@ -2023,10 +2023,12 @@ def get_args():  # no-coverage
 
 def main():  # no-coverage
 
+    one_daqinterface_per_host = False
+
     greptoken = "python.*daqinterface.py"
     pids = get_pids(greptoken)
 
-    if len(pids) > 1:
+    if len(pids) > 1 and one_daqinterface_per_host:
         print make_paragraph("Won't launch DAQInterface; it appears an instance is already running on this host according to this command:" )
         print "\nps aux | grep \"%s\" | grep -v grep\n" % (greptoken)
         return
