@@ -1605,7 +1605,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                         rootfile_cntr_prefix = "eb"
 
                     self.procinfos[i_proc].fhicl_used = re.sub("\.root", "_" + str(rootfile_cntr_prefix) + 
-                                                               str(rootfile_cntr) + ".root",
+                                                               str(rootfile_cntr+1) + ".root",
                                                                self.procinfos[i_proc].fhicl_used)
 
                     if self.procinfos[i_proc].fhicl_used != fhicl_before_sub:
