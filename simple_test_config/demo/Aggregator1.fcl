@@ -1,10 +1,12 @@
 services: {
   scheduler: {
-    fileMode: NOMERGE
     errorOnFailureToPut: false
   }
   NetMonTransportServiceInterface: {
     service_provider: NetMonTransportService
+    broadcast_sends: true
+    nonblocking_sends: true
+	destinations: { }
   }
 }
 
@@ -14,6 +16,8 @@ daq: {
     print_event_store_stats: true
     event_queue_depth: 20
     event_queue_wait_time: 5
+	max_fragment_size_bytes: 16777216
+    buffer_count: 20
     onmon_event_prescale: 1
     xmlrpc_client_list: ""
     subrun_size_MB: -1
@@ -23,10 +27,11 @@ daq: {
 
     auto_suppression_enabled: false
 
-	sources: { }
+	routing_token_config: {
+		use_routing_master: false
+	}
 
-	broadcast_sends: true
-	destinations: {	}
+	sources: { }
   }
 
   metrics: {

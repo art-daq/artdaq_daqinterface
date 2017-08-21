@@ -614,13 +614,13 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         for procinfo in self.procinfos:
 
-            for procname in ["BoardReader", "EventBuilder", "Aggregator", "RoutingMaster"]:
+            for procname in ["BoardReader", "EventBuilder", "Aggregator", "RoutingMaster", "DataLogger", "Dispatcher"]:
                 if procname in procinfo.name:
                     outf.write(procname + "Main ")
 
-            for procname in ["DataLogger", "Dispatcher"]:
-                if procname in procinfo.name:
-                    outf.write("AggregatorMain ")
+#            for procname in ["DataLogger", "Dispatcher"]:
+#                if procname in procinfo.name:
+#                    outf.write("AggregatorMain ")
 
             if procinfo.host != "localhost":
                 host_to_write = procinfo.host

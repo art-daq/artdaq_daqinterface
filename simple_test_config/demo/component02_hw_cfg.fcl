@@ -65,7 +65,9 @@
 
         destinations: { }
 
-	use_routing_master: false
+	routing_table_config: {
+	    use_routing_master: false
+	}
   }
 
   metrics: {
