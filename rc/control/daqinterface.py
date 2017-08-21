@@ -1598,7 +1598,14 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                         return
                         
                     fhicl_before_sub = self.procinfos[i_proc].fhicl_used
-                    self.procinfos[i_proc].fhicl_used = re.sub("\.root", "_" + str(rootfile_cntr) + ".root",
+                    
+                    if self.procinfos[i_proc].name == "DataLogger":
+                        rootfile_cntr_prefix = "dl"
+                    elif self.procinfos[i_proc].name == "EventBuilder":
+                        rootfile_cntr_prefix = "eb"
+
+                    self.procinfos[i_proc].fhicl_used = re.sub("\.root", "_" + str(rootfile_cntr_prefix) + 
+                                                               str(rootfile_cntr) + ".root",
                                                                self.procinfos[i_proc].fhicl_used)
 
                     if self.procinfos[i_proc].fhicl_used != fhicl_before_sub:
