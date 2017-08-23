@@ -532,39 +532,12 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 num_aggregators += 1
         return num_aggregators
 
-    def artdaq_mfextensions_info(self):
-
-        product_deps_filename = "%s/srcs/artdaq/ups/product_deps" % (self.daq_dir)
-
-        if not os.path.exists( product_deps_filename ):
-            raise Exception("Unable to find artdaq product_deps file \"%s\"; needed to determine artdaq_mfextensions version for messagefacility viewer")
-            return
-
-        product_deps_file = open( product_deps_filename )
-
-        lines = product_deps_file.readlines()
-
-        for line in lines:
-            res = re.search(r"^\s*defaultqual\s+(e[0-9]+):(s[0-9]+)", line)
-            if res:
-                equalifier = res.group(1)
-                squalifier = res.group(2)
-
-            res = re.search(r"^\s*artdaq_mfextensions\s+([v_0-9]+)", line)
-            if res:
-                version = res.group(1)
-
-        return (version, equalifier, squalifier)
-    
-    def have_needed_artdaq_mfextensions(self):
-
-        version, equalifier, squalifier = self.artdaq_mfextensions_info()
+    def have_artdaq_mfextensions(self):
 
         cmds = []
         cmds.append("cd %s" % (self.daq_dir))
         cmds.append(". ./%s" % (self.daq_setup_script))
-        cmds.append('if [[ "$ARTDAQ_MFEXTENSIONS_VERSION" == "%s" ]]; then true; else false; fi' % \
-                        (version))
+        cmds.append('if [[ -n "$SETUP_ARTDAQ_MFEXTENSIONS" ]]; then true; else false; fi')
 
         checked_cmd = self.construct_checked_command( cmds )
         
@@ -575,6 +548,28 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             return True
         else:
             return False
+
+    def artdaq_mfextensions_info(self):
+
+        assert self.have_artdaq_mfextensions()
+
+        cmds = []
+        cmds.append("cd %s" % (self.daq_dir))
+        cmds.append(". ./%s" % (self.daq_setup_script))
+        cmds.append("printenv SETUP_ARTDAQ_MFEXTENSIONS")
+
+        proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        proclines = proc.stdout.readlines()
+
+        print proclines
+
+        printenv_line = proclines[-1]
+        version = printenv_line.split()[1]
+        qualifiers = printenv_line.split()[-1]
+
+        return (version, qualifiers)
+    
 
     # JCF, 8/11/14
 
@@ -655,8 +650,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         # process timeouts.
         self.launch_cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=120")
 
-
-        if self.have_needed_artdaq_mfextensions():
+        if self.have_artdaq_mfextensions():
 
             write_new_file = True
 
@@ -1420,23 +1414,22 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         
         try:
 
-            version, equalifier, squalifier = self.artdaq_mfextensions_info()
-
-            if self.have_needed_artdaq_mfextensions() and is_msgviewer_running():
+            if self.have_artdaq_mfextensions() and is_msgviewer_running():
                 print make_paragraph("An instance of messageviewer already appears to be running; " + \
                                          "messages will be sent to the existing messageviewer")
-            elif self.have_needed_artdaq_mfextensions():
-                print make_paragraph("artdaq_mfextensions %s, %s:%s, appears to be available; "
+            elif self.have_artdaq_mfextensions():
+                version, qualifiers = self.artdaq_mfextensions_info()
+
+                print make_paragraph("artdaq_mfextensions %s, %s, appears to be available; "
                                           "if windowing is supported on your host you should see the "
                                           "messageviewer window pop up momentarily" % \
-                                              (version, equalifier, squalifier))
+                                              (version, qualifiers))
 
                 cmds = []
                 cmds.append("cd %s" % (self.daq_dir))
                 cmds.append(". ./%s" % (self.daq_setup_script))
-                cmds.append("if [[ -n $ARTDAQ_MFEXTENSIONS_FQ_DIR ]]; then export MSGVIEWERDIR=$ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/  ; else export MSGVIEWERDIR=$MRB_BUILDDIR/artdaq_mfextensions/bin ; fi")
                 cmds.append("which msgviewer")
-                cmds.append("msgviewer -c $MSGVIEWERDIR/msgviewer.fcl 2>&1 > /dev/null &" )
+                cmds.append("msgviewer -c $ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/msgviewer.fcl 2>&1 > /dev/null &" )
 
                 msgviewercmd = self.construct_checked_command( cmds )
 
@@ -1449,11 +1442,10 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                                         " ; ".join(cmds) )
                         return
             else:
-                print make_paragraph("artdaq_mfextensions %s, %s:%s, does not appear to be available in the products directory \"%s\" - "
-                                          " unable to launch the messageviewer window. This will not affect"
-                                          " actual datataking, it just means you'll need to look at the"
-                                          " logfiles to see artdaq output." % \
-                                              (version, equalifier, squalifier, self.daq_dir + "/products"))
+                print make_paragraph("artdaq_mfextensions does not appear to be available; "
+                                     "unable to launch the messageviewer window. This will not affect"
+                                     " actual datataking, it just means you'll need to look at the"
+                                     " logfiles to see artdaq output.")
 
         except Exception:
             self.print_log(traceback.format_exc())
