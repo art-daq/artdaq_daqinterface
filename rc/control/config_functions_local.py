@@ -136,7 +136,7 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
 
 def listdaqcomps_base(self):
 
-    components_file = os.getcwd() + "/.components.txt"
+    components_file = os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"]
 
     try:
         inf = open( components_file )
