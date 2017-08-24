@@ -562,8 +562,6 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         proclines = proc.stdout.readlines()
 
-        print proclines
-
         printenv_line = proclines[-1]
         version = printenv_line.split()[1]
         qualifiers = printenv_line.split()[-1]
