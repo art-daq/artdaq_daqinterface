@@ -2035,7 +2035,7 @@ def main():  # no-coverage
     if not os.path.exists("./bin"):
         print make_paragraph("Won't launch DAQInterface; you need to be in the base directory of this package")
 
-    if "DAQINTLOGDIR" not in os.environ.keys():
+    if "DAQINTERFACE_STANDARD_SOURCEFILE_SOURCED" not in os.environ.keys():
         print make_paragraph("Won't launch DAQInterface; you first need to run \"source source_me\" from the base directory of this package")
         return
 

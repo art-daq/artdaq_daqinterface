@@ -1,37 +1,177 @@
 
-if [[ ! -e ./bin ]]; then
-   echo "You need to be in the base directory of the package to source this"
+#   JCF, Aug-24-2017
+
+#   This sourcefile needs to be sourced before running DAQInterface. 
+
+#   Consequences of sourcing are:
+#
+#   * An alias is created so the command "DAQInterface" will run DAQInterface
+#
+#   * The output of a DAQInterface session will be saved in a logfile
+#     referred to by $DAQINTERFACE_LOGFILE
+#
+#   * An optional, user-defined sourcefile referred to by
+#     $DAQINTERFACE_USER_SOURCEFILE will also be sourced - see below
+#     under "Requirements" for more on this
+
+#   Requirements to be met before the sourcing are:
+#
+#   * The sourcefile has not yet been sourced successfully in the
+#     environment
+#
+#   * If DAQInterface hasn't been set up as a ups product, but rather,
+#     you're working with a git clone'd repo, you need to source the
+#     sourcefile from the base directory of the repo
+#
+#   * If you want the sourcefile to, in turn, source a user-defined
+#     sourcefile, the user-defined sourcefile name needs be referred to
+#     by the environment variable $DAQINTERFACE_USER_SOURCEFILE. The
+#     user-defined sourcedfile must actually be owned by the active user
+#     in the environment ($USER), and within its body it must export an
+#     environment variable called "DAQINTERFACE_USER_SOURCEFILE_ERRNO"
+#     and set it to 0 to let this "parent" sourcefile know that the user
+#     sourcefile was sourced correctly
+
+
+
+function cleanup() {
+    
+    export PATH=$( echo $PATH | sed -r 's!'${daqinterface_basedir}/bin':*!!'  )
+
+    unset daqinterface_basedir
+    unset DAQINTERFACE_LOGDIR
+    unset DAQINTERFACE_LOGFILE
+    unset DAQINTERFACE_USER_SOURCEFILE_ERRNO
+    unset DAQINTERFACE_STANDARD_SOURCEFILE_SOURCED
+
+    unalias DAQInterface
+}
+
+if [[ -n $DAQINTERFACE_STANDARD_SOURCEFILE_SOURCED ]]; then
+   echo "You appear to have already sourced this script in this shell; will do nothing"
    return 1
 fi
 
-if [[ -n $DAQINTLOGDIR ]]; then
-   echo "You appear to have already sourced this script in this shell; will do nothing"
-   return 2
+daqinterface_basedir=
+
+if [[ -n $DAQINTERFACE_VERSION ]] ; then
+
+    echo "Using ups-installed DAQInterface, version \"$DAQINTERFACE_VERSION\""
+    daqinterface_basedir=$DAQINTERFACE_DIR
+else
+    # "-e ./rc/control" is a way to check we're in the base directory of DAQInterface
+   if [[ -e ./rc/control ]] ; then
+      echo "Using a non-ups version of DAQInterface"
+      daqinterface_basedir=$PWD
+   else  	
+
+cat <<heredoc
+
+   If you're not using DAQInterface as a ups-setup product, then you
+   need to be in the base directory of the DAQInterface git repo to
+   source this
+
+heredoc
+
+   return 1
+   fi
 fi
+
 
 # Eric F: "I hacked all my code on a host with no name"
 
 if [[ -z $HOSTNAME ]]; then
+   echo
    echo "HOSTNAME not defined, will define it here"
    export HOSTNAME=$( hostname )
    echo "HOSTNAME is now set to $HOSTNAME"
+   echo
 fi
 
-export DAQINTLOGDIR=/tmp/daqinterface_${USER}
+export DAQINTERFACE_LOGDIR=/tmp/daqinterface_${USER}
 
-mkdir -p $DAQINTLOGDIR
-daqintlog=$DAQINTLOGDIR/DI.log
+mkdir -p $DAQINTERFACE_LOGDIR
+export DAQINTERFACE_LOGFILE=$DAQINTERFACE_LOGDIR/DAQInterface.log
 
-alias DAQInterface="stdbuf -oL ./rc/control/daqinterface.py 2>&1 | tee -a $daqintlog"
+alias DAQInterface="stdbuf -oL $daqinterface_basedir/rc/control/daqinterface.py 2>&1 | tee -a $DAQINTERFACE_LOGFILE"
 
-export PATH=$PWD/bin:$PATH
+export PATH=$daqinterface_basedir/bin:$PATH
+
+if [[ -n $DAQINTERFACE_USER_SOURCEFILE ]]; then
+
+   if [[ -e $DAQINTERFACE_USER_SOURCEFILE ]]; then
+       user_sourcefile_owner=$( ls -l $DAQINTERFACE_USER_SOURCEFILE | awk '{print $3}' )
+
+       if [[ "$user_sourcefile_owner" != "$USER" ]]; then
+
+cat<< heredoc
+
+	   ERROR: Current user "$USER" is not the same as the owner of
+           ${DAQINTERFACE_USER_SOURCEFILE}; source of
+           $DAQINTERFACE_USER_SOURCEFILE will not take place
+
+heredoc
+
+           cleanup
+           return 1
+
+       fi
+   else
+
+cat<<heredoc
+
+	ERROR: DAQINTERFACE_USER_SOURCEFILE environment variable has been
+	set, but the would-be sourcefile it refers to,
+	"$DAQINTERFACE_USER_SOURCEFILE", doesn't exist. 
+
+heredoc
+
+        cleanup
+	return 1
+   fi 
+
+   . $DAQINTERFACE_USER_SOURCEFILE
+else
+    export DAQINTERFACE_USER_SOURCEFILE_ERRNO=0
+fi
+
+if [[ -z $DAQINTERFACE_USER_SOURCEFILE_ERRNO ]]; then
+    
+cat<<heredoc
+
+      ERROR: the DAQINTERFACE_USER_SOURCEFILE_ERRNO environment
+      variable doesn't exist; this needs to be set by the user script
+      "$DAQINTERFACE_USER_SOURCEFILE"
+
+heredoc
+
+    cleanup
+    return 1
+
+elif [[ "$DAQINTERFACE_USER_SOURCEFILE_ERRNO" != "0" ]]; then
+
+cat<<heredoc
+
+      ERROR: the DAQINTERFACE_USER_SOURCEFILE_ERRNO environment
+      variable was set by the user-defined source script
+      "$DAQINTERFACE_USER_SOURCEFILE" with a value of
+      $DAQINTERFACE_USER_SOURCEFILE_ERRNO; anything nonzero is considered to be an error.
+heredoc
+
+     cleanup
+     return 1
+fi
+
 
 echo
-echo "* Source of this file was successful"
-echo "* Output will be logged in $daqintlog"
-echo "* To launch, when in $PWD, just type \"DAQInterface\" (excluding quotes)" 
+echo "* The command was successful"
+echo "* To launch, when in $daqinterface_basedir, just type \"DAQInterface\" (excluding quotes)" 
+echo "* Output will be logged in $DAQINTERFACE_LOGFILE"
 echo "* Help is available at https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Artdaq-daqinterface"
  
 echo
+
+export DAQINTERFACE_STANDARD_SOURCEFILE_SOURCED=true
+
 return 0
 
