@@ -9,7 +9,7 @@ fi
 
 runnum=$1
 
-recorddir=$( awk '/record_directory/ { print $2} ' .settings )
+recorddir=$( awk '/record_directory/ { print $2} ' $DAQINTERFACE_SETTINGS )
 recorddir=$( echo $( eval echo $recorddir ) )  # Expand environ variables in string
 
 
@@ -25,7 +25,7 @@ fi
 # potentially on other hosts
 
 setupscript_dirname=$( cat $PWD/docs/config.txt | awk '/^ *DAQ +directory/ { print $3 }'  )
-setupscript_basename=$( cat $PWD/.settings | awk '/^ *daq_setup_script/ { print $2 }' )
+setupscript_basename=$( cat $DAQINTERFACE_SETTINGS | awk '/^ *daq_setup_script/ { print $2 }' )
 setupscript=$setupscript_dirname/$setupscript_basename
 
 cd $recorddir/$runnum

@@ -18,7 +18,7 @@ if [[ "$art_retval" != "0" ]]; then
 fi
 
 rootfiledir=/tmp
-runrecordsdir=$( cat .settings  | awk '/record_directory/ {print $2}' )
+runrecordsdir=$( cat $DAQINTERFACE_SETTINGS  | awk '/record_directory/ {print $2}' )
 runrecordsdir=$( echo $( eval echo $runrecordsdir ) )  # Expand environ variables in string
 
 rootfile=$(ls -tr1 $rootfiledir/*_r$(printf "%06d" $runnum)_* | tail -1 )

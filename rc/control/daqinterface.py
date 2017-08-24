@@ -196,11 +196,11 @@ class DAQInterface(Component):
 
     # The purpose of reset_variables is to reset those members that
     # (A) aren't necessarily persistent to the process (thus excluding
-    # the paramters in .settings) and (B) won't necessarily be set
-    # explicitly during the transitions up from the "stopped"
-    # state. E.g., you wouldn't want to return to the "stopped" state
-    # with self.exception == True and then try a boot-config-start
-    # without self.exception being reset to False
+    # the parameters in $DAQINTERFACE_SETTINGS) and (B) won't
+    # necessarily be set explicitly during the transitions up from the
+    # "stopped" state. E.g., you wouldn't want to return to the
+    # "stopped" state with self.exception == True and then try a
+    # boot-config-start without self.exception being reset to False
 
     def reset_variables(self):
 
@@ -362,14 +362,12 @@ class DAQInterface(Component):
         self.print_log( alertmsg )
 
     def read_settings(self):
-        if not os.path.exists( os.getcwd() + "/.settings"):
+        if not os.path.exists( os.environ["DAQINTERFACE_SETTINGS"]):
 
-            raise Exception(make_paragraph("""Unable to find \".settings\" file in current directory
-\"%s\"; this is probably because you're not running DAQInterface out of its package's base directory.
-Please kill DAQInterface and run it out of the base directory.""" % \
-                        os.getcwd()))
+            raise Exception(make_paragraph("""Unable to find settings file \"%s\"""" % \
+                                           os.environ["DAQINTERFACE_SETTINGS"]))
 
-        inf = open( os.getcwd() + "/.settings" )
+        inf = open( os.environ["DAQINTERFACE_SETTINGS"] )
         assert inf
 
         self.log_directory = None
@@ -400,7 +398,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 if not res:
                     raise Exception(make_paragraph(
                             "Unable to parse package_hashes_to_save line in the settings file, %s" % \
-                                (os.getcwd() + "/.settings")))
+                                (os.environ["DAQINTERFACE_SETTINGS"])))
 
                 self.package_hashes_to_save = []
 
@@ -424,7 +422,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             elif "max_fragment_size_bytes" in line:
                 self.max_fragment_size_bytes = int( line.split()[-1].strip())
                 if self.max_fragment_size_bytes % 8 != 0:
-                    raise Exception("Value for \"max_fragment_size_bytes\" in .settings should be a multiple of 8")
+                    raise Exception("Value for \"max_fragment_size_bytes\" in settings file \"%s\" should be a multiple of 8" % (os.environ["DAQINTERFACE_SETTINGS"]))
             elif "all_events_to_all_dispatchers" in line:
                 token = line.split()[-1].strip()
                 
@@ -455,7 +453,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             raise Exception(make_paragraph(
                                 "Unable to parse the following variable(s) meant to be set in the "
                                 "settings file, %s" % \
-                                    (os.getcwd() + "/.settings : " + missing_vars_string ) ))
+                                    (os.environ["DAQINTERFACE_SETTINGS"] + ": " + missing_vars_string ) ))
         
                     
 
@@ -1341,7 +1339,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                         self.procinfos[-1].priority = priority
 
             except Exception:
-                pass  # It's not an error if there were no boardreader priorities read in from .settings
+                pass  # It's not an error if there were no boardreader priorities read in from $DAQINTERFACE_SETTINGS
 
         # See the Procinfo.__lt__ function for details on sorting
 
@@ -2035,6 +2033,17 @@ def main():  # no-coverage
 
     if "DAQINTERFACE_STANDARD_SOURCEFILE_SOURCED" not in os.environ.keys():
         print make_paragraph("Won't launch DAQInterface; you first need to run \"source source_me\" from the base directory of this package")
+        print
+        return
+
+    if "DAQINTERFACE_SETTINGS" not in os.environ.keys():
+        print make_paragraph("Need to have the DAQINTERFACE_SETTINGS environment variable set to refer to the DAQInterface settings file")
+        print
+        return
+
+    if not os.path.exists( os.environ["DAQINTERFACE_SETTINGS"] ):
+        print make_paragraph("The file referred to by the DAQINTERFACE_SETTINGS environment variable, \"%s\", does not appear to exist" % (os.environ["DAQINTERFACE_SETTINGS"]))
+        print
         return
 
     args = get_args()

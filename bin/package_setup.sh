@@ -20,12 +20,12 @@ if [[ -n "${!prodDirEnvVar}" ]]; then
 fi
 
 
-if [[ ! -e $PWD/.settings ]]; then
-    echo "Unable to find .settings file in $PWD; this script should be executed from DAQInterface's base directory" >&2
+if [[ ! -e $DAQINTERFACE_SETTINGS ]]; then
+    echo "Unable to find DAQInterface settings file \"$DAQINTERFACE_SETTINGS\"" >&2
     return 30
 fi
 
-proddir=$( cat $PWD/.settings | awk '/productsdir_for_bash_scripts/ { print $2 }' )
+proddir=$( cat $DAQINTERFACE_SETTINGS | awk '/productsdir_for_bash_scripts/ { print $2 }' )
 proddir=$( echo $( eval echo $proddir ) )  # Expand environ variables in string
 
 if [[ -n $proddir ]]; then
@@ -51,6 +51,6 @@ if [[ -n $proddir ]]; then
 
     return 0
 else
-    echo "Unable to find valid products/ directory from .settings file" >&2
+    echo "Unable to find valid products/ directory from DAQInterface settings file \"$DAQINTERFACE_SETTINGS\"" >&2
     return 40
 fi

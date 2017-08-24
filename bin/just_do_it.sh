@@ -27,7 +27,7 @@ starttime=$(date +%s)
 daq_time_in_seconds=$1
 
 root_output_dir="/tmp"
-run_records_dir=$( awk '/record_directory/ { print $2 }' .settings )
+run_records_dir=$( awk '/record_directory/ { print $2 }' $DAQINTERFACE_SETTINGS )
 run_records_dir=$( echo $( eval echo $run_records_dir ) )  # Expand environ variables in string
 
 if ! [[ $daq_time_in_seconds =~ ^[0-9-]+$ ]]; then
