@@ -21,6 +21,7 @@ daq: {
     subrun_duration: -1
     subrun_event_count: 0
     is_dispatcher: true
+    overwrite_mode: true
 
 	routing_token_config: {
 		use_routing_master: false
@@ -54,4 +55,4 @@ outputs: {
 physics: {
 
 }
-process_name: DAQAG
+process_name: DAQDP

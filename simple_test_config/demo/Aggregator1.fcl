@@ -14,10 +14,10 @@ daq: {
   aggregator: {
     expected_events_per_bunch: 1
     print_event_store_stats: true
-    event_queue_depth: 20
+    event_queue_depth: 40
     event_queue_wait_time: 5
 	max_fragment_size_bytes: 16777216
-    buffer_count: 20
+    buffer_count: 40
     onmon_event_prescale: 1
     xmlrpc_client_list: ""
     subrun_size_MB: -1
@@ -57,6 +57,10 @@ outputs: {
     fastCloning: false
     compressionLevel: 3
   }
+  rootMPIOutput: {
+    module_type: RootMPIOutput
+    #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
+  }
 
 }
 physics: {
@@ -83,5 +87,6 @@ physics: {
   p2: [ BuildInfo ]
 
   my_output_modules: [ normalOutput ]
+  my_mpi_output_modules: [rootMPIOutput]
 }
-process_name: DAQAG
+process_name: DAQDL

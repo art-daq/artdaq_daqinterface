@@ -113,7 +113,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v2_base(self):
 
     proc_hosts = []
 
-    for proctype in ["BoardReader", "EventBuilder", "Aggregator" ]:
+    for proctype in ["BoardReader", "EventBuilder", "Aggregator", "DataLogger", "Dispatcher" ]:
         for procinfo in self.procinfos:
             if proctype in procinfo.name:
                 num_existing = len(proc_hosts)
@@ -142,7 +142,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v2_base(self):
 
         for i in range(first, last):
             nodes.append( 
-                "%s%d: { transferPluginType: MPI %s_rank: %d max_fragment_size_words: %d host_map: [%s]}" % \
+                "%s%d: { transferPluginType: Autodetect %s_rank: %d max_fragment_size_words: %d host_map: [%s]}" % \
                     (prefix, i, nodetype[:-1], i, max_fragment_size_words, \
                     proc_hosts_string))
 
@@ -303,7 +303,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         for i in range(first, last):
             if nth == -1:
                 nodes.append( 
-                    "%s%d: { transferPluginType: MPI %s_rank: %d max_fragment_size_words: %d host_map: [%s]}" % \
+                    "%s%d: { transferPluginType: Autodetect %s_rank: %d max_fragment_size_words: %d host_map: [%s]}" % \
                     (prefix, i, nodetype[:-1], i, max_fragment_size_words, \
                      proc_hosts_string))
             else:
@@ -316,7 +316,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     offset = this_node_index
 
                 nodes.append( 
-                    "%s%d: { transferPluginType: NthEvent nth: %d offset: %d physical_transfer_plugin: { transferPluginType: MPI %s_rank: %d max_fragment_size_words: %d } host_map: [%s]}" % \
+                    "%s%d: { transferPluginType: NthEvent nth: %d offset: %d physical_transfer_plugin: { transferPluginType: Autodetect %s_rank: %d max_fragment_size_words: %d } host_map: [%s]}" % \
                     (prefix, i, nth, offset, nodetype[:-1], i, max_fragment_size_words, \
                      proc_hosts_string))
 

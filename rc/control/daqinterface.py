@@ -642,7 +642,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         self.launch_cmds = []
 
         for logdir in ["pmt", "masterControl", "boardreader", "eventbuilder",
-                       "aggregator"]:
+                       "dispatcher", "datalogger"]:
             self.launch_cmds.append("mkdir -p -m 0777 " + self.log_directory +
                                     "/" + logdir)
 
@@ -661,7 +661,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             write_new_file = True
 
             messagefacility_fhicl_filename = os.getcwd() + "/MessageFacility.fcl" 
-            desired_contents = 'udp : { type : "UDP" threshold : "INFO" port : 30000 host : "%s" }  ' % \
+            desired_contents = 'udp : { type : "UDP" threshold : "DEBUG" port : 30000 host : "%s" }  ' % \
                                (socket.gethostname())
 
             if os.path.exists( messagefacility_fhicl_filename ):
@@ -721,10 +721,12 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 proctype = "EventBuilderMain"
             elif "RoutingMaster" in procinfo.name:
                 proctype = "RoutingMasterMain"
-            elif "Aggregator" in procinfo.name or \
-                    "DataLogger" in procinfo.name or \
-                    "Dispatcher" in procinfo.name:
+            elif "Aggregator" in procinfo.name:
                 proctype = "AggregatorMain"
+            elif "DataLogger" in procinfo.name:
+                proctype = "DataLoggerMain"
+            elif "Dispatcher" in procinfo.name:
+                proctype = "DispatcherMain"
             else:
                 assert False
 
@@ -883,10 +885,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         for procinfo in self.procinfos:
             
-            if procinfo.name == "DataLogger" or procinfo.name == "Dispatcher":
-                greptoken = "AggregatorMain -p " + procinfo.port
-            else:
-                greptoken = procinfo.name + "Main -p " + procinfo.port
+            greptoken = procinfo.name + "Main -p " + procinfo.port
 
             pids = get_pids(greptoken, procinfo.host)
 
@@ -1004,6 +1003,10 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             subdir = "eventbuilder"
         elif procname == "Aggregator":
             subdir = "aggregator"
+        elif procname == "DataLogger":
+            subdir = "datalogger"
+        elif procname == "Dispatcher":
+            subdir = "dispatcher"
         else:
             assert False
 
@@ -1011,8 +1014,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                        "EventBuilder":"EventBuilder",
                        "Aggregator":"Aggregator",
                        "RoutingMaster":"RoutingMaster",
-                       "DataLogger":"Aggregator",
-                       "Dispatcher":"Aggregator" }
+                       "DataLogger":"DataLogger",
+                       "Dispatcher":"Dispatcher" }
 
         for procinfo in self.procinfos:
             if (procname == translator[ procinfo.name ] ):
@@ -1482,7 +1485,9 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
             self.boardreader_log_filenames = self.get_logfilenames("BoardReader")
             self.eventbuilder_log_filenames = self.get_logfilenames("EventBuilder")
-            self.aggregator_log_filenames = self.get_logfilenames("Aggregator")
+            self.datalogger_log_filenames = self.get_logfilenames("DataLogger")
+            self.dispatcher_log_filenames = self.get_logfilenames("Dispatcher")
+            self.aggregator_log_filenames = self.get_logfilenames("Aggregator") + self.datalogger_log_filenames + self.dispatcher_log_filenames
 
         except Exception:
             self.print_log(traceback.format_exc())
@@ -1802,10 +1807,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         def attempted_stop(self, procinfo):
 
-            if procinfo.name == "DataLogger" or procinfo.name == "Dispatcher":
-                greptoken = "AggregatorMain -p " + procinfo.port
-            else:
-                greptoken = procinfo.name + "Main -p " + procinfo.port
+            greptoken = procinfo.name + "Main -p " + procinfo.port
 
             pid = get_pids(greptoken, procinfo.host)
 

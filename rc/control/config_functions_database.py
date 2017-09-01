@@ -88,7 +88,7 @@ def put_config_info_base(self):
     cmds.append( "cat " + runnum + "/metadata.txt | awk -f $scriptdir/fhiclize_metadata_file.awk > " + runnum + "/metadata.fcl" )
 #    cmds.append("cp -p " + runnum + "/config.txt " + runnum + "/config_r" + runnum + ".fcl")
     cmds.append( "rm -f " + runnum + "/*.txt")
-    cmds.append( "for proctype in BoardReader EventBuilder Aggregator; do cntr=1; for file in $(ls " + runnum + "/${proctype}*.*.fcl ); do mv $file " + runnum + "/${proctype}${cntr}.fcl; cntr=$(($cntr+1)); done; done")
+    cmds.append( "for proctype in BoardReader EventBuilder Aggregator Dispatcher DataLogger; do cntr=1; for file in $(ls " + runnum + "/${proctype}*.*.fcl ); do mv $file " + runnum + "/${proctype}${cntr}.fcl; cntr=$(($cntr+1)); done; done")
     cmds.append("mv " + runnum + " run" )
     cmds.append("cd ..")
     cmds.append( "conftool.sh -o import_global_config -g RUN$(printf \"%09d\" " + runnum + ") -v ver%s -s $tmpdir" % (runnum) )
