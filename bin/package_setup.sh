@@ -25,7 +25,7 @@ if [[ ! -e $DAQINTERFACE_SETTINGS ]]; then
     return 30
 fi
 
-proddir=$( cat $DAQINTERFACE_SETTINGS | awk '/productsdir_for_bash_scripts/ { print $2 }' )
+proddir=$( cat $DAQINTERFACE_SETTINGS | awk '/^[^#]*productsdir_for_bash_scripts/ { print $2 }' )
 proddir=$( echo $( eval echo $proddir ) )  # Expand environ variables in string
 
 if [[ -n $proddir ]]; then
