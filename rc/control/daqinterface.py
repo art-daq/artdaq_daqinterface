@@ -23,11 +23,6 @@ from rc.io.timeoutclient import TimeoutServerProxy
 from rc.control.component import Component 
 from rc.control.deepsuppression import deepsuppression
 
-from rc.control.config_functions_local import get_config_info_base
-from rc.control.config_functions_local import put_config_info_base
-from rc.control.config_functions_local import get_daqinterface_config_info_base
-from rc.control.config_functions_local import listdaqcomps_base
-from rc.control.config_functions_local import listconfigs_base
 from rc.control.save_run_record import save_run_record_base
 from rc.control.save_run_record import total_events_in_run_base
 from rc.control.save_run_record import save_metadata_value_base
@@ -44,6 +39,23 @@ from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_pids
 from rc.control.utilities import is_msgviewer_running
+
+if not "DAQINTERFACE_FHICL_DIRECTORY" in os.environ:
+    print
+    raise Exception(make_paragraph("The DAQINTERFACE_FHICL_DIRECTORY environment variable must be defined; if you wish to use the database rather than the local filesystem for FHiCL document retrieval, set DAQINTERFACE_FHICL_DIRECTORY to IGNORED"))
+elif os.environ["DAQINTERFACE_FHICL_DIRECTORY"] == "IGNORED":
+    from rc.control.config_functions_database_v2 import get_config_info_base
+    from rc.control.config_functions_database_v2 import put_config_info_base
+    from rc.control.config_functions_database_v2 import listconfigs_base
+
+else:
+    from rc.control.config_functions_local import get_config_info_base
+    from rc.control.config_functions_local import put_config_info_base
+    from rc.control.config_functions_local import listconfigs_base
+
+from rc.control.config_functions_local import get_daqinterface_config_info_base
+from rc.control.config_functions_local import listdaqcomps_base
+
 
 class DAQInterface(Component):
     """

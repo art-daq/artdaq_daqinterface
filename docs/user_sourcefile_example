@@ -1,0 +1,19 @@
+
+DAQINTERFACE_BASEDIR=$PWD
+
+export DAQINTERFACE_SETTINGS=$DAQINTERFACE_BASEDIR/docs/settings_example
+export DAQINTERFACE_KNOWN_BOARDREADERS_LIST=$DAQINTERFACE_BASEDIR/docs/known_boardreaders_list_example
+
+if [[ ! -e $DAQINTERFACE_SETTINGS ]]; then
+   echo "Unable to find settings file \"$DAQINTERFACE_SETTINGS\"" >&2
+   export DAQINTERFACE_USER_SOURCEFILE_ERRNO=1
+   return 
+fi
+
+if [[ ! -e $DAQINTERFACE_KNOWN_BOARDREADERS_LIST ]]; then
+   echo "Unable to find boardreaders list file \"$DAQINTERFACE_KNOWN_BOARDREADERS_LIST\"" >&2
+   export DAQINTERFACE_USER_SOURCEFILE_ERRNO=2
+   return 
+fi
+
+export DAQINTERFACE_USER_SOURCEFILE_ERRNO=0

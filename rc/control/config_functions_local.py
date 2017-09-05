@@ -10,7 +10,7 @@ from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
 
 def get_config_parentdir():
-    parentdir = os.getcwd() + "/simple_test_config"
+    parentdir = os.environ["DAQINTERFACE_FHICL_DIRECTORY"]
     assert os.path.exists(parentdir), "Expected configuration directory %s doesn't appear to exist" % (parentdir)
     return parentdir
 

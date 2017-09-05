@@ -1,4 +1,6 @@
 
+######################### DO NOT MODIFY THIS FILE #########################
+
 #   JCF, Aug-24-2017
 
 #   This sourcefile needs to be sourced before running DAQInterface. 
@@ -26,12 +28,13 @@
 #   * If you want the sourcefile to, in turn, source a user-defined
 #     sourcefile, the user-defined sourcefile name needs be referred to
 #     by the environment variable $DAQINTERFACE_USER_SOURCEFILE. The
-#     user-defined sourcedfile must actually be owned by the active user
+#     user-defined sourcefile must actually be owned by the active user
 #     in the environment ($USER), and within its body it must export an
 #     environment variable called "DAQINTERFACE_USER_SOURCEFILE_ERRNO"
 #     and set it to 0 to let this "parent" sourcefile know that the user
 #     sourcefile was sourced correctly
 
+######################################################################
 
 
 function cleanup() {
