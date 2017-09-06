@@ -2,7 +2,7 @@
 
 import os
 import sys
-sys.path.append( os.getcwd() )
+sys.path.append( os.environ["DAQINTERFACE_BASEDIR"] )
 
 import argparse
 import datetime
@@ -2039,9 +2039,6 @@ def main():  # no-coverage
         print make_paragraph("Won't launch DAQInterface; it appears an instance is already running on this host according to this command:" )
         print "\nps aux | grep \"%s\" | grep -v grep\n" % (greptoken)
         return
-
-    if not os.path.exists("./bin"):
-        print make_paragraph("Won't launch DAQInterface; you need to be in the base directory of this package")
 
     if "DAQINTERFACE_STANDARD_SOURCEFILE_SOURCED" not in os.environ.keys():
         print make_paragraph("Won't launch DAQInterface; you first need to run \"source source_me\" from the base directory of this package")

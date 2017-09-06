@@ -1,14 +1,13 @@
 
 import os
-import re
+import sys
+sys.path.append( os.environ["DAQINTERFACE_BASEDIR"] )
 
+import re
 import subprocess
 from subprocess import Popen
 
 from time import sleep
-
-import sys
-sys.path.append( os.getcwd() )
 
 from rc.control.utilities import execute_command_in_xterm
 from rc.control.utilities import get_pids

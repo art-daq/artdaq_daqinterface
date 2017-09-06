@@ -39,9 +39,9 @@
 
 function cleanup() {
     
-    export PATH=$( echo $PATH | sed -r 's!'${daqinterface_basedir}/bin':*!!'  )
+    export PATH=$( echo $PATH | sed -r 's!'${DAQINTERFACE_BASEDIR}/bin':*!!'  )
 
-    unset daqinterface_basedir
+    unset DAQINTERFACE_BASEDIR
     unset DAQINTERFACE_LOGDIR
     unset DAQINTERFACE_LOGFILE
     unset DAQINTERFACE_USER_SOURCEFILE_ERRNO
@@ -55,17 +55,17 @@ if [[ -n $DAQINTERFACE_STANDARD_SOURCEFILE_SOURCED ]]; then
    return 1
 fi
 
-daqinterface_basedir=
+DAQINTERFACE_BASEDIR=
 
 if [[ -n $DAQINTERFACE_VERSION ]] ; then
 
     echo "Using ups-installed DAQInterface, version \"$DAQINTERFACE_VERSION\""
-    daqinterface_basedir=$DAQINTERFACE_DIR
+    DAQINTERFACE_BASEDIR=$DAQINTERFACE_DIR
 else
     # "-e ./rc/control" is a way to check we're in the base directory of DAQInterface
    if [[ -e ./rc/control ]] ; then
       echo "Using a non-ups version of DAQInterface"
-      daqinterface_basedir=$PWD
+      DAQINTERFACE_BASEDIR=$PWD
    else  	
 
 cat <<heredoc
@@ -96,9 +96,9 @@ export DAQINTERFACE_LOGDIR=/tmp/daqinterface_${USER}
 mkdir -p $DAQINTERFACE_LOGDIR
 export DAQINTERFACE_LOGFILE=$DAQINTERFACE_LOGDIR/DAQInterface.log
 
-alias DAQInterface="stdbuf -oL $daqinterface_basedir/rc/control/daqinterface.py 2>&1 | tee -a $DAQINTERFACE_LOGFILE"
+alias DAQInterface="stdbuf -oL $DAQINTERFACE_BASEDIR/rc/control/daqinterface.py 2>&1 | tee -a $DAQINTERFACE_LOGFILE"
 
-export PATH=$daqinterface_basedir/bin:$PATH
+export PATH=$DAQINTERFACE_BASEDIR/bin:$PATH
 
 if [[ -n $DAQINTERFACE_USER_SOURCEFILE ]]; then
 
@@ -168,7 +168,7 @@ fi
 
 echo
 echo "* The command was successful"
-echo "* To launch, when in $daqinterface_basedir, just type \"DAQInterface\" (excluding quotes)" 
+echo "* To launch, just type \"DAQInterface\" (excluding quotes)" 
 echo "* Output will be logged in $DAQINTERFACE_LOGFILE"
 echo "* Help is available at https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Artdaq-daqinterface"
  

@@ -72,7 +72,7 @@ def save_run_record_base(self):
     # Now save the commit hashes we determined during
     # initialization
 
-    outf.write("DAQInterface commit: %s\n" % ( self.get_commit_hash(os.getcwd()) ) )
+    outf.write("DAQInterface commit: %s\n" % ( self.get_commit_hash(os.environ["DAQINTERFACE_BASEDIR"]) ) )
 
     for pkg in sorted(self.package_hash_dict.keys()):
         outf.write("%s commit: %s\n" % (pkg, self.package_hash_dict[ pkg ] ))

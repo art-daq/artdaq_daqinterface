@@ -1,10 +1,10 @@
 
 import os
+import sys
+sys.path.append( os.environ["DAQINTERFACE_BASEDIR"] )
+
 import re
 import traceback
-
-import sys
-sys.path.append( os.getcwd() )
 
 from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
