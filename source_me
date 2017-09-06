@@ -55,17 +55,15 @@ if [[ -n $DAQINTERFACE_STANDARD_SOURCEFILE_SOURCED ]]; then
    return 1
 fi
 
-DAQINTERFACE_BASEDIR=
-
 if [[ -n $DAQINTERFACE_VERSION ]] ; then
 
     echo "Using ups-installed DAQInterface, version \"$DAQINTERFACE_VERSION\""
-    DAQINTERFACE_BASEDIR=$DAQINTERFACE_DIR
+    export DAQINTERFACE_BASEDIR=$DAQINTERFACE_DIR
 else
     # "-e ./rc/control" is a way to check we're in the base directory of DAQInterface
    if [[ -e ./rc/control ]] ; then
       echo "Using a non-ups version of DAQInterface"
-      DAQINTERFACE_BASEDIR=$PWD
+      export DAQINTERFACE_BASEDIR=$PWD
    else  	
 
 cat <<heredoc

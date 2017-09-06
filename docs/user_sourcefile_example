@@ -1,6 +1,4 @@
 
-DAQINTERFACE_BASEDIR=$PWD
-
 export DAQINTERFACE_SETTINGS=$DAQINTERFACE_BASEDIR/docs/settings_example
 export DAQINTERFACE_KNOWN_BOARDREADERS_LIST=$DAQINTERFACE_BASEDIR/docs/known_boardreaders_list_example
 export DAQINTERFACE_FHICL_DIRECTORY=$DAQINTERFACE_BASEDIR/simple_test_config
@@ -23,7 +21,7 @@ if [[ "$DAQINTERFACE_FHICL_DIRECTORY" != "IGNORED" && ! -e $DAQINTERFACE_FHICL_D
    return
 elif [[ "$DAQINTERFACE_FHICL_DIRECTORY" == "IGNORED" ]]; then
  
- # ...put code here which sets up the database environment
+   echo "Put code here which sets up the database environment"
  
 fi
 
