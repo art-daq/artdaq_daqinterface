@@ -17,10 +17,14 @@ if [[ ! -e $DAQINTERFACE_KNOWN_BOARDREADERS_LIST ]]; then
    return 
 fi
 
-if [[ ! -e $DAQINTERFACE_FHICL_DIRECTORY ]]; then
+if [[ "$DAQINTERFACE_FHICL_DIRECTORY" != "IGNORED" && ! -e $DAQINTERFACE_FHICL_DIRECTORY ]]; then
    echo "Unable to find FHiCL configuration directory \"$DAQINTERFACE_FHICL_DIRECTORY\"" >&2
    export DAQINTERFACE_USER_SOURCEFILE_ERRNO=3
    return
+elif [[ "$DAQINTERFACE_FHICL_DIRECTORY" == "IGNORED" ]]; then
+ 
+ # ...put code here which sets up the database environment
+ 
 fi
 
 export DAQINTERFACE_USER_SOURCEFILE_ERRNO=0
