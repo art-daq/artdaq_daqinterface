@@ -3,6 +3,11 @@
 # For this module to work, you'll first need to have set up the
 # artdaq-database in the shell environment
 
+import os
+import sys
+sys.path.append( os.environ["DAQINTERFACE_BASEDIR"] )
+sys.path.append(os.environ["PYTHONPATH"] + "/../bin/")
+
 import subprocess
 from subprocess import Popen
 
@@ -10,10 +15,6 @@ import re
 import os
 import string
 import shutil
-
-import sys
-sys.path.append( os.getcwd() )
-sys.path.append(os.environ["PYTHONPATH"] + "/../bin/")
 
 from rc.control.utilities import expand_environment_variable_in_string
 from conftool import exportConfiguration

@@ -1,10 +1,10 @@
 
+import os
+import sys
+sys.path.append( os.environ["DAQINTERFACE_BASEDIR"] )
+
 import string
 import re
-import os
-
-import sys
-sys.path.append( os.getcwd() )
 
 from rc.control.utilities import table_range
 from rc.control.utilities import commit_check_throws_if_failure

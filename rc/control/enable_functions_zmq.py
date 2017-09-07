@@ -1,3 +1,7 @@
+import os
+import sys
+sys.path.append( os.environ["DAQINTERFACE_BASEDIR"] )
+
 import zmq
 from rc.InhibitMaster import InhibitMaster
 import os, sys, time

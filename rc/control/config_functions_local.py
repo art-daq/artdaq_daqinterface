@@ -1,16 +1,16 @@
 
 import os
+import sys
+sys.path.append( os.environ["DAQINTERFACE_BASEDIR"] )
+
 import re
 import traceback
-
-import sys
-sys.path.append( os.getcwd() )
 
 from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
 
 def get_config_parentdir():
-    parentdir = os.getcwd() + "/simple_test_config"
+    parentdir = os.environ["DAQINTERFACE_FHICL_DIRECTORY"]
     assert os.path.exists(parentdir), "Expected configuration directory %s doesn't appear to exist" % (parentdir)
     return parentdir
 
@@ -136,7 +136,7 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
 
 def listdaqcomps_base(self):
 
-    components_file = os.getcwd() + "/.components.txt"
+    components_file = os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"]
 
     try:
         inf = open( components_file )
