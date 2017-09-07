@@ -5,7 +5,14 @@ if [[ $# != 1 ]]; then
     exit 10
 fi
 
-#set -x
+. $DAQINTERFACE_BASEDIR/bin/package_setup.sh root
+
+root_retval=$?
+
+if [[ "$root_retval" != "0" ]]; then
+    echo "Problem attempting to setup root package" >&2
+    exit 40
+fi
 
 runnum=$1
 
@@ -17,16 +24,6 @@ if [[ ! -e $recorddir/$runnum ]]; then
     echo "Unable to find expected subdirectory \"$runnum\" in run record directory \"$recorddir\"" >&2
     exit 20
 fi
-
-# JCF, Jan-22-2017
-
-# Big assumption: that the setup script lies in the parent directory
-# of the products directory used by the bash scripts...even
-# potentially on other hosts
-
-setupscript_dirname=$( cat $PWD/docs/config.txt | awk '/^ *DAQ +directory/ { print $3 }'  )
-setupscript_basename=$( cat $DAQINTERFACE_SETTINGS | awk '/^ *daq_setup_script/ { print $2 }' )
-setupscript=$setupscript_dirname/$setupscript_basename
 
 cd $recorddir/$runnum
 
@@ -52,7 +49,7 @@ for file_location in $file_locations ; do
 
     runnum_padded=$( printf "%06d" $runnum )
 
-    cmd="tmpfile=/tmp/"$(uuidgen)".C ; echo '{TChain chain(\"Events\"); chain.Add(\""$agg_dir"/*_r"${runnum_padded}"_*.root\"); cout << chain.GetEntries() << endl;}' > \$tmpfile;  . "$setupscript"; root -q -b -l \$tmpfile ; rm -f \$tmpfile"
+    cmd="tmpfile=/tmp/"$(uuidgen)".C ; echo '{TChain chain(\"Events\"); chain.Add(\""$agg_dir"/*_r"${runnum_padded}"_*.root\"); cout << chain.GetEntries() << endl;}' > \$tmpfile;  root -q -b -l \$tmpfile 2>/dev/null; rm -f \$tmpfile"
 
     if [[ "$agg_host" != "localhost" && "$agg_host" != $HOSTNAME ]]; then
 	nevents=$( ssh $agg_host "$cmd" | tail -1 )

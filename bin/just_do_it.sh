@@ -1,5 +1,6 @@
 #!/bin/env bash
 
+
 if [[ "$#" != "1" ]]; then
     echo "Usage: $0 <daq running time in seconds (0 if you want to run until ctrl-C is hit) > "
     exit 0
