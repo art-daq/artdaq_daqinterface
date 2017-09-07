@@ -1,7 +1,8 @@
 
+
 ######################### DO NOT MODIFY THIS FILE #########################
 
-#   JCF, Aug-24-2017
+#   JCF, Sep-7-2017
 
 #   This sourcefile needs to be sourced before running DAQInterface. 
 
@@ -32,7 +33,10 @@
 #     in the environment ($USER), and within its body it must export an
 #     environment variable called "DAQINTERFACE_USER_SOURCEFILE_ERRNO"
 #     and set it to 0 to let this "parent" sourcefile know that the user
-#     sourcefile was sourced correctly
+#     sourcefile was sourced correctly. If you do not wish for a
+#     user-defined sourcefile to be sourced, you must set
+#     DAQINTERFACE_USER_SOURCEFILE to IGNORED. Not setting
+#     DAQINTERFACE_USER_SOURCEFILE is treated as an error. 
 
 ######################################################################
 
@@ -100,12 +104,14 @@ export PATH=$DAQINTERFACE_BASEDIR/bin:$PATH
 
 if [[ -n $DAQINTERFACE_USER_SOURCEFILE ]]; then
 
-   if [[ -e $DAQINTERFACE_USER_SOURCEFILE ]]; then
+   if [[ "$DAQINTERFACE_USER_SOURCEFILE" != "IGNORED" && -e $DAQINTERFACE_USER_SOURCEFILE ]]; then
        user_sourcefile_owner=$( ls -l $DAQINTERFACE_USER_SOURCEFILE | awk '{print $3}' )
 
-       if [[ "$user_sourcefile_owner" != "$USER" ]]; then
+       if [[ "$user_sourcefile_owner" == "$USER" ]]; then
+       	  . $DAQINTERFACE_USER_SOURCEFILE
+       else
 
-cat<< heredoc
+cat<<heredoc
 
 	   ERROR: Current user "$USER" is not the same as the owner of
            ${DAQINTERFACE_USER_SOURCEFILE}; source of
@@ -117,7 +123,7 @@ heredoc
            return 1
 
        fi
-   else
+   elif [[ "$DAQINTERFACE_USER_SOURCEFILE" != "IGNORED" && ! -e $DAQINTERFACE_USER_SOURCEFILE ]]; then
 
 cat<<heredoc
 
@@ -129,27 +135,39 @@ heredoc
 
         cleanup
 	return 1
-   fi 
+   else   # $DAQINTERFACE_USER_SOURCEFILE == IGNORED, so we don't source a user-defined script
+ 	 export DAQINTERFACE_USER_SOURCEFILE_ERRNO=0
+   fi
 
-   . $DAQINTERFACE_USER_SOURCEFILE
 else
-    export DAQINTERFACE_USER_SOURCEFILE_ERRNO=0
+
+cat<<heredoc
+
+	ERROR: the DAQINTERFACE_USER_SOURCEFILE environment variable
+	must be set, either to the name of the user-defined sourcefile
+	you wish to have sourced, or to "IGNORED" if you don't want to
+	source a user-defined sourcefile
+
+heredoc
+
+   cleanup
+   return 1
 fi
 
-if [[ -z $DAQINTERFACE_USER_SOURCEFILE_ERRNO ]]; then
+if [[ -z $DAQINTERFACE_USER_SOURCEFILE_ERRNO ]] ; then
     
 cat<<heredoc
 
       ERROR: the DAQINTERFACE_USER_SOURCEFILE_ERRNO environment
-      variable doesn't exist; this needs to be set by the user script
-      "$DAQINTERFACE_USER_SOURCEFILE"
+      variable doesn't exist; this needs to be set in the user script
+      referred to by the DAQINTERFACE_USER_SOURCEFILE environment variable
 
 heredoc
 
     cleanup
     return 1
 
-elif [[ "$DAQINTERFACE_USER_SOURCEFILE_ERRNO" != "0" ]]; then
+elif [[ "$DAQINTERFACE_USER_SOURCEFILE_ERRNO" != "0" ]] ; then
 
 cat<<heredoc
 
