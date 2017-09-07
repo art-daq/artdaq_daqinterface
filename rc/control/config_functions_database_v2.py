@@ -6,7 +6,10 @@
 import os
 import sys
 sys.path.append( os.environ["DAQINTERFACE_BASEDIR"] )
-sys.path.append(os.environ["PYTHONPATH"] + "/../bin/")
+
+dbdirs = [dbdir for dbdir in os.environ["PYTHONPATH"].split(":") if "/artdaq_database/" in dbdir]
+assert len(dbdirs) == 1, "More than one path in $PYTHONPATH appears to be an artdaq-database path"
+sys.path.append(dbdirs[0] + "/../bin")
 
 import subprocess
 from subprocess import Popen
@@ -23,7 +26,7 @@ from conftool import getListOfAvailableRunConfigurations
 from conftool import archiveRunConfiguration
 
 def config_basedir(self):
-    return "/daq/database/tmp/%s" % (self.config_for_run)
+    return "/tmp/database/tmp/%s" % (self.config_for_run)
 
 def get_config_info_base(self):
 
