@@ -39,6 +39,11 @@ daq: {
       fileName: "/tmp/aggregator/agg_%UID%_metrics.log"
       uniquify: true
     }
+    ganglia: {
+      metricPluginType: "ganglia"
+      level: 3
+      configFile: "/home/eflumerf/Desktop/artdaq-mrb-base/gmond.conf"
+    }
 
   }
 
