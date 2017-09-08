@@ -92,6 +92,6 @@ physics: {
   p2: [ BuildInfo ]
 
   my_output_modules: [ normalOutput ]
-#  my_mpi_output_modules: [rootMPIOutput]
+  my_mpi_output_modules: [rootMPIOutput]
 }
 process_name: DAQDL
