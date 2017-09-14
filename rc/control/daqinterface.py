@@ -925,8 +925,7 @@ class DAQInterface(Component):
     def get_commit_hash(self, gitrepo):
 
         if not os.path.exists(gitrepo):
-            self.alert_and_recover("Expected git directory %s not found" % (gitrepo))
-            return
+            raise Exception(make_paragraph("Expected git directory \"%s\" not found; this is needed because the relevant package is in the \"package_hashes_to_save\" list found in %s" % (gitrepo, os.environ["DAQINTERFACE_SETTINGS"])))
 
         cmds = []
         cmds.append("cd %s" % (gitrepo))
@@ -937,8 +936,7 @@ class DAQInterface(Component):
         proclines = proc.stdout.readlines()
 
         if len(proclines) != 1 or len(proclines[0].strip()) != 40:
-            self.alert_and_recover("Commit hash for %s not found" % (gitrepo))
-            return
+            raise Exception(make_paragraph("Commit hash for \"%s\" not found; this was requested in the \"packages_hashes_to_save\" list found in %s" % (gitrepo, os.environ["DAQINTERFACE_SETTINGS"])))
 
         return proclines[0].strip()
 
@@ -1333,8 +1331,13 @@ class DAQInterface(Component):
 
         for pkgname in self.package_hashes_to_save:
             pkg_full_path = "%s/srcs/%s" % (self.daq_dir, pkgname.replace("-", "_"))
-            self.package_hash_dict[pkgname] = self.get_commit_hash( pkg_full_path )
 
+            try: 
+                self.package_hash_dict[pkgname] = self.get_commit_hash( pkg_full_path )
+            except Exception:
+                self.print_log(traceback.format_exc())
+                self.alert_and_recover("An exception was thrown in get_commit_hash; see traceback above for more info")
+                return
 
         for compname, socket in self.daq_comp_list.items():
 
