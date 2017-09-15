@@ -10,7 +10,7 @@ from time import sleep
 
 def expand_environment_variable_in_string(line):
 
-    res = re.search(r"^(.*)(\$[A-Z]+)(.*)", line)
+    res = re.search(r"^(.*)(\$[A-Z][A-Z_0-9]*)(.*)", line)
 
     if res:
         environ_var = res.group(2)
