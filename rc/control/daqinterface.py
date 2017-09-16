@@ -375,8 +375,7 @@ class DAQInterface(Component):
 
     def read_settings(self):
         if not os.path.exists( os.environ["DAQINTERFACE_SETTINGS"]):
-
-            raise Exception(make_paragraph("""Unable to find settings file \"%s\"""" % \
+            raise Exception(make_paragraph("Unable to find settings file \"%s\"" % \
                                            os.environ["DAQINTERFACE_SETTINGS"]))
 
         inf = open( os.environ["DAQINTERFACE_SETTINGS"] )
@@ -402,8 +401,6 @@ class DAQInterface(Component):
                 self.log_directory = line.split()[-1].strip()
             elif "record_directory" in line:
                 self.record_directory = line.split()[-1].strip()
-            elif "daq_setup_script" in line:
-                self.daq_setup_script = line.split()[-1].strip()
             elif "package_hashes_to_save" in line:
                 res = re.search(r".*\[(.*)\].*", line)
 
@@ -452,9 +449,6 @@ class DAQInterface(Component):
             
         if self.record_directory is None:
             missing_vars.append("record_directory")
-
-        if self.daq_setup_script is None:
-            missing_vars.append("daq_setup_script")
 
         if self.package_hashes_to_save is None or self.package_hashes_to_save is []:
             missing_vars.append("package_hashes_to_save")
@@ -545,8 +539,7 @@ class DAQInterface(Component):
     def have_artdaq_mfextensions(self):
 
         cmds = []
-        cmds.append("cd %s" % (self.daq_dir))
-        cmds.append(". ./%s" % (self.daq_setup_script))
+        cmds.append(". %s" % (self.daq_setup_script))
         cmds.append('if [[ -n "$SETUP_ARTDAQ_MFEXTENSIONS" ]]; then true; else false; fi')
 
         checked_cmd = self.construct_checked_command( cmds )
@@ -564,8 +557,7 @@ class DAQInterface(Component):
         assert self.have_artdaq_mfextensions()
 
         cmds = []
-        cmds.append("cd %s" % (self.daq_dir))
-        cmds.append(". ./%s" % (self.daq_setup_script))
+        cmds.append(". %s" % (self.daq_setup_script))
         cmds.append("printenv SETUP_ARTDAQ_MFEXTENSIONS")
 
         proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -602,8 +594,7 @@ class DAQInterface(Component):
                 str(self.num_aggregators()) + \
                 " AggregatorMain processes"
 
-            print "Assuming daq package is in " + \
-                self.daq_dir
+            print "Assuming daq setup script is " + self.daq_setup_script
 
         # We'll use the desired features of the artdaq processes to
         # create a text file which will be passed to artdaq's pmt.rb
@@ -649,8 +640,7 @@ class DAQInterface(Component):
             self.launch_cmds.append("mkdir -p -m 0777 " + self.log_directory +
                                     "/" + logdir)
 
-        self.launch_cmds.append("cd " + self.daq_dir)
-        self.launch_cmds.append("source ./" + self.daq_setup_script )
+        self.launch_cmds.append("source " + self.daq_setup_script )
         self.launch_cmds.append("which pmt.rb")  # Sanity check capable of returning nonzero
 
         # 30-Jan-2017, KAB: increased the amount of time that pmt.rb provides daqinterface
@@ -967,8 +957,8 @@ class DAQInterface(Component):
             undefined_var = "PMT host"
         if self.pmt_port is None:
             undefined_var = "PMT port"
-        elif self.daq_dir is None:
-            undefined_var = "DAQ directory"
+        elif self.daq_setup_script is None:
+            undefined_var = "DAQ setup script"
         elif self.debug_level is None:
             undefined_var = "debug level"
 
@@ -978,13 +968,9 @@ class DAQInterface(Component):
                 (undefined_var)
             raise Exception(make_paragraph(errmsg))
 
-        if not os.path.exists(self.daq_dir):
-            raise Exception("Unable to find requested daq directory \"%s\"" % self.daq_dir)
-
-        if not os.path.exists(self.daq_dir + "/" + self.daq_setup_script ):
+        if not os.path.exists(self.daq_setup_script ):
             raise Exception(make_paragraph(
-                                self.daq_setup_script + " script not found in " +
-                                self.daq_dir))
+                                self.daq_setup_script + " script not found"))
 
 
     # JCF, Dec-1-2016
@@ -1437,8 +1423,7 @@ class DAQInterface(Component):
                                               (version, qualifiers))
 
                 cmds = []
-                cmds.append("cd %s" % (self.daq_dir))
-                cmds.append(". ./%s" % (self.daq_setup_script))
+                cmds.append(". %s" % (self.daq_setup_script))
                 cmds.append("which msgviewer")
                 cmds.append("msgviewer -c $ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/msgviewer.fcl 2>&1 > /dev/null &" )
 

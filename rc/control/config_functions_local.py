@@ -65,10 +65,11 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
             self.pmt_port = res.group(1)
             continue
 
-        res = re.search(r"\s*DAQ directory\s*:\s*(\S+)",
+        res = re.search(r"\s*DAQ setup script\s*:\s*(\S+)",
                         line)
         if res:
-            self.daq_dir = res.group(1)
+            self.daq_setup_script = res.group(1)
+            self.daq_dir = os.path.dirname( self.daq_setup_script ) + "/"
             continue
 
         res = re.search(r"\s*debug level\s*:\s*(\S+)",

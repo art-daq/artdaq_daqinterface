@@ -1,16 +1,17 @@
 #!/bin/env bash
 
 
-if [[ "$#" != "1" ]]; then
-    echo "Usage: $0 <daq running time in seconds (0 if you want to run until ctrl-C is hit) > "
+if [[ "$#" != "2" ]]; then
+    echo "Usage: $0 <file to pass on boot transition> <daq running time in seconds (0 if you want to run until ctrl-C is hit) > "
     exit 0
 fi
 
 scriptdir="$(dirname "$0")"
 
 config="demo"
-daqintconfig=$scriptdir/../docs/config.txt
 
+daqintconfig=$1
+daq_time_in_seconds=$2
 
 rm -f /tmp/listconfigs_${USER}.txt
 $scriptdir/listconfigs.sh 
@@ -25,7 +26,7 @@ fi
 
 starttime=$(date +%s)
 
-daq_time_in_seconds=$1
+
 
 root_output_dir="/tmp"
 run_records_dir=$( awk '/record_directory/ { print $2 }' $DAQINTERFACE_SETTINGS )

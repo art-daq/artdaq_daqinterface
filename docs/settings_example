@@ -1,5 +1,5 @@
 
-# JCF, Sep-5-2017
+# JCF, Sep-16-2017
 
 # This file is an example of a settings file which would work with an
 # artdaq-demo installation, assuming the installation was performed
@@ -13,8 +13,6 @@
 # directory containing the xmlrpc_c package (needed for DAQInterface
 # to receive commands)
 
-
-daq_setup_script: setupARTDAQDEMO
 log_directory: /tmp
 record_directory: $HOME/run_records
 package_hashes_to_save: [ artdaq-demo, artdaq-core-demo, artdaq ]
