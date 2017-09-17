@@ -1,5 +1,5 @@
 
-DAQ directory: $HOME/path_to_daq_base_directory_not_yet_defined
+DAQ setup script: name_of_DAQ_setup_script_not_yet_defined
 
 PMT host: localhost
 PMT port: 5400

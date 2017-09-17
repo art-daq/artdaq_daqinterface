@@ -97,7 +97,7 @@ def main():
             debug_level = 3
 
         mockdaqint = MockDAQInterface()
-        testfile = "/home/jcfree/artdaq-utilities-daqinterface/docs/config.txt"
+        testfile = "/home/jcfree/artdaq-utilities-daqinterface/docs/boot.txt"
 
 
         print "Assuming DAQ setup script is %s, input file is %s" % \

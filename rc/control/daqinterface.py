@@ -1103,8 +1103,8 @@ class DAQInterface(Component):
         metadata_filename = indir + "/metadata.txt"
         runstring += get_arbitrary_file(metadata_filename, "run_metadata")
 
-        config_filename = indir + "/config.txt"        
-        runstring += get_arbitrary_file(config_filename, "run_daqinterface_config")
+        config_filename = indir + "/boot.txt"        
+        runstring += get_arbitrary_file(config_filename, "run_daqinterface_boot")
 
         runstring += "} \n\n"
 

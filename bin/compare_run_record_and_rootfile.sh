@@ -34,17 +34,17 @@ if [[ -z $( which config_dumper ) ]]; then
     exit 30
 fi
 
-temporary_daqinterface_config_file=/tmp/$(uuidgen)
+temporary_daqinterface_boot_file=/tmp/$(uuidgen)
 temporary_metadata_file=/tmp/$(uuidgen)
 
 echo "NOTE: erasing any output to stderr from config_dumper; as long
 as config_dumper works correctly this won't affect the results of the
 test"
 
-config_dumper -P $rootfile 2> /dev/null | sed -r 's/\\n/\n/g'  | sed -r '1,/run_daqinterface_config/d;/^\s*"\s*$/,$d;s/\\"/"/g'  > $temporary_daqinterface_config_file 
+config_dumper -P $rootfile 2> /dev/null | sed -r 's/\\n/\n/g'  | sed -r '1,/run_daqinterface_boot/d;/^\s*"\s*$/,$d;s/\\"/"/g'  > $temporary_daqinterface_boot_file 
 
-if [[ ! -s $temporary_daqinterface_config_file ]]; then
-    echo "It appears no DAQInterface config info was saved in $rootfile" 
+if [[ ! -s $temporary_daqinterface_boot_file ]]; then
+    echo "It appears no DAQInterface boot info was saved in $rootfile" 
 fi
 
 config_dumper -P $rootfile 2> /dev/null  | sed -r 's/\\n/\n/g'  | sed -r '1,/run_metadata/d;/"/,$d' > $temporary_metadata_file 
@@ -53,11 +53,11 @@ if [[ ! -s $temporary_metadata_file ]]; then
     echo "It appears no metadata info was saved in $rootfile" 
 fi
 
-run_records_config_file=$runrecordsdir/$runnum/config.txt
+run_records_boot_file=$runrecordsdir/$runnum/boot.txt
 run_records_metadata_file=$runrecordsdir/$runnum/metadata.txt
 
-if [[ ! -e $run_records_config_file ]]; then
-    echo "Unable to find DAQInterface configuration file \"${run_records_config_file}\"" >&2
+if [[ ! -e $run_records_boot_file ]]; then
+    echo "Unable to find DAQInterface boot file \"${run_records_boot_file}\"" >&2
     exit 30
 fi
 
@@ -78,19 +78,19 @@ cleaned_run_records_metadata_file=/tmp/$(uuidgen)
 
 grep -E -v 'Total events|Start time|Stop time' $run_records_metadata_file > $cleaned_run_records_metadata_file
 
-res_config=$( diff --ignore-blank-lines $temporary_daqinterface_config_file $run_records_config_file )
+res_boot=$( diff --ignore-blank-lines $temporary_daqinterface_boot_file $run_records_boot_file )
 res_metadata=$( diff --ignore-blank-lines $temporary_metadata_file $cleaned_run_records_metadata_file )
 
 
-if [[ -z $res_config && -z $res_metadata ]]; then
+if [[ -z $res_boot && -z $res_metadata ]]; then
     echo "Data in $rootfile and $runrecordsdir/$runnum agree"
-    rm -f $temporary_daqinterface_config_file $temporary_metadata_file $cleaned_run_records_metadata_file
+    rm -f $temporary_daqinterface_boot_file $temporary_metadata_file $cleaned_run_records_metadata_file
     exit 0
 fi
 
-if [[ -n $res_config ]]; then
-    echo $res_config
-    echo "DAQInterface configuration file info inconsistent between $rootfile and $runrecordsdir/$runnum (see above for diff)"
+if [[ -n $res_boot ]]; then
+    echo $res_boot
+    echo "DAQInterface boot file info inconsistent between $rootfile and $runrecordsdir/$runnum (see above for diff)"
 fi
  
 if [[ -n $res_metadata ]]; then
@@ -98,6 +98,6 @@ if [[ -n $res_metadata ]]; then
     echo "Metadata file info inconsistent between $rootfile and $runrecordsdir/$runnum (see above for diff)"
 fi
 
-rm -f $temporary_daqinterface_config_file $temporary_metadata_file $cleaned_run_records_metadata_file
+rm -f $temporary_daqinterface_boot_file $temporary_metadata_file $cleaned_run_records_metadata_file
 
 exit 50

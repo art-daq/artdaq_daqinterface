@@ -39,7 +39,7 @@ def save_run_record_base(self):
 
     # For good measure, let's also save the DAQInterface configuration file
 
-    config_saved_name = "config.txt"
+    config_saved_name = "boot.txt"
 
     Popen("cp -p " + self.daqinterface_config_file + " " + outdir +
           "/" + config_saved_name,
@@ -48,6 +48,14 @@ def save_run_record_base(self):
     if not os.path.exists(outdir + "/" + config_saved_name):
         self.alert_and_recover("Problem creating file %s/%s" %
                                (outdir, config_saved_name))
+
+    # As well as the DAQ setup script
+
+    Popen("cp -p " + self.daq_setup_script + " " + outdir + 
+          "/setup.txt", shell=True, stdout=subprocess.PIPE).wait()
+
+    if not os.path.exists(outdir + "/setup.txt"):
+        self.alert_and_recover("Problem creating file %s/setup.txt" % (outdir))
 
     # JCF, 11/20/14
 

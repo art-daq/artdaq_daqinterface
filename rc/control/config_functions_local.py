@@ -104,18 +104,6 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
             # Has the dictionary been filled s.t. we can use it to
             # initalize a procinfo object?
 
-            # JCF, 11/13/14
-
-            # Note that if the configuration manager is running,
-            # then we expect the AggregatorMain applications to
-            # have a host and port specified in config.txt, but
-            # not a FHiCL document
-
-            # JCF, 3/19/15
-
-            # Now, we also expect only a host and port for
-            # EventBuilderMain applications as well
-
             filled = True
 
             for label, value in memberDict.items():
