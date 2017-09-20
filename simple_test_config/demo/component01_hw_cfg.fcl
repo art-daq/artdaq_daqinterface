@@ -60,7 +60,7 @@
 	  sleep_on_stop_us: 500000 
 	  nADCcounts: 40
 	  throttle_usecs: 100000
-	  distribution_type: 1
+	  distribution_type: 2
 	  timestamp_scale_factor: 1
 
         destinations: { }
