@@ -16,6 +16,7 @@ daq: {
     print_event_store_stats: true
     event_queue_depth: 40
     event_queue_wait_time: 5
+    every_sequence_id_should_be_present: true
 	max_fragment_size_bytes: 16777216
     buffer_count: 40
     onmon_event_prescale: 1
