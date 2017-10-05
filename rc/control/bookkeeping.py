@@ -409,11 +409,27 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     "\n } \n" + \
                     self.procinfos[i_proc].fhicl_used[table_end:]
 
+    expected_fragments_per_event = 0
+
+    for procinfo in self.procinfos:
+
+        if "BoardReader" in procinfo.name:
+
+            res = re.search(r"[^#]\s*sends_no_fragments:\s*[Tt]rue", procinfo.fhicl_used)
+
+            if not res:
+                expected_fragments_per_event += 1
+            else:
+                continue                
+
     for i_proc in range(len(self.procinfos)):
         self.procinfos[i_proc].fhicl_used = re.sub("expected_fragments_per_event\s*:\s*[0-9]+", 
-                                                   "expected_fragments_per_event: %d" % (self.num_boardreaders()), 
+                                                   "expected_fragments_per_event: %d" % (expected_fragments_per_event), 
                                                    self.procinfos[i_proc].fhicl_used)
 
+
+def bookkeeping_for_fhicl_documents_artdaq_v4_base(self):
+    pass
 
 def main():
     
