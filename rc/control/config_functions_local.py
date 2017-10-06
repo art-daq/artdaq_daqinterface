@@ -1,16 +1,16 @@
 
 import os
+import sys
+sys.path.append( os.environ["DAQINTERFACE_BASEDIR"] )
+
 import re
 import traceback
-
-import sys
-sys.path.append( os.getcwd() )
 
 from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
 
 def get_config_parentdir():
-    parentdir = os.getcwd() + "/simple_test_config"
+    parentdir = os.environ["DAQINTERFACE_FHICL_DIRECTORY"]
     assert os.path.exists(parentdir), "Expected configuration directory %s doesn't appear to exist" % (parentdir)
     return parentdir
 
@@ -65,10 +65,11 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
             self.pmt_port = res.group(1)
             continue
 
-        res = re.search(r"\s*DAQ directory\s*:\s*(\S+)",
+        res = re.search(r"\s*DAQ setup script\s*:\s*(\S+)",
                         line)
         if res:
-            self.daq_dir = res.group(1)
+            self.daq_setup_script = res.group(1)
+            self.daq_dir = os.path.dirname( self.daq_setup_script ) + "/"
             continue
 
         res = re.search(r"\s*debug level\s*:\s*(\S+)",
@@ -103,18 +104,6 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
             # Has the dictionary been filled s.t. we can use it to
             # initalize a procinfo object?
 
-            # JCF, 11/13/14
-
-            # Note that if the configuration manager is running,
-            # then we expect the AggregatorMain applications to
-            # have a host and port specified in config.txt, but
-            # not a FHiCL document
-
-            # JCF, 3/19/15
-
-            # Now, we also expect only a host and port for
-            # EventBuilderMain applications as well
-
             filled = True
 
             for label, value in memberDict.items():
@@ -136,7 +125,7 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
 
 def listdaqcomps_base(self):
 
-    components_file = os.getcwd() + "/.components.txt"
+    components_file = os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"]
 
     try:
         inf = open( components_file )

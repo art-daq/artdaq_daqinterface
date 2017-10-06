@@ -1,4 +1,6 @@
 
+raise Exception("JCF, Sep-6-2017: At least for the time being, this file is deprecated")
+
 import sys
 sys.path.append("/home/nfs/dunedaq/jcfree/standalone_daq")
 

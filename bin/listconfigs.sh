@@ -1,7 +1,6 @@
 #!/bin/env bash
 
-scriptdir="$(dirname "$0")"
-. $scriptdir/package_setup.sh xmlrpc_c
+. $DAQINTERFACE_BASEDIR/bin/package_setup.sh xmlrpc_c
 
 xmlrpc_retval=$?
 

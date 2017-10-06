@@ -3,6 +3,14 @@
 # For this module to work, you'll first need to have set up the
 # artdaq-database in the shell environment
 
+import os
+import sys
+sys.path.append( os.environ["DAQINTERFACE_BASEDIR"] )
+
+dbdirs = [dbdir for dbdir in os.environ["PYTHONPATH"].split(":") if "/artdaq_database/" in dbdir]
+assert len(dbdirs) == 1, "More than one path in $PYTHONPATH appears to be an artdaq-database path"
+sys.path.append(dbdirs[0] + "/../bin")
+
 import subprocess
 from subprocess import Popen
 
@@ -11,10 +19,6 @@ import os
 import string
 import shutil
 
-import sys
-sys.path.append( os.getcwd() )
-sys.path.append(os.environ["PYTHONPATH"] + "/../bin/")
-
 from rc.control.utilities import expand_environment_variable_in_string
 from conftool import exportConfiguration
 from conftool import getListOfAvailableRunConfigurationPrefixes
@@ -22,19 +26,38 @@ from conftool import getListOfAvailableRunConfigurations
 from conftool import archiveRunConfiguration
 
 def config_basedir(self):
-    return "/daq/database/tmp/%s" % (self.config_for_run)
+    return "/tmp/database/"
 
 def get_config_info_base(self):
 
     basedir = os.getcwd()
 
-    Popen("mkdir -p %s" % config_basedir(self), shell=True).wait()
-    os.chdir( config_basedir(self) )
+    uuidgen=Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    config_dir = config_basedir(self) + uuidgen
+
+    Popen("mkdir -p %s" % config_dir, shell=True).wait()
+    os.chdir( config_dir )
+
     result = exportConfiguration( self.config_for_run )
 
     if not result:
         raise Exception("Error: the exportConfiguration function with the argument \"%s\" returned False" % \
                         self.config_for_run)
+
+    if os.path.exists("common_code"):
+        raise Exception("Error: the requested configuration \"%s\" contains a subdirectory called \"common_code\" (see directory %s); this should not be the case, as \"common_code\" needs to be a separate configuration" % (self.config_for_run, os.getcwd()))
+
+    common_code_configs = getListOfAvailableRunConfigurations("common_code")
+    
+    if len(common_code_configs) == 0:
+        raise Exception("Error: unable to find any common_code configurations in the database")
+
+    common_code_configs.sort()
+    common_code_config = common_code_configs[-1]
+    
+    result = exportConfiguration( common_code_config )
+    if not result:
+        raise Exception("Error: the \"%s\" set of FHiCL documents doesn't appear to be retrievable from the database" % (common_code_config))
 
     os.chdir(basedir)
     

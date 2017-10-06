@@ -2,7 +2,7 @@
 
 import os
 import sys
-sys.path.append( os.getcwd() )
+sys.path.append( os.environ["DAQINTERFACE_BASEDIR"] )
 
 import argparse
 import datetime
@@ -23,11 +23,6 @@ from rc.io.timeoutclient import TimeoutServerProxy
 from rc.control.component import Component 
 from rc.control.deepsuppression import deepsuppression
 
-from rc.control.config_functions_local import get_config_info_base
-from rc.control.config_functions_local import put_config_info_base
-from rc.control.config_functions_local import get_daqinterface_config_info_base
-from rc.control.config_functions_local import listdaqcomps_base
-from rc.control.config_functions_local import listconfigs_base
 from rc.control.save_run_record import save_run_record_base
 from rc.control.save_run_record import total_events_in_run_base
 from rc.control.save_run_record import save_metadata_value_base
@@ -44,6 +39,23 @@ from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_pids
 from rc.control.utilities import is_msgviewer_running
+
+if not "DAQINTERFACE_FHICL_DIRECTORY" in os.environ:
+    print
+    raise Exception(make_paragraph("The DAQINTERFACE_FHICL_DIRECTORY environment variable must be defined; if you wish to use the database rather than the local filesystem for FHiCL document retrieval, set DAQINTERFACE_FHICL_DIRECTORY to IGNORED"))
+elif os.environ["DAQINTERFACE_FHICL_DIRECTORY"] == "IGNORED":
+    from rc.control.config_functions_database_v2 import get_config_info_base
+    from rc.control.config_functions_database_v2 import put_config_info_base
+    from rc.control.config_functions_database_v2 import listconfigs_base
+
+else:
+    from rc.control.config_functions_local import get_config_info_base
+    from rc.control.config_functions_local import put_config_info_base
+    from rc.control.config_functions_local import listconfigs_base
+
+from rc.control.config_functions_local import get_daqinterface_config_info_base
+from rc.control.config_functions_local import listdaqcomps_base
+
 
 class DAQInterface(Component):
     """
@@ -196,11 +208,11 @@ class DAQInterface(Component):
 
     # The purpose of reset_variables is to reset those members that
     # (A) aren't necessarily persistent to the process (thus excluding
-    # the paramters in .settings) and (B) won't necessarily be set
-    # explicitly during the transitions up from the "stopped"
-    # state. E.g., you wouldn't want to return to the "stopped" state
-    # with self.exception == True and then try a boot-config-start
-    # without self.exception being reset to False
+    # the parameters in $DAQINTERFACE_SETTINGS) and (B) won't
+    # necessarily be set explicitly during the transitions up from the
+    # "stopped" state. E.g., you wouldn't want to return to the
+    # "stopped" state with self.exception == True and then try a
+    # boot-config-start without self.exception being reset to False
 
     def reset_variables(self):
 
@@ -362,14 +374,11 @@ class DAQInterface(Component):
         self.print_log( alertmsg )
 
     def read_settings(self):
-        if not os.path.exists( os.getcwd() + "/.settings"):
+        if not os.path.exists( os.environ["DAQINTERFACE_SETTINGS"]):
+            raise Exception(make_paragraph("Unable to find settings file \"%s\"" % \
+                                           os.environ["DAQINTERFACE_SETTINGS"]))
 
-            raise Exception(make_paragraph("""Unable to find \".settings\" file in current directory
-\"%s\"; this is probably because you're not running DAQInterface out of its package's base directory.
-Please kill DAQInterface and run it out of the base directory.""" % \
-                        os.getcwd()))
-
-        inf = open( os.getcwd() + "/.settings" )
+        inf = open( os.environ["DAQINTERFACE_SETTINGS"] )
         assert inf
 
         self.log_directory = None
@@ -392,15 +401,13 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 self.log_directory = line.split()[-1].strip()
             elif "record_directory" in line:
                 self.record_directory = line.split()[-1].strip()
-            elif "daq_setup_script" in line:
-                self.daq_setup_script = line.split()[-1].strip()
             elif "package_hashes_to_save" in line:
                 res = re.search(r".*\[(.*)\].*", line)
 
                 if not res:
                     raise Exception(make_paragraph(
                             "Unable to parse package_hashes_to_save line in the settings file, %s" % \
-                                (os.getcwd() + "/.settings")))
+                                (os.environ["DAQINTERFACE_SETTINGS"])))
 
                 self.package_hashes_to_save = []
 
@@ -424,7 +431,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             elif "max_fragment_size_bytes" in line:
                 self.max_fragment_size_bytes = int( line.split()[-1].strip())
                 if self.max_fragment_size_bytes % 8 != 0:
-                    raise Exception("Value for \"max_fragment_size_bytes\" in .settings should be a multiple of 8")
+                    raise Exception("Value for \"max_fragment_size_bytes\" in settings file \"%s\" should be a multiple of 8" % (os.environ["DAQINTERFACE_SETTINGS"]))
             elif "all_events_to_all_dispatchers" in line:
                 token = line.split()[-1].strip()
                 
@@ -443,9 +450,6 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         if self.record_directory is None:
             missing_vars.append("record_directory")
 
-        if self.daq_setup_script is None:
-            missing_vars.append("daq_setup_script")
-
         if self.package_hashes_to_save is None or self.package_hashes_to_save is []:
             missing_vars.append("package_hashes_to_save")
 
@@ -455,7 +459,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             raise Exception(make_paragraph(
                                 "Unable to parse the following variable(s) meant to be set in the "
                                 "settings file, %s" % \
-                                    (os.getcwd() + "/.settings : " + missing_vars_string ) ))
+                                    (os.environ["DAQINTERFACE_SETTINGS"] + ": " + missing_vars_string ) ))
         
                     
 
@@ -532,39 +536,11 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 num_aggregators += 1
         return num_aggregators
 
-    def artdaq_mfextensions_info(self):
-
-        product_deps_filename = "%s/srcs/artdaq/ups/product_deps" % (self.daq_dir)
-
-        if not os.path.exists( product_deps_filename ):
-            raise Exception("Unable to find artdaq product_deps file \"%s\"; needed to determine artdaq_mfextensions version for messagefacility viewer")
-            return
-
-        product_deps_file = open( product_deps_filename )
-
-        lines = product_deps_file.readlines()
-
-        for line in lines:
-            res = re.search(r"^\s*defaultqual\s+(e[0-9]+):(s[0-9]+)", line)
-            if res:
-                equalifier = res.group(1)
-                squalifier = res.group(2)
-
-            res = re.search(r"^\s*artdaq_mfextensions\s+([v_0-9]+)", line)
-            if res:
-                version = res.group(1)
-
-        return (version, equalifier, squalifier)
-    
-    def have_needed_artdaq_mfextensions(self):
-
-        version, equalifier, squalifier = self.artdaq_mfextensions_info()
+    def have_artdaq_mfextensions(self):
 
         cmds = []
-        cmds.append("cd %s" % (self.daq_dir))
-        cmds.append(". ./%s" % (self.daq_setup_script))
-        cmds.append('if [[ "$ARTDAQ_MFEXTENSIONS_VERSION" == "%s" ]]; then true; else false; fi' % \
-                        (version))
+        cmds.append(". %s" % (self.daq_setup_script))
+        cmds.append('if [[ -n "$SETUP_ARTDAQ_MFEXTENSIONS" ]]; then true; else false; fi')
 
         checked_cmd = self.construct_checked_command( cmds )
         
@@ -575,6 +551,25 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             return True
         else:
             return False
+
+    def artdaq_mfextensions_info(self):
+
+        assert self.have_artdaq_mfextensions()
+
+        cmds = []
+        cmds.append(". %s" % (self.daq_setup_script))
+        cmds.append("printenv SETUP_ARTDAQ_MFEXTENSIONS")
+
+        proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        proclines = proc.stdout.readlines()
+
+        printenv_line = proclines[-1]
+        version = printenv_line.split()[1]
+        qualifiers = printenv_line.split()[-1]
+
+        return (version, qualifiers)
+    
 
     # JCF, 8/11/14
 
@@ -599,8 +594,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 str(self.num_aggregators()) + \
                 " AggregatorMain processes"
 
-            print "Assuming daq package is in " + \
-                self.daq_dir
+            print "Assuming daq setup script is " + self.daq_setup_script
 
         # We'll use the desired features of the artdaq processes to
         # create a text file which will be passed to artdaq's pmt.rb
@@ -646,8 +640,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             self.launch_cmds.append("mkdir -p -m 0777 " + self.log_directory +
                                     "/" + logdir)
 
-        self.launch_cmds.append("cd " + self.daq_dir)
-        self.launch_cmds.append("source ./" + self.daq_setup_script )
+        self.launch_cmds.append("source " + self.daq_setup_script )
         self.launch_cmds.append("which pmt.rb")  # Sanity check capable of returning nonzero
 
         # 30-Jan-2017, KAB: increased the amount of time that pmt.rb provides daqinterface
@@ -655,8 +648,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         # process timeouts.
         self.launch_cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=120")
 
-
-        if self.have_needed_artdaq_mfextensions():
+        if self.have_artdaq_mfextensions():
 
             write_new_file = True
 
@@ -923,8 +915,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
     def get_commit_hash(self, gitrepo):
 
         if not os.path.exists(gitrepo):
-            self.alert_and_recover("Expected git directory %s not found" % (gitrepo))
-            return
+            raise Exception(make_paragraph("Expected git directory \"%s\" not found; this is needed because the relevant package is in the \"package_hashes_to_save\" list found in %s" % (gitrepo, os.environ["DAQINTERFACE_SETTINGS"])))
 
         cmds = []
         cmds.append("cd %s" % (gitrepo))
@@ -935,8 +926,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         proclines = proc.stdout.readlines()
 
         if len(proclines) != 1 or len(proclines[0].strip()) != 40:
-            self.alert_and_recover("Commit hash for %s not found" % (gitrepo))
-            return
+            raise Exception(make_paragraph("Commit hash for \"%s\" not found; this was requested in the \"packages_hashes_to_save\" list found in %s" % (gitrepo, os.environ["DAQINTERFACE_SETTINGS"])))
 
         return proclines[0].strip()
 
@@ -967,8 +957,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
             undefined_var = "PMT host"
         if self.pmt_port is None:
             undefined_var = "PMT port"
-        elif self.daq_dir is None:
-            undefined_var = "DAQ directory"
+        elif self.daq_setup_script is None:
+            undefined_var = "DAQ setup script"
         elif self.debug_level is None:
             undefined_var = "debug level"
 
@@ -978,13 +968,9 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                 (undefined_var)
             raise Exception(make_paragraph(errmsg))
 
-        if not os.path.exists(self.daq_dir):
-            raise Exception("Unable to find requested daq directory \"%s\"" % self.daq_dir)
-
-        if not os.path.exists(self.daq_dir + "/" + self.daq_setup_script ):
+        if not os.path.exists(self.daq_setup_script ):
             raise Exception(make_paragraph(
-                                self.daq_setup_script + " script not found in " +
-                                self.daq_dir))
+                                self.daq_setup_script + " script not found"))
 
 
     # JCF, Dec-1-2016
@@ -1117,8 +1103,8 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         metadata_filename = indir + "/metadata.txt"
         runstring += get_arbitrary_file(metadata_filename, "run_metadata")
 
-        config_filename = indir + "/config.txt"        
-        runstring += get_arbitrary_file(config_filename, "run_daqinterface_config")
+        config_filename = indir + "/boot.txt"        
+        runstring += get_arbitrary_file(config_filename, "run_daqinterface_boot")
 
         runstring += "} \n\n"
 
@@ -1331,8 +1317,13 @@ Please kill DAQInterface and run it out of the base directory.""" % \
 
         for pkgname in self.package_hashes_to_save:
             pkg_full_path = "%s/srcs/%s" % (self.daq_dir, pkgname.replace("-", "_"))
-            self.package_hash_dict[pkgname] = self.get_commit_hash( pkg_full_path )
 
+            try: 
+                self.package_hash_dict[pkgname] = self.get_commit_hash( pkg_full_path )
+            except Exception:
+                self.print_log(traceback.format_exc())
+                self.alert_and_recover("An exception was thrown in get_commit_hash; see traceback above for more info")
+                return
 
         for compname, socket in self.daq_comp_list.items():
 
@@ -1349,7 +1340,7 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                         self.procinfos[-1].priority = priority
 
             except Exception:
-                pass  # It's not an error if there were no boardreader priorities read in from .settings
+                pass  # It's not an error if there were no boardreader priorities read in from $DAQINTERFACE_SETTINGS
 
         # See the Procinfo.__lt__ function for details on sorting
 
@@ -1420,23 +1411,21 @@ Please kill DAQInterface and run it out of the base directory.""" % \
         
         try:
 
-            version, equalifier, squalifier = self.artdaq_mfextensions_info()
-
-            if self.have_needed_artdaq_mfextensions() and is_msgviewer_running():
+            if self.have_artdaq_mfextensions() and is_msgviewer_running():
                 print make_paragraph("An instance of messageviewer already appears to be running; " + \
                                          "messages will be sent to the existing messageviewer")
-            elif self.have_needed_artdaq_mfextensions():
-                print make_paragraph("artdaq_mfextensions %s, %s:%s, appears to be available; "
+            elif self.have_artdaq_mfextensions():
+                version, qualifiers = self.artdaq_mfextensions_info()
+
+                print make_paragraph("artdaq_mfextensions %s, %s, appears to be available; "
                                           "if windowing is supported on your host you should see the "
                                           "messageviewer window pop up momentarily" % \
-                                              (version, equalifier, squalifier))
+                                              (version, qualifiers))
 
                 cmds = []
-                cmds.append("cd %s" % (self.daq_dir))
-                cmds.append(". ./%s" % (self.daq_setup_script))
-                cmds.append("if [[ -n $ARTDAQ_MFEXTENSIONS_FQ_DIR ]]; then export MSGVIEWERDIR=$ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/  ; else export MSGVIEWERDIR=$MRB_BUILDDIR/artdaq_mfextensions/bin ; fi")
+                cmds.append(". %s" % (self.daq_setup_script))
                 cmds.append("which msgviewer")
-                cmds.append("msgviewer -c $MSGVIEWERDIR/msgviewer.fcl 2>&1 > /dev/null &" )
+                cmds.append("msgviewer -c $ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/msgviewer.fcl 2>&1 > /dev/null &" )
 
                 msgviewercmd = self.construct_checked_command( cmds )
 
@@ -1449,11 +1438,10 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                                         " ; ".join(cmds) )
                         return
             else:
-                print make_paragraph("artdaq_mfextensions %s, %s:%s, does not appear to be available in the products directory \"%s\" - "
-                                          " unable to launch the messageviewer window. This will not affect"
-                                          " actual datataking, it just means you'll need to look at the"
-                                          " logfiles to see artdaq output." % \
-                                              (version, equalifier, squalifier, self.daq_dir + "/products"))
+                print make_paragraph("artdaq_mfextensions does not appear to be available; "
+                                     "unable to launch the messageviewer window. This will not affect"
+                                     " actual datataking, it just means you'll need to look at the"
+                                     " logfiles to see artdaq output.")
 
         except Exception:
             self.print_log(traceback.format_exc())
@@ -1598,7 +1586,14 @@ Please kill DAQInterface and run it out of the base directory.""" % \
                         return
                         
                     fhicl_before_sub = self.procinfos[i_proc].fhicl_used
-                    self.procinfos[i_proc].fhicl_used = re.sub("\.root", "_" + str(rootfile_cntr) + ".root",
+                    
+                    if self.procinfos[i_proc].name == "DataLogger":
+                        rootfile_cntr_prefix = "dl"
+                    elif self.procinfos[i_proc].name == "EventBuilder":
+                        rootfile_cntr_prefix = "eb"
+
+                    self.procinfos[i_proc].fhicl_used = re.sub("\.root", "_" + str(rootfile_cntr_prefix) + 
+                                                               str(rootfile_cntr+1) + ".root",
                                                                self.procinfos[i_proc].fhicl_used)
 
                     if self.procinfos[i_proc].fhicl_used != fhicl_before_sub:
@@ -2023,19 +2018,39 @@ def get_args():  # no-coverage
 
 def main():  # no-coverage
 
+    one_daqinterface_per_host = False
+
     greptoken = "python.*daqinterface.py"
     pids = get_pids(greptoken)
 
-    if len(pids) > 1:
+    if len(pids) > 1 and one_daqinterface_per_host:
         print make_paragraph("Won't launch DAQInterface; it appears an instance is already running on this host according to this command:" )
         print "\nps aux | grep \"%s\" | grep -v grep\n" % (greptoken)
         return
 
-    if not os.path.exists("./bin"):
-        print make_paragraph("Won't launch DAQInterface; you need to be in the base directory of this package")
-
-    if "DAQINTLOGDIR" not in os.environ.keys():
+    if "DAQINTERFACE_STANDARD_SOURCEFILE_SOURCED" not in os.environ.keys():
         print make_paragraph("Won't launch DAQInterface; you first need to run \"source source_me\" from the base directory of this package")
+        print
+        return
+
+    if "DAQINTERFACE_SETTINGS" not in os.environ.keys():
+        print make_paragraph("Need to have the DAQINTERFACE_SETTINGS environment variable set to refer to the DAQInterface settings file")
+        print
+        return
+
+    if not os.path.exists( os.environ["DAQINTERFACE_SETTINGS"] ):
+        print make_paragraph("The file referred to by the DAQINTERFACE_SETTINGS environment variable, \"%s\", does not appear to exist" % (os.environ["DAQINTERFACE_SETTINGS"]))
+        print
+        return
+
+    if "DAQINTERFACE_KNOWN_BOARDREADERS_LIST" not in os.environ.keys():
+        print make_paragraph("Need to have the DAQINTERFACE_KNOWN_BOARDREADERS_LIST environment variable set to refer to the list of boardreader types DAQInterface can use")
+        print
+        return
+
+    if not os.path.exists( os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"] ):
+        print make_paragraph("The file referred to by the DAQINTERFACE_KNOWN_BOARDREADERS_LIST environment variable, \"%s\", does not appear to exist" % (os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"]))
+        print
         return
 
     args = get_args()

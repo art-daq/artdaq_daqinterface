@@ -1,14 +1,13 @@
 
 import os
-import re
+import sys
+sys.path.append( os.environ["DAQINTERFACE_BASEDIR"] )
 
+import re
 import subprocess
 from subprocess import Popen
 
 from time import sleep
-
-import sys
-sys.path.append( os.getcwd() )
 
 from rc.control.utilities import execute_command_in_xterm
 from rc.control.utilities import get_pids
@@ -34,7 +33,6 @@ def launch_art_procs_base(self, filename):
             num_art_attempts = 2
 
             cmds = []
-            cmds.append("cd %s" % (self.daq_dir))
             cmds.append(". %s" % (self.daq_setup_script))
             cmds.append("art -c %s" % (res.group(1)))
             
@@ -95,16 +93,15 @@ def main():
     if test_launch_art_procs_base:
 
         class MockDAQInterface:
-            daq_dir = "/home/jcfree/artdaq-demo_v2_09_01"
-            daq_setup_script = "setupARTDAQDEMO"
+            daq_setup_script = "DEFINE_ME"
             debug_level = 3
 
         mockdaqint = MockDAQInterface()
-        testfile = "/home/jcfree/artdaq-utilities-daqinterface/docs/config.txt"
+        testfile = "/home/jcfree/artdaq-utilities-daqinterface/docs/boot.txt"
 
 
-        print "Assuming DAQ directory is %s, setup script is %s, input file is %s" % \
-            (mockdaqint.daq_dir, mockdaqint.daq_setup_script, testfile)
+        print "Assuming DAQ setup script is %s, input file is %s" % \
+            (mockdaqint.daq_setup_script, testfile)
 
         launch_art_procs_base( mockdaqint, testfile )
         

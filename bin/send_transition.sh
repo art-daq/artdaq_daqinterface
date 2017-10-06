@@ -33,7 +33,7 @@ case $cmd in
 	test $# == 1 || badargs=true 
 	translated_cmd="starting"
 
-	run_records_dir=$( awk '/record_directory/ { print $2 }' .settings )
+	run_records_dir=$( awk '/record_directory/ { print $2 }' $DAQINTERFACE_SETTINGS )
 	run_records_dir=$( echo $( eval echo $run_records_dir ) )  # Expand environ variables in string
 	
         highest_runnum=$( ls -1 $run_records_dir | sort -n | tail -1 )

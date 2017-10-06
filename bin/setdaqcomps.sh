@@ -12,7 +12,7 @@ if [[ "$xmlrpc_retval" != "0" ]]; then
     exit 40
 fi
 
-components_file=$( dirname $0 )"/../.components.txt"
+components_file=$DAQINTERFACE_KNOWN_BOARDREADERS_LIST
 
 if [[ ! -e $components_file ]]; then
     echo "Unable to find file containing allowed components, \"$components_file\"" >&2
