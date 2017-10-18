@@ -1139,12 +1139,12 @@ class DAQInterface(Component):
                 status = Popen(link_pmt_logfile_cmd, shell=True).wait()
 
                 if status == 0:
-                    linked_logfile = True
+                    linked_pmt_logfile = True
                     break
                 else:
                     break
 
-        if not linked_logfile:
+        if not linked_pmt_logfile:
             self.print_log("WARNING: failure in attempt to softlink to pmt logfile")
 
         assert hasattr(self, "eventbuilder_log_filenames")
