@@ -1110,6 +1110,98 @@ class DAQInterface(Component):
 
         return runstring
 
+    def softlink_logfiles(self):
+        
+        linked_pmt_logfile = False
+
+        greptoken = "pmt.rb -p " + self.pmt_port
+        pids = get_pids(greptoken, self.pmt_host)
+
+        for pmt_pid in pids:
+
+            get_pmt_logfile_cmd = "ls -tr %s/pmt/pmt-%s.* | tail -1" % \
+                                  (self.log_directory, pmt_pid)
+
+            if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
+                get_pmt_logfile_cmd = "ssh -f %s '%s'" % (self.pmt_host, get_pmt_logfile_cmd)
+
+            ls_output = Popen(get_pmt_logfile_cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()
+
+            if len(ls_output) == 1:
+                pmt_logfile = ls_output[0].strip()            
+
+                link_pmt_logfile_cmd = "ln -s %s %s/pmt/run%d-pmt.log" % \
+                                       (pmt_logfile, self.log_directory, self.run_number)
+
+                if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
+                    link_pmt_logfile_cmd = "ssh %s '%s'" % (self.pmt_host, link_pmt_logfile_cmd)
+
+                status = Popen(link_pmt_logfile_cmd, shell=True).wait()
+
+                if status == 0:
+                    linked_logfile = True
+                    break
+                else:
+                    break
+
+        if not linked_logfile:
+            self.print_log("WARNING: failure in attempt to softlink to pmt logfile")
+
+        assert hasattr(self, "eventbuilder_log_filenames")
+        assert hasattr(self, "aggregator_log_filenames")
+
+        for loglist in [ self.eventbuilder_log_filenames, 
+                         self.aggregator_log_filenames ]:
+
+            proccntr=1
+
+            for fulllogname in loglist:
+                host = fulllogname.split(":")[0]
+                logname = "".join( fulllogname.split(":")[1:] )
+
+                if "eventbuilder" in logname:
+                    link_logfile_cmd = "ln -s %s %s/eventbuilder/run%d-eventbuilder%d.log" % \
+                                       (logname, self.log_directory, self.run_number, proccntr)
+                elif "aggregator" in logname:
+                    link_logfile_cmd = "ln -s %s %s/aggregator/run%d-aggregator%d.log" % \
+                                       (logname, self.log_directory, self.run_number, proccntr)
+                else:
+                    assert False, "The logfile naming convention was apparently changed"
+                    
+                proccntr += 1
+                
+                if host != "localhost" and host != os.environ["HOSTNAME"]:
+                    link_logfile_cmd = "ssh %s '%s'" % (host, link_logfile_cmd)
+
+                status = Popen(link_logfile_cmd, shell=True).wait()
+                
+                if status != 0:
+                    self.print_log("WARNING: failure in executing %s" % (link_logfile_cmd))
+
+        # Boardreaders get special treatment since we have component
+        # names we can use in the softlink
+
+        for compname, socket in self.daq_comp_list.items():
+            host, port = socket
+            
+            pids = get_pids("BoardReaderMain -p " + str(port), host)
+            
+            if len(pids) == 1:
+                link_logfile_cmd = "ln -s %s/boardreader/boardreader-*-%s.log %s/boardreader/run%d-%s.log" % \
+                                   (self.log_directory, pids[0], self.log_directory, self.run_number, compname)
+                if host != "localhost" and host != os.environ["HOSTNAME"]:
+                    link_logfile_cmd = "ssh %s '%s'" % (host, link_logfile_cmd)
+
+                status = Popen(link_logfile_cmd, shell=True).wait()
+                
+                if status != 0:
+                    self.print_log("WARNING: failure in executing %s" % (link_logfile_cmd))
+            else:
+                self.print_log("WARNING: unsuccessful finding boardreader at port %d on %s" % \
+                               port, host)
+
+
+
     # JCF, Nov-8-2015
 
     # The core functionality for "do_command" is that it will launch a
@@ -1688,6 +1780,8 @@ class DAQInterface(Component):
                 return
 
         self.start_datataking()
+
+        self.softlink_logfiles()
 
         self.save_metadata_value("Start time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
