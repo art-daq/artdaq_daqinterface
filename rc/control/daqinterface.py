@@ -1438,6 +1438,36 @@ class DAQInterface(Component):
 
         self.procinfos.sort()
 
+        # JCF, Oct-18-2017
+
+        # After a discussion with Ron about how trace commands need to
+        # be run on the host that the artdaq process is running on, we
+        # agreed it would be a good idea to do a pass in which the
+        # setup script was sourced on all hosts which artdaq processes
+        # ran on in case the setup script contained trace commands...
+
+        already_sourced = {}
+        
+        with deepsuppression():
+            for procinfo in self.procinfos:
+                if procinfo.host not in already_sourced.keys():
+                    cmd = ". " + self.daq_setup_script
+
+                    if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
+                        cmd = "ssh %s '%s'" % (procinfo.host, cmd)
+
+                    status = Popen(cmd, shell=True).wait()
+
+                    if status == 0:
+                        already_sourced[procinfo.host] = "Dummy value since we only care about the key"
+                    else:
+                        break
+
+        if status != 0:
+            self.alert_and_recover("Status error raised in attempt to source script %s on host %s" % \
+                                   (self.daq_setup_script, procinfo.host))
+            return
+
         if self.manage_processes:
 
             # Now, with the info on hand about the processes contained in
