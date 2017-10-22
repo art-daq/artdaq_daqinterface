@@ -1197,7 +1197,7 @@ class DAQInterface(Component):
                 if status != 0:
                     self.print_log("WARNING: failure in executing %s" % (link_logfile_cmd))
             else:
-                self.print_log("WARNING: unsuccessful finding boardreader at port %d on %s" % \
+                self.print_log("WARNING: unsuccessful finding boardreader at port %s on %s" % \
                                port, host)
 
 
