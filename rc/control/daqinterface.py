@@ -1198,7 +1198,7 @@ class DAQInterface(Component):
                     self.print_log("WARNING: failure in executing %s" % (link_logfile_cmd))
             else:
                 self.print_log("WARNING: unsuccessful finding boardreader at port %s on %s" % \
-                               port, host)
+                               (port, host))
 
 
 
@@ -1461,12 +1461,8 @@ class DAQInterface(Component):
                     if status == 0:
                         already_sourced[procinfo.host] = "Dummy value since we only care about the key"
                     else:
-                        break
-
-        if status != 0:
-            self.alert_and_recover("Status error raised in attempt to source script %s on host %s" % \
+                        raise Exception("Status error raised in attempt to source script %s on host %s" % \
                                    (self.daq_setup_script, procinfo.host))
-            return
 
         if self.manage_processes:
 
