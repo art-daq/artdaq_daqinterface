@@ -1,18 +1,19 @@
 
+import os
+import sys
+sys.path.append( os.environ["DAQINTERFACE_BASEDIR"] )
+
 import string
 import re
-import os
-
-import sys
-sys.path.append( os.getcwd() )
 
 from rc.control.utilities import table_range
 from rc.control.utilities import commit_check_throws_if_failure
 
 def bookkeeping_for_fhicl_documents_artdaq_v1_base(self):
 
-    commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
-                                       "c3d1ce5ce07a83793f91efc0744b19aa8d5caf5c", "Jan 12, 2017", False)
+    if os.path.exists(self.daq_dir + "/srcs/artdaq"):
+        commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
+                                           "c3d1ce5ce07a83793f91efc0744b19aa8d5caf5c", "Jan 12, 2017", False)
     
     # JCF, 11/11/14
 
@@ -96,11 +97,12 @@ def bookkeeping_for_fhicl_documents_artdaq_v1_base(self):
 
 def bookkeeping_for_fhicl_documents_artdaq_v2_base(self):
 
-    commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
-                                       "c3d1ce5ce07a83793f91efc0744b19aa8d5caf5c", "Jan 12, 2017", True)
+    if os.path.exists(self.daq_dir + "/srcs/artdaq"):
+        commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
+                                           "c3d1ce5ce07a83793f91efc0744b19aa8d5caf5c", "Jan 12, 2017", True)
 
-    commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
-                                       "9a63dfd8660bfbba43acadcfa1ed4d362610be2f", "May 9, 2017", False)
+        commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
+                                           "9a63dfd8660bfbba43acadcfa1ed4d362610be2f", "May 9, 2017", False)
 
     if self.num_aggregators() > 1:
         num_data_loggers = self.num_aggregators() - 1  # "-1" is for the dispatcher
@@ -261,8 +263,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     max_fragment_size_words = self.max_fragment_size_bytes / 8
 
-    commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
-                                       "68cb53e576dd6afea7950ca6286a08f5f329b966", "May 9, 2017", True)
+    if os.path.exists(self.daq_dir + "/srcs/artdaq"):
+        commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
+                                           "68cb53e576dd6afea7950ca6286a08f5f329b966", "May 9, 2017", True)
 
     num_data_loggers = 0
     num_dispatchers = 0
@@ -406,11 +409,27 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     "\n } \n" + \
                     self.procinfos[i_proc].fhicl_used[table_end:]
 
+    expected_fragments_per_event = 0
+
+    for procinfo in self.procinfos:
+
+        if "BoardReader" in procinfo.name:
+
+            res = re.search(r"[^#]\s*sends_no_fragments:\s*[Tt]rue", procinfo.fhicl_used)
+
+            if not res:
+                expected_fragments_per_event += 1
+            else:
+                continue                
+
     for i_proc in range(len(self.procinfos)):
         self.procinfos[i_proc].fhicl_used = re.sub("expected_fragments_per_event\s*:\s*[0-9]+", 
-                                                   "expected_fragments_per_event: %d" % (self.num_boardreaders()), 
+                                                   "expected_fragments_per_event: %d" % (expected_fragments_per_event), 
                                                    self.procinfos[i_proc].fhicl_used)
 
+
+def bookkeeping_for_fhicl_documents_artdaq_v4_base(self):
+    pass
 
 def main():
     

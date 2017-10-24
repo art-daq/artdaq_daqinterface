@@ -1,5 +1,5 @@
 
-DAQ directory: /home/eflumerf/Desktop/artdaq-mrb-base/
+DAQ setup script: name_of_DAQ_setup_script_not_yet_defined
 
 PMT host: localhost
 PMT port: 5400
