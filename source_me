@@ -93,30 +93,23 @@ if [[ -z $HOSTNAME ]]; then
    echo
 fi
 
+
+. $DAQINTERFACE_DIR/bin/daqinterface_functions.sh
+
+set_highest_used_port
+
+if [[ -z $highest_used_port ]]; then
+   export DAQINTERFACE_PORT=5560
+else
+   export DAQINTERFACE_PORT=$highest_used_port			
+fi
+
 export DAQINTERFACE_LOGDIR=/tmp/daqinterface_${USER}
 
 mkdir -p $DAQINTERFACE_LOGDIR
-export DAQINTERFACE_LOGFILE=$DAQINTERFACE_LOGDIR/DAQInterface.log
+export DAQINTERFACE_LOGFILE=$DAQINTERFACE_LOGDIR/DAQInterface_port${DAQINTERFACE_PORT}.log
 
-highest_used_port=$( \
-echo | awk '{ while ( ( "ps aux | grep daqinterface.py | grep -v grep" | getline ) > 0 ) { \
-daqinterface_pids[$2]++ \
-} \
-# Grab the port a DAQInterface with a given PID is listening on with the netstat command \
-for (daqpid in daqinterface_pids) { \
-while ( ("netstat -apn 2>/dev/null | grep "daqpid"/python" | getline ) > 0) { \
- match($4, "[0-9]+$"); print substr($4,RSTART, RLENGTH) } # \
-} \
-}' | sort -n | tail -1 )
-
-if [[ -z $highest_used_port ]]; then
-   daqinterface_port=5570
-else
-   daqinterface_port=$((highest_used_port + 10))			
-fi
-
-
-alias DAQInterface="stdbuf -oL $DAQINTERFACE_BASEDIR/rc/control/daqinterface.py --rpc-port $daqinterface_port 2>&1 | tee -a $DAQINTERFACE_LOGFILE"
+alias DAQInterface="export DAQINTERFACE_PORT=\$(( \$DAQINTERFACE_PORT + 10)); stdbuf -oL $DAQINTERFACE_BASEDIR/rc/control/daqinterface.py --rpc-port \$DAQINTERFACE_PORT 2>&1 | tee -a $DAQINTERFACE_LOGFILE "
 
 export PATH=$DAQINTERFACE_BASEDIR/bin:$PATH
 

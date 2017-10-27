@@ -10,7 +10,10 @@ if [[ "$xmlrpc_retval" != "0" ]]; then
     exit 40
 fi
 
-full_cmd="xmlrpc http://localhost:5570/RPC2 state daqint "
+. $DAQINTERFACE_DIR/bin/daqinterface_functions.sh
+port_disclaimer_message
+
+full_cmd="xmlrpc http://localhost:$DAQINTERFACE_PORT/RPC2 state daqint "
 eval $full_cmd
 
 exit 0

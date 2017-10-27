@@ -305,8 +305,8 @@ class DAQInterface(Component):
                     "changes, and restart.") + "\n"
             sys.exit(1)
 
-        print make_paragraph("DAQInterface launched and now in \"%s\" state" % 
-                                  (self.state(self.name)))
+        print make_paragraph("DAQInterface launched and now in \"%s\" state, listening on port %d" % 
+                                  (self.state(self.name), rpc_port))
 
     get_config_info = get_config_info_base
     put_config_info = put_config_info_base

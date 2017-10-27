@@ -19,6 +19,10 @@ if [[ ! -e $components_file ]]; then
     exit 10
 fi
 
+. $DAQINTERFACE_DIR/bin/daqinterface_functions.sh
+port_disclaimer_message
+
+
 num_components=$( echo $components | wc -w)
 comp_cntr=0
 
@@ -40,6 +44,6 @@ for comp in $components; do
     fi
 done
 
-xmlrpc http://localhost:5570/RPC2 setdaqcomps "struct/{$xmlrpc_arg}"
+xmlrpc http://localhost:$DAQINTERFACE_PORT/RPC2 setdaqcomps "struct/{$xmlrpc_arg}"
 
 exit $?
