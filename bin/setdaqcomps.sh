@@ -20,8 +20,7 @@ if [[ ! -e $components_file ]]; then
 fi
 
 . $DAQINTERFACE_DIR/bin/daqinterface_functions.sh
-port_disclaimer_message
-
+daqinterface_preamble
 
 num_components=$( echo $components | wc -w)
 comp_cntr=0

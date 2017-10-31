@@ -107,7 +107,12 @@ fi
 export DAQINTERFACE_LOGDIR=/tmp/daqinterface_${USER}
 
 mkdir -p $DAQINTERFACE_LOGDIR
-export DAQINTERFACE_LOGFILE=$DAQINTERFACE_LOGDIR/DAQInterface_port${DAQINTERFACE_PORT}.log
+
+# If you change the format of DAQINTERFACE_LOGFILE, make sure this
+# change is reflected in the information message that appears after
+# source-ing this script 
+
+export DAQINTERFACE_LOGFILE=$DAQINTERFACE_LOGDIR/DAQInterface_port\${DAQINTERFACE_PORT}.log
 
 alias DAQInterface="export DAQINTERFACE_PORT=\$(( \$DAQINTERFACE_PORT + 10)); stdbuf -oL $DAQINTERFACE_BASEDIR/rc/control/daqinterface.py --rpc-port \$DAQINTERFACE_PORT 2>&1 | tee -a $DAQINTERFACE_LOGFILE "
 
@@ -195,8 +200,8 @@ fi
 
 echo
 echo "* The command was successful"
-echo "* To launch, just type \"DAQInterface\" (excluding quotes)" 
-echo "* Output will be logged in $DAQINTERFACE_LOGFILE"
+echo "* To launch, just type \"DAQInterface &\" (excluding quotes, ampersand optional)" 
+echo "* Output will be logged in /tmp/daqinterface_${USER}/DAQInterface_port<N>.log, where <N> is the port DAQInterface is listening on"
 echo "* Help is available at https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Artdaq-daqinterface"
  
 echo

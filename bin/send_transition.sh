@@ -17,7 +17,7 @@ if [[ "$xmlrpc_retval" != "0" ]]; then
 fi
 
 . $DAQINTERFACE_DIR/bin/daqinterface_functions.sh
-port_disclaimer_message
+daqinterface_preamble
 
 case $cmd in
     "boot")
