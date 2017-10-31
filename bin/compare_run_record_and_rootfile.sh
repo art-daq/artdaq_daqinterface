@@ -7,19 +7,38 @@ fi
 
 runnum=$1
 
-scriptdir="$(dirname "$0")"
-. $scriptdir/package_setup.sh art
-
-art_retval=$?
-
-if [[ "$art_retval" != "0" ]]; then
-    echo "Problem attempting to setup art package" >&2
-    exit 40
-fi
 
 rootfiledir=/tmp
 runrecordsdir=$( cat $DAQINTERFACE_SETTINGS  | awk '/record_directory/ {print $2}' )
 runrecordsdir=$( echo $( eval echo $runrecordsdir ) )  # Expand environ variables in string
+
+setupscript=$runrecordsdir/$runnum/setup.txt
+
+if [[ -e $setupscript ]]; then
+
+    . $setupscript 2>&1 > /dev/null
+    
+    if [[ "$?" != "0" ]]; then
+	echo "Nonzero value returned by source of ${setupscript}; exiting..."
+	exit 60
+    fi
+    
+    echo
+    echo "Sourced $setupscript"
+
+else 
+
+    echo "WARNING: unable to find setup script originally used for run $runnum (looked for ${setupscript}); will try to set up art with package_setup.sh" >&2
+
+    . $DAQINTERFACE_DIR/bin/package_setup.sh art
+
+    art_retval=$?
+
+    if [[ "$art_retval" != "0" ]]; then
+	echo "Problem attempting to setup art package" >&2
+	exit 40
+    fi
+fi
 
 rootfile=$(ls -tr1 $rootfiledir/*_r$(printf "%06d" $runnum)_* | tail -1 )
 
@@ -41,13 +60,30 @@ echo "NOTE: erasing any output to stderr from config_dumper; as long
 as config_dumper works correctly this won't affect the results of the
 test"
 
+#which config_dumper
+#echo $rootfile
+#ls -l $rootfile
+#echo config_dumper -P $rootfile 2> /dev/null | sed -r 's/\\n/\n/g'  | sed -r '1,/run_daqinterface_boot/d;/^\s*"\s*$/,$d;s/\\"/"/g'  > $temporary_daqinterface_boot_file
+
+set -o pipefail   # See, e.g., https://stackoverflow.com/questions/1221833/pipe-output-and-capture-exit-status-in-bash
+
 config_dumper -P $rootfile 2> /dev/null | sed -r 's/\\n/\n/g'  | sed -r '1,/run_daqinterface_boot/d;/^\s*"\s*$/,$d;s/\\"/"/g'  > $temporary_daqinterface_boot_file 
+
+if [[ "$?" != "0" ]]; then
+    echo "An error occurred in the config_dumper pipe command, aborting..."
+    exit 1
+fi
 
 if [[ ! -s $temporary_daqinterface_boot_file ]]; then
     echo "It appears no DAQInterface boot info was saved in $rootfile" 
 fi
 
 config_dumper -P $rootfile 2> /dev/null  | sed -r 's/\\n/\n/g'  | sed -r '1,/run_metadata/d;/"/,$d' > $temporary_metadata_file 
+
+if [[ "$?" != "0" ]]; then
+    echo "An error occurred in the config_dumper pipe command, aborting..."
+    exit 1
+fi
 
 if [[ ! -s $temporary_metadata_file ]]; then
     echo "It appears no metadata info was saved in $rootfile" 
@@ -97,6 +133,10 @@ if [[ -n $res_metadata ]]; then
     echo $res_metadata
     echo "Metadata file info inconsistent between $rootfile and $runrecordsdir/$runnum (see above for diff)"
 fi
+
+echo temporary_daqinterface_boot_file=$temporary_daqinterface_boot_file
+echo temporary_metadata_file=$temporary_metadata_file
+echo cleaned_run_records_metadata_file=$cleaned_run_records_metadata_file
 
 rm -f $temporary_daqinterface_boot_file $temporary_metadata_file $cleaned_run_records_metadata_file
 
