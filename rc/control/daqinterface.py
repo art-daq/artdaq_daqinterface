@@ -724,7 +724,7 @@ braceMakesLegalFhiCL: {
                 status = Popen(launchcmd, shell=True).wait()
 
         if status != 0:
-            raise Exception("Status error raised; commands were \"\n%s\n\n\". If logfiles exist, please check them for more information. Also try running the commands interactively in a new terminal for more info." %
+            raise Exception("Status error raised; commands were \"\n%s\n\n\". If logfiles exist, please check them for more information. Also try running the commands interactively in a new terminal (after source-ing the DAQInterface environment) for more info." %
                             ("\n".join(self.launch_cmds)))
             return
 
@@ -1478,6 +1478,7 @@ braceMakesLegalFhiCL: {
         # ran on in case the setup script contained trace commands...
 
         already_sourced = {}
+        sourcing_ok = True
         
         with deepsuppression():
             for procinfo in self.procinfos:
@@ -1487,13 +1488,27 @@ braceMakesLegalFhiCL: {
                     if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
                         cmd = "ssh %s '%s'" % (procinfo.host, cmd)
 
-                    status = Popen(cmd, shell=True).wait()
+                    out = Popen(cmd, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+                    
+                    out_comm = out.communicate()
+                
+                    out_stdout = out_comm[0]
+                    out_stderr = out_comm[1]
+                    status = out.returncode
 
                     if status == 0:
                         already_sourced[procinfo.host] = "Dummy value since we only care about the key"
                     else:
-                        raise Exception("Status error raised in attempt to source script %s on host %s" % \
-                                   (self.daq_setup_script, procinfo.host))
+                        sourcing_ok = False
+                        break
+
+        if not sourcing_ok:
+            self.print_log("Status error raised in attempt to source script %s on host %s." % \
+                           (self.daq_setup_script, procinfo.host))
+            self.print_log("STDOUT: \n%s" % (out_stdout))
+            self.print_log("STDERR: \n%s" % (out_stderr))
+            raise Exception("Status error raised in attempt to source script %s on host %s." % \
+                            (self.daq_setup_script, procinfo.host))
 
         if self.manage_processes:
 
