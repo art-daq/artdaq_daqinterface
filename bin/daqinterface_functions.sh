@@ -9,7 +9,7 @@ daqinterface_pids[$2]++ \
 } \
 # Grab the port a DAQInterface with a given PID is listening on with the netstat command \
 for (daqpid in daqinterface_pids) { \
-while ( ("netstat -apn 2>/dev/null | grep "daqpid"/python" | getline ) > 0) { \
+while ( ("netstat -apn 2>/dev/null | grep \"LISTEN.*"daqpid"/python\"" | getline ) > 0) { \
  match($4, "[0-9]+$"); print substr($4,RSTART, RLENGTH) } # \
 } \
 }' | sort -n | tail -1 )
