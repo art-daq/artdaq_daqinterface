@@ -59,10 +59,10 @@ if [[ -n $DAQINTERFACE_STANDARD_SOURCEFILE_SOURCED ]]; then
    return 1
 fi
 
-if [[ -n $DAQINTERFACE_VERSION ]] ; then
+if [[ -n $ARTDAQ_DAQINTERFACE_VERSION ]] ; then
 
-    echo "Using ups-installed DAQInterface, version \"$DAQINTERFACE_VERSION\""
-    export DAQINTERFACE_BASEDIR=$DAQINTERFACE_DIR
+    echo "Using ups-installed DAQInterface, version \"$ARTDAQ_DAQINTERFACE_VERSION\""
+    export DAQINTERFACE_BASEDIR=$ARTDAQ_DAQINTERFACE_DIR
 else
     # "-e ./rc/control" is a way to check we're in the base directory of DAQInterface
    if [[ -e ./rc/control ]] ; then
@@ -94,7 +94,7 @@ if [[ -z $HOSTNAME ]]; then
 fi
 
 
-. $DAQINTERFACE_DIR/bin/daqinterface_functions.sh
+. $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
 
 set_highest_used_port
 

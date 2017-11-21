@@ -1,6 +1,6 @@
 #!/bin/env bash
 
-. $DAQINTERFACE_DIR/bin/daqinterface_functions.sh
+. $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
 
 for port in "$@"; do
 

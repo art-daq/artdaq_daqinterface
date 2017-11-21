@@ -7,7 +7,7 @@ cmd=$1
 xmlrpc_arg=
 translated_cmd=
 
-. $DAQINTERFACE_DIR/bin/package_setup.sh xmlrpc_c
+. $ARTDAQ_DAQINTERFACE_DIR/bin/package_setup.sh xmlrpc_c
 
 xmlrpc_retval=$?
 
@@ -16,7 +16,7 @@ if [[ "$xmlrpc_retval" != "0" ]]; then
     exit 40
 fi
 
-. $DAQINTERFACE_DIR/bin/daqinterface_functions.sh
+. $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
 daqinterface_preamble
 
 case $cmd in

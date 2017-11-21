@@ -30,7 +30,7 @@ else
 
     echo "WARNING: unable to find setup script originally used for run $runnum (looked for ${setupscript}); will try to set up art with package_setup.sh" >&2
 
-    . $DAQINTERFACE_DIR/bin/package_setup.sh art
+    . $ARTDAQ_DAQINTERFACE_DIR/bin/package_setup.sh art
 
     art_retval=$?
 

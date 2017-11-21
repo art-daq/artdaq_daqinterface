@@ -19,7 +19,7 @@ if [[ ! -e $components_file ]]; then
     exit 10
 fi
 
-. $DAQINTERFACE_DIR/bin/daqinterface_functions.sh
+. $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
 daqinterface_preamble
 
 num_components=$( echo $components | wc -w)

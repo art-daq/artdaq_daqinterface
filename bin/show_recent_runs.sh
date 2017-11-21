@@ -15,7 +15,7 @@ fi
 
 nruns=$1
 
-. $DAQINTERFACE_DIR/bin/get_daq_environment.sh
+. $ARTDAQ_DAQINTERFACE_DIR/bin/get_daq_environment.sh
 
 echo
 
