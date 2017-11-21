@@ -5,7 +5,7 @@ if [[ $# != 1 ]]; then
     exit 10
 fi
 
-. $DAQINTERFACE_BASEDIR/bin/package_setup.sh root
+. $ARTDAQ_DAQINTERFACE_DIR/bin/package_setup.sh root
 
 root_retval=$?
 

@@ -19,12 +19,10 @@
 
 #   Requirements to be met before the sourcing are:
 #
+#   * DAQInterface needs to have been successfully set up as a ups product
+#
 #   * The sourcefile has not yet been sourced successfully in the
 #     environment
-#
-#   * If DAQInterface hasn't been set up as a ups product, but rather,
-#     you're working with a git clone'd repo, you need to source the
-#     sourcefile from the base directory of the repo
 #
 #   * If you want the sourcefile to, in turn, source a user-defined
 #     sourcefile, the user-defined sourcefile name needs be referred to
@@ -43,9 +41,8 @@
 
 function cleanup() {
     
-    export PATH=$( echo $PATH | sed -r 's!'${DAQINTERFACE_BASEDIR}/bin':*!!'  )
+    export PATH=$( echo $PATH | sed -r 's!'${ARTDAQ_DAQINTERFACE_DIR}/bin':*!!'  )
 
-    unset DAQINTERFACE_BASEDIR
     unset DAQINTERFACE_LOGDIR
     unset DAQINTERFACE_LOGFILE
     unset DAQINTERFACE_USER_SOURCEFILE_ERRNO
@@ -62,24 +59,11 @@ fi
 if [[ -n $ARTDAQ_DAQINTERFACE_VERSION ]] ; then
 
     echo "Using ups-installed DAQInterface, version \"$ARTDAQ_DAQINTERFACE_VERSION\""
-    export DAQINTERFACE_BASEDIR=$ARTDAQ_DAQINTERFACE_DIR
+
 else
-    # "-e ./rc/control" is a way to check we're in the base directory of DAQInterface
-   if [[ -e ./rc/control ]] ; then
-      echo "Using a non-ups version of DAQInterface"
-      export DAQINTERFACE_BASEDIR=$PWD
-   else  	
 
-cat <<heredoc
-
-   If you're not using DAQInterface as a ups-setup product, then you
-   need to be in the base directory of the DAQInterface git repo to
-   source this
-
-heredoc
-
-   return 1
-   fi
+    echo "DAQInterface does not appear to have been set up as a ups product"
+    return 1
 fi
 
 
@@ -114,9 +98,9 @@ mkdir -p $DAQINTERFACE_LOGDIR
 
 export DAQINTERFACE_LOGFILE=$DAQINTERFACE_LOGDIR/DAQInterface_port\${DAQINTERFACE_PORT}.log
 
-alias DAQInterface="export DAQINTERFACE_PORT=\$(( \$DAQINTERFACE_PORT + 10)); stdbuf -oL $DAQINTERFACE_BASEDIR/rc/control/daqinterface.py --rpc-port \$DAQINTERFACE_PORT 2>&1 | tee -a $DAQINTERFACE_LOGFILE "
+alias DAQInterface="export DAQINTERFACE_PORT=\$(( \$DAQINTERFACE_PORT + 10)); stdbuf -oL $ARTDAQ_DAQINTERFACE_DIR/rc/control/daqinterface.py --rpc-port \$DAQINTERFACE_PORT 2>&1 | tee -a $DAQINTERFACE_LOGFILE "
 
-export PATH=$DAQINTERFACE_BASEDIR/bin:$PATH
+export PATH=$ARTDAQ_DAQINTERFACE_DIR/bin:$PATH
 
 if [[ -n $DAQINTERFACE_USER_SOURCEFILE ]]; then
 

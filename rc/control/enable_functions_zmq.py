@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.append( os.environ["DAQINTERFACE_BASEDIR"] )
+sys.path.append( os.environ["ARTDAQ_DAQINTERFACE_DIR"] )
 
 import zmq
 from rc.InhibitMaster import InhibitMaster
