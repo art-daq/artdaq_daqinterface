@@ -222,7 +222,6 @@ class DAQInterface(Component):
         self.exception = False
         self.in_recovery = False
         self.heartbeat_failure = False
-        self.last_artdaq_line = None
         self.manage_processes = True
 
         # "procinfos" will be an array of Procinfo structures (defined
@@ -282,12 +281,6 @@ class DAQInterface(Component):
         # which initialize the artdaq processes
 
         self.config_dirname = None
-
-        # This keeps a record of the last line presented by the
-        # display_artdaq_output() function, so it isn't
-        # repeatedly printed to screen
-
-        self.last_artdaq_line = None
 
         self.__do_boot = False
         self.__do_shutdown = False
@@ -826,56 +819,6 @@ braceMakesLegalFhiCL: {
             self.alert_and_recover("One or more artdaq processes"
                                    " discovered to be in \"Error\" state")
             return
-
-    # JCF, 1/28/15
-
-    # The idea behind the "display_artdaq_output()" function is
-    # that in the runner() function, after checking that all artdaq
-    # processes are alive, the PMT logfile is then examined for
-    # red-flag terms like "exception" and "error", and any lines with
-    # these terms get displayed
-
-    def display_artdaq_output(self):
-
-        keywords = ["error", "exception", "back-pressure", "MSG-e", "errno"]
-
-        grepstring = "\|".join(keywords)
-
-        cmds = []
-
-        cmds.append("cd %s/pmt" % (self.log_directory))
-        cmds.append("most_recent_logfile=$(ls -tr1 %s )" %
-                    (self.log_filename_wildcard))
-
-        # JCF, 5/1/15
-
-        # Want to avoid accidentally grepping an old pmt logfile which
-        # happens to share the same process ID as the current one
-
-        cmds.append("if [[ $(find \"$most_recent_logfile\" -mmin -60) ]];"
-                    " then grep -i1 \"%s\" $most_recent_logfile; fi"
-                    % (grepstring))
-
-        cmd = ";".join(cmds)
-
-        if self.pmt_host != "localhost":
-            cmd = "ssh -f " + self.pmt_host + " '" + cmd + "'"
-
-        status = Popen(cmd, shell=True, stdout=subprocess.PIPE,
-                       stderr=subprocess.STDOUT)
-
-        lines = status.stdout.readlines()
-
-        if len(lines) > 1:
-
-            # "1" because we're using the "-1" option to grep
-            line = lines[1].strip()
-
-            if line != self.last_artdaq_line:
-                self.last_artdaq_line = line
-
-                for tmpline in lines:
-                    print tmpline.strip()
 
 
     def kill_procs(self):
