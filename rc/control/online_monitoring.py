@@ -1,7 +1,7 @@
 
 import os
 import sys
-sys.path.append( os.environ["DAQINTERFACE_BASEDIR"] )
+sys.path.append( os.environ["ARTDAQ_DAQINTERFACE_DIR"] )
 
 import re
 import subprocess

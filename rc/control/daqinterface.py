@@ -2,7 +2,7 @@
 
 import os
 import sys
-sys.path.append( os.environ["DAQINTERFACE_BASEDIR"] )
+sys.path.append( os.environ["ARTDAQ_DAQINTERFACE_DIR"] )
 
 import argparse
 import datetime
@@ -305,8 +305,8 @@ class DAQInterface(Component):
                     "changes, and restart.") + "\n"
             sys.exit(1)
 
-        print make_paragraph("DAQInterface launched and now in \"%s\" state" % 
-                                  (self.state(self.name)))
+        print make_paragraph("DAQInterface launched and now in \"%s\" state, listening on port %d" % 
+                                  (self.state(self.name), rpc_port))
 
     get_config_info = get_config_info_base
     put_config_info = put_config_info_base
@@ -652,18 +652,49 @@ class DAQInterface(Component):
 
             write_new_file = True
 
-            messagefacility_fhicl_filename = os.getcwd() + "/MessageFacility.fcl" 
-            desired_contents = 'udp : { type : "UDP" threshold : "DEBUG" port : 30000 host : "%s" }  ' % \
-                               (socket.gethostname())
+            if "DAQINTERFACE_MESSAGEFACILITY_FHICL" in os.environ.keys():
+                messagefacility_fhicl_filename = os.environ["DAQINTERFACE_MESSAGEFACILITY_FHICL"]
+            else:
+                messagefacility_fhicl_filename = os.getcwd() + "/MessageFacility.fcl" 
 
-            if os.path.exists( messagefacility_fhicl_filename ):
-                with open( messagefacility_fhicl_filename ) as inf_mf:
-                    if inf_mf.read() == desired_contents:
-                        write_new_file = False
-         
-            if write_new_file:
+            # JCF, 10-25-2018
+
+            # The FHiCL controlling messagefacility messages below is
+            # embedded by artdaq within other FHiCL code (see
+            # artdaq/DAQdata/configureMessageFacility.cc in artdaq
+            # v2_03_03 for details).
+
+            default_contents = """ } 
+
+# Require that there be no more than messageLimit messages in limitAppliesToTimespan seconds
+
+messageLimit: 50 
+limitAppliesToTimespan: 10  
+
+defaultCategory: { limit: @local::messageLimit timespan: @local::limitAppliesToTimespan } 
+
+# And apply this rule to udp, file and console, keeping in mind that
+# the last two will already have been defined in the destinations: {}
+# table by artdaq
+
+udp : { type : "UDP" threshold : "INFO"  categories: { default: @local::defaultCategory } port : 30000 host : "%s" } 
+file : @local::destinations.file file.categories: { default: @local::defaultCategory } 
+console: @local::destinations.console console.categories: { default: @local::defaultCategory } 
+
+destinationsAlias: @local::destinations 
+destinationsAlias.udp: @local::udp 
+destinationsAlias.file: @local::file 
+destinationsAlias.console: @local::console 
+destinations: @local::destinationsAlias 
+
+braceMakesLegalFhiCL: {
+
+""" % (socket.gethostname())
+        
+
+            if not os.path.exists( messagefacility_fhicl_filename ):
                 with open(messagefacility_fhicl_filename, "w") as outf_mf:
-                    outf_mf.write( desired_contents )
+                    outf_mf.write( default_contents )
 
             cmd = "pmt.rb -p " + self.pmt_port + " -d " + pmtconfigname + \
                 " --logpath " + self.log_directory + \
@@ -693,7 +724,7 @@ class DAQInterface(Component):
                 status = Popen(launchcmd, shell=True).wait()
 
         if status != 0:
-            raise Exception("Status error raised; commands were \"\n%s\n\n\". If logfiles exist, please check them for more information. Also try running the commands interactively in a new terminal for more info." %
+            raise Exception("Status error raised; commands were \"\n%s\n\n\". If logfiles exist, please check them for more information. Also try running the commands interactively in a new terminal (after source-ing the DAQInterface environment) for more info." %
                             ("\n".join(self.launch_cmds)))
             return
 
@@ -1450,6 +1481,7 @@ class DAQInterface(Component):
         # ran on in case the setup script contained trace commands...
 
         already_sourced = {}
+        sourcing_ok = True
         
         with deepsuppression():
             for procinfo in self.procinfos:
@@ -1459,13 +1491,27 @@ class DAQInterface(Component):
                     if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
                         cmd = "ssh %s '%s'" % (procinfo.host, cmd)
 
-                    status = Popen(cmd, shell=True).wait()
+                    out = Popen(cmd, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+                    
+                    out_comm = out.communicate()
+                
+                    out_stdout = out_comm[0]
+                    out_stderr = out_comm[1]
+                    status = out.returncode
 
                     if status == 0:
                         already_sourced[procinfo.host] = "Dummy value since we only care about the key"
                     else:
-                        raise Exception("Status error raised in attempt to source script %s on host %s" % \
-                                   (self.daq_setup_script, procinfo.host))
+                        sourcing_ok = False
+                        break
+
+        if not sourcing_ok:
+            self.print_log("Status error raised in attempt to source script %s on host %s." % \
+                           (self.daq_setup_script, procinfo.host))
+            self.print_log("STDOUT: \n%s" % (out_stdout))
+            self.print_log("STDERR: \n%s" % (out_stderr))
+            raise Exception("Status error raised in attempt to source script %s on host %s." % \
+                            (self.daq_setup_script, procinfo.host))
 
         if self.manage_processes:
 

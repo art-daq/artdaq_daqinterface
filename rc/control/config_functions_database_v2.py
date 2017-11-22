@@ -5,7 +5,7 @@
 
 import os
 import sys
-sys.path.append( os.environ["DAQINTERFACE_BASEDIR"] )
+sys.path.append( os.environ["ARTDAQ_DAQINTERFACE_DIR"] )
 
 dbdirs = [dbdir for dbdir in os.environ["PYTHONPATH"].split(":") if "/artdaq_database/" in dbdir]
 assert len(dbdirs) == 1, "More than one path in $PYTHONPATH appears to be an artdaq-database path"
