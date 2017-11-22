@@ -39,6 +39,8 @@ from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_pids
 from rc.control.utilities import is_msgviewer_running
+from rc.control.utilities import date_and_time
+from rc.control.utilities import construct_checked_command
 
 if not "DAQINTERFACE_FHICL_DIRECTORY" in os.environ:
     print
@@ -180,32 +182,14 @@ class DAQInterface(Component):
                                         "the following fhicl_file_paths: %s" %
                                         (included_file, ffp_string)))
                             
-    def date_and_time(self):
-        return Popen("date", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
-
     def print_log(self, severity, printstr, debuglevel=-999):
 
         if self.debug_level >= debuglevel:
             if self.fake_messagefacility:
-                print "%%MSG-%s DAQInterface %s" % (severity, self.date_and_time())
+                print "%%MSG-%s DAQInterface %s" % (severity, date_and_time())
             print printstr
             if self.fake_messagefacility:
                 print "%MSG"
-
-    def construct_checked_command(self, cmds ):
-
-        checked_cmds = []
-
-        for cmd in cmds:
-            checked_cmds.append( cmd )
-
-            if not re.search(r"\s*&\s*$", cmd):
-                check_cmd = " if [[ \"$?\" != \"0\" ]]; then echo Nonzero return value from command \"%s\" ; exit 1; fi " % (cmd)
-                checked_cmds.append( check_cmd )
-
-        total_cmd = " ; ".join( checked_cmds )
-
-        return total_cmd
 
     # JCF, Dec-16-2016
 
@@ -541,7 +525,7 @@ class DAQInterface(Component):
         cmds.append(". %s" % (self.daq_setup_script))
         cmds.append('if [[ -n "$SETUP_ARTDAQ_MFEXTENSIONS" ]]; then true; else false; fi')
 
-        checked_cmd = self.construct_checked_command( cmds )
+        checked_cmd = construct_checked_command( cmds )
         
         with deepsuppression():
             status = Popen(checked_cmd, shell = True).wait()
@@ -635,8 +619,8 @@ class DAQInterface(Component):
 
         for logdir in ["pmt", "masterControl", "boardreader", "eventbuilder",
                        "aggregator"]:
-            self.launch_cmds.append("mkdir -p -m 0777 " + self.log_directory +
-                                    "/" + logdir)
+            if not os.path.exists( "%s/%s" % (self.log_directory, logdir)):
+                self.launch_cmds.append("mkdir -p -m 0777 " + "%s/%s" % (self.log_directory, logdir) )
 
         self.launch_cmds.append("source " + self.daq_setup_script )
         self.launch_cmds.append("which pmt.rb")  # Sanity check capable of returning nonzero
@@ -705,7 +689,7 @@ braceMakesLegalFhiCL: {
    
         self.launch_cmds.append(cmd)
 
-        launchcmd = self.construct_checked_command( self.launch_cmds )
+        launchcmd = construct_checked_command( self.launch_cmds )
 
         if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
             launchcmd = "ssh -f " + self.pmt_host + " '" + launchcmd + "'"
@@ -1201,7 +1185,7 @@ braceMakesLegalFhiCL: {
 
         if command != "Start" and command != "Init" and command != "Stop":
             self.print_log("i", "\n%s: %s transition underway" % \
-                           (self.date_and_time(), command.upper()))
+                           (date_and_time(), command.upper()))
 
         # "process_command" is the function which will send a
         # transition to a single artdaq process, and be run on its own
@@ -1337,7 +1321,7 @@ braceMakesLegalFhiCL: {
                 assert False
 
             self.complete_state_change(self.name, verbing)
-            self.print_log("i", "\n%s: %s transition complete" % (self.date_and_time(), command.upper()))
+            self.print_log("i", "\n%s: %s transition complete" % (date_and_time(), command.upper()))
 
     def setdaqcomps(self, daq_comp_list):
         self.daq_comp_list = daq_comp_list
@@ -1359,7 +1343,7 @@ braceMakesLegalFhiCL: {
             self.revert_failed_transition(failed_action)
 
         self.print_log("i", "\n%s: BOOT transition underway" % \
-            (self.date_and_time()))
+            (date_and_time()))
 
         self.reset_variables()
         os.chdir(self.daqinterface_base_dir)
@@ -1512,46 +1496,50 @@ braceMakesLegalFhiCL: {
                                                procinfo.socketstring)
                     return
 
-        # Figure out if we have the artdaq_mfextensions version expected by the artdaq used 
-        
-        try:
+        if True:
 
-            if self.have_artdaq_mfextensions() and is_msgviewer_running():
-                self.print_log("i", make_paragraph("An instance of messageviewer already appears to be running; " + \
-                                         "messages will be sent to the existing messageviewer"))
-            elif self.have_artdaq_mfextensions():
-                version, qualifiers = self.artdaq_mfextensions_info()
+            # Use messageviewer if it's available, i.e., if there's
+            # one already up or if it's set up via the user-supplied
+            # setup script
 
-                self.print_log("i", make_paragraph("artdaq_mfextensions %s, %s, appears to be available; "
-                                          "if windowing is supported on your host you should see the "
-                                          "messageviewer window pop up momentarily" % \
-                                              (version, qualifiers)))
+            try:
 
-                cmds = []
-                cmds.append(". %s" % (self.daq_setup_script))
-                cmds.append("which msgviewer")
-                cmds.append("msgviewer -c $ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/msgviewer.fcl 2>&1 > /dev/null &" )
+                if self.have_artdaq_mfextensions() and is_msgviewer_running():
+                    self.print_log("i", make_paragraph("An instance of messageviewer already appears to be running; " + \
+                                             "messages will be sent to the existing messageviewer"))
+                elif self.have_artdaq_mfextensions():
+                    version, qualifiers = self.artdaq_mfextensions_info()
 
-                msgviewercmd = self.construct_checked_command( cmds )
+                    self.print_log("i", make_paragraph("artdaq_mfextensions %s, %s, appears to be available; "
+                                              "if windowing is supported on your host you should see the "
+                                              "messageviewer window pop up momentarily" % \
+                                                  (version, qualifiers)))
 
-                with deepsuppression():
+                    cmds = []
+                    cmds.append(". %s" % (self.daq_setup_script))
+                    cmds.append("which msgviewer")
+                    cmds.append("msgviewer -c $ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/msgviewer.fcl 2>&1 > /dev/null &" )
 
-                    status = Popen(msgviewercmd, shell=True).wait()
+                    msgviewercmd = construct_checked_command( cmds )
 
-                    if status != 0:
-                        self.alert_and_recover("Status error raised in msgviewer call within Popen; tried the following commands: \"%s\"" %
-                                        " ; ".join(cmds) )
-                        return
-            else:
-                self.print_log("i", make_paragraph("artdaq_mfextensions does not appear to be available; "
-                                     "unable to launch the messageviewer window. This will not affect"
-                                     " actual datataking, it just means you'll need to look at the"
-                                     " logfiles to see artdaq output."))
+                    with deepsuppression():
 
-        except Exception:
-            self.print_log("e", traceback.format_exc())
-            self.alert_and_recover("Problem during messageviewer launch stage")
-            return
+                        status = Popen(msgviewercmd, shell=True).wait()
+
+                        if status != 0:
+                            self.alert_and_recover("Status error raised in msgviewer call within Popen; tried the following commands: \"%s\"" %
+                                            " ; ".join(cmds) )
+                            return
+                else:
+                    self.print_log("i", make_paragraph("artdaq_mfextensions does not appear to be available; "
+                                         "unable to launch the messageviewer window. This will not affect"
+                                         " actual datataking, it just means you'll need to look at the"
+                                         " logfiles to see artdaq output."))
+
+            except Exception:
+                self.print_log("e", traceback.format_exc())
+                self.alert_and_recover("Problem during messageviewer launch stage")
+                return
 
         # JCF, 3/5/15
 
@@ -1585,13 +1573,13 @@ braceMakesLegalFhiCL: {
         self.complete_state_change(self.name, "booting")
 
         self.print_log( "i", "\n%s: BOOT transition complete" % \
-                        (self.date_and_time()))
+                        (date_and_time()))
 
 
     def do_config(self, config_for_run = None):
 
         self.print_log("i", "\n%s: CONFIG transition underway" % \
-            (self.date_and_time()))
+            (date_and_time()))
 
         os.chdir(self.daqinterface_base_dir)
 
@@ -1752,7 +1740,7 @@ braceMakesLegalFhiCL: {
                 (self.pmt_host, self.log_directory,
                  self.log_filename_wildcard))
 
-        self.print_log("i", "\n%s: CONFIG transition complete" % (self.date_and_time()))
+        self.print_log("i", "\n%s: CONFIG transition complete" % (date_and_time()))
 
     def do_start_running(self, run_number = None):
 
@@ -1762,7 +1750,7 @@ braceMakesLegalFhiCL: {
             self.run_number = run_number
 
         self.print_log("i", "\n%s: START transition underway for run %d" % \
-                       (self.date_and_time(), self.run_number))
+                       (date_and_time(), self.run_number))
         
         if os.path.exists( self.tmp_run_record ):
             run_record_directory = "%s/%s" % \
@@ -1808,12 +1796,12 @@ braceMakesLegalFhiCL: {
 
         self.complete_state_change(self.name, "starting")
         self.print_log("i", "\n%s: START transition complete for run %d" % \
-            (self.date_and_time(), self.run_number))
+            (date_and_time(), self.run_number))
 
     def do_stop_running(self):
 
         self.print_log("i", "\n%s: STOP transition underway for run %d" % \
-            (self.date_and_time(), self.run_number))
+            (date_and_time(), self.run_number))
 
         self.save_metadata_value("Stop time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
@@ -1841,7 +1829,7 @@ braceMakesLegalFhiCL: {
     def do_terminate(self):
 
         self.print_log("i", "\n%s: TERMINATE transition underway" % \
-            (self.date_and_time()))
+            (date_and_time()))
 
         print
 
@@ -1878,7 +1866,7 @@ braceMakesLegalFhiCL: {
 
         self.complete_state_change(self.name, "terminating")
 
-        self.print_log("i", "\n%s: TERMINATE transition complete" % (self.date_and_time()))
+        self.print_log("i", "\n%s: TERMINATE transition complete" % (date_and_time()))
 
         self.print_log("i", "To see logfile(s), on %s run \"ls -ltr %s/pmt/%s\"" % \
                 (self.pmt_host, self.log_directory,
@@ -1887,7 +1875,7 @@ braceMakesLegalFhiCL: {
     def do_recover(self):
         print
         self.print_log("w", "\n%s: RECOVER transition underway" % \
-            (self.date_and_time()))
+            (date_and_time()))
 
         self.in_recovery = True
 
@@ -2026,7 +2014,7 @@ braceMakesLegalFhiCL: {
 
         self.complete_state_change(self.name, "recovering")
 
-        self.print_log("i", "\n%s: RECOVER transition complete" % (self.date_and_time()))
+        self.print_log("i", "\n%s: RECOVER transition complete" % (date_and_time()))
 
     # Override of the parent class Component's runner function. As of
     # 5/30/14, called every 1s by control.py
