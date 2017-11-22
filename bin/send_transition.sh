@@ -32,15 +32,22 @@ case $cmd in
 	xmlrpc_arg="config:s/"$2
 	;;
     "start")
-	test $# == 1 || badargs=true 
+	test $# == 1 || test $# == 2 || badargs=true 
 	translated_cmd="starting"
 
 	run_records_dir=$( awk '/record_directory/ { print $2 }' $DAQINTERFACE_SETTINGS )
 	run_records_dir=$( echo $( eval echo $run_records_dir ) )  # Expand environ variables in string
 	
+	runnum=0
         highest_runnum=$( ls -1 $run_records_dir | sort -n | tail -1 )
 
-	xmlrpc_arg="run_number:i/"$((highest_runnum + 1))
+	if [[ $# == 1 ]]; then
+            runnum=$((highest_runnum + 1))
+        else
+            runnum=$2 
+        fi
+
+	xmlrpc_arg="run_number:i/"$runnum
 	;;
     "enable")
 	test $# == 1 || badargs=true
