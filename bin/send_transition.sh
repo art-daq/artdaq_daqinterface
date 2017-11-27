@@ -35,11 +35,10 @@ case $cmd in
 	test $# == 1 || test $# == 2 || badargs=true 
 	translated_cmd="starting"
 
-	run_records_dir=$( awk '/record_directory/ { print $2 }' $DAQINTERFACE_SETTINGS )
-	run_records_dir=$( echo $( eval echo $run_records_dir ) )  # Expand environ variables in string
-	
+	. $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh  # provides recorddir
+
 	runnum=0
-        highest_runnum=$( ls -1 $run_records_dir | sort -n | tail -1 )
+        highest_runnum=$( ls -1 $recorddir | sort -n | tail -1 )
 
 	if [[ $# == 1 ]]; then
             runnum=$((highest_runnum + 1))

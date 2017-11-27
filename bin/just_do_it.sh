@@ -13,6 +13,8 @@ config="demo"
 daqintconfig=$1
 daq_time_in_seconds=$2
 
+. $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
+
 rm -f /tmp/listconfigs_${USER}.txt
 $scriptdir/listconfigs.sh 
 
@@ -29,15 +31,13 @@ starttime=$(date +%s)
 
 
 root_output_dir="/tmp"
-run_records_dir=$( awk '/record_directory/ { print $2 }' $DAQINTERFACE_SETTINGS )
-run_records_dir=$( echo $( eval echo $run_records_dir ) )  # Expand environ variables in string
 
 if ! [[ $daq_time_in_seconds =~ ^[0-9-]+$ ]]; then
     echo 'Entered value for daq running time of "'$daq_time_in_seconds'" does not appear to be an integer'
     exit 10
 fi
 
-highest_runnum=$( ls -1 $run_records_dir | sort -n | tail -1 )
+highest_runnum=$( ls -1 $recorddir | sort -n | tail -1 )
 runnum=$(( highest_runnum + 1 ))
 
 # See below for definition of "clean_shutdown" function
@@ -224,18 +224,18 @@ function check_output_file() {
 
 function check_run_records() {
 
-    if [[ ! -d $run_records_dir/$runnum ]]; then
-	echo "Unable to find expected run records subdirectory $run_records_dir/$runnum" >&2
+    if [[ ! -d $recorddir/$runnum ]]; then
+	echo "Unable to find expected run records subdirectory $recorddir/$runnum" >&2
 	exit 200
     fi
 
-    echo "Contents of $run_records_dir/$runnum :"
-    ls -ltr $run_records_dir/$runnum 
+    echo "Contents of $recorddir/$runnum :"
+    ls -ltr $recorddir/$runnum 
 }
 
 function check_event_count() {
     
-    metadata_file=$run_records_dir/$runnum/metadata.txt
+    metadata_file=$recorddir/$runnum/metadata.txt
 
     if [[ ! -e $metadata_file ]]; then
 	echo "Unable to find expected metadata file $metadata_file" >&2
