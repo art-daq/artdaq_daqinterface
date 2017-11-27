@@ -238,7 +238,6 @@ class DAQInterface(Component):
         self.in_recovery = False
         self.heartbeat_failure = False
 
-        self.fake_messagefacility = False
         self.debug_level = 10000
 
         self.daqinterface_base_dir = os.getcwd()
@@ -375,6 +374,7 @@ class DAQInterface(Component):
         self.routingmaster_timeout = 30
 
         self.use_messageviewer = True
+        self.fake_messagefacility = False
 
         for line in inf.readlines():
 
@@ -433,6 +433,13 @@ class DAQInterface(Component):
 
                 if res:
                     self.use_messageviewer = False
+            elif "fake_messagefacility" in line:
+                token = line.split()[-1].strip()
+                
+                res = re.search(r"[Tt]rue", token)
+
+                if res:
+                    self.fake_messagefacility = True
 
         missing_vars = []
 
