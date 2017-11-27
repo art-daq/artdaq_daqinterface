@@ -374,6 +374,8 @@ class DAQInterface(Component):
         self.aggregator_timeout = 30
         self.routingmaster_timeout = 30
 
+        self.use_messageviewer = True
+
         for line in inf.readlines():
 
             line = expand_environment_variable_in_string( line )
@@ -424,6 +426,13 @@ class DAQInterface(Component):
                     self.all_events_to_all_dispatchers = False
                 else:
                     raise Exception("all_events_to_all_dispatchers must be set to either [Tt]rue or [Ff]alse")
+            elif "use_messageviewer" in line:
+                token = line.split()[-1].strip()
+                
+                res = re.search(r"[Ff]alse", token)
+
+                if res:
+                    self.use_messageviewer = False
 
         missing_vars = []
 
@@ -1503,7 +1512,7 @@ braceMakesLegalFhiCL: {
                                                procinfo.socketstring)
                     return
 
-        if True:
+        if self.use_messageviewer:
 
             # Use messageviewer if it's available, i.e., if there's
             # one already up or if it's set up via the user-supplied
