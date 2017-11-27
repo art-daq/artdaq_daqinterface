@@ -1435,8 +1435,15 @@ braceMakesLegalFhiCL: {
             raise Exception("Status error raised in attempt to source script %s on host %s." % \
                             (self.daq_setup_script, procinfo.host))
 
-        if self.manage_processes:
+        # Previously this "if True" was "if self.manage_processes",
+        # however, protoDUNE wants to be in charge of externally
+        # sending transitions to artdaq processes but not actually
+        # launching them or killing them, and there isn't currently an
+        # experiment which wants to be in charge of both sending
+        # transitions, launching and killing
 
+        if True:
+            
             # Now, with the info on hand about the processes contained in
             # procinfos, actually launch them
 
@@ -1854,15 +1861,15 @@ braceMakesLegalFhiCL: {
                     self.print_log("i", "%s at %s:%s, returned string is:\n%s\n" % \
                                    (procinfo.name, procinfo.host, procinfo.port, procinfo.lastreturned), 1)
 
-            try:
-                self.kill_procs()
-            except Exception:
-                self.print_log("e", "DAQInterface caught an exception in "
-                               "do_terminate()")
-                self.print_log("e", traceback.format_exc())
-                self.alert_and_recover("An exception was thrown "
-                                       "within kill_procs()")
-                return
+        try:
+            self.kill_procs()
+        except Exception:
+            self.print_log("e", "DAQInterface caught an exception in "
+                           "do_terminate()")
+            self.print_log("e", traceback.format_exc())
+            self.alert_and_recover("An exception was thrown "
+                                   "within kill_procs()")
+            return
 
         self.complete_state_change(self.name, "terminating")
 
@@ -2003,12 +2010,12 @@ braceMakesLegalFhiCL: {
                     for thread in threads:
                         thread.join()
 
-            try:
-                self.kill_procs()
-            except Exception:
-                self.print_log("e", traceback.format_exc())
-                self.print_log("e", make_paragraph("An exception was thrown "
-                                       "within kill_procs(); artdaq processes may not all have been killed"))
+        try:
+            self.kill_procs()
+        except Exception:
+            self.print_log("e", traceback.format_exc())
+            self.print_log("e", make_paragraph("An exception was thrown "
+                                   "within kill_procs(); artdaq processes may not all have been killed"))
 
         self.in_recovery = False
 
