@@ -9,7 +9,7 @@ fi
 runnum=$1
 examine=$2
 
-. $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
+. $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
 metadata_file=$recorddir/$runnum/metadata.txt
 

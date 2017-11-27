@@ -15,7 +15,7 @@ fi
 
 nruns=$1
 
-. $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
+. $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
 echo
 

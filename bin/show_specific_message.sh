@@ -13,7 +13,7 @@ compname=$2
 label=$3
 searchstring=$4
 
-. $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
+. $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
 echo
 

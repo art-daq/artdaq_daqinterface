@@ -10,7 +10,7 @@ run=$1
 
 echo
 
-. $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
+. $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
 metadata_filename=$recorddir/$run/metadata.txt
 
