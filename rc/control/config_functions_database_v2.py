@@ -73,7 +73,7 @@ def get_config_info_base(self):
 
 def put_config_info_base(self):
 
-    scriptdir = os.environ["PWD"] + "/utils"
+    scriptdir = os.environ["ARTDAQ_DAQINTERFACE_DIR"] + "/utils"
 
     if not os.path.exists( scriptdir ):
         raise Exception("Error in %s: unable to find script directory \"%s\"; should be in the base directory of the package" % (put_config_info_base.__name__, scriptdir))
