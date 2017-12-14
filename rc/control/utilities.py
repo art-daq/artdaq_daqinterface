@@ -199,6 +199,25 @@ def main():
         execute_command_in_xterm(os.environ["PWD"], "echo Hello world")
         execute_command_in_xterm(os.environ["PWD"], "echo You should see an xclock appear; xclock ")
 
+def date_and_time():
+    return Popen("date", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+
+def construct_checked_command(cmds):
+
+    checked_cmds = []
+
+    for cmd in cmds:
+        checked_cmds.append( cmd )
+
+        if not re.search(r"\s*&\s*$", cmd):
+            check_cmd = "if [[ \"$?\" != \"0\" ]]; then echo %s: Nonzero return value from the following command: \"%s\" >> /tmp/daqinterface_checked_command_failures.log; exit 1; fi " % (date_and_time(), cmd)
+            checked_cmds.append( check_cmd )
+
+    total_cmd = " ; ".join( checked_cmds )
+
+    return total_cmd
+
+
 
 if __name__ == "__main__":
     main()

@@ -13,7 +13,7 @@ compname=$2
 label=$3
 searchstring=$4
 
-. $PWD/bin/get_daq_environment.sh
+. $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
 echo
 

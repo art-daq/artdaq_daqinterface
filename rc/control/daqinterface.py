@@ -39,6 +39,8 @@ from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_pids
 from rc.control.utilities import is_msgviewer_running
+from rc.control.utilities import date_and_time
+from rc.control.utilities import construct_checked_command
 
 if not "DAQINTERFACE_FHICL_DIRECTORY" in os.environ:
     print
@@ -180,29 +182,14 @@ class DAQInterface(Component):
                                         "the following fhicl_file_paths: %s" %
                                         (included_file, ffp_string)))
                             
-    def date_and_time(self):
-        return Popen("date", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
-
-    def print_log(self, printstr, debuglevel=-999):
-#        self.logger.log(printstr)
+    def print_log(self, severity, printstr, debuglevel=-999):
 
         if self.debug_level >= debuglevel:
-            print "%s: %s" % (self.date_and_time(), printstr)
-
-    def construct_checked_command(self, cmds ):
-
-        checked_cmds = []
-
-        for cmd in cmds:
-            checked_cmds.append( cmd )
-
-            if not re.search(r"\s*&\s*$", cmd):
-                check_cmd = " if [[ \"$?\" != \"0\" ]]; then echo Nonzero return value from command \"%s\" ; exit 1; fi " % (cmd)
-                checked_cmds.append( check_cmd )
-
-        total_cmd = " ; ".join( checked_cmds )
-
-        return total_cmd
+            if self.fake_messagefacility:
+                print "%%MSG-%s DAQInterface %s" % (severity, date_and_time())
+            print printstr
+            if self.fake_messagefacility:
+                print "%MSG"
 
     # JCF, Dec-16-2016
 
@@ -219,7 +206,6 @@ class DAQInterface(Component):
         self.exception = False
         self.in_recovery = False
         self.heartbeat_failure = False
-        self.last_artdaq_line = None
         self.manage_processes = True
 
         # "procinfos" will be an array of Procinfo structures (defined
@@ -252,6 +238,8 @@ class DAQInterface(Component):
         self.in_recovery = False
         self.heartbeat_failure = False
 
+        self.debug_level = 10000
+
         self.daqinterface_base_dir = os.getcwd()
             
         # JCF, Nov-17-2015
@@ -277,12 +265,6 @@ class DAQInterface(Component):
 
         self.config_dirname = None
 
-        # This keeps a record of the last line presented by the
-        # display_artdaq_output() function, so it isn't
-        # repeatedly printed to screen
-
-        self.last_artdaq_line = None
-
         self.__do_boot = False
         self.__do_shutdown = False
         self.__do_config = False
@@ -298,15 +280,15 @@ class DAQInterface(Component):
         try:
             self.read_settings()
         except:
-            print traceback.format_exc()
-            print make_paragraph(
+            self.print_log("e", traceback.format_exc())
+            self.print_log("e", make_paragraph(
                     "An exception was thrown when trying to read DAQInterface settings; "
                     "DAQInterface will exit. Look at the messages above, make any necessary "
-                    "changes, and restart.") + "\n"
+                    "changes, and restart.") + "\n")
             sys.exit(1)
 
-        print make_paragraph("DAQInterface launched and now in \"%s\" state, listening on port %d" % 
-                                  (self.state(self.name), rpc_port))
+        self.print_log("i", make_paragraph("DAQInterface launched and now in \"%s\" state, listening on port %d" % 
+                                           (self.state(self.name), rpc_port)))
 
     get_config_info = get_config_info_base
     put_config_info = put_config_info_base
@@ -371,7 +353,7 @@ class DAQInterface(Component):
             alertmsg = "\n\n" + make_paragraph( "\"" + extrainfo + "\"")
 
         alertmsg += "\n" + make_paragraph("DAQInterface has set the DAQ back in the \"stopped\" state; please make any necessary adjustments suggested by the messages above.")
-        self.print_log( alertmsg )
+        self.print_log("e",  alertmsg )
 
     def read_settings(self):
         if not os.path.exists( os.environ["DAQINTERFACE_SETTINGS"]):
@@ -390,6 +372,9 @@ class DAQInterface(Component):
         self.eventbuilder_timeout = 30
         self.aggregator_timeout = 30
         self.routingmaster_timeout = 30
+
+        self.use_messageviewer = True
+        self.fake_messagefacility = False
 
         for line in inf.readlines():
 
@@ -441,6 +426,20 @@ class DAQInterface(Component):
                     self.all_events_to_all_dispatchers = False
                 else:
                     raise Exception("all_events_to_all_dispatchers must be set to either [Tt]rue or [Ff]alse")
+            elif "use_messageviewer" in line:
+                token = line.split()[-1].strip()
+                
+                res = re.search(r"[Ff]alse", token)
+
+                if res:
+                    self.use_messageviewer = False
+            elif "fake_messagefacility" in line:
+                token = line.split()[-1].strip()
+                
+                res = re.search(r"[Tt]rue", token)
+
+                if res:
+                    self.fake_messagefacility = True
 
         missing_vars = []
 
@@ -497,13 +496,13 @@ class DAQInterface(Component):
                 if redeemed:
                     successmsg = "After " + str(retry_counter) + " checks, process " + \
                         procinfo.name + " at " + procinfo.host + ":" + procinfo.port + " returned \"Success\""
-                    self.print_log( successmsg )
+                    self.print_log("i",  successmsg )
                     continue  # We're fine, continue on to the next process check
 
                 errmsg = "Unexpected status message from process " + procinfo.name + " at " + procinfo.host + \
                     ":" + procinfo.port + ": \"" + \
                     procinfo.lastreturned + "\""
-                self.print_log(make_paragraph(errmsg))
+                self.print_log("w", make_paragraph(errmsg))
 
                 is_all_ok = False
 
@@ -542,7 +541,7 @@ class DAQInterface(Component):
         cmds.append(". %s" % (self.daq_setup_script))
         cmds.append('if [[ -n "$SETUP_ARTDAQ_MFEXTENSIONS" ]]; then true; else false; fi')
 
-        checked_cmd = self.construct_checked_command( cmds )
+        checked_cmd = construct_checked_command( cmds )
         
         with deepsuppression():
             status = Popen(checked_cmd, shell = True).wait()
@@ -584,17 +583,16 @@ class DAQInterface(Component):
             raise Exception("\"pmt.rb -p %s\" was already running on %s" %
                             (self.pmt_port, self.pmt_host))
 
-        if self.debug_level > 1:
-
-            print "DAQInterface: will launch " + \
+        self.print_log("d", "DAQInterface: will launch " + \
                 str(self.num_boardreaders()) + \
                 " BoardReaderMain processes, " + \
                 str(self.num_eventbuilders()) + \
                 " EventBuilderMain processes, and " + \
                 str(self.num_aggregators()) + \
-                " AggregatorMain processes"
+                " AggregatorMain processes", 2)
 
-            print "Assuming daq setup script is " + self.daq_setup_script
+        self.print_log("d",  "Assuming daq package is in " + \
+                       self.daq_dir, 2)
 
         # We'll use the desired features of the artdaq processes to
         # create a text file which will be passed to artdaq's pmt.rb
@@ -637,8 +635,8 @@ class DAQInterface(Component):
 
         for logdir in ["pmt", "masterControl", "boardreader", "eventbuilder",
                        "dispatcher", "datalogger"]:
-            self.launch_cmds.append("mkdir -p -m 0777 " + self.log_directory +
-                                    "/" + logdir)
+            if not os.path.exists( "%s/%s" % (self.log_directory, logdir)):
+                self.launch_cmds.append("mkdir -p -m 0777 " + "%s/%s" % (self.log_directory, logdir) )
 
         self.launch_cmds.append("source " + self.daq_setup_script )
         self.launch_cmds.append("which pmt.rb")  # Sanity check capable of returning nonzero
@@ -707,15 +705,12 @@ braceMakesLegalFhiCL: {
    
         self.launch_cmds.append(cmd)
 
-        launchcmd = self.construct_checked_command( self.launch_cmds )
+        launchcmd = construct_checked_command( self.launch_cmds )
 
         if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
             launchcmd = "ssh -f " + self.pmt_host + " '" + launchcmd + "'"
 
-        if self.debug_level >= 2:
-            print "PROCESS LAUNCH COMMANDS: "
-            print "\n".join( self.launch_cmds )
-            print
+        self.print_log("d", "PROCESS LAUNCH COMMANDS: \n" + "\n".join( self.launch_cmds ), 2)
 
         if self.debug_level >= 3:
             status = Popen(launchcmd, shell=True).wait()
@@ -770,7 +765,7 @@ braceMakesLegalFhiCL: {
 #                    self.print_log(
 #                        make_paragraph("Error in DAQInterface::check_proc_heartbeats(): "
 #                                            "please check messageviewer and/or the logfiles for error messages"))
-                    self.print_log(errmsg)
+                    self.print_log("e", errmsg)
 
         if not is_all_ok and requireSuccess:
             self.heartbeat_failure = True
@@ -813,69 +808,19 @@ braceMakesLegalFhiCL: {
                 self.exception = True
                 exceptstring = make_paragraph("Exception caught in DAQInterface attempt to query status of artdaq process %s at %s:%s; most likely reason is process no longer exists" % \
                     (procinfo.name, procinfo.host, procinfo.port))              
-                self.print_log(exceptstring)
+                self.print_log("e", exceptstring)
 
             if procinfo.lastreturned == "Error":
                 is_all_ok = False
                 errmsg = "\"Error\" state returned by process %s at %s:%s; please check messageviewer and/or the logfiles for error messages" % \
                     (procinfo.name, procinfo.host, procinfo.port)
 
-                self.print_log(make_paragraph(errmsg))
+                self.print_log("e", make_paragraph(errmsg))
 
         if not is_all_ok:
             self.alert_and_recover("One or more artdaq processes"
                                    " discovered to be in \"Error\" state")
             return
-
-    # JCF, 1/28/15
-
-    # The idea behind the "display_artdaq_output()" function is
-    # that in the runner() function, after checking that all artdaq
-    # processes are alive, the PMT logfile is then examined for
-    # red-flag terms like "exception" and "error", and any lines with
-    # these terms get displayed
-
-    def display_artdaq_output(self):
-
-        keywords = ["error", "exception", "back-pressure", "MSG-e", "errno"]
-
-        grepstring = "\|".join(keywords)
-
-        cmds = []
-
-        cmds.append("cd %s/pmt" % (self.log_directory))
-        cmds.append("most_recent_logfile=$(ls -tr1 %s )" %
-                    (self.log_filename_wildcard))
-
-        # JCF, 5/1/15
-
-        # Want to avoid accidentally grepping an old pmt logfile which
-        # happens to share the same process ID as the current one
-
-        cmds.append("if [[ $(find \"$most_recent_logfile\" -mmin -60) ]];"
-                    " then grep -i1 \"%s\" $most_recent_logfile; fi"
-                    % (grepstring))
-
-        cmd = ";".join(cmds)
-
-        if self.pmt_host != "localhost":
-            cmd = "ssh -f " + self.pmt_host + " '" + cmd + "'"
-
-        status = Popen(cmd, shell=True, stdout=subprocess.PIPE,
-                       stderr=subprocess.STDOUT)
-
-        lines = status.stdout.readlines()
-
-        if len(lines) > 1:
-
-            # "1" because we're using the "-1" option to grep
-            line = lines[1].strip()
-
-            if line != self.last_artdaq_line:
-                self.last_artdaq_line = line
-
-                for tmpline in lines:
-                    print tmpline.strip()
 
 
     def kill_procs(self):
@@ -928,7 +873,7 @@ braceMakesLegalFhiCL: {
                 pids = get_pids(greptoken, procinfo.host)
 
                 if len(pids) > 0:
-                    self.print_log("Appeared to be unable to kill %s at %s:%s during cleanup" % \
+                    self.print_log("w", "Appeared to be unable to kill %s at %s:%s during cleanup" % \
                                        (procinfo.name, procinfo.host, procinfo.port))
 
         self.procinfos = []
@@ -1061,9 +1006,8 @@ braceMakesLegalFhiCL: {
                     if num_checks < max_num_checks:
                         num_checks += 1
                     
-                        if self.debug_level >= 2:
-                            print "Didn't find expected logfiles with command \"%s\"; will wait %d seconds and then check again" % \
-                                (cmd, pause_between_checks)
+                        self.print_log("w", "Didn't find expected logfiles with command \"%s\"; will wait %d seconds and then check again" % \
+                                       (cmd, pause_between_checks))
 
                         sleep(pause_between_checks)
                         continue
@@ -1179,7 +1123,7 @@ braceMakesLegalFhiCL: {
                     break
 
         if not linked_pmt_logfile:
-            self.print_log("WARNING: failure in attempt to softlink to pmt logfile")
+            self.print_log("w", "WARNING: failure in attempt to softlink to pmt logfile")
 
         assert hasattr(self, "eventbuilder_log_filenames")
         assert hasattr(self, "aggregator_log_filenames")
@@ -1210,7 +1154,7 @@ braceMakesLegalFhiCL: {
                 status = Popen(link_logfile_cmd, shell=True).wait()
                 
                 if status != 0:
-                    self.print_log("WARNING: failure in executing %s" % (link_logfile_cmd))
+                    self.print_log("w", "WARNING: failure in executing %s" % (link_logfile_cmd))
 
         # Boardreaders get special treatment since we have component
         # names we can use in the softlink
@@ -1229,11 +1173,10 @@ braceMakesLegalFhiCL: {
                 status = Popen(link_logfile_cmd, shell=True).wait()
                 
                 if status != 0:
-                    self.print_log("WARNING: failure in executing %s" % (link_logfile_cmd))
+                    self.print_log("w", "WARNING: failure in executing %s" % (link_logfile_cmd))
             else:
-                self.print_log("WARNING: unsuccessful finding boardreader at port %s on %s" % \
-                               (port, host))
-
+                self.print_log("w", "WARNING: unsuccessful finding boardreader at port %s on %s" % \
+                               port, host)
 
 
     # JCF, Nov-8-2015
@@ -1260,8 +1203,8 @@ braceMakesLegalFhiCL: {
     def do_command(self, command):
 
         if command != "Start" and command != "Init" and command != "Stop":
-            print "\n%s: %s transition underway" % \
-                (self.date_and_time(), command.upper())
+            self.print_log("i", "\n%s: %s transition underway" % \
+                           (date_and_time(), command.upper()))
 
         # "process_command" is the function which will send a
         # transition to a single artdaq process, and be run on its own
@@ -1320,11 +1263,11 @@ braceMakesLegalFhiCL: {
                 if "timeout: timed out" in traceback.format_exc():
                     output_message = "Timeout sending %s transition to artdaq process %s at %s:%s \n" % (command, pi.name, pi.host, pi.port)
                 else:
-                    self.print_log(traceback.format_exc())
+                    self.print_log("e", traceback.format_exc())
                     
                     output_message = "Exception caught sending %s transition to artdaq process %s at %s:%s \n" % (command, pi.name, pi.host, pi.port)
 
-                self.print_log(output_message)
+                self.print_log("e", output_message)
             
             return  # From process_command
 
@@ -1370,10 +1313,9 @@ braceMakesLegalFhiCL: {
 
         if self.debug_level >= 1:
             for procinfo in self.procinfos:
-                print "%s at %s:%s, returned string is: " % \
-                    (procinfo.name, procinfo.host, procinfo.port)
-                print procinfo.lastreturned
-                print
+                self.print_log("i", "%s at %s:%s, returned string is:\n%s\n" % \
+                    (procinfo.name, procinfo.host, procinfo.port, procinfo.lastreturned))
+
 
         target_states = {"Init":"Ready", "Start":"Running", "Pause":"Paused", "Resume":"Running",
                          "Stop":"Ready", "Shutdown":"Stopped"}
@@ -1398,16 +1340,16 @@ braceMakesLegalFhiCL: {
                 assert False
 
             self.complete_state_change(self.name, verbing)
-            print "\n%s: %s transition complete" % (self.date_and_time(), command.upper())
+            self.print_log("i", "\n%s: %s transition complete" % (date_and_time(), command.upper()))
 
     def setdaqcomps(self, daq_comp_list):
         self.daq_comp_list = daq_comp_list
 
     def revert_failed_transition(self, failed_action):
         self.revert_state_change(self.name, self.state(self.name))
-        print (traceback.format_exc())
-        print make_paragraph("An exception was thrown when %s; exception has been caught and system remains in the \"%s\" state" % \
-                                 (failed_action, self.state(self.name)))
+        self.print_log("e", (traceback.format_exc()))
+        self.print_log("e", make_paragraph("An exception was thrown when %s; exception has been caught and system remains in the \"%s\" state" % \
+                                 (failed_action, self.state(self.name))))
         
     # do_boot(), do_config(), do_start_running(), etc., are the
     # functions which get called in the runner() function when a
@@ -1419,8 +1361,8 @@ braceMakesLegalFhiCL: {
             self.reset_variables()            
             self.revert_failed_transition(failed_action)
 
-        print "\n%s: BOOT transition underway" % \
-            (self.date_and_time())
+        self.print_log("i", "\n%s: BOOT transition underway" % \
+            (date_and_time()))
 
         self.reset_variables()
         os.chdir(self.daqinterface_base_dir)
@@ -1447,14 +1389,13 @@ braceMakesLegalFhiCL: {
             try: 
                 self.package_hash_dict[pkgname] = self.get_commit_hash( pkg_full_path )
             except Exception:
-                self.print_log(traceback.format_exc())
+                self.print_log("e", traceback.format_exc())
                 self.alert_and_recover("An exception was thrown in get_commit_hash; see traceback above for more info")
                 return
 
         for compname, socket in self.daq_comp_list.items():
 
-            if self.debug_level >= 2:
-                print "%s at %s:%s" % (compname, socket[0], socket[1])
+            self.print_log("d", "%s at %s:%s" % (compname, socket[0], socket[1]), 2)
  
             self.procinfos.append(self.Procinfo("BoardReader",
                                                 socket[0],
@@ -1506,15 +1447,22 @@ braceMakesLegalFhiCL: {
                         break
 
         if not sourcing_ok:
-            self.print_log("Status error raised in attempt to source script %s on host %s." % \
+            self.print_log("e", "Status error raised in attempt to source script %s on host %s." % \
                            (self.daq_setup_script, procinfo.host))
-            self.print_log("STDOUT: \n%s" % (out_stdout))
-            self.print_log("STDERR: \n%s" % (out_stderr))
+            self.print_log("e", "STDOUT: \n%s" % (out_stdout))
+            self.print_log("e", "STDERR: \n%s" % (out_stderr))
             raise Exception("Status error raised in attempt to source script %s on host %s." % \
                             (self.daq_setup_script, procinfo.host))
 
-        if self.manage_processes:
+        # Previously this "if True" was "if self.manage_processes",
+        # however, protoDUNE wants to be in charge of externally
+        # sending transitions to artdaq processes but not actually
+        # launching them or killing them, and there isn't currently an
+        # experiment which wants to be in charge of both sending
+        # transitions, launching and killing
 
+        if True:
+            
             # Now, with the info on hand about the processes contained in
             # procinfos, actually launch them
 
@@ -1522,10 +1470,10 @@ braceMakesLegalFhiCL: {
                 self.launch_procs()
 
                 if self.debug_level >= 1:
-                    print "Finished call to launch_procs(); will now confirm that artdaq processes are up..."
+                    self.print_log("i", "Finished call to launch_procs(); will now confirm that artdaq processes are up...")
 
             except Exception:
-                self.print_log(traceback.format_exc())
+                self.print_log("e", traceback.format_exc())
 
                 self.alert_and_recover("An exception was thrown in launch_procs(), see traceback above for more info")
                 return
@@ -1542,13 +1490,13 @@ braceMakesLegalFhiCL: {
                 if self.check_proc_heartbeats(False):
 
                     if self.debug_level > 0:
-                        print "All processes appear to be up"
+                        self.print_log("i", "All processes appear to be up")
 
                     break
                 else:
                     if num_launch_procs_checks > 5:
-                        print make_paragraph("artdaq processes failed to launch; logfiles may contain info as to what happened. For troubleshooting, you can also try logging into this host via a new terminal, and interactively executing the following commands: ")
-                        print "\n".join(self.launch_cmds)
+                        self.print_log("e", make_paragraph("artdaq processes failed to launch; logfiles may contain info as to what happened. For troubleshooting, you can also try logging into this host via a new terminal, and interactively executing the following commands: "))
+                        self.print_log("e", "\n".join(self.launch_cmds))
                         self.alert_and_recover("Scroll above the output from the \"RECOVER\" transition for more info")
                         return
 
@@ -1568,52 +1516,56 @@ braceMakesLegalFhiCL: {
                     procinfo.server = TimeoutServerProxy(
                         procinfo.socketstring, timeout)
                 except Exception:
-                    self.print_log(traceback.format_exc())
+                    self.print_log("e", traceback.format_exc())
 
                     self.alert_and_recover("Problem creating server with socket \"%s\"" % \
                                                procinfo.socketstring)
                     return
 
-        # Figure out if we have the artdaq_mfextensions version expected by the artdaq used 
-        
-        try:
+        if self.use_messageviewer:
 
-            if self.have_artdaq_mfextensions() and is_msgviewer_running():
-                print make_paragraph("An instance of messageviewer already appears to be running; " + \
-                                         "messages will be sent to the existing messageviewer")
-            elif self.have_artdaq_mfextensions():
-                version, qualifiers = self.artdaq_mfextensions_info()
+            # Use messageviewer if it's available, i.e., if there's
+            # one already up or if it's set up via the user-supplied
+            # setup script
 
-                print make_paragraph("artdaq_mfextensions %s, %s, appears to be available; "
-                                          "if windowing is supported on your host you should see the "
-                                          "messageviewer window pop up momentarily" % \
-                                              (version, qualifiers))
+            try:
 
-                cmds = []
-                cmds.append(". %s" % (self.daq_setup_script))
-                cmds.append("which msgviewer")
-                cmds.append("msgviewer -c $ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/msgviewer.fcl 2>&1 > /dev/null &" )
+                if self.have_artdaq_mfextensions() and is_msgviewer_running():
+                    self.print_log("i", make_paragraph("An instance of messageviewer already appears to be running; " + \
+                                             "messages will be sent to the existing messageviewer"))
+                elif self.have_artdaq_mfextensions():
+                    version, qualifiers = self.artdaq_mfextensions_info()
 
-                msgviewercmd = self.construct_checked_command( cmds )
+                    self.print_log("i", make_paragraph("artdaq_mfextensions %s, %s, appears to be available; "
+                                              "if windowing is supported on your host you should see the "
+                                              "messageviewer window pop up momentarily" % \
+                                                  (version, qualifiers)))
 
-                with deepsuppression():
+                    cmds = []
+                    cmds.append(". %s" % (self.daq_setup_script))
+                    cmds.append("which msgviewer")
+                    cmds.append("msgviewer -c $ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/msgviewer.fcl 2>&1 > /dev/null &" )
 
-                    status = Popen(msgviewercmd, shell=True).wait()
+                    msgviewercmd = construct_checked_command( cmds )
 
-                    if status != 0:
-                        self.alert_and_recover("Status error raised in msgviewer call within Popen; tried the following commands: \"%s\"" %
-                                        " ; ".join(cmds) )
-                        return
-            else:
-                print make_paragraph("artdaq_mfextensions does not appear to be available; "
-                                     "unable to launch the messageviewer window. This will not affect"
-                                     " actual datataking, it just means you'll need to look at the"
-                                     " logfiles to see artdaq output.")
+                    with deepsuppression():
 
-        except Exception:
-            self.print_log(traceback.format_exc())
-            self.alert_and_recover("Problem during messageviewer launch stage")
-            return
+                        status = Popen(msgviewercmd, shell=True).wait()
+
+                        if status != 0:
+                            self.alert_and_recover("Status error raised in msgviewer call within Popen; tried the following commands: \"%s\"" %
+                                            " ; ".join(cmds) )
+                            return
+                else:
+                    self.print_log("i", make_paragraph("artdaq_mfextensions does not appear to be available; "
+                                         "unable to launch the messageviewer window. This will not affect"
+                                         " actual datataking, it just means you'll need to look at the"
+                                         " logfiles to see artdaq output."))
+
+            except Exception:
+                self.print_log("e", traceback.format_exc())
+                self.alert_and_recover("Problem during messageviewer launch stage")
+                return
 
         # JCF, 3/5/15
 
@@ -1642,19 +1594,20 @@ braceMakesLegalFhiCL: {
             self.aggregator_log_filenames = self.get_logfilenames("Aggregator") + self.datalogger_log_filenames + self.dispatcher_log_filenames
 
         except Exception:
-            self.print_log(traceback.format_exc())
+            self.print_log("e", traceback.format_exc())
             self.alert_and_recover("Problem obtaining logfile name(s)")
             return
 
         self.complete_state_change(self.name, "booting")
 
-        print "\n%s: BOOT transition complete" % (self.date_and_time()) 
+        self.print_log( "i", "\n%s: BOOT transition complete" % \
+                        (date_and_time()))
 
 
     def do_config(self, config_for_run = None):
 
-        print "\n%s: CONFIG transition underway" % \
-            (self.date_and_time())
+        self.print_log("i", "\n%s: CONFIG transition underway" % \
+            (date_and_time()))
 
         os.chdir(self.daqinterface_base_dir)
 
@@ -1669,13 +1622,15 @@ braceMakesLegalFhiCL: {
             self.revert_failed_transition("calling get_config_info()")
             return
 
-        self.print_log("Config name: %s" % self.config_for_run, 1)
-        self.print_log("Selected DAQ comps: %s" %
+        self.print_log("d", "Config name: %s" % self.config_for_run, 1)
+        self.print_log("d", "Selected DAQ comps: %s" %
                        self.daq_comp_list, 1)
+        for ffp_path in self.fhicl_file_path:
+            self.print_log("d", "\tIncluding FHICL FILE PATH %s" % ffp_path,2)
 
         for component, socket in self.daq_comp_list.items():
 
-            self.print_log( make_paragraph( 
+            self.print_log("d",  make_paragraph( 
                 "Searching for the FHiCL document for %s in directory %s given configuration \"%s\"" % \
                 (component, self.config_dirname, self.config_for_run)), 2)
 
@@ -1685,6 +1640,7 @@ braceMakesLegalFhiCL: {
                 for filename in filenames:
                     if filename == component + "_hw_cfg.fcl":
                         component_fhicl = dirname + "/" + filename
+                        self.print_log("d", "Found component fcl file %s" % component_fhicl,2)
             
             if not os.path.exists(component_fhicl):
                 self.revert_state_change(self.name, self.state(self.name))
@@ -1697,11 +1653,12 @@ braceMakesLegalFhiCL: {
                     "boot only with components which exist for configuration \"%s\"." % \
                     (self.config_for_run)
 
-                self.print_log(make_paragraph(msg))
+                self.print_log("e", make_paragraph(msg))
 
                 return
 
             config_subdirname = os.path.dirname(component_fhicl)
+            self.print_log("d", "Using config subdir name %s" % config_subdirname,2)
                     
             try:
                 for i_proc in range(len(self.procinfos)):
@@ -1711,7 +1668,7 @@ braceMakesLegalFhiCL: {
                         self.procinfos[i_proc].ffp = self.fhicl_file_path
                         self.procinfos[i_proc].update_fhicl(component_fhicl)
             except Exception:
-                self.print_log(traceback.format_exc())
+                self.print_log("e", traceback.format_exc())
                 self.alert_and_recover("An exception was thrown when creating the process FHiCL documents; see traceback above for more info")
                 return
                 
@@ -1750,7 +1707,7 @@ braceMakesLegalFhiCL: {
                         self.procinfos[i_proc].ffp = self.fhicl_file_path
                         self.procinfos[i_proc].update_fhicl(fcl)
                     except Exception:
-                        self.print_log(traceback.format_exc())
+                        self.print_log("e", traceback.format_exc())
                         self.alert_and_recover("An exception was thrown when creating the process FHiCL documents; see traceback above for more info")
                         return
                         
@@ -1774,7 +1731,7 @@ braceMakesLegalFhiCL: {
         try:
             self.bookkeeping_for_fhicl_documents()
         except Exception:
-            self.print_log(traceback.format_exc())
+            self.print_log("e", traceback.format_exc())
             self.alert_and_recover("An exception was thrown when performing bookkeeping on the process FHiCL documents; see traceback above for more info")
             return
         
@@ -1787,7 +1744,7 @@ braceMakesLegalFhiCL: {
         try:
             self.save_run_record()            
         except Exception:
-            self.print_log(make_paragraph(
+            self.print_log("w", make_paragraph(
                     "WARNING: an exception was thrown when attempting to save the run record. While datataking may be able to proceed, this may also indicate a serious problem"))
 
         if self.manage_processes:
@@ -1795,24 +1752,23 @@ braceMakesLegalFhiCL: {
             try:
                 self.do_command("Init")
             except Exception:
-                self.print_log(traceback.format_exc())
+                self.print_log("e", traceback.format_exc())
                 self.alert_and_recover("An exception was thrown when attempting to send the \"init\" transition to the artdaq processes; see traceback above for more info")
                 return
 
             try:
                 self.launch_art_procs(self.daqinterface_config_file)
             except Exception:
-                self.print_log(traceback.format_exc())
-                self.print_log(make_paragraph("WARNING: an exception was caught when trying to launch the online monitoring processes; online monitoring won't work though this will not affect actual datataking"))
+                self.print_log("w", traceback.format_exc())
+                self.print_log("w", make_paragraph("WARNING: an exception was caught when trying to launch the online monitoring processes; online monitoring won't work though this will not affect actual datataking"))
 
         self.complete_state_change(self.name, "configuring")
 
-        if self.debug_level >= 1:
-            print "To see logfile(s), on %s run \"ls -ltr %s/pmt/%s\"" % \
+        self.print_log("i", "To see logfile(s), on %s run \"ls -ltr %s/pmt/%s\"" % \
                 (self.pmt_host, self.log_directory,
-                 self.log_filename_wildcard)
+                 self.log_filename_wildcard))
 
-        print "\n%s: CONFIG transition complete" % (self.date_and_time())
+        self.print_log("i", "\n%s: CONFIG transition complete" % (date_and_time()))
 
     def do_start_running(self, run_number = None):
 
@@ -1821,8 +1777,8 @@ braceMakesLegalFhiCL: {
         else:
             self.run_number = run_number
 
-        print "\n%s: START transition underway for run %d" % \
-            (self.date_and_time(), self.run_number)
+        self.print_log("i", "\n%s: START transition underway for run %d" % \
+                       (date_and_time(), self.run_number))
         
         if os.path.exists( self.tmp_run_record ):
             run_record_directory = "%s/%s" % \
@@ -1843,7 +1799,7 @@ braceMakesLegalFhiCL: {
         try:
             self.put_config_info()
         except Exception:
-            self.print_log(traceback.format_exc())
+            self.print_log("e", traceback.format_exc())
             self.alert_and_recover("An exception was thrown when trying to save configuration info; see traceback above for more info")
             return
 
@@ -1852,7 +1808,7 @@ braceMakesLegalFhiCL: {
             try:
                 self.do_command("Start")
             except Exception:
-                self.print_log(traceback.format_exc())
+                self.print_log("e", traceback.format_exc())
                 self.alert_and_recover("An exception was thrown when attempting to send the \"start\" transition to the artdaq processes; see traceback above for more info")
                 return
 
@@ -1863,20 +1819,17 @@ braceMakesLegalFhiCL: {
         self.save_metadata_value("Start time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
 
-        if self.debug_level >=1:
-            print
-            print "Run info can be found locally at %s" % \
-                (run_record_directory)
-            print
+        self.print_log("i", "\nRun info can be found locally at %s\n" % \
+                (run_record_directory))
 
         self.complete_state_change(self.name, "starting")
-        print "\n%s: START transition complete for run %d" % \
-            (self.date_and_time(), self.run_number)
+        self.print_log("i", "\n%s: START transition complete for run %d" % \
+            (date_and_time(), self.run_number))
 
     def do_stop_running(self):
 
-        print "\n%s: STOP transition underway for run %d" % \
-            (self.date_and_time(), self.run_number)
+        self.print_log("i", "\n%s: STOP transition underway for run %d" % \
+            (date_and_time(), self.run_number))
 
         self.save_metadata_value("Stop time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
@@ -1889,7 +1842,7 @@ braceMakesLegalFhiCL: {
             try:
                 self.do_command("Stop")
             except Exception:
-                self.print_log(traceback.format_exc())
+                self.print_log("e", traceback.format_exc())
                 self.alert_and_recover("An exception was thrown when attempting to send the \"stop\" transition to the artdaq processes; see traceback above for more info")
                 return
 
@@ -1898,13 +1851,13 @@ braceMakesLegalFhiCL: {
         
 
         self.complete_state_change(self.name, "stopping")
-        print "\n%s: STOP transition complete for run %d" % \
-            (self.date_and_time(), self.run_number)
+        self.print_log("i", "STOP transition complete for run %d" % \
+            (self.run_number))
 
     def do_terminate(self):
 
-        print "\n%s: TERMINATE transition underway" % \
-            (self.date_and_time())
+        self.print_log("i", "\n%s: TERMINATE transition underway" % \
+            (date_and_time()))
 
         print
 
@@ -1915,47 +1868,42 @@ braceMakesLegalFhiCL: {
                 try:
                     procinfo.lastreturned = procinfo.server.daq.shutdown()
                 except Exception:
-                    self.print_log("DAQInterface caught an exception in "
+                    self.print_log("e", "DAQInterface caught an exception in "
                                    "do_terminate()")
-                    self.print_log(traceback.format_exc())
+                    self.print_log("e", traceback.format_exc())
 
-                    self.print_log("%s at %s:%s, returned string is: " % \
-                                       (procinfo.name, procinfo.host, procinfo.port))
-                    self.print_log(procinfo.lastreturned)
+                    self.print_log("e", "%s at %s:%s, returned string is:\n%s\n" % \
+                                       (procinfo.name, procinfo.host, procinfo.port, procinfo.lastreturned))
 
                     self.alert_and_recover("An exception was thrown "
                                            "during the terminate transition")
                     return
                 else:
-                    if self.debug_level >= 1:
-                        print "%s at %s:%s, returned string is: " % \
-                            (procinfo.name, procinfo.host, procinfo.port)
-                        print procinfo.lastreturned
-                        print
+                    self.print_log("i", "%s at %s:%s, returned string is:\n%s\n" % \
+                                   (procinfo.name, procinfo.host, procinfo.port, procinfo.lastreturned), 1)
 
-            try:
-                self.kill_procs()
-            except Exception:
-                self.print_log("DAQInterface caught an exception in "
-                               "do_terminate()")
-                self.print_log(traceback.format_exc())
-                self.alert_and_recover("An exception was thrown "
-                                       "within kill_procs()")
-                return
+        try:
+            self.kill_procs()
+        except Exception:
+            self.print_log("e", "DAQInterface caught an exception in "
+                           "do_terminate()")
+            self.print_log("e", traceback.format_exc())
+            self.alert_and_recover("An exception was thrown "
+                                   "within kill_procs()")
+            return
 
         self.complete_state_change(self.name, "terminating")
 
-        print "\n%s: TERMINATE transition complete" % (self.date_and_time())
+        self.print_log("i", "\n%s: TERMINATE transition complete" % (date_and_time()))
 
-        if self.debug_level >= 1:
-            print "To see logfile(s), on %s run \"ls -ltr %s/pmt/%s\"" % \
+        self.print_log("i", "To see logfile(s), on %s run \"ls -ltr %s/pmt/%s\"" % \
                 (self.pmt_host, self.log_directory,
-                 self.log_filename_wildcard)
+                 self.log_filename_wildcard))
 
     def do_recover(self):
         print
-        print "\n%s: RECOVER transition underway" % \
-            (self.date_and_time())
+        self.print_log("w", "\n%s: RECOVER transition underway" % \
+            (date_and_time()))
 
         self.in_recovery = True
 
@@ -1967,7 +1915,7 @@ braceMakesLegalFhiCL: {
 
             if len(pid) == 0:
                 if self.debug_level >= 2 or not self.heartbeat_failure:
-                    self.print_log(
+                    self.print_log("d", 
                         "Didn't find PID for %s at %s:%s" % (procinfo.name, procinfo.host, procinfo.port), 2)
                 return
 
@@ -1981,13 +1929,13 @@ braceMakesLegalFhiCL: {
                     else:
                         assert False
 
-                    self.print_log("Called %s on %s at %s:%s without an exception; returned string was \"%s\"" % \
+                    self.print_log("d", "Called %s on %s at %s:%s without an exception; returned string was \"%s\"" % \
                                        (command, procinfo.name, procinfo.host, procinfo.port, lastreturned), 2)
                 except Exception:
                     raise
 
                 if lastreturned == "Success":
-                    self.print_log("Successful %s sent to %s at %s:%s" % \
+                    self.print_log("d", "Successful %s sent to %s at %s:%s" % \
                                        (command, procinfo.name, procinfo.host, procinfo.port), 2)
                 else:
                     raise Exception( make_paragraph( \
@@ -1999,7 +1947,7 @@ braceMakesLegalFhiCL: {
             try:
                 procstatus = procinfo.server.daq.status()
             except Exception:
-                self.print_log(make_paragraph("Unable to determine state of artdaq process %s at %s:%s; will not be able to complete its stop-and-shutdown" % \
+                self.print_log("e", make_paragraph("Unable to determine state of artdaq process %s at %s:%s; will not be able to complete its stop-and-shutdown" % \
                                    (procinfo.name, procinfo.host, procinfo.port)))
                 return
 
@@ -2009,8 +1957,8 @@ braceMakesLegalFhiCL: {
                     send_recover_command("stop")
                 except Exception:
                     if "ProtocolError" not in traceback.format_exc():
-                        print traceback.format_exc()
-                    self.print_log( make_paragraph( 
+                        self.print_log("e", traceback.format_exc())
+                    self.print_log("e",  make_paragraph( 
                             "Exception caught during stop transition sent to artdaq process %s " % (procinfo.name) +
                             "at %s:%s during recovery procedure;" % (procinfo.host, procinfo.port) +
                             " it's possible the process no longer existed\n"))
@@ -2020,7 +1968,7 @@ braceMakesLegalFhiCL: {
                 try:
                     procstatus = procinfo.server.daq.status()
                 except Exception:
-                    self.print_log("Unable to determine state of artdaq process %s at %s:%s; will not be able to complete its stop-and-shutdown" % \
+                    self.print_log("e", "Unable to determine state of artdaq process %s at %s:%s; will not be able to complete its stop-and-shutdown" % \
                                        (procinfo.name, procinfo.host, procinfo.port))
                     return
 
@@ -2030,8 +1978,8 @@ braceMakesLegalFhiCL: {
                     send_recover_command("shutdown")
                 except Exception:
                     if "ProtocolError" not in traceback.format_exc():
-                        print traceback.format_exc()
-                    self.print_log( make_paragraph( 
+                        self.print_log("e", traceback.format_exc())
+                    self.print_log("e",  make_paragraph( 
                             "Exception caught during shutdown transition sent to artdaq process %s " % (procinfo.name) +
                             "at %s:%s during recovery procedure;" % (procinfo.host, procinfo.port) +
                             " it's possible the process no longer existed\n"))
@@ -2053,12 +2001,11 @@ braceMakesLegalFhiCL: {
             if self.heartbeat_failure:
                 sleep_on_heartbeat_failure = 0
 
-                if self.debug_level >= 2:
-                    self.print_log(
-                        make_paragraph(
-                            "A process previously was found to be missing; " +
-                            "therefore will wait %d seconds before attempting to send the normal transitions as part of recovery" % \
-                                (sleep_on_heartbeat_failure)))
+                self.print_log("d", 
+                               make_paragraph(
+                                   "A process previously was found to be missing; " +
+                                   "therefore will wait %d seconds before attempting to send the normal transitions as part of recovery" % \
+                                   (sleep_on_heartbeat_failure)), 2)
                 sleep(sleep_on_heartbeat_failure)  
 
 
@@ -2081,18 +2028,18 @@ braceMakesLegalFhiCL: {
                     for thread in threads:
                         thread.join()
 
-            try:
-                self.kill_procs()
-            except Exception:
-                self.print_log(traceback.format_exc())
-                self.print_log(make_paragraph("An exception was thrown "
-                                       "within kill_procs(); artdaq processes may not all have been killed"))
+        try:
+            self.kill_procs()
+        except Exception:
+            self.print_log("e", traceback.format_exc())
+            self.print_log("e", make_paragraph("An exception was thrown "
+                                   "within kill_procs(); artdaq processes may not all have been killed"))
 
         self.in_recovery = False
 
         self.complete_state_change(self.name, "recovering")
 
-        print "\n%s: RECOVER transition complete" % (self.date_and_time())
+        self.print_log("i", "\n%s: RECOVER transition complete" % (date_and_time()))
 
     # Override of the parent class Component's runner function. As of
     # 5/30/14, called every 1s by control.py

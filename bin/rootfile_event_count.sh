@@ -1,9 +1,20 @@
 #!/bin/env bash
 
+# JCF, Nov-27-2017
+
+# Note that this only provides an accurate event count if the ONLY
+# files matching the wildcard 
+# "*<0-padded run number 6 characters wide>*_.root" come from the run 
+# in question. This might not hold if, e.g., there are filenames with
+# different prefixes, or if a run with the same # has been performed
+# before
+
 if [[ $# != 1 ]]; then
     echo "Please pass run number as argument" >&2
     exit 10
 fi
+
+runnum=$1
 
 . $ARTDAQ_DAQINTERFACE_DIR/bin/package_setup.sh root
 
@@ -14,11 +25,7 @@ if [[ "$root_retval" != "0" ]]; then
     exit 40
 fi
 
-runnum=$1
-
-recorddir=$( awk '/record_directory/ { print $2} ' $DAQINTERFACE_SETTINGS )
-recorddir=$( echo $( eval echo $recorddir ) )  # Expand environ variables in string
-
+. $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
 if [[ ! -e $recorddir/$runnum ]]; then
     echo "Unable to find expected subdirectory \"$runnum\" in run record directory \"$recorddir\"" >&2
@@ -29,30 +36,17 @@ cd $recorddir/$runnum
 
 total_events=0
 
-file_locations=""
+for file_location in $( file_locations ); do
 
-for proctype in Aggregator DataLogger ; do
-    for file in $( ls $recorddir/$runnum/${proctype}*.fcl 2>/dev/null ) ; do
-
-	agg_host=$( echo $file | sed -r 's/.*'${proctype}'_(.*)_.*/\1/' )
-	agg_dir=$( sed -r -n '/^\s*#/d;/fileName.*\.root/s/.*fileName[^/]*(\/.*\/).*/\1/p' $file )
-	if [[ -n $agg_dir && ! $file_locations =~ "${agg_host}:${agg_dir}" ]]; then
-	    file_locations="${agg_host}:${agg_dir} ${file_locations}"
-	fi
-    done
-done
-
-for file_location in $file_locations ; do
-
-    agg_host=$( echo $file_location | sed -r -n 's/(.*):.*/\1/p' )
-    agg_dir=$( echo $file_location | sed -r -n 's/.*:(.*)/\1/p' )
+    rootfile_host=$( echo $file_location | sed -r -n 's/(.*):.*/\1/p' )
+    rootfile_dir=$( echo $file_location | sed -r -n 's/.*:(.*)/\1/p' )
 
     runnum_padded=$( printf "%06d" $runnum )
 
-    cmd="tmpfile=/tmp/"$(uuidgen)".C ; echo '{TChain chain(\"Events\"); chain.Add(\""$agg_dir"/*_r"${runnum_padded}"_*.root\"); cout << chain.GetEntries() << endl;}' > \$tmpfile;  root -q -b -l \$tmpfile 2>/dev/null; rm -f \$tmpfile"
+    cmd="tmpfile=/tmp/"$(uuidgen)".C ; echo '{TChain chain(\"Events\"); chain.Add(\""$rootfile_dir"/*"${runnum_padded}"*_*.root\"); cout << chain.GetEntries() << endl;}' > \$tmpfile;  root -q -b -l \$tmpfile 2>/dev/null; rm -f \$tmpfile"
 
-    if [[ "$agg_host" != "localhost" && "$agg_host" != $HOSTNAME ]]; then
-	nevents=$( ssh $agg_host "$cmd" | tail -1 )
+    if [[ "$rootfile_host" != "localhost" && "$rootfile_host" != $HOSTNAME ]]; then
+	nevents=$( ssh $rootfile_host "$cmd" | tail -1 )
     else
 	nevents=$( eval "$cmd" | tail -1 )
     fi
