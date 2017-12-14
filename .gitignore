@@ -1,3 +1,4 @@
 *.pyc
 *~
 MessageFacility.fcl
+sync.ffs_db
