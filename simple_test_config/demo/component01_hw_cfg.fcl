@@ -60,12 +60,14 @@
 	  sleep_on_stop_us: 500000 
 	  nADCcounts: 40
 	  throttle_usecs: 100000
-	  distribution_type: 1
+	  distribution_type: 2
 	  timestamp_scale_factor: 1
 
         destinations: { }
 
-	use_routing_master: false
+	routing_table_config: {
+	    use_routing_master: false
+	}
   }
 
   metrics: {
@@ -75,5 +77,10 @@
 	  fileName: "/tmp/boardreader/br_%UID%_metrics.log"
 	  uniquify: true
 	}
+    ganglia: {
+      metricPluginType: "ganglia"
+      level: 3
+      configFile: "/home/eflumerf/Desktop/artdaq-mrb-base/gmond.conf"
+    }
   }
 }

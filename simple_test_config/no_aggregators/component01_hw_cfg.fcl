@@ -1,12 +1,9 @@
- 
-daq: {
- 
-fragment_receiver: {
- 
-mpi_sync_interval: 50  
+ daq: {
+ fragment_receiver: {
+ mpi_sync_interval: 50  
+
 # CommandableFragmentGenerator Configuration: 
 fragment_ids: []  
- 
 fragment_id: 0  
  
 sleep_on_stop_us: 500000  
@@ -56,6 +53,9 @@ timestamp_scale_factor: 1
 destinations: {
 
 }
+	routing_table_config: {
+	    use_routing_master: false
+	}
 } 
 metrics: {
  

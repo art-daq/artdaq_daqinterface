@@ -149,6 +149,7 @@ def total_events_in_run_base(self):
     fail_value = -999
 
     for log_filename in data_logger_filenames:
+        host, filename = log_filename.split(":")
 
         cmd = "sed -r -n '/Subrun [0-9]+ in run " + str(self.run_number) + " has ended/s/.*There were ([0-9]+) events in this subrun.*/\\1/p' " + log_filename.split(":")[1]
 

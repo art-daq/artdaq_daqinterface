@@ -1,26 +1,33 @@
 
 services: {
   scheduler: {
-    fileMode: NOMERGE
     errorOnFailureToPut: false
   }
   NetMonTransportServiceInterface: {
     service_provider: NetMonTransportService
     #broadcast_sends: true
 	destinations: {	}
+
+	routing_table_config: {
+	    use_routing_master: false
+	}
   }
 }
 
 daq: {
   event_builder: {
 	expected_fragments_per_event: 0  # Will be set by DAQInterface
+    max_fragment_size_bytes: 16777216
 	use_art: true
 	print_event_store_stats: true
+	buffer_count: 20
 	max_incomplete_events: 75 # Same as boardreader sync interval
 	verbose: false
 	send_requests: true
 
+	routing_token_config: {
 	use_routing_master: false
+	}
 
 	sources: { }
   }
@@ -31,6 +38,11 @@ daq: {
 	  fileName: "/tmp/eventbuilder/evb_%UID%_metrics.log"
 	  uniquify: true
 	}
+    ganglia: {
+      metricPluginType: "ganglia"
+      level: 3
+      configFile: "/home/eflumerf/Desktop/artdaq-mrb-base/gmond.conf"
+    }
   }
 } 
 
@@ -51,7 +63,16 @@ outputs: {
 
 physics: {
   analyzers: {
-
+    toy1Integ: {
+      module_type: CheckIntegrity
+      raw_data_label: "daq"
+      frag_type: "TOY1"      
+    }
+    toy2Integ: {
+      module_type: CheckIntegrity
+      raw_data_label: "daq"
+      frag_type: "TOY2"
+    }
   }
 
   producers: {
@@ -73,7 +94,7 @@ physics: {
   pmod2: [ prescaleMod2 ]
   pmod3: [ prescaleMod3 ]
    
-
+  a1: [ toy1Integ, toy2Integ ]
   my_output_modules: [ rootMPIOutput ]
   #my_output_modules: [ normalOutput ]
 }
