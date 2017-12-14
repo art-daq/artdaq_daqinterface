@@ -26,7 +26,7 @@ if [[ -n $fileglob ]]; then
 
     if [[ -n $res ]]; then
 
-	files_for_run=$( awk -v desired_run="$runnum" -f ./bin/show_all_logfiles_for_run.awk $(ls -tr $fileglob) )
+	files_for_run=$( awk -v desired_run="$runnum" -f $ARTDAQ_DAQINTERFACE_DIR/bin/show_all_logfiles_for_run.awk $(ls -tr $fileglob) )
 	echo $files_for_run | tr " " "\n"
 
 	if [[ -n $examine ]]; then
