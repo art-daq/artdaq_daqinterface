@@ -88,7 +88,9 @@ else
    export DAQINTERFACE_PORT=$highest_used_port			
 fi
 
-export DAQINTERFACE_LOGDIR=/tmp/daqinterface_${USER}
+if [[ -z $DAQINTERFACE_LOGDIR ]]; then
+   export DAQINTERFACE_LOGDIR=/tmp/daqinterface_${USER}
+fi
 
 mkdir -p $DAQINTERFACE_LOGDIR
 
