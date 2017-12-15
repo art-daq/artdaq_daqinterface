@@ -49,23 +49,12 @@ find_ups_product( cetpkgsupport v1_08_03 )
 # ups - table and config files
 add_subdirectory(ups)
 
-# Copy from source to install
-FILE(COPY bin DESTINATION .)
-INSTALL(DIRECTORY bin DESTINATION ${product}/${version})
-FILE(COPY docs DESTINATION .)
-INSTALL(DIRECTORY docs DESTINATION ${product}/${version})
-FILE(COPY rc DESTINATION .)
-INSTALL(DIRECTORY rc DESTINATION ${product}/${version})
-FILE(COPY simple_test_config DESTINATION .)
-INSTALL(DIRECTORY simple_test_config DESTINATION ${product}/${version})
-FILE(COPY utils DESTINATION .)
-INSTALL(DIRECTORY utils DESTINATION ${product}/${version})
-FILE(COPY source_me DESTINATION .)
+INSTALL(DIRECTORY bin DESTINATION ${product}/${version} FILE_PERMISSIONS USE_SOURCE_PERMISSIONS)
+INSTALL(DIRECTORY docs DESTINATION ${product}/${version} FILE_PERMISSIONS USE_SOURCE_PERMISSIONS)
+INSTALL(DIRECTORY rc DESTINATION ${product}/${version} FILE_PERMISSIONS USE_SOURCE_PERMISSIONS)
+INSTALL(DIRECTORY simple_test_config DESTINATION ${product}/${version} FILE_PERMISSIONS USE_SOURCE_PERMISSIONS)
+INSTALL(DIRECTORY utils DESTINATION ${product}/${version} FILE_PERMISSIONS USE_SOURCE_PERMISSIONS)
 INSTALL(FILES source_me DESTINATION ${product}/${version})
-#FILE(COPY .components.txt DESTINATION .)
-#INSTALL(FILES .components.txt DESTINATION ${product}/${version})
-#FILE(COPY .settings DESTINATION .)
-#INSTALL(FILES .settings DESTINATION ${product}/${version})
 
 # packaging utility
 include(UseCPack)
