@@ -1,1 +1,2 @@
+# this goes inside the "destinations" table which will ultimately be passed to mf::StartMessageFacility
 udp : { type : "UDP" threshold : "INFO" port : 30000 host : "mu2edaq01.fnal.gov" }
