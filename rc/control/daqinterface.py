@@ -608,18 +608,14 @@ class DAQInterface(Component):
 
             for procname in ["BoardReader", "EventBuilder", "Aggregator", "RoutingMaster", "DataLogger", "Dispatcher"]:
                 if procname in procinfo.name:
-                    outf.write(procname + "Main ")
-
-#            for procname in ["DataLogger", "Dispatcher"]:
-#                if procname in procinfo.name:
-#                    outf.write("AggregatorMain ")
+                    outf.write(procname + "Main!")
 
             if procinfo.host != "localhost":
                 host_to_write = procinfo.host
             else:
                 host_to_write = os.environ["HOSTNAME"]
 
-            outf.write(host_to_write + " " + procinfo.port + "\n")
+            outf.write(host_to_write + "!  id: " + procinfo.port + " commanderPluginType: xmlrpc\n")
 
         outf.close()
 
@@ -748,7 +744,7 @@ braceMakesLegalFhiCL: {
             else:
                 assert False
 
-            greptoken = proctype + " -p " + procinfo.port
+            greptoken = proctype + " -c .*" + procinfo.port + ".*"
 
             pids = get_pids(greptoken, procinfo.host)
 
