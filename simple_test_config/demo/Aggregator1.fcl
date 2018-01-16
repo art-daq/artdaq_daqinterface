@@ -63,8 +63,8 @@ outputs: {
     fastCloning: false
     compressionLevel: 3
   }
-  rootMPIOutput: {
-    module_type: RootMPIOutput
+  rootNetOutput: {
+    module_type: RootNetOutput
     #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
   }
 
@@ -98,6 +98,6 @@ physics: {
   p2: [ BuildInfo ]
   a1: [ checkintegrity, checkintegrity2 ]
   my_output_modules: [ normalOutput ]
-  my_mpi_output_modules: [rootMPIOutput]
+  my_mpi_output_modules: [rootNetOutput]
 }
 process_name: DAQDL
