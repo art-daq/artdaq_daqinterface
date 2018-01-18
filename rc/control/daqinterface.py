@@ -1136,8 +1136,11 @@ braceMakesLegalFhiCL: {
                 if "eventbuilder" in logname:
                     link_logfile_cmd = "ln -s %s %s/eventbuilder/run%d-eventbuilder%d.log" % \
                                        (logname, self.log_directory, self.run_number, proccntr)
-                elif "aggregator" in logname:
-                    link_logfile_cmd = "ln -s %s %s/aggregator/run%d-aggregator%d.log" % \
+                elif "datalogger" in logname:
+                    link_logfile_cmd = "ln -s %s %s/datalogger/run%d-datalogger%d.log" % \
+                                       (logname, self.log_directory, self.run_number, proccntr)
+                elif "dispatcher" in logname:
+                    link_logfile_cmd = "ln -s %s %s/dispatcher/run%d-dispatcher%d.log" % \
                                        (logname, self.log_directory, self.run_number, proccntr)
                 else:
                     assert False, "The logfile naming convention was apparently changed"
@@ -1158,8 +1161,8 @@ braceMakesLegalFhiCL: {
         for compname, socket in self.daq_comp_list.items():
             host, port = socket
             
-            pids = get_pids("BoardReaderMain -p " + str(port), host)
-            
+            pids = get_pids("BoardReaderMain -c .*" + str(port) + ".*", host)
+
             if len(pids) == 1:
                 link_logfile_cmd = "ln -s %s/boardreader/boardreader-*-%s.log %s/boardreader/run%d-%s.log" % \
                                    (self.log_directory, pids[0], self.log_directory, self.run_number, compname)
