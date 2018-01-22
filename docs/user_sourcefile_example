@@ -1,7 +1,7 @@
 
-export DAQINTERFACE_SETTINGS=$DAQINTERFACE_BASEDIR/docs/settings_example
-export DAQINTERFACE_KNOWN_BOARDREADERS_LIST=$DAQINTERFACE_BASEDIR/docs/known_boardreaders_list_example
-export DAQINTERFACE_FHICL_DIRECTORY=$DAQINTERFACE_BASEDIR/simple_test_config
+export DAQINTERFACE_SETTINGS=$ARTDAQ_DAQINTERFACE_DIR/docs/settings_example
+export DAQINTERFACE_KNOWN_BOARDREADERS_LIST=$ARTDAQ_DAQINTERFACE_DIR/docs/known_boardreaders_list_example
+export DAQINTERFACE_FHICL_DIRECTORY=$ARTDAQ_DAQINTERFACE_DIR/simple_test_config
 
 if [[ ! -e $DAQINTERFACE_SETTINGS ]]; then
    echo "Unable to find settings file \"$DAQINTERFACE_SETTINGS\"" >&2

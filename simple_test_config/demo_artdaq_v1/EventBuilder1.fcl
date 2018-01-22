@@ -60,8 +60,8 @@ daq: {
 } 
 
 outputs: {
-  rootMPIOutput: {
-    module_type: RootMPIOutput
+  rootNetOutput: {
+    module_type: RootNetOutput
     #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
     #outputCommands: [ "keep *", "drop artdaq::Fragments_daq_V1720_*", "drop artdaq::Fragments_daq_V1724_*" ]
   }
@@ -106,7 +106,7 @@ physics: {
 
   #a1: [ app, wf ]
 
-  my_output_modules: [ rootMPIOutput ]
+  my_output_modules: [ rootNetOutput ]
   #my_output_modules: [ normalOutput ]
 }
 source: {

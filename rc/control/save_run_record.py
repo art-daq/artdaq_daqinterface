@@ -80,7 +80,10 @@ def save_run_record_base(self):
     # Now save the commit hashes we determined during
     # initialization
 
-    outf.write("DAQInterface commit: %s\n" % ( self.get_commit_hash(os.environ["DAQINTERFACE_BASEDIR"]) ) )
+    if "ARTDAQ_DAQINTERFACE_VERSION" in os.environ.keys():
+        outf.write("DAQInterface commit: %s\n" % ( os.environ["ARTDAQ_DAQINTERFACE_VERSION"] ) )
+    else:
+        outf.write("DAQInterface commit: %s\n" % ( self.get_commit_hash(os.environ["ARTDAQ_DAQINTERFACE_DIR"]) ) )
 
     for pkg in sorted(self.package_hash_dict.keys()):
         outf.write("%s commit: %s\n" % (pkg, self.package_hash_dict[ pkg ] ))
@@ -146,6 +149,7 @@ def total_events_in_run_base(self):
     fail_value = -999
 
     for log_filename in data_logger_filenames:
+        host, filename = log_filename.split(":")
 
         cmd = "sed -r -n '/Subrun [0-9]+ in run " + str(self.run_number) + " has ended/s/.*There were ([0-9]+) events in this subrun.*/\\1/p' " + log_filename.split(":")[1]
 

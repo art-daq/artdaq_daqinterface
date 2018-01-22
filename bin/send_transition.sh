@@ -1,13 +1,13 @@
 #!/bin/env bash
 
+
 badargs=false
 cmd=$1
 
 xmlrpc_arg=
 translated_cmd=
 
-scriptdir="$(dirname "$0")"
-. $scriptdir/package_setup.sh xmlrpc_c
+. $ARTDAQ_DAQINTERFACE_DIR/bin/package_setup.sh xmlrpc_c
 
 xmlrpc_retval=$?
 
@@ -16,6 +16,8 @@ if [[ "$xmlrpc_retval" != "0" ]]; then
     exit 40
 fi
 
+. $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
+daqinterface_preamble
 
 case $cmd in
     "boot")
@@ -30,15 +32,21 @@ case $cmd in
 	xmlrpc_arg="config:s/"$2
 	;;
     "start")
-	test $# == 1 || badargs=true 
+	test $# == 1 || test $# == 2 || badargs=true 
 	translated_cmd="starting"
 
-	run_records_dir=$( awk '/record_directory/ { print $2 }' $DAQINTERFACE_SETTINGS )
-	run_records_dir=$( echo $( eval echo $run_records_dir ) )  # Expand environ variables in string
-	
-        highest_runnum=$( ls -1 $run_records_dir | sort -n | tail -1 )
+	. $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh  # provides recorddir
 
-	xmlrpc_arg="run_number:i/"$((highest_runnum + 1))
+	runnum=0
+        highest_runnum=$( ls -1 $recorddir | sort -n | tail -1 )
+
+	if [[ $# == 1 ]]; then
+            runnum=$((highest_runnum + 1))
+        else
+            runnum=$2 
+        fi
+
+	xmlrpc_arg="run_number:i/"$runnum
 	;;
     "enable")
 	test $# == 1 || badargs=true
@@ -72,7 +80,7 @@ if [[ "$badargs" = true ]]; then
 fi
 
 
-full_cmd="xmlrpc http://localhost:5570/RPC2 state_change daqint "${translated_cmd}
+full_cmd="xmlrpc http://localhost:$DAQINTERFACE_PORT/RPC2 state_change daqint "${translated_cmd}
 
 if [[ -n $xmlrpc_arg ]]; then
     full_cmd=${full_cmd}" 'struct/{"${xmlrpc_arg}"}'"

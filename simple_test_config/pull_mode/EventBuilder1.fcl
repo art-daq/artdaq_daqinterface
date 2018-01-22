@@ -35,8 +35,8 @@ daq: {
 } 
 
 outputs: {
-  rootMPIOutput: {
-    module_type: RootMPIOutput
+  rootNetOutput: {
+    module_type: RootNetOutput
     #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
   }
   #normalOutput: {
@@ -74,7 +74,7 @@ physics: {
   pmod3: [ prescaleMod3 ]
    
 
-  my_output_modules: [ rootMPIOutput ]
+  my_output_modules: [ rootNetOutput ]
   #my_output_modules: [ normalOutput ]
 }
 source: {

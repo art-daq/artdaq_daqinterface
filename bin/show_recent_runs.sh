@@ -15,7 +15,7 @@ fi
 
 nruns=$1
 
-. $PWD/bin/get_daq_environment.sh
+. $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
 echo
 

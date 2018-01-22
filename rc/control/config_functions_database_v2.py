@@ -5,7 +5,7 @@
 
 import os
 import sys
-sys.path.append( os.environ["DAQINTERFACE_BASEDIR"] )
+sys.path.append( os.environ["ARTDAQ_DAQINTERFACE_DIR"] )
 
 dbdirs = [dbdir for dbdir in os.environ["PYTHONPATH"].split(":") if "/artdaq_database/" in dbdir]
 assert len(dbdirs) == 1, "More than one path in $PYTHONPATH appears to be an artdaq-database path"
@@ -44,29 +44,36 @@ def get_config_info_base(self):
         raise Exception("Error: the exportConfiguration function with the argument \"%s\" returned False" % \
                         self.config_for_run)
 
-    if os.path.exists("common_code"):
-        raise Exception("Error: the requested configuration \"%s\" contains a subdirectory called \"common_code\" (see directory %s); this should not be the case, as \"common_code\" needs to be a separate configuration" % (self.config_for_run, os.getcwd()))
+    # JCF, Nov-22-2017
 
-    common_code_configs = getListOfAvailableRunConfigurations("common_code")
-    
-    if len(common_code_configs) == 0:
-        raise Exception("Error: unable to find any common_code configurations in the database")
+    # Disabled the common code logic for the time being; plan is to
+    # reinstate it when there's time to modify the protoDUNE FHiCL
+    # configurations to adhere to it
 
-    common_code_configs.sort()
-    common_code_config = common_code_configs[-1]
-    
-    result = exportConfiguration( common_code_config )
-    if not result:
-        raise Exception("Error: the \"%s\" set of FHiCL documents doesn't appear to be retrievable from the database" % (common_code_config))
+    if False:
+        if os.path.exists("common_code"):
+            raise Exception("Error: the requested configuration \"%s\" contains a subdirectory called \"common_code\" (see directory %s); this should not be the case, as \"common_code\" needs to be a separate configuration" % (self.config_for_run, os.getcwd()))
+
+        common_code_configs = getListOfAvailableRunConfigurations("common_code")
+
+        if len(common_code_configs) == 0:
+            raise Exception("Error: unable to find any common_code configurations in the database")
+
+        common_code_configs.sort()
+        common_code_config = common_code_configs[-1]
+
+        result = exportConfiguration( common_code_config )
+        if not result:
+            raise Exception("Error: the \"%s\" set of FHiCL documents doesn't appear to be retrievable from the database" % (common_code_config))
 
     os.chdir(basedir)
     
-    return config_basedir(self), [fhicl_dir for fhicl_dir, dummy, dummy in os.walk(config_basedir(self))]
+    return config_dir, [fhicl_dir for fhicl_dir, dummy, dummy in os.walk(config_dir)]
 
 
 def put_config_info_base(self):
 
-    scriptdir = os.environ["PWD"] + "/utils"
+    scriptdir = os.environ["ARTDAQ_DAQINTERFACE_DIR"] + "/utils"
 
     if not os.path.exists( scriptdir ):
         raise Exception("Error in %s: unable to find script directory \"%s\"; should be in the base directory of the package" % (put_config_info_base.__name__, scriptdir))
