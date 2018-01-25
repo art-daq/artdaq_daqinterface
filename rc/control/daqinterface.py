@@ -1134,13 +1134,13 @@ braceMakesLegalFhiCL: {
                 logname = "".join( fulllogname.split(":")[1:] )
 
                 if "EventBuilder" in logname:
-                    link_logfile_cmd = "ln -s %s %s/eventbuilder/run%d-eventbuilder%d.log" % \
+                    link_logfile_cmd = "ln -s %s %s/eventbuilder/run%d-EventBuilder%d.log" % \
                                        (logname, self.log_directory, self.run_number, proccntr)
                 elif "DataLogger" in logname:
-                    link_logfile_cmd = "ln -s %s %s/datalogger/run%d-datalogger%d.log" % \
+                    link_logfile_cmd = "ln -s %s %s/datalogger/run%d-DataLogger%d.log" % \
                                        (logname, self.log_directory, self.run_number, proccntr)
                 elif "Dispatcher" in logname:
-                    link_logfile_cmd = "ln -s %s %s/dispatcher/run%d-dispatcher%d.log" % \
+                    link_logfile_cmd = "ln -s %s %s/dispatcher/run%d-Dispatcher%d.log" % \
                                        (logname, self.log_directory, self.run_number, proccntr)
                 else:
                     assert False, "The logfile naming convention was apparently changed"
@@ -1164,7 +1164,7 @@ braceMakesLegalFhiCL: {
             pids = get_pids("BoardReaderMain -c .*" + str(port) + ".*", host)
 
             if len(pids) == 1:
-                link_logfile_cmd = "ln -s %s/boardreader/boardreader-*-%s.log %s/boardreader/run%d-%s.log" % \
+                link_logfile_cmd = "ln -s %s/BoardReader*/BoardReader-*-%s.log %s/boardreader/run%d-%s.log" % \
                                    (self.log_directory, pids[0], self.log_directory, self.run_number, compname)
                 if host != "localhost" and host != os.environ["HOSTNAME"]:
                     link_logfile_cmd = "ssh %s '%s'" % (host, link_logfile_cmd)
