@@ -983,7 +983,7 @@ braceMakesLegalFhiCL: {
                     host_count[procinfo.host] = 1
 
         for host, count in host_count.items():
-            cmd = "ls -tr1 %s/%s/%s-*.log | tail -%d" % (self.log_directory,
+            cmd = "ls -tr1 %s/%s*/%s-*.log | tail -%d" % (self.log_directory,
                                                          subdir, subdir, count)
 
             if host != "localhost" and host != os.environ["HOSTNAME"]:
@@ -1133,13 +1133,13 @@ braceMakesLegalFhiCL: {
                 host = fulllogname.split(":")[0]
                 logname = "".join( fulllogname.split(":")[1:] )
 
-                if "eventbuilder" in logname:
+                if "EventBuilder" in logname:
                     link_logfile_cmd = "ln -s %s %s/eventbuilder/run%d-eventbuilder%d.log" % \
                                        (logname, self.log_directory, self.run_number, proccntr)
-                elif "datalogger" in logname:
+                elif "DataLogger" in logname:
                     link_logfile_cmd = "ln -s %s %s/datalogger/run%d-datalogger%d.log" % \
                                        (logname, self.log_directory, self.run_number, proccntr)
-                elif "dispatcher" in logname:
+                elif "Dispatcher" in logname:
                     link_logfile_cmd = "ln -s %s %s/dispatcher/run%d-dispatcher%d.log" % \
                                        (logname, self.log_directory, self.run_number, proccntr)
                 else:
