@@ -956,15 +956,15 @@ braceMakesLegalFhiCL: {
         host_count = {}
 
         if procname == "BoardReader":
-            subdir = "boardreader"
+            subdir = "BoardReader"
         elif procname == "EventBuilder":
-            subdir = "eventbuilder"
+            subdir = "EventBuilder"
         elif procname == "Aggregator":
-            subdir = "aggregator"
+            subdir = "Aggregator"
         elif procname == "DataLogger":
-            subdir = "datalogger"
+            subdir = "DataLogger"
         elif procname == "Dispatcher":
-            subdir = "dispatcher"
+            subdir = "Dispatcher"
         else:
             assert False
 
