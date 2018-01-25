@@ -956,15 +956,15 @@ braceMakesLegalFhiCL: {
         host_count = {}
 
         if procname == "BoardReader":
-            subdir = "boardreader"
+            subdir = "BoardReader"
         elif procname == "EventBuilder":
-            subdir = "eventbuilder"
+            subdir = "EventBuilder"
         elif procname == "Aggregator":
-            subdir = "aggregator"
+            subdir = "Aggregator"
         elif procname == "DataLogger":
-            subdir = "datalogger"
+            subdir = "DataLogger"
         elif procname == "Dispatcher":
-            subdir = "dispatcher"
+            subdir = "Dispatcher"
         else:
             assert False
 
@@ -983,7 +983,7 @@ braceMakesLegalFhiCL: {
                     host_count[procinfo.host] = 1
 
         for host, count in host_count.items():
-            cmd = "ls -tr1 %s/%s/%s-*.log | tail -%d" % (self.log_directory,
+            cmd = "ls -tr1 %s/%s*/%s-*.log | tail -%d" % (self.log_directory,
                                                          subdir, subdir, count)
 
             if host != "localhost" and host != os.environ["HOSTNAME"]:
@@ -1133,14 +1133,14 @@ braceMakesLegalFhiCL: {
                 host = fulllogname.split(":")[0]
                 logname = "".join( fulllogname.split(":")[1:] )
 
-                if "eventbuilder" in logname:
-                    link_logfile_cmd = "ln -s %s %s/eventbuilder/run%d-eventbuilder%d.log" % \
+                if "EventBuilder" in logname:
+                    link_logfile_cmd = "ln -s %s %s/eventbuilder/run%d-EventBuilder%d.log" % \
                                        (logname, self.log_directory, self.run_number, proccntr)
-                elif "datalogger" in logname:
-                    link_logfile_cmd = "ln -s %s %s/datalogger/run%d-datalogger%d.log" % \
+                elif "DataLogger" in logname:
+                    link_logfile_cmd = "ln -s %s %s/datalogger/run%d-DataLogger%d.log" % \
                                        (logname, self.log_directory, self.run_number, proccntr)
-                elif "dispatcher" in logname:
-                    link_logfile_cmd = "ln -s %s %s/dispatcher/run%d-dispatcher%d.log" % \
+                elif "Dispatcher" in logname:
+                    link_logfile_cmd = "ln -s %s %s/dispatcher/run%d-Dispatcher%d.log" % \
                                        (logname, self.log_directory, self.run_number, proccntr)
                 else:
                     assert False, "The logfile naming convention was apparently changed"
@@ -1164,7 +1164,7 @@ braceMakesLegalFhiCL: {
             pids = get_pids("BoardReaderMain -c .*" + str(port) + ".*", host)
 
             if len(pids) == 1:
-                link_logfile_cmd = "ln -s %s/boardreader/boardreader-*-%s.log %s/boardreader/run%d-%s.log" % \
+                link_logfile_cmd = "ln -s %s/BoardReader*/BoardReader-*-%s.log %s/boardreader/run%d-%s.log" % \
                                    (self.log_directory, pids[0], self.log_directory, self.run_number, compname)
                 if host != "localhost" and host != os.environ["HOSTNAME"]:
                     link_logfile_cmd = "ssh %s '%s'" % (host, link_logfile_cmd)
