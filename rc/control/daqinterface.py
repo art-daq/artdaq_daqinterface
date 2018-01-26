@@ -658,30 +658,8 @@ class DAQInterface(Component):
             # artdaq/DAQdata/configureMessageFacility.cc in artdaq
             # v2_03_03 for details).
 
-            default_contents = """ } 
-
-# Require that there be no more than messageLimit messages in limitAppliesToTimespan seconds
-
-messageLimit: 50 
-limitAppliesToTimespan: 10  
-
-defaultCategory: { limit: @local::messageLimit timespan: @local::limitAppliesToTimespan } 
-
-# And apply this rule to udp, file and console, keeping in mind that
-# the last two will already have been defined in the destinations: {}
-# table by artdaq
-
-udp : { type : "UDP" threshold : "INFO"  categories: { default: @local::defaultCategory } port : 30000 host : "%s" } 
-file : @local::destinations.file file.categories: { default: @local::defaultCategory } 
-console: @local::destinations.console console.categories: { default: @local::defaultCategory } 
-
-destinationsAlias: @local::destinations 
-destinationsAlias.udp: @local::udp 
-destinationsAlias.file: @local::file 
-destinationsAlias.console: @local::console 
-destinations: @local::destinationsAlias 
-
-braceMakesLegalFhiCL: {
+            default_contents = """ 
+udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" } 
 
 """ % (socket.gethostname())
         
