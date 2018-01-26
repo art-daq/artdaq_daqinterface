@@ -184,9 +184,13 @@ class DAQInterface(Component):
                             
     def print_log(self, severity, printstr, debuglevel=-999):
 
+        dummy, month, day, time, timezone, year = date_and_time().split()
+        formatted_day = "%s-%s-%s" % (day, month, year)
+
         if self.debug_level >= debuglevel:
             if self.fake_messagefacility:
-                print "%%MSG-%s DAQInterface %s" % (severity, date_and_time())
+                print "%%MSG-%s DAQInterface %s %s %s" % \
+                    (severity, formatted_day, time, timezone)
             print printstr
             if self.fake_messagefacility:
                 print "%MSG"
