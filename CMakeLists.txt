@@ -27,7 +27,7 @@ set(CMAKE_MODULE_PATH $ENV{CETBUILDTOOLS_DIR}/Modules
 		      ${CMAKE_MODULE_PATH})
 
 include(CetCMakeEnv)
-cet_cmake_env()
+cet_cmake_env(noarch)
 
 cet_set_compiler_flags(DIAGS VIGILANT
   WERROR
