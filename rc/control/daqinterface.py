@@ -135,6 +135,7 @@ class DAQInterface(Component):
                 return False
 
         def recursive_include(self, filename):
+
             if self.fhicl is not None:            
                 for line in open(filename).readlines():
 
@@ -538,6 +539,13 @@ class DAQInterface(Component):
                     or "Dispatcher" in procinfo.name:
                 num_aggregators += 1
         return num_aggregators
+
+    def num_dataloggers(self):
+        num_dataloggers = 0
+        for procinfo in self.procinfos:
+            if "DataLogger" in procinfo.name:
+                num_dataloggers += 1
+        return num_dataloggers
 
     def have_artdaq_mfextensions(self):
 
@@ -1676,6 +1684,7 @@ braceMakesLegalFhiCL: {
             rootfile_cntr = 0
             unspecified_aggregator_cntr = 0
             unspecified_routingmaster_cntr = 0
+            datalogger_cntr = 0
 
             for i_proc in range(len(self.procinfos)):
 
@@ -1690,9 +1699,10 @@ braceMakesLegalFhiCL: {
                         else:
                             fcl = "%s/Aggregator2.fcl" % (config_subdirname)
                     elif proc_type == "DataLogger":
-                        fcl = "%s/Aggregator1.fcl" % (config_subdirname)
+                        datalogger_cntr += 1
+                        fcl = "%s/Aggregator%d.fcl" % (config_subdirname, datalogger_cntr)
                     elif proc_type == "Dispatcher":
-                        fcl = "%s/Aggregator2.fcl" % (config_subdirname)
+                        fcl = "%s/Aggregator%d.fcl" % (config_subdirname, self.num_dataloggers() + 1)
                     elif proc_type == "RoutingMaster":
                         unspecified_routingmaster_cntr += 1
                         if unspecified_routingmaster_cntr == 1:
