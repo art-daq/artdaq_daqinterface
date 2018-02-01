@@ -1678,6 +1678,9 @@ braceMakesLegalFhiCL: {
                 self.print_log("e", traceback.format_exc())
                 self.alert_and_recover("An exception was thrown when creating the process FHiCL documents; see traceback above for more info")
                 return
+
+        # Highest-numbered aggregator fcl is intended for the dispatcher
+        dispatcher_fcl = sorted( glob.glob("%s/Aggregator*.fcl" % (config_subdirname)) )[-1]
                 
         for proc_type in ["EventBuilder", "Aggregator", "DataLogger", "Dispatcher", "RoutingMaster"]:
 
@@ -1701,8 +1704,11 @@ braceMakesLegalFhiCL: {
                     elif proc_type == "DataLogger":
                         datalogger_cntr += 1
                         fcl = "%s/Aggregator%d.fcl" % (config_subdirname, datalogger_cntr)
+                        if fcl == dispatcher_fcl:
+                            self.alert_and_recover(make_paragraph("Configuration \"%s\" can only support a maximum of %d DataLogger(s); more than that have been requested in the file passed on the boot transition" % (self.config_for_run, datalogger_cntr - 1)))
+                            return
                     elif proc_type == "Dispatcher":
-                        fcl = "%s/Aggregator%d.fcl" % (config_subdirname, self.num_dataloggers() + 1)
+                        fcl = dispatcher_fcl
                     elif proc_type == "RoutingMaster":
                         unspecified_routingmaster_cntr += 1
                         if unspecified_routingmaster_cntr == 1:
