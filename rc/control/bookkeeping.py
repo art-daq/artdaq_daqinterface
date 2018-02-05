@@ -426,7 +426,31 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         self.procinfos[i_proc].fhicl_used = re.sub("expected_fragments_per_event\s*:\s*[0-9]+", 
                                                    "expected_fragments_per_event: %d" % (expected_fragments_per_event), 
                                                    self.procinfos[i_proc].fhicl_used)
+    
+    if not self.data_directory_override is None:
+        for i_proc in range(len(self.procinfos)):
+            if "EventBuilder" in self.procinfos[i_proc].name or "DataLogger" in self.procinfos[i_proc].name:
 
+                res = re.search(r"^[^#]*RootOutput", self.procinfos[i_proc].fhicl_used)
+
+                if res:
+                    start, end = table_range(self.procinfos[i_proc].fhicl_used, "RootOutput")
+                    assert start != -1 and end != -1
+
+                    rootoutput_table = self.procinfos[i_proc].fhicl_used[start:end]
+                    res = re.search(r"(.*fileName\s*:[\s\"]*)/[^\s]+/", 
+                                    self.procinfos[i_proc].fhicl_used)
+                    assert res
+
+                    rootoutput_table = re.sub(".*fileName\s*:[\s\"]*/[^\s]+/",
+                                              "%s%s" % (res.group(1), self.data_directory_override),
+                                              rootoutput_table)
+
+                    self.procinfos[i_proc].fhicl_used = self.procinfos[i_proc].fhicl_used[:start] + \
+                                                        rootoutput_table + \
+                                                        self.procinfos[i_proc].fhicl_used[end:]
+                                                    
+                
 
 def bookkeeping_for_fhicl_documents_artdaq_v4_base(self):
     pass

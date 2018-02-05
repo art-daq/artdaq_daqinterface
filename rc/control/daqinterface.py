@@ -379,6 +379,7 @@ class DAQInterface(Component):
 
         self.use_messageviewer = True
         self.fake_messagefacility = False
+        self.data_directory_override = None
 
         for line in inf.readlines():
 
@@ -444,6 +445,11 @@ class DAQInterface(Component):
 
                 if res:
                     self.fake_messagefacility = True
+            elif "data_directory_override" in line:
+                self.data_directory_override = line.split()[-1].strip()
+                if self.data_directory_override[-1] != "/":
+                    self.data_directory_override = self.data_directory_override + "/"
+                
 
         missing_vars = []
 
