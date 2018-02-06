@@ -319,7 +319,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     offset = this_node_index
 
                 nodes.append( 
-                    "%s%d: { transferPluginType: NthEvent nth: %d offset: %d physical_transfer_plugin: { transferPluginType: Autodetect %s_rank: %d max_fragment_size_words: %d host_map: [%s]}}" % \
+                    "%s%d: { transferPluginType: NthEvent nth: %d offset: %d physical_transfer_plugin: { transferPluginType: Autodetect %s_rank: %d max_fragment_size_words: %d } host_map: [%s]}" % \
                     (prefix, i, nth, offset, nodetype[:-1], i, max_fragment_size_words, \
                      proc_hosts_string))
 

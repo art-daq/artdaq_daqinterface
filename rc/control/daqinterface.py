@@ -135,6 +135,7 @@ class DAQInterface(Component):
                 return False
 
         def recursive_include(self, filename):
+
             if self.fhicl is not None:            
                 for line in open(filename).readlines():
 
@@ -544,6 +545,13 @@ class DAQInterface(Component):
                     or "Dispatcher" in procinfo.name:
                 num_aggregators += 1
         return num_aggregators
+
+    def num_dataloggers(self):
+        num_dataloggers = 0
+        for procinfo in self.procinfos:
+            if "DataLogger" in procinfo.name:
+                num_dataloggers += 1
+        return num_dataloggers
 
     def have_artdaq_mfextensions(self):
 
@@ -1658,12 +1666,16 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                 self.print_log("e", traceback.format_exc())
                 self.alert_and_recover("An exception was thrown when creating the process FHiCL documents; see traceback above for more info")
                 return
+
+        # Highest-numbered aggregator fcl is intended for the dispatcher
+        dispatcher_fcl = sorted( glob.glob("%s/Aggregator*.fcl" % (config_subdirname)) )[-1]
                 
         for proc_type in ["EventBuilder", "Aggregator", "DataLogger", "Dispatcher", "RoutingMaster"]:
 
             rootfile_cntr = 0
             unspecified_aggregator_cntr = 0
             unspecified_routingmaster_cntr = 0
+            datalogger_cntr = 0
 
             for i_proc in range(len(self.procinfos)):
 
@@ -1678,9 +1690,13 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                         else:
                             fcl = "%s/Aggregator2.fcl" % (config_subdirname)
                     elif proc_type == "DataLogger":
-                        fcl = "%s/Aggregator1.fcl" % (config_subdirname)
+                        datalogger_cntr += 1
+                        fcl = "%s/Aggregator%d.fcl" % (config_subdirname, datalogger_cntr)
+                        if fcl == dispatcher_fcl:
+                            self.alert_and_recover(make_paragraph("Configuration \"%s\" can only support a maximum of %d DataLogger(s); more than that have been requested in the file passed on the boot transition" % (self.config_for_run, datalogger_cntr - 1)))
+                            return
                     elif proc_type == "Dispatcher":
-                        fcl = "%s/Aggregator2.fcl" % (config_subdirname)
+                        fcl = dispatcher_fcl
                     elif proc_type == "RoutingMaster":
                         unspecified_routingmaster_cntr += 1
                         if unspecified_routingmaster_cntr == 1:
