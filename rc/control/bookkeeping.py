@@ -423,9 +423,15 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 continue                
 
     for i_proc in range(len(self.procinfos)):
-        self.procinfos[i_proc].fhicl_used = re.sub("expected_fragments_per_event\s*:\s*[0-9]+", 
-                                                   "expected_fragments_per_event: %d" % (expected_fragments_per_event), 
-                                                   self.procinfos[i_proc].fhicl_used)
+        if "DataLogger" in self.procinfos[i_proc].name or "Dispatcher" in self.procinfos[i_proc].name:
+            self.procinfos[i_proc].fhicl_used = re.sub("expected_fragments_per_event\s*:\s*[0-9]+", 
+                                                       "expected_fragments_per_event: 1", 
+                                                       self.procinfos[i_proc].fhicl_used)
+        else:
+            self.procinfos[i_proc].fhicl_used = re.sub("expected_fragments_per_event\s*:\s*[0-9]+", 
+                                                       "expected_fragments_per_event: %d" % (expected_fragments_per_event), 
+                                                       self.procinfos[i_proc].fhicl_used)
+
     
     if not self.data_directory_override is None:
         for i_proc in range(len(self.procinfos)):
