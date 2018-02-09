@@ -80,13 +80,6 @@ fi
 
 . $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
 
-set_highest_used_port
-
-if [[ -z $highest_used_port ]]; then
-   export DAQINTERFACE_PORT=5560
-else
-   export DAQINTERFACE_PORT=$highest_used_port			
-fi
 
 if [[ -z $DAQINTERFACE_LOGDIR ]]; then
    export DAQINTERFACE_LOGDIR=/tmp/daqinterface_${USER}
@@ -100,7 +93,7 @@ mkdir -p $DAQINTERFACE_LOGDIR
 
 export DAQINTERFACE_LOGFILE=$DAQINTERFACE_LOGDIR/DAQInterface_port\${DAQINTERFACE_PORT}.log
 
-alias DAQInterface="export DAQINTERFACE_PORT=\$(( \$DAQINTERFACE_PORT + 10)); stdbuf -oL $ARTDAQ_DAQINTERFACE_DIR/rc/control/daqinterface.py --rpc-port \$DAQINTERFACE_PORT 2>&1 | tee -a $DAQINTERFACE_LOGFILE "
+alias DAQInterface="export DAQINTERFACE_PORT=\$( get_highest_used_port ); export DAQINTERFACE_PORT=\$(( \$DAQINTERFACE_PORT + 10 )); stdbuf -oL $ARTDAQ_DAQINTERFACE_DIR/rc/control/daqinterface.py --rpc-port \$DAQINTERFACE_PORT 2>&1 | tee -a $DAQINTERFACE_LOGFILE "
 
 export PATH=$ARTDAQ_DAQINTERFACE_DIR/bin:$PATH
 
