@@ -6,42 +6,46 @@ if [ $# != 1 ] ; then
      exit 1
 fi
 
-run=$1
+runnum=$1
 
 echo
 
 . $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
-metadata_filename=$recorddir/$run/metadata.txt
+metadata_file=$recorddir/$runnum/metadata.txt
 
-if [[  -e $metadata_filename ]]; then
-
-    fileglob=$( sed -r -n '/pmt logfile/s/.*:(.*)/\1/p' $metadata_filename )
-
-    if [[ -n $fileglob ]]; then
-		
-	files_time_ordered=$( ls -tr $fileglob)
-
-	tmplog=/tmp/$(uuidgen)
-
-	cat $files_time_ordered > $tmplog
-
-	res=$(grep "Started run $run" $tmplog)
-	
-	if [[ -z $res ]]; then
-	    echo "Unable to find run listed in $fileglob" >&2
-	    rm -f $tmplog
-	    exit 1
-	fi
-
-	sed -r -n '/Started run '$run'/,/Started run '$((run+1))'/{/MSG-e/{N;p};/MSG-w/{N;/Use of services.user parameter set is deprecated/d;/Fast cloning deactivated/d;p}}' $tmplog
-
-	rm -f $tmplog
-    else
-	echo "Unable to find pmt logfiles in $metadata_filename" >&2
-    fi
-else
-    echo "Unable to find metadata file $metadata_filename" >&2
+if [[ ! -e $metadata_file ]]; then
+    echo "Unable to find expected metadata file $metadatafile" >&2
+    exit 1
 fi
 
+run_start_time=$( sed -r -n "s/Start time:\s*(.*)/\1/p" $metadata_file )
+run_stop_time=$( sed -r -n "s/Stop time:\s*(.*)/\1/p" $metadata_file )
+
+if [[ -z $run_start_time ]]; then
+    run_start_time="unknown"
+fi
+
+if [[ -z $run_stop_time ]]; then
+    run_stop_time="unknown"
+fi
+
+disclaimer="Be aware that warnings/errors are shown for ALL runs which appear in run ${runnum}'s logfile. Run $runnum start time is $run_start_time, stop time is $run_stop_time"
 echo
+echo $disclaimer
+echo
+
+output=$( show_logfile_for_run.sh $runnum )
+
+if [[ "$?" == "0" ]]; then
+    sed -r -n '{/MSG-e/{N;p};/MSG-w/{N;/Use of services.user parameter set is deprecated/d;/Fast cloning deactivated/d;p}}' $output
+
+    echo
+    echo $disclaimer
+    echo
+
+else
+    echo $output
+    exit 1
+fi
+
