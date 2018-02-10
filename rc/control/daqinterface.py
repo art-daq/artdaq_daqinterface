@@ -1474,10 +1474,14 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                 return
 
             num_launch_procs_checks = 0
+            max_num_launch_procs_checks = 30
 
             while True:
 
                 num_launch_procs_checks += 1
+
+                self.print_log("i", "Checking that processes are up (check %d of a max of %d)..." % \
+                               (num_launch_procs_checks, max_num_launch_procs_checks))
 
                 # "False" here means "don't consider it an error if all
                 # processes aren't found"
@@ -1489,7 +1493,8 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
 
                     break
                 else:
-                    if num_launch_procs_checks > 5:
+                    sleep(2)
+                    if num_launch_procs_checks > max_num_launch_procs_checks:
                         self.print_log("e", make_paragraph("artdaq processes failed to launch; logfiles may contain info as to what happened. For troubleshooting, you can also try logging into this host via a new terminal, and interactively executing the following commands: "))
                         self.print_log("e", "\n".join(self.launch_cmds))
                         self.alert_and_recover("Scroll above the output from the \"RECOVER\" transition for more info")
