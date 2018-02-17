@@ -1276,7 +1276,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
 
         proctypes_in_order = ["Dispatcher", "DataLogger", "Aggregator", "EventBuilder","BoardReader", "RoutingMaster"]
 
-        if command == "Stop" or command == "Pause" or command == "Terminate":
+        if command == "Stop" or command == "Pause" or command == "Shutdown":
             proctypes_in_order.reverse()
 
         for proctype in proctypes_in_order:
@@ -1474,7 +1474,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                 return
 
             num_launch_procs_checks = 0
-            max_num_launch_procs_checks = 30
+            max_num_launch_procs_checks = 5
 
             while True:
 
@@ -1494,7 +1494,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                     break
                 else:
                     sleep(2)
-                    if num_launch_procs_checks > max_num_launch_procs_checks:
+                    if num_launch_procs_checks >= max_num_launch_procs_checks:
                         self.print_log("e", make_paragraph("artdaq processes failed to launch; logfiles may contain info as to what happened. For troubleshooting, you can also try logging into this host via a new terminal, and interactively executing the following commands: "))
                         self.print_log("e", "\n".join(self.launch_cmds))
                         self.alert_and_recover("Scroll above the output from the \"RECOVER\" transition for more info")
@@ -1870,8 +1870,13 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
         print
 
         if self.manage_processes:
+            
+            self.print_log("w", "\nCurrently only sending the artdaq shutdown transition to DataLogger processes")
 
             for procinfo in self.procinfos:
+
+                if procinfo.name != "DataLogger":
+                    continue
 
                 try:
                     procinfo.lastreturned = procinfo.server.daq.shutdown()
