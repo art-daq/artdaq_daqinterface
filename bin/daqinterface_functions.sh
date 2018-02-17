@@ -1,22 +1,4 @@
 
-highest_used_port=
-
-function set_highest_used_port() {
-
-highest_used_port=$( \
-echo | awk '{ while ( ( "ps aux | grep daqinterface.py | grep -v grep" | getline ) > 0 ) { \
-daqinterface_pids[$2]++ \
-} \
-# Grab the port a DAQInterface with a given PID is listening on with the netstat command \
-for (daqpid in daqinterface_pids) { \
-while ( ("netstat -apn 2>/dev/null | grep \"LISTEN.*"daqpid"/python\"" | getline ) > 0) { \
- match($4, "[0-9]+$"); print substr($4,RSTART, RLENGTH) } # \
-} \
-}' | sort -n | tail -1 )
-
-#echo "Highest used port appears to be $highest_used_port"
-
-}
 
 function list_daqinterfaces() {
 
@@ -25,6 +7,20 @@ ps aux | grep "python.*daqinterface.py" | grep -v grep | awk '{ print "DAQInterf
 }
 
 num_daqinterfaces=$( list_daqinterfaces | wc -l )
+
+function get_highest_used_port() {
+
+highest_used_port=$( ps aux | grep "python.*daqinterface.py" | grep -v grep | awk '{print $NF}' | sort | tail -1 )
+
+if [[ -n $highest_used_port ]]; then
+    echo $highest_used_port
+else
+    echo 5560
+fi
+
+}
+
+
 
 function port_disclaimer_message() {
 

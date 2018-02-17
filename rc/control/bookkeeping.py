@@ -319,7 +319,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     offset = this_node_index
 
                 nodes.append( 
-                    "%s%d: { transferPluginType: NthEvent nth: %d offset: %d physical_transfer_plugin: { transferPluginType: Autodetect %s_rank: %d max_fragment_size_words: %d host_map: [%s]}}" % \
+                    "%s%d: { transferPluginType: NthEvent nth: %d offset: %d physical_transfer_plugin: { transferPluginType: Autodetect %s_rank: %d max_fragment_size_words: %d } host_map: [%s]}" % \
                     (prefix, i, nth, offset, nodetype[:-1], i, max_fragment_size_words, \
                      proc_hosts_string))
 
@@ -423,9 +423,15 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 continue                
 
     for i_proc in range(len(self.procinfos)):
-        self.procinfos[i_proc].fhicl_used = re.sub("expected_fragments_per_event\s*:\s*[0-9]+", 
-                                                   "expected_fragments_per_event: %d" % (expected_fragments_per_event), 
-                                                   self.procinfos[i_proc].fhicl_used)
+        if "DataLogger" in self.procinfos[i_proc].name or "Dispatcher" in self.procinfos[i_proc].name:
+            self.procinfos[i_proc].fhicl_used = re.sub("expected_fragments_per_event\s*:\s*[0-9]+", 
+                                                       "expected_fragments_per_event: 1", 
+                                                       self.procinfos[i_proc].fhicl_used)
+        else:
+            self.procinfos[i_proc].fhicl_used = re.sub("expected_fragments_per_event\s*:\s*[0-9]+", 
+                                                       "expected_fragments_per_event: %d" % (expected_fragments_per_event), 
+                                                       self.procinfos[i_proc].fhicl_used)
+
     
     if not self.data_directory_override is None:
         for i_proc in range(len(self.procinfos)):
