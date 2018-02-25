@@ -244,6 +244,7 @@ class DAQInterface(Component):
         self.heartbeat_failure = False
 
         self.debug_level = 10000
+        self.tcp_base_port = 6300
 
         self.daqinterface_base_dir = os.getcwd()
             

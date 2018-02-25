@@ -72,6 +72,12 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
             self.daq_dir = os.path.dirname( self.daq_setup_script ) + "/"
             continue
 
+        res = re.search(r"\s*tcp_base_port\s*:\s*(\S+)",
+                        line)
+        if res:
+            self.tcp_base_port = int( res.group(1) )
+            continue
+
         res = re.search(r"\s*debug level\s*:\s*(\S+)",
                         line)
         if res:
