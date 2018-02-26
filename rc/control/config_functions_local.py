@@ -78,6 +78,18 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
             self.tcp_base_port = int( res.group(1) )
             continue
 
+        res = re.search(r"\s*request_port\s*:\s*(\S+)",
+                        line)
+        if res:
+            self.request_port = int( res.group(1) )
+            continue
+
+        res = re.search(r"\s*request_address\s*:\s*(\S+)",
+                        line)
+        if res:
+            self.request_address = res.group(1)
+            continue
+
         res = re.search(r"\s*debug level\s*:\s*(\S+)",
                         line)
         if res:
