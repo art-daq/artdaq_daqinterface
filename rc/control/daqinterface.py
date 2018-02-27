@@ -1222,14 +1222,8 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
             try:
 
                 if command == "Init":
-                    if not "Aggregator" in self.procinfos[procinfo_index].name and \
-                            not "DataLogger" in self.procinfos[procinfo_index].name:
-                        self.procinfos[procinfo_index].lastreturned = \
-                            self.procinfos[procinfo_index].server.daq.init(self.procinfos[procinfo_index].fhicl_used)
-                    else:
-                        self.procinfos[procinfo_index].lastreturned = \
-                            self.procinfos[procinfo_index].server.daq.init(self.procinfos[procinfo_index].fhicl_used + self.get_run_documents() )
-
+                    self.procinfos[procinfo_index].lastreturned = \
+                        self.procinfos[procinfo_index].server.daq.init(self.procinfos[procinfo_index].fhicl_used)
                 elif command == "Start":
                     self.procinfos[procinfo_index].lastreturned = \
                         self.procinfos[procinfo_index].server.daq.start(\
@@ -1757,6 +1751,12 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
         except Exception:
             self.print_log("w", make_paragraph(
                     "WARNING: an exception was thrown when attempting to save the run record. While datataking may be able to proceed, this may also indicate a serious problem"))
+
+        run_documents = self.get_run_documents()
+
+        for i_proc in range(len(self.procinfos)):
+            if "Aggregator" in self.procinfos[i_proc].name or "DataLogger" in self.procinfos[i_proc].name:
+                self.procinfos[i_proc].fhicl_used = self.procinfos[i_proc].fhicl_used + run_documents
 
         if self.manage_processes:
 
