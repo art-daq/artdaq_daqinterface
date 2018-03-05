@@ -848,7 +848,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
 
         for procinfo in self.procinfos:
             
-            greptoken = procinfo.name + "Main -p " + procinfo.port
+            greptoken = procinfo.name + "Main -c id: " + procinfo.port
 
             pids = get_pids(greptoken, procinfo.host)
 
@@ -1925,7 +1925,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
 
         def attempted_stop(self, procinfo):
 
-            greptoken = procinfo.name + "Main -p " + procinfo.port
+            greptoken = procinfo.name + "Main -c id: " + procinfo.port
 
             pid = get_pids(greptoken, procinfo.host)
 
