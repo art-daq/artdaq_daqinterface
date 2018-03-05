@@ -247,6 +247,7 @@ class DAQInterface(Component):
         self.tcp_base_port = 6300
         self.request_address = None
         self.request_port = None 
+        self.partition_number = None
 
         self.daqinterface_base_dir = os.getcwd()
             
