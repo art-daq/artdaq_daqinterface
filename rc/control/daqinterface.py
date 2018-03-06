@@ -1759,6 +1759,19 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
             if "Aggregator" in self.procinfos[i_proc].name or "DataLogger" in self.procinfos[i_proc].name:
                 self.procinfos[i_proc].fhicl_used = self.procinfos[i_proc].fhicl_used + run_documents
 
+        # JCF, Mar-6-2018
+
+        # Bit of a chicken-and-egg issue, but basically, after
+        # decorating the DataLogger FHiCL documents with all run
+        # documents saved in the run record as above (so they're later
+        # retrievable via art's config_dumper) clobber and then redo
+        # the temporary run record with the now-decorated DataLogger documents
+
+        if os.path.exists(self.tmp_run_record):
+            shutil.rmtree(self.tmp_run_record)
+
+        self.save_run_record()
+
         if self.manage_processes:
 
             try:
