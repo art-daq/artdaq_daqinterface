@@ -13,6 +13,7 @@ sys.path.append(dbdirs[0] + "/../bin")
 
 import subprocess
 from subprocess import Popen
+from rc.control.deepsuppression import deepsuppression
 
 import re
 import os
@@ -38,7 +39,8 @@ def get_config_info_base(self):
     Popen("mkdir -p %s" % config_dir, shell=True).wait()
     os.chdir( config_dir )
 
-    result = exportConfiguration( self.config_for_run )
+    with deepsuppression():
+        result = exportConfiguration( self.config_for_run )
 
     if not result:
         raise Exception("Error: the exportConfiguration function with the argument \"%s\" returned False" % \
@@ -104,7 +106,10 @@ def put_config_info_base(self):
 
     basedir=os.getcwd()
     os.chdir( tmpdir )
-    archiveRunConfiguration( self.config_for_run, runnum )
+
+    with deepsuppression():
+        archiveRunConfiguration( self.config_for_run, runnum )
+
     os.chdir( basedir )
 
     res = re.search(r"\w{8}-\w{4}-\w{4}-\w{4}-\w{12}", tmpdir)
