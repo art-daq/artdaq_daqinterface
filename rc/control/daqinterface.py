@@ -386,6 +386,8 @@ class DAQInterface(Component):
         self.fake_messagefacility = False
         self.data_directory_override = None
 
+        self.productsdir = None
+
         for line in inf.readlines():
 
             line = expand_environment_variable_in_string( line )
@@ -396,6 +398,8 @@ class DAQInterface(Component):
                 self.log_directory = line.split()[-1].strip()
             elif "record_directory" in line:
                 self.record_directory = line.split()[-1].strip()
+            elif "productsdir_for_bash_scripts" in line:
+                self.productsdir = line.split()[-1].strip()
             elif "package_hashes_to_save" in line:
                 res = re.search(r".*\[(.*)\].*", line)
 
@@ -656,6 +660,8 @@ class DAQInterface(Component):
             if not os.path.exists( "%s/%s" % (self.log_directory, logdir)):
                 self.launch_cmds.append("mkdir -p -m 0777 " + "%s/%s" % (self.log_directory, logdir) )
 
+        self.launch_cmds.append(". %s/setup" % self.productsdir)  
+        self.launch_cmds.append("for pp in `printenv | sed -ne '/^SETUP_/{s/SETUP_//;s/=.*//;p}'`; do test $pp = UPS && continue; prod=`echo $pp | tr 'A-Z' 'a-z'`; unsetup -j $prod; done")  
         self.launch_cmds.append("source " + self.daq_setup_script )
         self.launch_cmds.append("which pmt.rb")  # Sanity check capable of returning nonzero
 
