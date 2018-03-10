@@ -1453,15 +1453,9 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
             raise Exception("Status error raised in attempt to source script %s on host %s." % \
                             (self.daq_setup_script, procinfo.host))
 
-        # Previously this "if True" was "if self.manage_processes",
-        # however, protoDUNE wants to be in charge of externally
-        # sending transitions to artdaq processes but not actually
-        # launching them or killing them, and there isn't currently an
-        # experiment which wants to be in charge of both sending
-        # transitions, launching and killing
-
-        if True:
-            
+        #if self.manage_processes:
+        if False:
+   
             # Now, with the info on hand about the processes contained in
             # procinfos, actually launch them
 
@@ -1918,15 +1912,18 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                     self.print_log("i", "%s at %s:%s, returned string is:\n%s\n" % \
                                    (procinfo.name, procinfo.host, procinfo.port, procinfo.lastreturned), 1)
 
-        try:
-            self.kill_procs()
-        except Exception:
-            self.print_log("e", "DAQInterface caught an exception in "
-                           "do_terminate()")
-            self.print_log("e", traceback.format_exc())
-            self.alert_and_recover("An exception was thrown "
-                                   "within kill_procs()")
-            return
+        #if self.manage_processes:
+        if False:
+
+            try:
+                self.kill_procs()
+            except Exception:
+                self.print_log("e", "DAQInterface caught an exception in "
+                               "do_terminate()")
+                self.print_log("e", traceback.format_exc())
+                self.alert_and_recover("An exception was thrown "
+                                       "within kill_procs()")
+                return
 
         self.complete_state_change(self.name, "terminating")
 
@@ -2024,7 +2021,8 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
             return
         
 
-        if self.manage_processes:
+        #if self.manage_processes:
+        if False:
 
             # JCF, Feb-1-2017
 
@@ -2064,12 +2062,14 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                     for thread in threads:
                         thread.join()
 
-        try:
-            self.kill_procs()
-        except Exception:
-            self.print_log("e", traceback.format_exc())
-            self.print_log("e", make_paragraph("An exception was thrown "
-                                   "within kill_procs(); artdaq processes may not all have been killed"))
+        #if self.manage_processes:
+        if False:
+            try:
+                self.kill_procs()
+            except Exception:
+                self.print_log("e", traceback.format_exc())
+                self.print_log("e", make_paragraph("An exception was thrown "
+                                       "within kill_procs(); artdaq processes may not all have been killed"))
 
         self.in_recovery = False
 
@@ -2142,7 +2142,9 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                 self.__do_disable = False
                 self.do_disable()
 
-            elif self.manage_processes and self.state(self.name) != "stopped" and \
+#            elif self.manage_processes and self.state(self.name) != "stopped" and \
+#                    self.state(self.name) != "booting" and self.state(self.name) != "terminating":
+            elif False and self.state(self.name) != "stopped" and \
                     self.state(self.name) != "booting" and self.state(self.name) != "terminating":
                 self.check_proc_heartbeats()
                 self.check_proc_exceptions()

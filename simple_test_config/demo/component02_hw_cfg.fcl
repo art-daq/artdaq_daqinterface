@@ -38,7 +38,7 @@
         # applied! If requests are not desired, but a separate readout
         # thread is, set this to true and request_mode to ignored.
 
-	separate_data_thread: false 
+	separate_data_thread: true
 
 	# Whether a thread should be started which periodically calls
         # checkHWStatus_, a user-defined function which should be used
