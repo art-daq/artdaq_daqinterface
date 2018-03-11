@@ -1894,12 +1894,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
 
         if self.manage_processes:
             
-            self.print_log("w", "\nCurrently only sending the artdaq shutdown transition to DataLogger processes")
-
             for procinfo in self.procinfos:
-
-                if procinfo.name != "DataLogger":
-                    continue
 
                 try:
                     procinfo.lastreturned = procinfo.server.daq.shutdown()
