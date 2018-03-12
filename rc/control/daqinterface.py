@@ -1453,8 +1453,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
             raise Exception("Status error raised in attempt to source script %s on host %s." % \
                             (self.daq_setup_script, procinfo.host))
 
-        #if self.manage_processes:
-        if False:
+        if self.manage_processes:
    
             # Now, with the info on hand about the processes contained in
             # procinfos, actually launch them
@@ -1912,8 +1911,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                     self.print_log("i", "%s at %s:%s, returned string is:\n%s\n" % \
                                    (procinfo.name, procinfo.host, procinfo.port, procinfo.lastreturned), 1)
 
-        #if self.manage_processes:
-        if False:
+        if self.manage_processes:
 
             try:
                 self.kill_procs()
@@ -2021,8 +2019,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
             return
         
 
-        #if self.manage_processes:
-        if False:
+        if self.manage_processes:
 
             # JCF, Feb-1-2017
 
@@ -2062,8 +2059,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                     for thread in threads:
                         thread.join()
 
-        #if self.manage_processes:
-        if False:
+        if self.manage_processes:
             try:
                 self.kill_procs()
             except Exception:
@@ -2142,10 +2138,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                 self.__do_disable = False
                 self.do_disable()
 
-#            elif self.manage_processes and self.state(self.name) != "stopped" and \
-#                    self.state(self.name) != "booting" and self.state(self.name) != "terminating":
-            elif False and self.state(self.name) != "stopped" and \
-                    self.state(self.name) != "booting" and self.state(self.name) != "terminating":
+            elif self.manage_processes and self.state(self.name) != "stopped" and self.state(self.name) != "booting" and self.state(self.name) != "terminating":
                 self.check_proc_heartbeats()
                 self.check_proc_exceptions()
 
