@@ -89,7 +89,7 @@ function main() {
 	exit 50
     fi
 
-    $scriptdir/setdaqcomps.sh component01 
+    $scriptdir/setdaqcomps.sh component01 component02
 
     $scriptdir/send_transition.sh boot $daqintconfig
 
