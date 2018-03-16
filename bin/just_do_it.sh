@@ -1,14 +1,21 @@
 #!/bin/env bash
 
+config="demo"
 
-if [[ "$#" != "2" ]]; then
-    echo "Usage: $0 <file to pass on boot transition> <daq running time in seconds (0 if you want to run until ctrl-C is hit) > "
+if (( $# < 2 )); then
+    echo "Usage: $0 <file to pass on boot transition> <daq running time in seconds (0 if you want to run until ctrl-C is hit)>  <optional config name, default is \"$config\"> "
     exit 0
 fi
 
-scriptdir="$(dirname "$0")"
+if [[ -n $3 ]]; then
+    config=$3
+else
+    echo
+    echo "Will use default configuration \"$config\""
+    echo
+fi
 
-config="demo"
+scriptdir="$(dirname "$0")"
 
 daqintconfig=$1
 daq_time_in_seconds=$2
@@ -82,7 +89,7 @@ function main() {
 	exit 50
     fi
 
-    $scriptdir/setdaqcomps.sh component01 component02
+    $scriptdir/setdaqcomps.sh component01 
 
     $scriptdir/send_transition.sh boot $daqintconfig
 
