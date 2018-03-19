@@ -1,0 +1,85 @@
+=====================================================================
+=====================================================================
+====                                                             ====
+====            DAQInterface Example Configurations              ====
+====                                                             ====
+=====================================================================
+=====================================================================
+
+These simple configuration examples show some of the functionality
+of the ARTDAQ toolkit, and serve as integration and acceptance tests.
+
+=====================================================================
+=====================================================================
+
+ascii_simulator_example:
+
+Demonstrates the AsciiSimulator_generator class and the AsciiDump
+ART module. This module can be used to verify ARTDAQ's data 
+preservation: AsciiSimulator can write a raw ASCII file which can be
+compared with the output of AsciiDump; they will be identical.
+
+=====================================================================
+
+demo:
+
+A "standard" ARTDAQ system consisting of a TOY1 Simulator, a TOY2
+Simulator, two EventBuilders, a DataLogger and a Dispatcher.
+Used with artdaq_demo/tools/run_demo.sh, two Online Monitors are
+connected to run data quality displays.
+Used with artdaq_demo/tools/run_demo_hung_online_monitor_example.sh,
+demonstrates that the Online Monitors/Dispatcher being busy do
+not adversely affect data-taking.
+
+=====================================================================
+
+demo_artdaq_v1:
+
+TODO: Describe this configuration or remove it!!!
+
+=====================================================================
+
+demo_routingmaster_2x2:
+
+TODO: Describe this configuration or remove it!!!
+
+=====================================================================
+
+file_closing_example:
+
+A version of the "demo" configuration (described above) where the
+DataLogger is configured to change its output data file every 100 events.
+This example demonstrates that this capability has no adverse effects
+on data-taking.
+
+=====================================================================
+
+no_aggregators:
+
+TODO: Describe this configuration or remove it!!!
+
+=====================================================================
+
+pull_mode:
+
+TODO: Describe this configuration or remove it!!!
+
+=====================================================================
+
+request_based_dataflow_example:
+
+Demonstrates the Data Request capabilities of the CommandableFragmentGenerator
+class. This example consists of a "DAQ" BoardReader reading out at a 
+high rate, a "DCS" BoardReader which reads out very slowly,
+but sends data for each event the "DAQ" BoardReader generates, and
+a "CRV" BoardReader which samples uncorrelated data based
+on the Fragment timestamps, providing the events that occurred within
+a given time window around the "DAQ" events.
+
+=====================================================================
+
+request_dataflow_windowmode:
+
+TODO: Describe this configuration or remove it!!!
+
+=====================================================================
