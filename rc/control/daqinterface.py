@@ -1688,8 +1688,10 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                         eventbuilder_cntr += 1
                         fcl = "%s/EventBuilder%d.fcl" % (config_subdirname, eventbuilder_cntr)
                         if not os.path.exists(fcl):
-                            self.alert_and_recover(make_paragraph("Configuration \"%s\" can only support a maximum of %d EventBuilder(s); more than that have been requested in the file passed on the boot transition" % (self.config_for_run, eventbuilder_cntr - 1)))
-                            return
+                            fcl = "%s/EventBuilder.fcl" % (config_subdirname)
+                            if not os.path.exists(fcl):
+                                self.alert_and_recover(make_paragraph("Configuration \"%s\" can only support a maximum of %d EventBuilder(s); more than that have been requested in the file passed on the boot transition" % (self.config_for_run, eventbuilder_cntr - 1)))
+                                return
                     elif proc_type == "Aggregator":
                         unspecified_aggregator_cntr += 1
                         if unspecified_aggregator_cntr == 1:
