@@ -1678,13 +1678,18 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
             unspecified_aggregator_cntr = 0
             unspecified_routingmaster_cntr = 0
             datalogger_cntr = 0
+            eventbuilder_cntr = 0
 
             for i_proc in range(len(self.procinfos)):
 
                 if self.procinfos[i_proc].name == proc_type:
 
                     if proc_type == "EventBuilder":
-                        fcl = "%s/EventBuilder1.fcl" % (config_subdirname)
+                        eventbuilder_cntr += 1
+                        fcl = "%s/EventBuilder%d.fcl" % (config_subdirname, eventbuilder_cntr)
+                        if not os.path.exists(fcl):
+                            self.alert_and_recover(make_paragraph("Configuration \"%s\" can only support a maximum of %d EventBuilder(s); more than that have been requested in the file passed on the boot transition" % (self.config_for_run, eventbuilder_cntr - 1)))
+                            return
                     elif proc_type == "Aggregator":
                         unspecified_aggregator_cntr += 1
                         if unspecified_aggregator_cntr == 1:
