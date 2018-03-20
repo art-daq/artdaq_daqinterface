@@ -1,19 +1,52 @@
 #!/bin/env bash
 
 config="demo"
+daqcomps="component01 component02"
 
-if (( $# < 2 )); then
-    echo "Usage: $0 <file to pass on boot transition> <daq running time in seconds (0 if you want to run until ctrl-C is hit)>  <optional config name, default is \"$config\"> "
-    exit 0
+env_opts_var=`basename $0 | sed 's/\.sh$//' | tr 'a-z-' 'A-Z_'`_OPTS
+USAGE="\
+   usage: `basename $0` [options] <file to pass on boot transition> <daq running time in seconds (0 if you want to run until ctrl-C is hit)>
+examples: `basename $0` boot.txt 0
+          `basename $0` --config demo_no_aggregators 20
+--help        This help message
+--config      Name of the configuration to use (Default: $config)
+--compfile    File containing space-delimited component names to use
+--comps       Space-delimited list of component names to use (Default: $daqcomps)
+"
+
+# Process script arguments and options
+eval env_opts=\${$env_opts_var-} # can be args too
+eval "set -- $env_opts \"\$@\""
+op1chr='rest=`expr "$op" : "[^-]\(.*\)"`   && set -- "-$rest" "$@"'
+op1arg='rest=`expr "$op" : "[^-]\(.*\)"`   && set --  "$rest" "$@"'
+reqarg="$op1arg;"'test -z "${1+1}" &&echo opt -$op requires arg. &&echo "$USAGE" &&exit'
+args= do_help=; comp_file=""
+while [ -n "${1-}" ];do
+    if expr "x${1-}" : 'x-' >/dev/null;then
+        op=`expr "x$1" : 'x-\(.*\)'`; shift   # done with $1
+        leq=`expr "x$op" : 'x-[^=]*\(=\)'` lev=`expr "x$op" : 'x-[^=]*=\(.*\)'`
+        test -n "$leq"&&eval "set -- \"\$lev\" \"\$@\""&&op=`expr "x$op" : 'x\([^=]*\)'`
+        case "$op" in
+            \?*|h*)     eval $op1chr; do_help=1;;
+            -config)    eval $reqarg; config=$1; shift;;
+            -comps)     eval $reqarg; daqcomps=$1; shift;;
+            -compfile)  eval $reqarg; comp_file=$1; shift;;  
+            *)          echo "Unknown option -$op"; do_help=1;;
+        esac
+    else
+        aa=`echo "$1" | sed -e"s/'/'\"'\"'/g"` args="$args '$aa'"; shift
+    fi
+done
+eval "set -- $args \"\$@\""; unset args aa
+set -u   # complain about uninitialed shell variables - helps development
+
+if [[ "x$comp_file" != "x" ]]; then
+  daqcomps=`cat $comp_file`
 fi
 
-if [[ -n $3 ]]; then
-    config=$3
-else
-    echo
-    echo "Will use default configuration \"$config\""
-    echo
-fi
+echo "Configuration: ${config}, Components: ${daqcomps}, Remaining Args: $#"
+
+test -n "${do_help-}" -o $# -ge 3 && echo "$USAGE" && exit
 
 scriptdir="$(dirname "$0")"
 
@@ -89,7 +122,7 @@ function main() {
 	exit 50
     fi
 
-    $scriptdir/setdaqcomps.sh component01 component02
+    $scriptdir/setdaqcomps.sh $daqcomps
 
     $scriptdir/send_transition.sh boot $daqintconfig
 
