@@ -20,7 +20,7 @@ eval "set -- $env_opts \"\$@\""
 op1chr='rest=`expr "$op" : "[^-]\(.*\)"`   && set -- "-$rest" "$@"'
 op1arg='rest=`expr "$op" : "[^-]\(.*\)"`   && set --  "$rest" "$@"'
 reqarg="$op1arg;"'test -z "${1+1}" &&echo opt -$op requires arg. &&echo "$USAGE" &&exit'
-args= do_help=; comp_file=""
+args= do_help=; comp_file=""; time_override=-1; boot_file=""
 while [ -n "${1-}" ];do
     if expr "x${1-}" : 'x-' >/dev/null;then
         op=`expr "x$1" : 'x-\(.*\)'`; shift   # done with $1
@@ -32,6 +32,8 @@ while [ -n "${1-}" ];do
             -config)    eval $reqarg; config=$1; shift;;
             -comps)     eval $reqarg; daqcomps=$1; shift;;
             -compfile)  eval $reqarg; comp_file=$1; shift;;  
+            -runduration) eval $reqarg; time_override=$1; shift;;
+            -bootfile)  eval $reqarg; boot_file=$1; shift;;
             *)          echo "Unknown option -$op"; do_help=1;;
         esac
     else
@@ -51,8 +53,16 @@ test -n "${do_help-}" -o $# -ge 3 && echo "$USAGE" && exit
 
 scriptdir="$(dirname "$0")"
 
-daqintconfig=$1
-daq_time_in_seconds=$2
+if [[ "x$boot_file" == "x" ]]; then
+  daqintconfig=$1
+else
+  daqintconfig=${boot_file}
+fi
+if [ $time_override -eq -1 ]; then
+  daq_time_in_seconds=$2
+else
+  daq_time_in_seconds=$time_override
+fi
 
 . $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
