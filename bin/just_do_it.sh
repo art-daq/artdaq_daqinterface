@@ -27,7 +27,7 @@ while [ -n "${1-}" ];do
         leq=`expr "x$op" : 'x-[^=]*\(=\)'` lev=`expr "x$op" : 'x-[^=]*=\(.*\)'`
         test -n "$leq"&&eval "set -- \"\$lev\" \"\$@\""&&op=`expr "x$op" : 'x\([^=]*\)'`
         case "$op" in
-            \?*|h*)     eval $op1chr; do_help=1;;
+            \?*|h*|-help)     eval $op1chr; do_help=1;;
             -config)    eval $reqarg; config=$1; shift;;
             -comps)     eval $reqarg; daqcomps=$1; shift;;
             -compfile)  eval $reqarg; comp_file=$1; shift;;  
