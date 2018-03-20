@@ -1,4 +1,4 @@
-ulimit -c unlimited
+
 export DAQINTERFACE_SETTINGS=$ARTDAQ_DAQINTERFACE_DIR/docs/settings_example
 export DAQINTERFACE_KNOWN_BOARDREADERS_LIST=$ARTDAQ_DAQINTERFACE_DIR/docs/known_boardreaders_list_example
 export DAQINTERFACE_FHICL_DIRECTORY=$ARTDAQ_DAQINTERFACE_DIR/simple_test_config
