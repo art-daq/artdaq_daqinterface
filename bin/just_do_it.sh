@@ -148,7 +148,7 @@ function main() {
     fi
 
     sleep 2
-
+    read -n 1 -s -r -p "Press any key to configure"
     # Initialize the DAQ
 
     config_cntr=0
