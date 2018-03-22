@@ -171,7 +171,8 @@ function main() {
     done
 
     # Start the DAQ, and run it for the requested amount of time
-
+	
+    #read -n 1 -s -r -p "Press any key to start"
     $scriptdir/send_transition.sh start
 
     wait_until_no_longer starting
@@ -212,6 +213,7 @@ function clean_shutdown() {
 
     if [[ "$state_true" == "1" ]]; then
 	
+    #read -n 1 -s -r -p "Press any key to stop"
 	$scriptdir/send_transition.sh stop
 	wait_until_no_longer stopping
     fi
@@ -240,7 +242,8 @@ function clean_shutdown() {
     # fi
 
     if true; then
-
+	
+    #read -n 1 -s -r -p "Press any key to shutdown"
 	$scriptdir/send_transition.sh terminate
 
 	wait_until_no_longer terminating
