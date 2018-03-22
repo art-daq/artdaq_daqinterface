@@ -2,6 +2,7 @@
 
 config="demo"
 daqcomps="component01 component02"
+runs=1
 
 env_opts_var=`basename $0 | sed 's/\.sh$//' | tr 'a-z-' 'A-Z_'`_OPTS
 USAGE="\
@@ -12,6 +13,9 @@ examples: `basename $0` boot.txt 0
 --config      Name of the configuration to use (Default: $config)
 --compfile    File containing space-delimited component names to use
 --comps       Space-delimited list of component names to use (Default: $daqcomps)
+--bootfile    File to pass on Boot transition (overrides first parameter)
+--runduration Number of seconds to run the daq (overrides second parameter)
+--runs        Number of start/stop transitions to run (Default: $runs)
 "
 
 # Process script arguments and options
@@ -34,6 +38,7 @@ while [ -n "${1-}" ];do
             -compfile)  eval $reqarg; comp_file=$1; shift;;  
             -runduration) eval $reqarg; time_override=$1; shift;;
             -bootfile)  eval $reqarg; boot_file=$1; shift;;
+			-runs)      eval $reqarg; runs=$1; shift;;
             *)          echo "Unknown option -$op"; do_help=1;;
         esac
     else
@@ -171,29 +176,45 @@ function main() {
     done
 
     # Start the DAQ, and run it for the requested amount of time
-	
-    #read -n 1 -s -r -p "Press any key to start"
-    $scriptdir/send_transition.sh start
+	counter=0
+	while [ $counter -lt $runs ]; do
+		#read -n 1 -s -r -p "Press any key to start"
+		$scriptdir/send_transition.sh start
 
-    wait_until_no_longer starting
+		wait_until_no_longer starting
 
-    state_true="0"
-    check_for_state "running" state_true
+		state_true="0"
+		check_for_state "running" state_true
 
-    if [[ "$state_true" != "1" ]]; then
-	echo "DAQ failed to enter running state; exiting $0"
-	exit 70
-    fi
+		if [[ "$state_true" != "1" ]]; then
+			echo "DAQ failed to enter running state; exiting $0"
+			exit 70
+		fi
 
     
-    if [[ $daq_time_in_seconds > 0 ]]; then
-	echo "Will acquire data for $daq_time_in_seconds seconds"
-	sleep $daq_time_in_seconds
+		if [[ $daq_time_in_seconds > 0 ]]; then
+			echo "Will acquire data for $daq_time_in_seconds seconds"
+			sleep $daq_time_in_seconds
+		else
+			echo "Will acquire data until Ctrl-C is hit"
+			sleep 10000000000
+		fi
+
+		# Stop the DAQ
+    
+		state_true="0"
+		check_for_state "running" state_true
+
+		if [[ "$state_true" == "1" ]]; then
+			#read -n 1 -s -r -p "Press any key to stop"
+			$scriptdir/send_transition.sh stop
+			wait_until_no_longer stopping
+		fi
+
+		counter=$(($counter + 1))
+	done
+
 	clean_shutdown
-    else
-	echo "Will acquire data until Ctrl-C is hit"
-	sleep 10000000000
-    fi
 }
 
 # clean_shutdown() will be called either (A) after the DAQ has run for
@@ -212,7 +233,6 @@ function clean_shutdown() {
     check_for_state "running" state_true
 
     if [[ "$state_true" == "1" ]]; then
-	
     #read -n 1 -s -r -p "Press any key to stop"
 	$scriptdir/send_transition.sh stop
 	wait_until_no_longer stopping
