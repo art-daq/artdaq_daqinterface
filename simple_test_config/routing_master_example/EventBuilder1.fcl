@@ -23,7 +23,7 @@ daq: {
 
 	routing_token_config: {
 	  use_routing_master: true
-          routing_master_hostname: "mu2edaq01.fnal.gov"
+          routing_master_hostname: "localhost"
 	  routing_timeout_ms: 500
           table_update_interval_ms: 1000
           table_ack_retry_count: 5
