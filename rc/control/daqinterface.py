@@ -248,6 +248,7 @@ class DAQInterface(Component):
         self.request_address = None
         self.request_port = None 
         self.partition_number = None
+        self.transfer = "Autodetect"
 
         self.daqinterface_base_dir = os.getcwd()
             
@@ -458,6 +459,8 @@ class DAQInterface(Component):
                 self.data_directory_override = line.split()[-1].strip()
                 if self.data_directory_override[-1] != "/":
                     self.data_directory_override = self.data_directory_override + "/"
+            elif "transfer_plugin_to_use" in line:
+                self.transfer = line.split()[-1].strip()
                 
 
         missing_vars = []

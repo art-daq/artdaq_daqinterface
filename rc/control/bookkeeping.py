@@ -306,8 +306,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         for i in range(first, last):
             if nth == -1:
                 nodes.append( 
-                    "%s%d: { transferPluginType: Autodetect %s_rank: %d max_fragment_size_words: %d host_map: [%s]}" % \
-                    (prefix, i, nodetype[:-1], i, max_fragment_size_words, \
+                    "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d host_map: [%s]}" % \
+                    (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_size_words, \
                      proc_hosts_string))
             else:
 
@@ -319,8 +319,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     offset = this_node_index
 
                 nodes.append( 
-                    "%s%d: { transferPluginType: NthEvent nth: %d offset: %d physical_transfer_plugin: { transferPluginType: Autodetect %s_rank: %d max_fragment_size_words: %d } host_map: [%s]}" % \
-                    (prefix, i, nth, offset, nodetype[:-1], i, max_fragment_size_words, \
+                    "%s%d: { transferPluginType: NthEvent nth: %d offset: %d physical_transfer_plugin: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d } host_map: [%s]}" % \
+                    (prefix, i, nth, offset,self.transfer, nodetype[:-1], i, max_fragment_size_words, \
                      proc_hosts_string))
 
         return "\n".join( nodes )
