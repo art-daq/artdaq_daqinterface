@@ -39,9 +39,10 @@ TODO: Describe this configuration or remove it!!!
 
 =====================================================================
 
-demo_routingmaster_2x2:
+demo_largesystem:
 
-TODO: Describe this configuration or remove it!!!
+A system with configuration files for up to 19 BoardReaders, alternating
+between TOY1 and TOY2 simulators.
 
 =====================================================================
 
@@ -51,6 +52,14 @@ A version of the "demo" configuration (described above) where the
 DataLogger is configured to change its output data file every 100 events.
 This example demonstrates that this capability has no adverse effects
 on data-taking.
+
+=====================================================================
+
+multiple_art_processes_example:
+
+A version of the "demo" configuration where each Data Receiver
+(EventBuilder, DataLogger, and Dispatcher) runs 5 subordinate art
+processes. 
 
 =====================================================================
 
@@ -81,5 +90,14 @@ a given time window around the "DAQ" events.
 request_dataflow_windowmode:
 
 TODO: Describe this configuration or remove it!!!
+
+=====================================================================
+
+routing_master_example:
+
+A "2+2+1x1" system, with two BoardReaders, two EventBuilders, a
+DataLogger and a Dispatcher. Two RoutingMasters are employed,
+one between the BoardReaders and the EventBuilders, and the other
+between the EventBuilders and the DataLogger.
 
 =====================================================================
