@@ -1841,9 +1841,9 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                 self.alert_and_recover("An exception was thrown when attempting to send the \"start\" transition to the artdaq processes; see traceback above for more info")
                 return
 
-        self.start_datataking()
+            self.softlink_logfiles()
 
-        self.softlink_logfiles()
+        self.start_datataking()
 
         self.save_metadata_value("Start time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
