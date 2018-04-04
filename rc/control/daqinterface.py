@@ -568,7 +568,7 @@ class DAQInterface(Component):
 
         cmds = []
         cmds.append(". %s" % (self.daq_setup_script))
-        cmds.append('if [[ -n "$SETUP_ARTDAQ_MFEXTENSIONS" ]]; then true; else false; fi')
+        cmds.append('if test -n "$SETUP_ARTDAQ_MFEXTENSIONS" -o -d "$ARTDAQ_MFEXTENSIONS_DIR"; then true; else false; fi')
 
         checked_cmd = construct_checked_command( cmds )
         
@@ -586,7 +586,7 @@ class DAQInterface(Component):
 
         cmds = []
         cmds.append(". %s" % (self.daq_setup_script))
-        cmds.append("printenv SETUP_ARTDAQ_MFEXTENSIONS")
+        cmds.append('if [ -n "$SETUP_ARTDAQ_MFEXTENSIONS" ]; then printenv SETUP_ARTDAQ_MFEXTENSIONS; else echo "artdaq_mfextensions $ARTDAQ_MFEXTENSIONS_VERSION $MRB_QUALS";fi')
 
         proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -1544,7 +1544,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                     cmds = []
                     cmds.append(". %s" % (self.daq_setup_script))
                     cmds.append("which msgviewer")
-                    cmds.append("msgviewer -c $ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/msgviewer.fcl 2>&1 > /dev/null &" )
+                    cmds.append("msgviewer -c $ARTDAQ_MFEXTENSIONS_DIR/fcl/msgviewer.fcl 2>&1 > /dev/null &" )
 
                     msgviewercmd = construct_checked_command( cmds )
 
