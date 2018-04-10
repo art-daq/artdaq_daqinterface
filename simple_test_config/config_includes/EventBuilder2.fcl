@@ -1,3 +1,4 @@
+#include "standard_metrics_configs.fcl"
 
 services: {
   scheduler: {
@@ -31,14 +32,7 @@ daq: {
 
 	sources: { }
   }
-  metrics: {
-	evbFile: {
-	  metricPluginType: "file"
-	  level: 3
-	  fileName: "/tmp/eventbuilder/evb_%UID%_metrics.log"
-	  uniquify: true
-	}
-  }
+  metrics: @local::EB_metrics_default
 } 
 
 outputs: {
