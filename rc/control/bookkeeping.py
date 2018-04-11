@@ -457,12 +457,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     assert start != -1 and end != -1
 
                     rootoutput_table = self.procinfos[i_proc].fhicl_used[start:end]
-                    res = re.search(r"(.*fileName\s*:[\s\"]*)/[^\s]+/", 
-                                    self.procinfos[i_proc].fhicl_used)
-                    assert res
 
-                    rootoutput_table = re.sub(".*fileName\s*:[\s\"]*/[^\s]+/",
-                                              "%s%s" % (res.group(1), self.data_directory_override),
+                    rootoutput_table = re.sub(r"(.*fileName\s*:[\s\"]*)/[^\s]+/",
+                                              r"\1" + self.data_directory_override,
                                               rootoutput_table)
 
                     self.procinfos[i_proc].fhicl_used = self.procinfos[i_proc].fhicl_used[:start] + \
