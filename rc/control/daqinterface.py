@@ -1425,28 +1425,29 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
 
         already_sourced = {}
         sourcing_ok = True
-        
-        with deepsuppression():
-            for procinfo in self.procinfos:
-                if procinfo.host not in already_sourced.keys():
-                    cmd = ". " + self.daq_setup_script
 
-                    if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
-                        cmd = "ssh %s '%s'" % (procinfo.host, cmd)
+        if self.manage_processes:
+            with deepsuppression():
+                for procinfo in self.procinfos:
+                    if procinfo.host not in already_sourced.keys():
+                        cmd = ". " + self.daq_setup_script
 
-                    out = Popen(cmd, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
-                    
-                    out_comm = out.communicate()
-                
-                    out_stdout = out_comm[0]
-                    out_stderr = out_comm[1]
-                    status = out.returncode
+                        if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
+                            cmd = "ssh %s '%s'" % (procinfo.host, cmd)
 
-                    if status == 0:
-                        already_sourced[procinfo.host] = "Dummy value since we only care about the key"
-                    else:
-                        sourcing_ok = False
-                        break
+                        out = Popen(cmd, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+
+                        out_comm = out.communicate()
+
+                        out_stdout = out_comm[0]
+                        out_stderr = out_comm[1]
+                        status = out.returncode
+
+                        if status == 0:
+                            already_sourced[procinfo.host] = "Dummy value since we only care about the key"
+                        else:
+                            sourcing_ok = False
+                            break
 
         if not sourcing_ok:
             self.print_log("e", "Status error raised in attempt to source script %s on host %s." % \
