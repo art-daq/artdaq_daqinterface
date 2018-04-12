@@ -1,38 +1,34 @@
 
 services: {
   scheduler: {
-    fileMode: NOMERGE
     errorOnFailureToPut: false
   }
   NetMonTransportServiceInterface: {
     service_provider: NetMonTransportService
     #broadcast_sends: true
 	destinations: {	}
+
+	routing_table_config: {
+	    use_routing_master: false
+	}
   }
 }
 
 daq: {
   event_builder: {
 	expected_fragments_per_event: 0  # Will be set by DAQInterface
+	max_fragment_size_bytes: 16777216
 	use_art: true
+	art_analyzer_count: 5
 	print_event_store_stats: true
+	buffer_count: 20
 	max_incomplete_events: 75 # Same as boardreader sync interval
-	verbose: false
-	#	send_requests: true
-	send_requests: false
+	verbose: true
+	send_requests: true
 
 	routing_token_config: {
-	  use_routing_master: true
-          routing_master_hostname: "mu2edaq01.fnal.gov"
-	  routing_timeout_ms: 500
-          table_update_interval_ms: 1000
-          table_ack_retry_count: 5
-
-#	  table_update_port: 36556
-#	  table_update_address: "227.128.12.29"
-#          routing_token_port: 36555
-#          table_acknowledge_port: 36557
-       	}
+	use_routing_master: false
+	}
 
 	sources: { }
   }
@@ -51,11 +47,28 @@ outputs: {
     module_type: RootNetOutput
     #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
   }
+  #normalOutput: {
+  #  module_type: RootOutput
+  #  fileName: "/tmp/artdaqdemo_eb00_r%06r_sr%02s_%to_%#.root"
+  #  #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
+  #  fileProperties: { maxSubRuns: 1 maxRuns: 1  }
+  #  compressionLevel: 3
+  #  fastCloning: false
+ #}
 }
 
 physics: {
   analyzers: {
-
+    toy1Integ: {
+      module_type: CheckIntegrity
+      raw_data_label: "daq"
+      frag_type: "TOY1"      
+    }
+    toy2Integ: {
+      module_type: CheckIntegrity
+      raw_data_label: "daq"
+      frag_type: "TOY2"
+    }
   }
 
   producers: {
@@ -77,8 +90,9 @@ physics: {
   pmod2: [ prescaleMod2 ]
   pmod3: [ prescaleMod3 ]
    
-
+  a1: [ toy1Integ, toy2Integ ]
   my_output_modules: [ rootNetOutput ]
+  #my_output_modules: [ normalOutput ]
 }
 source: {
   module_type: DemoInput

@@ -4,32 +4,36 @@ services: {
   }
   NetMonTransportServiceInterface: {
     service_provider: NetMonTransportService
+    #broadcast_sends: true
+    #nonblocking_sends: true
+	#destinations: {	
+	#  %{destinations_fhicl}
+    #}
   }
+
+  #SimpleMemoryCheck: { }
 }
 
 daq: {
   aggregator: {
-    expected_events_per_bunch: 1
+    expected_fragments_per_event: 1
 	max_fragment_size_bytes: 16777216
     print_event_store_stats: true
     buffer_count: 20
-    event_queue_depth: 2
     event_queue_wait_time: 1
     onmon_event_prescale: 1
-    xmlrpc_client_list: ""
+    xmlrpc_client_list: ";http://ironwork.fnal.gov:5205/RPC2,3;http://ironwork.fnal.gov:5235/RPC2,4;http://ironwork.fnal.gov:5236/RPC2,4;http://ironwork.fnal.gov:5265/RPC2,5;http://ironwork.fnal.gov:5266/RPC2,5"
     subrun_size_MB: -1
     subrun_duration: -1
     subrun_event_count: 0
     is_dispatcher: true
-    overwrite_mode: true
 
 	routing_token_config: {
 		use_routing_master: false
 	}
 
-    auto_suppression_enabled: false
-
-	sources: { }
+	auto_suppression_enabled: false
+	sources: {	}
   }
 
   metrics: {
@@ -40,18 +44,15 @@ daq: {
       uniquify: true
     }
   }
-
 }
 
 source: {
   module_type: NetMonInput
 }
-
 outputs: {
 
 }
-
 physics: {
 
 }
-process_name: DAQDP
+process_name: DAQDISP

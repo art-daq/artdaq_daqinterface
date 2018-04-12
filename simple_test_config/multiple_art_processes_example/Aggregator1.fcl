@@ -25,6 +25,7 @@ daq: {
     subrun_duration: -1
     subrun_event_count: 0
     is_data_logger: true
+	art_analyzer_count: 5
 
     auto_suppression_enabled: false
 

@@ -52,11 +52,11 @@
 	hardware_poll_interval_us: 0 
 
         generator: ToySimulator
-	  fragment_type: TOY2
-	  fragment_id: 1
-	  board_id: 1
-	  starting_fragment_id: 1
-	  random_seed: 2899
+	  fragment_type: TOY1
+	  fragment_id: 18
+	  board_id: 18
+	  starting_fragment_id: 18
+	  random_seed: 8250
 	  sleep_on_stop_us: 500000 
 	  nADCcounts: 40
 	  throttle_usecs: 100000

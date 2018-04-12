@@ -127,7 +127,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v2_base(self):
 
                 proc_hosts.append( 
                     "{rank: %d host: \"%s\" portOffset: %d}" % \
-                        (num_existing, host_to_display, 6300 + 10*num_existing))
+                        (num_existing, host_to_display, self.tcp_base_port + 100*num_existing))
 
     proc_hosts_string = ", ".join( proc_hosts )
 
@@ -288,7 +288,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         proc_hosts.append( 
             "{rank: %d host: \"%s\" portOffset: %d}" % \
-                (num_existing, host_to_display, 6300 + 10*num_existing))
+                (num_existing, host_to_display, self.tcp_base_port + (1+len(self.procinfos))*num_existing))
 
     proc_hosts_string = ", ".join( proc_hosts )
 
@@ -306,8 +306,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         for i in range(first, last):
             if nth == -1:
                 nodes.append( 
-                    "%s%d: { transferPluginType: Autodetect %s_rank: %d max_fragment_size_words: %d host_map: [%s]}" % \
-                    (prefix, i, nodetype[:-1], i, max_fragment_size_words, \
+                    "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d host_map: [%s]}" % \
+                    (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_size_words, \
                      proc_hosts_string))
             else:
 
@@ -319,8 +319,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     offset = this_node_index
 
                 nodes.append( 
-                    "%s%d: { transferPluginType: NthEvent nth: %d offset: %d physical_transfer_plugin: { transferPluginType: Autodetect %s_rank: %d max_fragment_size_words: %d } host_map: [%s]}" % \
-                    (prefix, i, nth, offset, nodetype[:-1], i, max_fragment_size_words, \
+                    "%s%d: { transferPluginType: NthEvent nth: %d offset: %d physical_transfer_plugin: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d } host_map: [%s]}" % \
+                    (prefix, i, nth, offset,self.transfer, nodetype[:-1], i, max_fragment_size_words, \
                      proc_hosts_string))
 
         return "\n".join( nodes )
@@ -431,7 +431,20 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             self.procinfos[i_proc].fhicl_used = re.sub("expected_fragments_per_event\s*:\s*[0-9]+", 
                                                        "expected_fragments_per_event: %d" % (expected_fragments_per_event), 
                                                        self.procinfos[i_proc].fhicl_used)
+        if not self.request_address is None:
+            self.procinfos[i_proc].fhicl_used = re.sub("request_address\s*:\s*[\"0-9\.]+", 
+                                                       "request_address: \"%s\"" % (self.request_address), 
+                                                       self.procinfos[i_proc].fhicl_used)
 
+        if not self.request_port is None:
+            self.procinfos[i_proc].fhicl_used = re.sub("request_port\s*:\s*[0-9]+", 
+                                                       "request_port: %d" % (self.request_port), 
+                                                       self.procinfos[i_proc].fhicl_used)
+
+        if not self.partition_number is None:
+            self.procinfos[i_proc].fhicl_used = re.sub("partition_number\s*:\s*[0-9]+", 
+                                                       "partition_number: %d" % (self.partition_number), 
+                                                       self.procinfos[i_proc].fhicl_used)
     
     if not self.data_directory_override is None:
         for i_proc in range(len(self.procinfos)):

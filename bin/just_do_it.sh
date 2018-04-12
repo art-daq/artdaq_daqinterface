@@ -1,17 +1,80 @@
 #!/bin/env bash
 
+config="demo"
+daqcomps="component01 component02"
+runs=1
 
-if [[ "$#" != "2" ]]; then
-    echo "Usage: $0 <file to pass on boot transition> <daq running time in seconds (0 if you want to run until ctrl-C is hit) > "
-    exit 0
+env_opts_var=`basename $0 | sed 's/\.sh$//' | tr 'a-z-' 'A-Z_'`_OPTS
+USAGE="\
+   usage: `basename $0` [options] <file to pass on boot transition> <daq running time in seconds (0 if you want to run until ctrl-C is hit)>
+examples: `basename $0` boot.txt 0
+          `basename $0` --config demo_no_aggregators 20
+--help        This help message
+--config      Name of the configuration to use (Default: $config)
+--compfile    File containing space-delimited component names to use
+--comps       Space-delimited list of component names to use (Default: $daqcomps) (End with -- or any other option)
+--bootfile    File to pass on Boot transition (overrides first parameter)
+--runduration Number of seconds to run the daq (overrides second parameter)
+--runs        Number of start/stop transitions to run (Default: $runs)
+"
+
+# Process script arguments and options
+eval env_opts=\${$env_opts_var-} # can be args too
+eval "set -- $env_opts \"\$@\""
+op1chr='rest=`expr "$op" : "[^-]\(.*\)"`   && set -- "-$rest" "$@"'
+op1arg='rest=`expr "$op" : "[^-]\(.*\)"`   && set --  "$rest" "$@"'
+reqarg="$op1arg;"'test -z "${1+1}" &&echo opt -$op requires arg. &&echo "$USAGE" &&exit'
+comp_mode=0 args= do_help=; comp_file=""; time_override=-1; boot_file=""
+while [ -n "${1-}" ];do
+    if expr "x${1-}" : 'x-' >/dev/null;then
+        op=`expr "x$1" : 'x-\(.*\)'`; shift   # done with $1
+        leq=`expr "x$op" : 'x-[^=]*\(=\)'` lev=`expr "x$op" : 'x-[^=]*=\(.*\)'`
+        test -n "$leq"&&eval "set -- \"\$lev\" \"\$@\""&&op=`expr "x$op" : 'x\([^=]*\)'`
+	comp_mode=0
+        case "$op" in
+            \?*|h*)     eval $op1chr; do_help=1;;
+            -help)      eval $op1arg; do_help=1;;
+            -config)    eval $reqarg; config=$1; shift;;
+            -comps)     eval $reqarg; comp_mode=1 daqcomps=$1; shift;;
+            -compfile)  eval $reqarg; comp_file=$1; shift;;  
+            -runduration) eval $reqarg; time_override=$1; shift;;
+            -bootfile)  eval $reqarg; boot_file=$1; shift;;
+	    -runs)      eval $reqarg; runs=$1; shift;;
+	    -)          ;; # Used to terminate comp_mode
+            *)          echo "Unknown option -$op"; do_help=1;;
+        esac
+    else
+	if [ $comp_mode -eq 1 ];then
+		daqcomps="$daqcomps $1"
+		shift
+	else
+	        aa=`echo "$1" | sed -e"s/'/'\"'\"'/g"` args="$args '$aa'"; shift
+	fi
+    fi
+done
+eval "set -- $args \"\$@\""; unset args aa
+set -u   # complain about uninitialed shell variables - helps development
+
+if [[ "x$comp_file" != "x" ]]; then
+  daqcomps=`cat $comp_file`
 fi
+
+echo "Configuration: ${config}, Components: ${daqcomps}, Remaining Args: $#"
+
+test -n "${do_help-}" -o $# -ge 3 && echo "$USAGE" && exit
 
 scriptdir="$(dirname "$0")"
 
-config="demo"
-
-daqintconfig=$1
-daq_time_in_seconds=$2
+if [[ "x$boot_file" == "x" ]]; then
+  daqintconfig=$1
+else
+  daqintconfig=${boot_file}
+fi
+if [ $time_override -eq -1 ]; then
+  daq_time_in_seconds=$2
+else
+  daq_time_in_seconds=$time_override
+fi
 
 . $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
@@ -82,7 +145,7 @@ function main() {
 	exit 50
     fi
 
-    $scriptdir/setdaqcomps.sh component01 component02
+    $scriptdir/setdaqcomps.sh $daqcomps
 
     $scriptdir/send_transition.sh boot $daqintconfig
 
@@ -97,7 +160,7 @@ function main() {
     fi
 
     sleep 2
-
+    #read -n 1 -s -r -p "Press any key to configure"
     # Initialize the DAQ
 
     config_cntr=0
@@ -120,28 +183,45 @@ function main() {
     done
 
     # Start the DAQ, and run it for the requested amount of time
+	counter=0
+	while [ $counter -lt $runs ]; do
+		#read -n 1 -s -r -p "Press any key to start"
+		$scriptdir/send_transition.sh start
 
-    $scriptdir/send_transition.sh start
+		wait_until_no_longer starting
 
-    wait_until_no_longer starting
+		state_true="0"
+		check_for_state "running" state_true
 
-    state_true="0"
-    check_for_state "running" state_true
-
-    if [[ "$state_true" != "1" ]]; then
-	echo "DAQ failed to enter running state; exiting $0"
-	exit 70
-    fi
+		if [[ "$state_true" != "1" ]]; then
+			echo "DAQ failed to enter running state; exiting $0"
+			exit 70
+		fi
 
     
-    if [[ $daq_time_in_seconds > 0 ]]; then
-	echo "Will acquire data for $daq_time_in_seconds seconds"
-	sleep $daq_time_in_seconds
+		if [[ $daq_time_in_seconds > 0 ]]; then
+			echo "Will acquire data for $daq_time_in_seconds seconds"
+			sleep $daq_time_in_seconds
+		else
+			echo "Will acquire data until Ctrl-C is hit"
+			sleep 10000000000
+		fi
+
+		# Stop the DAQ
+    
+		state_true="0"
+		check_for_state "running" state_true
+
+		if [[ "$state_true" == "1" ]]; then
+			#read -n 1 -s -r -p "Press any key to stop"
+			$scriptdir/send_transition.sh stop
+			wait_until_no_longer stopping
+		fi
+
+		counter=$(($counter + 1))
+	done
+
 	clean_shutdown
-    else
-	echo "Will acquire data until Ctrl-C is hit"
-	sleep 10000000000
-    fi
 }
 
 # clean_shutdown() will be called either (A) after the DAQ has run for
@@ -160,7 +240,7 @@ function clean_shutdown() {
     check_for_state "running" state_true
 
     if [[ "$state_true" == "1" ]]; then
-	
+    #read -n 1 -s -r -p "Press any key to stop"
 	$scriptdir/send_transition.sh stop
 	wait_until_no_longer stopping
     fi
@@ -189,7 +269,8 @@ function clean_shutdown() {
     # fi
 
     if true; then
-
+	
+    #read -n 1 -s -r -p "Press any key to shutdown"
 	$scriptdir/send_transition.sh terminate
 
 	wait_until_no_longer terminating

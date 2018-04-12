@@ -17,12 +17,12 @@ services: {
 daq: {
   event_builder: {
 	expected_fragments_per_event: 0  # Will be set by DAQInterface
-	max_fragment_size_bytes: 16777216
+    max_fragment_size_bytes: 16777216
 	use_art: true
 	print_event_store_stats: true
 	buffer_count: 20
 	max_incomplete_events: 75 # Same as boardreader sync interval
-	verbose: true
+	verbose: false
 	send_requests: true
 
 	routing_token_config: {

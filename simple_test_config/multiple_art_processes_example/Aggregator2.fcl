@@ -22,6 +22,7 @@ daq: {
     subrun_event_count: 0
     is_dispatcher: true
     overwrite_mode: true
+	art_analyzer_count: 5
 
 	routing_token_config: {
 		use_routing_master: false

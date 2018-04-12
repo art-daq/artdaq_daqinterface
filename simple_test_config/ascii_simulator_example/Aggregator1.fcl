@@ -8,30 +8,29 @@ services: {
     nonblocking_sends: true
 	destinations: { }
   }
+
+  #SimpleMemoryCheck: { }
 }
 
 daq: {
   aggregator: {
-    expected_events_per_bunch: 1
-    print_event_store_stats: true
-    event_queue_depth: 40
-    event_queue_wait_time: 5
-    every_sequence_id_should_be_present: true
+    expected_fragments_per_event: 1
 	max_fragment_size_bytes: 16777216
-    buffer_count: 40
+    print_event_store_stats: true
+    buffer_count: 20
+    event_queue_wait_time: 5
     onmon_event_prescale: 1
-    xmlrpc_client_list: ""
+    xmlrpc_client_list: ";http://ironwork.fnal.gov:5205/RPC2,3;http://ironwork.fnal.gov:5235/RPC2,4;http://ironwork.fnal.gov:5236/RPC2,4;http://ironwork.fnal.gov:5265/RPC2,5;http://ironwork.fnal.gov:5266/RPC2,5"
     subrun_size_MB: -1
     subrun_duration: -1
     subrun_event_count: 0
     is_data_logger: true
 
-    auto_suppression_enabled: false
-
 	routing_token_config: {
 		use_routing_master: false
 	}
 
+	auto_suppression_enabled: false
 	sources: { }
   }
 
@@ -43,25 +42,24 @@ daq: {
       uniquify: true
     }
   }
-
 }
 
 source: {
   module_type: NetMonInput
 }
 outputs: {
-  normalOutput: {
-    module_type: RootOutput
-    fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%to_%#.root"
-    fileProperties: { maxSubRuns: 1 maxRuns: 1  }
-    fastCloning: false
-    compressionLevel: 3
-  }
   rootNetOutput: {
     module_type: RootNetOutput
     #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
   }
 
+  normalOutput: {
+    module_type: RootOutput
+    fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%to_%#.root"
+    fileProperties: { maxSubRuns: 1 maxRuns: 1 maxSize: 8192000 }
+    fastCloning: false
+    compressionLevel: 3
+  }
 }
 physics: {
   analyzers: {
@@ -71,11 +69,6 @@ physics: {
      module_type: CheckIntegrity
      raw_data_label: daq
      frag_type: TOY1
-   }
-   checkintegrity2: {
-     module_type: CheckIntegrity
-     raw_data_label: daq
-     frag_type: TOY2
    }
 
   }
@@ -89,9 +82,13 @@ physics: {
      }
    }
 
+
   p2: [ BuildInfo ]
-  a1: [ checkintegrity, checkintegrity2 ]
+
+  #a1: [ app, wf]
+  #a2: [ checkintegrity ]
+
   my_output_modules: [ normalOutput ]
-  my_mpi_output_modules: [rootNetOutput]
+  my_mpi_output_modules: [ rootNetOutput ]
 }
 process_name: DAQDL

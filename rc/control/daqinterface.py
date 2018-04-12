@@ -244,6 +244,11 @@ class DAQInterface(Component):
         self.heartbeat_failure = False
 
         self.debug_level = 10000
+        self.tcp_base_port = 6300
+        self.request_address = None
+        self.request_port = None 
+        self.partition_number = None
+        self.transfer = "Autodetect"
 
         self.daqinterface_base_dir = os.getcwd()
             
@@ -382,6 +387,8 @@ class DAQInterface(Component):
         self.fake_messagefacility = False
         self.data_directory_override = None
 
+        self.productsdir = None
+
         for line in inf.readlines():
 
             line = expand_environment_variable_in_string( line )
@@ -392,6 +399,8 @@ class DAQInterface(Component):
                 self.log_directory = line.split()[-1].strip()
             elif "record_directory" in line:
                 self.record_directory = line.split()[-1].strip()
+            elif "productsdir_for_bash_scripts" in line:
+                self.productsdir = line.split()[-1].strip()
             elif "package_hashes_to_save" in line:
                 res = re.search(r".*\[(.*)\].*", line)
 
@@ -450,6 +459,8 @@ class DAQInterface(Component):
                 self.data_directory_override = line.split()[-1].strip()
                 if self.data_directory_override[-1] != "/":
                     self.data_directory_override = self.data_directory_override + "/"
+            elif "transfer_plugin_to_use" in line:
+                self.transfer = line.split()[-1].strip()
                 
 
         missing_vars = []
@@ -557,7 +568,7 @@ class DAQInterface(Component):
 
         cmds = []
         cmds.append(". %s" % (self.daq_setup_script))
-        cmds.append('if [[ -n "$SETUP_ARTDAQ_MFEXTENSIONS" ]]; then true; else false; fi')
+        cmds.append('if test -n "$SETUP_ARTDAQ_MFEXTENSIONS" -o -d "$ARTDAQ_MFEXTENSIONS_DIR"; then true; else false; fi')
 
         checked_cmd = construct_checked_command( cmds )
         
@@ -575,7 +586,7 @@ class DAQInterface(Component):
 
         cmds = []
         cmds.append(". %s" % (self.daq_setup_script))
-        cmds.append("printenv SETUP_ARTDAQ_MFEXTENSIONS")
+        cmds.append('if [ -n "$SETUP_ARTDAQ_MFEXTENSIONS" ]; then printenv SETUP_ARTDAQ_MFEXTENSIONS; else echo "artdaq_mfextensions $ARTDAQ_MFEXTENSIONS_VERSION $MRB_QUALS";fi')
 
         proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -652,6 +663,8 @@ class DAQInterface(Component):
             if not os.path.exists( "%s/%s" % (self.log_directory, logdir)):
                 self.launch_cmds.append("mkdir -p -m 0777 " + "%s/%s" % (self.log_directory, logdir) )
 
+        self.launch_cmds.append(". %s/setup" % self.productsdir)  
+        self.launch_cmds.append("for pp in `printenv | sed -ne '/^SETUP_/{s/SETUP_//;s/=.*//;p}'`; do test $pp = UPS && continue; prod=`echo $pp | tr 'A-Z' 'a-z'`; unsetup -j $prod; done")  
         self.launch_cmds.append("source " + self.daq_setup_script )
         self.launch_cmds.append("which pmt.rb")  # Sanity check capable of returning nonzero
 
@@ -845,7 +858,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
 
         for procinfo in self.procinfos:
             
-            greptoken = procinfo.name + "Main -p " + procinfo.port
+            greptoken = procinfo.name + "Main -c id: " + procinfo.port
 
             pids = get_pids(greptoken, procinfo.host)
 
@@ -1219,14 +1232,8 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
             try:
 
                 if command == "Init":
-                    if not "Aggregator" in self.procinfos[procinfo_index].name and \
-                            not "DataLogger" in self.procinfos[procinfo_index].name:
-                        self.procinfos[procinfo_index].lastreturned = \
-                            self.procinfos[procinfo_index].server.daq.init(self.procinfos[procinfo_index].fhicl_used)
-                    else:
-                        self.procinfos[procinfo_index].lastreturned = \
-                            self.procinfos[procinfo_index].server.daq.init(self.procinfos[procinfo_index].fhicl_used + self.get_run_documents() )
-
+                    self.procinfos[procinfo_index].lastreturned = \
+                        self.procinfos[procinfo_index].server.daq.init(self.procinfos[procinfo_index].fhicl_used)
                 elif command == "Start":
                     self.procinfos[procinfo_index].lastreturned = \
                         self.procinfos[procinfo_index].server.daq.start(\
@@ -1449,15 +1456,8 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
             raise Exception("Status error raised in attempt to source script %s on host %s." % \
                             (self.daq_setup_script, procinfo.host))
 
-        # Previously this "if True" was "if self.manage_processes",
-        # however, protoDUNE wants to be in charge of externally
-        # sending transitions to artdaq processes but not actually
-        # launching them or killing them, and there isn't currently an
-        # experiment which wants to be in charge of both sending
-        # transitions, launching and killing
-
-        if True:
-            
+        if self.manage_processes:
+   
             # Now, with the info on hand about the processes contained in
             # procinfos, actually launch them
 
@@ -1544,7 +1544,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                     cmds = []
                     cmds.append(". %s" % (self.daq_setup_script))
                     cmds.append("which msgviewer")
-                    cmds.append("msgviewer -c $ARTDAQ_MFEXTENSIONS_FQ_DIR/bin/msgviewer.fcl 2>&1 > /dev/null &" )
+                    cmds.append("msgviewer -c $ARTDAQ_MFEXTENSIONS_DIR/fcl/msgviewer.fcl 2>&1 > /dev/null &" )
 
                     msgviewercmd = construct_checked_command( cmds )
 
@@ -1681,13 +1681,20 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
             unspecified_aggregator_cntr = 0
             unspecified_routingmaster_cntr = 0
             datalogger_cntr = 0
+            eventbuilder_cntr = 0
 
             for i_proc in range(len(self.procinfos)):
 
                 if self.procinfos[i_proc].name == proc_type:
 
                     if proc_type == "EventBuilder":
-                        fcl = "%s/EventBuilder1.fcl" % (config_subdirname)
+                        eventbuilder_cntr += 1
+                        fcl = "%s/EventBuilder%d.fcl" % (config_subdirname, eventbuilder_cntr)
+                        if not os.path.exists(fcl):
+                            fcl = "%s/EventBuilder.fcl" % (config_subdirname)
+                            if not os.path.exists(fcl):
+                                self.alert_and_recover(make_paragraph("Configuration \"%s\" can only support a maximum of %d EventBuilder(s); more than that have been requested in the file passed on the boot transition" % (self.config_for_run, eventbuilder_cntr - 1)))
+                                return
                     elif proc_type == "Aggregator":
                         unspecified_aggregator_cntr += 1
                         if unspecified_aggregator_cntr == 1:
@@ -1755,6 +1762,25 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
             self.print_log("w", make_paragraph(
                     "WARNING: an exception was thrown when attempting to save the run record. While datataking may be able to proceed, this may also indicate a serious problem"))
 
+        run_documents = self.get_run_documents()
+
+        for i_proc in range(len(self.procinfos)):
+            if "Aggregator" in self.procinfos[i_proc].name or "DataLogger" in self.procinfos[i_proc].name:
+                self.procinfos[i_proc].fhicl_used = self.procinfos[i_proc].fhicl_used + run_documents
+
+        # JCF, Mar-6-2018
+
+        # Bit of a chicken-and-egg issue, but basically, after
+        # decorating the DataLogger FHiCL documents with all run
+        # documents saved in the run record as above (so they're later
+        # retrievable via art's config_dumper) clobber and then redo
+        # the temporary run record with the now-decorated DataLogger documents
+
+        if os.path.exists(self.tmp_run_record):
+            shutil.rmtree(self.tmp_run_record)
+
+        self.save_run_record()
+
         if self.manage_processes:
 
             try:
@@ -1820,9 +1846,9 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                 self.alert_and_recover("An exception was thrown when attempting to send the \"start\" transition to the artdaq processes; see traceback above for more info")
                 return
 
-        self.start_datataking()
+            self.softlink_logfiles()
 
-        self.softlink_logfiles()
+        self.start_datataking()
 
         self.save_metadata_value("Start time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
@@ -1870,12 +1896,12 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
         print
 
         if self.manage_processes:
-            
-            self.print_log("w", "\nCurrently only sending the artdaq shutdown transition to DataLogger processes")
 
+            self.print_log("w", "\nCurrently not sending a shutdown transition to the Dispatcher process")
+            
             for procinfo in self.procinfos:
 
-                if procinfo.name != "DataLogger":
+                if "Dispatcher" in procinfo.name:
                     continue
 
                 try:
@@ -1895,15 +1921,17 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                     self.print_log("i", "%s at %s:%s, returned string is:\n%s\n" % \
                                    (procinfo.name, procinfo.host, procinfo.port, procinfo.lastreturned), 1)
 
-        try:
-            self.kill_procs()
-        except Exception:
-            self.print_log("e", "DAQInterface caught an exception in "
-                           "do_terminate()")
-            self.print_log("e", traceback.format_exc())
-            self.alert_and_recover("An exception was thrown "
-                                   "within kill_procs()")
-            return
+        if self.manage_processes:
+
+            try:
+                self.kill_procs()
+            except Exception:
+                self.print_log("e", "DAQInterface caught an exception in "
+                               "do_terminate()")
+                self.print_log("e", traceback.format_exc())
+                self.alert_and_recover("An exception was thrown "
+                                       "within kill_procs()")
+                return
 
         self.complete_state_change(self.name, "terminating")
 
@@ -1922,7 +1950,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
 
         def attempted_stop(self, procinfo):
 
-            greptoken = procinfo.name + "Main -p " + procinfo.port
+            greptoken = procinfo.name + "Main -c id: " + procinfo.port
 
             pid = get_pids(greptoken, procinfo.host)
 
@@ -2041,12 +2069,13 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                     for thread in threads:
                         thread.join()
 
-        try:
-            self.kill_procs()
-        except Exception:
-            self.print_log("e", traceback.format_exc())
-            self.print_log("e", make_paragraph("An exception was thrown "
-                                   "within kill_procs(); artdaq processes may not all have been killed"))
+        if self.manage_processes:
+            try:
+                self.kill_procs()
+            except Exception:
+                self.print_log("e", traceback.format_exc())
+                self.print_log("e", make_paragraph("An exception was thrown "
+                                       "within kill_procs(); artdaq processes may not all have been killed"))
 
         self.in_recovery = False
 
@@ -2119,8 +2148,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                 self.__do_disable = False
                 self.do_disable()
 
-            elif self.manage_processes and self.state(self.name) != "stopped" and \
-                    self.state(self.name) != "booting" and self.state(self.name) != "terminating":
+            elif self.manage_processes and self.state(self.name) != "stopped" and self.state(self.name) != "booting" and self.state(self.name) != "terminating":
                 self.check_proc_heartbeats()
                 self.check_proc_exceptions()
 
