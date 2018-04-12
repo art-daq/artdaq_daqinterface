@@ -1,4 +1,5 @@
 #include "standard_metrics_configs.fcl"
+#include "routing_master_parameters.fcl"
 
 services: {
   scheduler: {
@@ -7,30 +8,26 @@ services: {
   NetMonTransportServiceInterface: {
     service_provider: NetMonTransportService
     #broadcast_sends: true
-	destinations: {	}
+    destinations: {	}
 
-	routing_table_config: {
-	    use_routing_master: false
-	}
+    routing_table_config: @local::artdaq_EB_routing_table_specification
   }
 }
 
 daq: {
   event_builder: {
-	expected_fragments_per_event: 0  # Will be set by DAQInterface
-	max_fragment_size_bytes: 16777216
-	use_art: true
-	print_event_store_stats: true
-	buffer_count: 20
-	max_incomplete_events: 75 # Same as boardreader sync interval
-	verbose: true
-	send_requests: true
+    expected_fragments_per_event: 0  # Will be set by DAQInterface
+    max_fragment_size_bytes: 16777216
+    use_art: true
+    print_event_store_stats: true
+    buffer_count: 20
+    max_incomplete_events: 75 # Same as boardreader sync interval
+    verbose: true
+    send_requests: true
 
-	routing_token_config: {
-	use_routing_master: false
-	}
+    routing_token_config: @local::artdaq_EB_routing_token_specification
 
-	sources: { }
+    sources: { }
   }
   metrics: @local::EB_metrics_default
 } 
@@ -56,16 +53,13 @@ physics: {
     }
   }
 
-  producers: {
-  }
+  producers: { }
 
   filters: {
-
     prescaleMod2: {
        module_type: NthEvent
        nth: 2
     }
-
     prescaleMod3: {
        module_type: NthEvent
        nth: 3

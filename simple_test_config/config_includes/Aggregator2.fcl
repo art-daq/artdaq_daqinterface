@@ -1,4 +1,5 @@
 #include "standard_metrics_configs.fcl"
+#include "routing_master_parameters.fcl"
 
 services: {
   scheduler: {
@@ -25,13 +26,11 @@ daq: {
     is_dispatcher: true
     overwrite_mode: true
 
-	routing_token_config: {
-		use_routing_master: false
-	}
+    routing_token_config: @local::artdaq_DISP_routing_token_specification
 
     auto_suppression_enabled: false
 
-	sources: { }
+    sources: { }
   }
 
   metrics: @local::DISP_metrics_default

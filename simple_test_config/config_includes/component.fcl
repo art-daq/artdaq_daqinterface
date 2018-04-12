@@ -1,5 +1,6 @@
 #include "standard_metrics_configs.fcl"
 #include "standard_boardreader_parameters.fcl"
+#include "routing_master_parameters.fcl"
 
 BEGIN_PROLOG
 
@@ -34,9 +35,7 @@ component_standard: {
 
         destinations: { }
 
-	routing_table_config: {
-	    use_routing_master: false
-	}
+        routing_table_config: @local::artdaq_BR_routing_table_specification
   }
 
   metrics: @local::BR_metrics_default
