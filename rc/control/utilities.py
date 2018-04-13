@@ -84,9 +84,11 @@ def get_pids(greptoken, host="localhost"):
 
     return pids
 
-def table_range(fhiclstring, tablename):
+def table_range(fhiclstring, tablename, startingloc=0):
 
-    loc = string.find(fhiclstring, tablename)
+    # 13-Apr-2018, KAB: added the startingloc argument so that this function can
+    # be used to find more than the first instance of the tablename in the string.
+    loc = string.find(fhiclstring, tablename, startingloc)
 
     if loc == -1:
         return (-1, -1)
