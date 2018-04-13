@@ -389,7 +389,13 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 table_range(self.procinfos[i_proc].fhicl_used, \
                                 tablename)
 
-            if table_start != -1 and table_end != -1:
+            # 13-Apr-2018, KAB: modified this statement from an "if" test to
+            # a "while" loop so that it will modify all of the source and
+            # destination blocks in a file. This was motivated by changes to
+            # configuration files to move common parameter definitions into
+            # included files, and the subsequent creation of multiple source
+            # and destination blocks in PROLOGs.
+            while table_start != -1 and table_end != -1:
                 
                 node_index = -1
                 nth = -1
@@ -408,6 +414,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     create_sources_or_destinations_string(tablename, node_first, node_last, nth, node_index) + \
                     "\n } \n" + \
                     self.procinfos[i_proc].fhicl_used[table_end:]
+
+                (table_start, table_end) = \
+                    table_range(self.procinfos[i_proc].fhicl_used, \
+                                    tablename, table_end)
 
     expected_fragments_per_event = 0
 
