@@ -6,16 +6,11 @@ BEGIN_PROLOG
 
 component_standard: {
   fragment_receiver: {
-	mpi_sync_interval: 50
-
 	# CommandableFragmentGenerator Configuration: 
 	fragment_ids: []
 	fragment_id: -99 # Please define only one of these
 
 	sleep_on_stop_us: 0
-
-	data_buffer_depth_fragments: 1000
-	data_buffer_depth_mb: 1000
 
         @table::artdaq_BR_data_request_parameters
         @table::artdaq_BR_data_thread_parameters

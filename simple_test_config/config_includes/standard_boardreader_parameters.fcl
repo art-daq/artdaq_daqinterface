@@ -1,5 +1,7 @@
 BEGIN_PROLOG
 
+# to-do: need better name that "data request" parameters
+# 'data transfer style'?
 artdaq_BR_data_request_parameters: {
 
   # This parameter specifies the way that fragments are sent from BRs to EBs.
@@ -42,6 +44,9 @@ artdaq_BR_data_thread_parameters: {
   # thread is, set this to true and request_mode to ignored.
   separate_data_thread: false 
 
+  # do these only get used when there is a separate data thread?
+  data_buffer_depth_fragments: 1000
+  data_buffer_depth_mb: 1000
 }
 
 artdaq_BR_monitoring_thread_parameters: {
