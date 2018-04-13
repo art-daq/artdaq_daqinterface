@@ -1,18 +1,6 @@
 #include "standard_metrics_configs.fcl"
 #include "routing_master_parameters.fcl"
-
-services: {
-  scheduler: {
-    errorOnFailureToPut: false
-  }
-  NetMonTransportServiceInterface: {
-    service_provider: NetMonTransportService
-    #broadcast_sends: true
-    destinations: {	}
-
-    routing_table_config: @local::artdaq_EB_routing_table_specification
-  }
-}
+#include "art_input_output_parameters.fcl"
 
 daq: {
   event_builder: {
@@ -32,11 +20,18 @@ daq: {
   metrics: @local::EB_metrics_default
 } 
 
-outputs: {
-  rootNetOutput: {
-    module_type: RootNetOutput
-    #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
+services: {
+  scheduler: {
+    errorOnFailureToPut: false
   }
+  NetMonTransportServiceInterface: @local::artdaq_EB_art_service_for_sending_events
+}
+
+source: @local::artdaq_EB_art_source_specification
+
+outputs: {
+  rootNetOutput: @local::artdaq_EB_art_output_module_for_sending_events
+  #rootNetOutput.SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
 }
 
 physics: {
@@ -72,9 +67,5 @@ physics: {
   a1: [ toy1Integ, toy2Integ ]
   my_output_modules: [ rootNetOutput ]
 }
-source: {
-  module_type: DemoInput
-  waiting_time: 2500000
-  resume_after_timeout: true
-}
+
 process_name: DAQ

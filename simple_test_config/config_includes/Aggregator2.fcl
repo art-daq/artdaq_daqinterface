@@ -1,14 +1,6 @@
 #include "standard_metrics_configs.fcl"
 #include "routing_master_parameters.fcl"
-
-services: {
-  scheduler: {
-    errorOnFailureToPut: false
-  }
-  NetMonTransportServiceInterface: {
-    service_provider: NetMonTransportService
-  }
-}
+#include "art_input_output_parameters.fcl"
 
 daq: {
   aggregator: {
@@ -36,15 +28,17 @@ daq: {
   metrics: @local::DISP_metrics_default
 }
 
-source: {
-  module_type: NetMonInput
+services: {
+  scheduler: {
+    errorOnFailureToPut: false
+  }
+  NetMonTransportServiceInterface: @local::artdaq_DISP_art_service_for_sending_events
 }
 
-outputs: {
+source: @local::artdaq_DISP_art_source_specification
 
-}
+outputs: { }
 
-physics: {
+physics: { }
 
-}
 process_name: DAQDP
