@@ -84,6 +84,10 @@ def get_pids(greptoken, host="localhost"):
 
     return pids
 
+# [Comment added by KAB, 17-Apr-2018]
+# This function returns the contents of the FHiCL table that immediately
+# follows the specified string (tablename).  It does not require that
+# 'tablename' actually be a FHiCL key.
 def table_range(fhiclstring, tablename, startingloc=0):
 
     # 13-Apr-2018, KAB: added the startingloc argument so that this function can
@@ -115,6 +119,40 @@ def table_range(fhiclstring, tablename, startingloc=0):
                 tablename)
 
     return (loc, loc + open_brace_loc + 1 + close_brace_loc + 1)
+
+# 17-Apr-2018, KAB: added this function to find the *enclosing* FHiCL
+# table for the specified string. This can be useful when looking for
+# a table that has a desirable FHiCL value, and we want to fetch the
+# contents of the entire table.
+def enclosing_table_range(fhiclstring, searchstring, startingloc=0):
+
+    loc = string.find(fhiclstring, searchstring, startingloc)
+
+    if loc == -1:
+        return (-1, -1)
+
+    open_brace_loc = string.rindex(fhiclstring, "{", startingloc, loc)
+
+    close_braces_needed = 1
+    close_brace_loc = -1
+
+    for i_char, char in enumerate(fhiclstring[(open_brace_loc+1):]):
+
+        if char == '{':
+            close_braces_needed += 1
+        elif char == '}':
+            close_braces_needed -= 1
+
+        if close_braces_needed == 0:
+            close_brace_loc = i_char
+            break
+
+    if close_brace_loc == -1:
+        raise Exception(
+            "Unable to find close brace for requested table \"%s\"" % \
+                searchstring)
+
+    return (open_brace_loc + 1, open_brace_loc + close_brace_loc + 1)
 
 
 def commit_check_throws_if_failure(packagedir, commit_hash, date, request_after):
