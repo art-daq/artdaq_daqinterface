@@ -7,6 +7,7 @@ import string
 import re
 
 from rc.control.utilities import table_range
+from rc.control.utilities import enclosing_table_range
 from rc.control.utilities import commit_check_throws_if_failure
 
 def bookkeeping_for_fhicl_documents_artdaq_v1_base(self):
@@ -460,14 +461,22 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         for i_proc in range(len(self.procinfos)):
             if "EventBuilder" in self.procinfos[i_proc].name or "DataLogger" in self.procinfos[i_proc].name:
 
-                res = re.search(r"^[^#]*RootOutput", self.procinfos[i_proc].fhicl_used)
+                # 17-Apr-2018, KAB: added the MULTILINE flag to get this search to behave as desired.
+                # I'm not sure what the -not-a-comment- directive in the search is intended to do.
+                res = re.search(r"^[^#]*RootOutput", self.procinfos[i_proc].fhicl_used, re.MULTILINE)
 
                 if res:
-                    start, end = table_range(self.procinfos[i_proc].fhicl_used, "RootOutput")
+                    # 17-Apr-2018, KAB: switched to using the "enclosing_table_range" function, rather
+                    # than "table_range", since we want to capture all of the text inside the same
+                    # block as the RootOutput FHiCL value.
+                    start, end = enclosing_table_range(self.procinfos[i_proc].fhicl_used, "RootOutput")
                     assert start != -1 and end != -1
 
                     rootoutput_table = self.procinfos[i_proc].fhicl_used[start:end]
 
+                    # 11-Apr-2018, KAB: changed the substition to only apply to the text
+                    # in the rootoutput_table, and avoid picking up earlier fileName
+                    # parameter strings in the document.
                     rootoutput_table = re.sub(r"(.*fileName\s*:[\s\"]*)/[^\s]+/",
                                               r"\1" + self.data_directory_override,
                                               rootoutput_table)
