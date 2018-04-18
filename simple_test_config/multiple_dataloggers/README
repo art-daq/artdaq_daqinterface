@@ -19,11 +19,13 @@ Some notes:
 
 * When using earlier versions of art, only one DataLogger can effectively send
   events to the Dispatcher. Of course, it is possible to configure a system to do
-  otherwise, and that will work, but only one of the N events sent to the Dispatcher
-  will be de-serializable
-  This is because the DataLogger configurations will not be identical (they
-  will have different RootOutput filenames), and we will violate the requirement
+  otherwise, and such a system will run, but only one of the N events sent to the
+  Dispatcher will be de-serializable. This is because the different DataLogger
+  configurations (different RootOutput filenames) will violate the requirement
   that upstream art configurations must be identical in order for downstream
   processes to understand them.
-  It is possible that this restriction is removed in art v2.08+, and we will test
-  that soon.
+  It was hoped that this restriction would be removed in art v2.08+, but that
+  does not appear to be the case.  Given that, the configurations for Aggregators
+  2, 3, and 4 have the rootNetOutput lines (two per file) commented out.  To run
+  a test in which all four DLs send events to the Dispatcher, edit Aggregator2/3/4.fcl
+  to restore the rootNetOutput lines.
