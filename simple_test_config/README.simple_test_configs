@@ -106,7 +106,12 @@ a given time window around the "DAQ" events.
         The request_address and request_port fhicl params, in the
         example component0{1,2,3}_hw_cfg.fcl files, control the
         multicast address and port (default 3001 as mentioned above)
-        used.
+        used. These fhicl params are also applicable for the
+        event_builder block in the EventBuilder.fcl files. Additionally,
+        for the EventBuilder.fcl, there is a fhicl "output_address"
+        for controlling the output interface for the multicasts. This
+        parameter defaults to pick the first interface which will
+        be OK for a single node demo.
         
         One additional "gotcha" may be that multiple users have
         tried to run the demos on the same system. As root:
