@@ -1881,10 +1881,6 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                 self.alert_and_recover("An exception was thrown when attempting to send the \"stop\" transition to the artdaq processes; see traceback above for more info")
                 return
 
-
-        self.save_metadata_value("Total events", self.total_events_in_run())
-        
-
         self.complete_state_change(self.name, "stopping")
         self.print_log("i", "STOP transition complete for run %d" % \
             (self.run_number))
