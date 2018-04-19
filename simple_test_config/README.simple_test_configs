@@ -95,6 +95,13 @@ a "CRV" BoardReader which samples uncorrelated data based
 on the Fragment timestamps, providing the events that occurred within
 a given time window around the "DAQ" events.
 
+* Note: Make sure that port 3001/udp is open so that the data requests get through.
+        If this example does not work, one should try disabling the
+        firewall on the test system. Instructions for do this can vary
+        greatly depending upon the system version _and_ who adminstrates
+        the system. For example, on mu2edaq01, the chant to try is:
+             service stop slam-firewall
+
 =====================================================================
 
 request_dataflow_windowmode:
