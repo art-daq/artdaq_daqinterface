@@ -108,6 +108,10 @@ a given time window around the "DAQ" events.
         multicast address and port (default 3001 as mentioned above)
         used.
         
+        One additional "gotcha" may be that multiple users have
+        tried to run the demos on the same system. As root:
+
+             rm -f /tmp/TransferInputShmem2.fcl /tmp/pmtConfig.*
 
 =====================================================================
 
