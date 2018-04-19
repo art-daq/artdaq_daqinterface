@@ -100,7 +100,14 @@ a given time window around the "DAQ" events.
         firewall on the test system. Instructions for do this can vary
         greatly depending upon the system version _and_ who adminstrates
         the system. For example, on mu2edaq01, the chant to try is:
+
              service stop slam-firewall
+
+        The request_address and request_port fhicl params, in the
+        example component0{1,2,3}_hw_cfg.fcl files, control the
+        multicast address and port (default 3001 as mentioned above)
+        used.
+        
 
 =====================================================================
 
