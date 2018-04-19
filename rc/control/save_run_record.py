@@ -94,21 +94,23 @@ def save_run_record_base(self):
         pmt_host_to_record = self.pmt_host
 
     outf.write("\n")
-    outf.write("\npmt logfile(s): %s:%s/pmt/%s" %
-               (pmt_host_to_record, self.log_directory,
-                self.log_filename_wildcard))
 
-    logtuples = [("boardreader", self.boardreader_log_filenames),
-                 ("eventbuilder", self.eventbuilder_log_filenames),
-                 ("aggregator", self.aggregator_log_filenames)]
+    if self.manage_processes:
+        outf.write("\npmt logfile(s): %s:%s/pmt/%s" %
+                   (pmt_host_to_record, self.log_directory,
+                    self.log_filename_wildcard))
 
-    for logtuple in logtuples:
+        logtuples = [("boardreader", self.boardreader_log_filenames),
+                     ("eventbuilder", self.eventbuilder_log_filenames),
+                     ("aggregator", self.aggregator_log_filenames)]
 
-        outf.write("\n")
-        outf.write("\n%s logfiles: " % logtuple[0])
+        for logtuple in logtuples:
 
-        for filename in logtuple[1]:
-            outf.write("\n" + filename)
+            outf.write("\n")
+            outf.write("\n%s logfiles: " % logtuple[0])
+
+            for filename in logtuple[1]:
+                outf.write("\n" + filename)
 
     outf.write("\n")
     outf.close()
@@ -119,6 +121,11 @@ def save_run_record_base(self):
         print
 
 def total_events_in_run_base(self):
+
+    # JCF, Apr-19-2018
+    # This function will need to be rewritten to work, thus the assert False
+    
+    assert False
 
     data_logger_filenames = []
     
