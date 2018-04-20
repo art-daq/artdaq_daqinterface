@@ -42,7 +42,7 @@ component01_standard.fragment_receiver.fragment_id: 0
 component01_standard.fragment_receiver.board_id: 0
 component01_standard.fragment_receiver.starting_fragment_id: 0
 component01_standard.fragment_receiver.random_seed: 8250
-component01_standard.fragment_receiver.subrun_rollover_interval: 100
+component01_standard.fragment_receiver.rollover_subrun_interval: 100
 
 component02_standard: @local::component_standard
 component02_standard.fragment_receiver.fragment_type: TOY2
