@@ -9,6 +9,9 @@
 These simple configuration examples show some of the functionality
 of the ARTDAQ toolkit, and serve as integration and acceptance tests.
 
+Note that some of them have individual README files that provide
+additional information about the configuration.
+
 =====================================================================
 =====================================================================
 
@@ -18,6 +21,17 @@ Demonstrates the AsciiSimulator_generator class and the AsciiDump
 ART module. This module can be used to verify ARTDAQ's data 
 preservation: AsciiSimulator can write a raw ASCII file which can be
 compared with the output of AsciiDump; they will be identical.
+
+=====================================================================
+
+combined_eb_and_DL:
+
+An ARTDAQ system consisting of several TOY1 Simulators, *no*
+EventBuilders, four DataLoggers, and a Dispatcher.
+The intention of this configuration is to demonstrate a system
+that combines the EventBuilding and DataLogging layers into one.
+As of 20-Apr-2018, this configuration is not yet working since
+there are DAQInterface changes that need to be made to support it.
 
 =====================================================================
 
@@ -70,6 +84,12 @@ multiple_art_processes_example:
 A version of the "demo" configuration where each Data Receiver
 (EventBuilder, DataLogger, and Dispatcher) runs 5 subordinate art
 processes. 
+
+=====================================================================
+
+multiple_dataloggers:
+
+A version of the "demo" configuration with four DataLoggers.
 
 =====================================================================
 
