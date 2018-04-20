@@ -1,7 +1,10 @@
 Sample configuration: combined_eb_and_dl
 18-Apr-2018, KAB
 
-to-do: rename Aggregator files as DataLogger and Dispatcher files.
+Please Note:  this configuration is not yet operational since ther
+are DAQInterface changes that need to be made to support it.
+
+To-do: rename Aggregator files as DataLogger and Dispatcher files.
 
 Description:
 This configuration is intended to demonstrate/test the use of a system that
