@@ -1568,36 +1568,37 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                 self.alert_and_recover("Problem during messageviewer launch stage")
                 return
 
-        # JCF, 3/5/15
+        if self.manage_processes:
+            # JCF, 3/5/15
 
-        # Get our hands on the name of logfile so we can save its
-        # name for posterity. This is taken to be the most recent
-        # logfile found in the log directory. There's a tiny chance
-        # someone else's logfile could sneak in during the few seconds
-        # taken during startup, but it's unlikely...
+            # Get our hands on the name of logfile so we can save its
+            # name for posterity. This is taken to be the most recent
+            # logfile found in the log directory. There's a tiny chance
+            # someone else's logfile could sneak in during the few seconds
+            # taken during startup, but it's unlikely...
 
-        try:
+            try:
 
-            cmd = "ls -tr1 %s/pmt | tail -1" % (self.log_directory)
+                cmd = "ls -tr1 %s/pmt | tail -1" % (self.log_directory)
 
-            if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
-                cmd = "ssh %s '%s'" % (self.pmt_host, cmd)
+                if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
+                    cmd = "ssh %s '%s'" % (self.pmt_host, cmd)
 
-            log_filename_current = Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+                log_filename_current = Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
 
-            self.log_filename_wildcard = \
-                log_filename_current.split(".")[0] + ".*" + ".log"
+                self.log_filename_wildcard = \
+                    log_filename_current.split(".")[0] + ".*" + ".log"
 
-            self.boardreader_log_filenames = self.get_logfilenames("BoardReader")
-            self.eventbuilder_log_filenames = self.get_logfilenames("EventBuilder")
-            self.datalogger_log_filenames = self.get_logfilenames("DataLogger")
-            self.dispatcher_log_filenames = self.get_logfilenames("Dispatcher")
-            self.aggregator_log_filenames = self.get_logfilenames("Aggregator") + self.datalogger_log_filenames + self.dispatcher_log_filenames
+                self.boardreader_log_filenames = self.get_logfilenames("BoardReader")
+                self.eventbuilder_log_filenames = self.get_logfilenames("EventBuilder")
+                self.datalogger_log_filenames = self.get_logfilenames("DataLogger")
+                self.dispatcher_log_filenames = self.get_logfilenames("Dispatcher")
+                self.aggregator_log_filenames = self.get_logfilenames("Aggregator") + self.datalogger_log_filenames + self.dispatcher_log_filenames
 
-        except Exception:
-            self.print_log("e", traceback.format_exc())
-            self.alert_and_recover("Problem obtaining logfile name(s)")
-            return
+            except Exception:
+                self.print_log("e", traceback.format_exc())
+                self.alert_and_recover("Problem obtaining logfile name(s)")
+                return
 
         self.complete_state_change(self.name, "booting")
 
@@ -1799,9 +1800,10 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
 
         self.complete_state_change(self.name, "configuring")
 
-        self.print_log("i", "To see logfile(s), on %s run \"ls -ltr %s/pmt/%s\"" % \
-                (self.pmt_host, self.log_directory,
-                 self.log_filename_wildcard))
+        if self.manage_processes:
+            self.print_log("i", "To see logfile(s), on %s run \"ls -ltr %s/pmt/%s\"" % \
+                    (self.pmt_host, self.log_directory,
+                     self.log_filename_wildcard))
 
         self.print_log("i", "\n%s: CONFIG transition complete" % (date_and_time()))
 
@@ -1934,9 +1936,10 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
 
         self.print_log("i", "\n%s: TERMINATE transition complete" % (date_and_time()))
 
-        self.print_log("i", "To see logfile(s), on %s run \"ls -ltr %s/pmt/%s\"" % \
-                (self.pmt_host, self.log_directory,
-                 self.log_filename_wildcard))
+        if self.manage_processes:
+            self.print_log("i", "To see logfile(s), on %s run \"ls -ltr %s/pmt/%s\"" % \
+                    (self.pmt_host, self.log_directory,
+                     self.log_filename_wildcard))
 
     def do_recover(self):
         print
