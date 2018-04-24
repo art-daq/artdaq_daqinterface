@@ -12,7 +12,7 @@ examples: `basename $0` boot.txt 0
 --help        This help message
 --config      Name of the configuration to use (Default: $config)
 --compfile    File containing space-delimited component names to use
---comps       Space-delimited list of component names to use (Default: $daqcomps)
+--comps       Space-delimited list of component names to use (Default: $daqcomps) (End with -- or any other option)
 --bootfile    File to pass on Boot transition (overrides first parameter)
 --runduration Number of seconds to run the daq (overrides second parameter)
 --runs        Number of start/stop transitions to run (Default: $runs)
@@ -24,25 +24,32 @@ eval "set -- $env_opts \"\$@\""
 op1chr='rest=`expr "$op" : "[^-]\(.*\)"`   && set -- "-$rest" "$@"'
 op1arg='rest=`expr "$op" : "[^-]\(.*\)"`   && set --  "$rest" "$@"'
 reqarg="$op1arg;"'test -z "${1+1}" &&echo opt -$op requires arg. &&echo "$USAGE" &&exit'
-args= do_help=; comp_file=""; time_override=-1; boot_file=""
+comp_mode=0 args= do_help=; comp_file=""; time_override=-1; boot_file=""
 while [ -n "${1-}" ];do
     if expr "x${1-}" : 'x-' >/dev/null;then
         op=`expr "x$1" : 'x-\(.*\)'`; shift   # done with $1
         leq=`expr "x$op" : 'x-[^=]*\(=\)'` lev=`expr "x$op" : 'x-[^=]*=\(.*\)'`
         test -n "$leq"&&eval "set -- \"\$lev\" \"\$@\""&&op=`expr "x$op" : 'x\([^=]*\)'`
+	comp_mode=0
         case "$op" in
             \?*|h*)     eval $op1chr; do_help=1;;
             -help)      eval $op1arg; do_help=1;;
             -config)    eval $reqarg; config=$1; shift;;
-            -comps)     eval $reqarg; daqcomps=$1; shift;;
+            -comps)     eval $reqarg; comp_mode=1 daqcomps=$1; shift;;
             -compfile)  eval $reqarg; comp_file=$1; shift;;  
             -runduration) eval $reqarg; time_override=$1; shift;;
             -bootfile)  eval $reqarg; boot_file=$1; shift;;
-			-runs)      eval $reqarg; runs=$1; shift;;
+	    -runs)      eval $reqarg; runs=$1; shift;;
+	    -)          ;; # Used to terminate comp_mode
             *)          echo "Unknown option -$op"; do_help=1;;
         esac
     else
-        aa=`echo "$1" | sed -e"s/'/'\"'\"'/g"` args="$args '$aa'"; shift
+	if [ $comp_mode -eq 1 ];then
+		daqcomps="$daqcomps $1"
+		shift
+	else
+	        aa=`echo "$1" | sed -e"s/'/'\"'\"'/g"` args="$args '$aa'"; shift
+	fi
     fi
 done
 eval "set -- $args \"\$@\""; unset args aa

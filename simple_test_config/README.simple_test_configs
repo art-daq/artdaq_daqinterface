@@ -21,6 +21,16 @@ compared with the output of AsciiDump; they will be identical.
 
 =====================================================================
 
+config_includes:
+
+An ARTDAQ system consisting of a TOY1 Simulator, a TOY2
+Simulator, two EventBuilders, a DataLogger and a Dispatcher.
+What sets this configuration apart from the "demo" config is
+the use of FHiCL fragments and/or templates that are #include(d)
+into the config files that are sent to the ARTDAQ processes.
+
+=====================================================================
+
 demo:
 
 A "standard" ARTDAQ system consisting of a TOY1 Simulator, a TOY2
