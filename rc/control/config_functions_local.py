@@ -44,7 +44,7 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
                             "unable to locate configuration file \"" +
                             daqinterface_config_filename + "\""))
 
-    memberDict = {"name": None, "host": None, "port": None, "fhicl": None}
+    memberDict = {"name": None, "label": None, "host": None, "port": None, "fhicl": None}
 
     for line in inf.readlines():
 
@@ -112,7 +112,7 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
         if res:
             self.manage_processes = False
 
-        if "EventBuilder" in line or "Aggregator" in line or \
+        if "EventBuilder" in line or \
                 "DataLogger" in line or "Dispatcher" in line or \
                 "RoutingMaster" in line:
 
@@ -130,8 +130,8 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
 
             filled = True
 
-            for label, value in memberDict.items():
-                if value is None and not label == "fhicl":
+            for key, value in memberDict.items():
+                if value is None and not key == "fhicl":
                     filled = False
 
             # If it has been filled, then initialize a Procinfo
@@ -141,7 +141,8 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
             if filled:
                 self.procinfos.append(self.Procinfo(memberDict["name"],
                                                     memberDict["host"],
-                                                    memberDict["port"]))
+                                                    memberDict["port"],
+                                                    memberDict["label"]))
                 for varname in memberDict.keys():
                     memberDict[varname] = None
 

@@ -83,11 +83,19 @@ class DAQInterface(Component):
     # fhicl_file_path variable, whose sole purpose is to be passed to
     # Procinfo's functions)
 
+    # JCF, Apr-26-2018
+    
+    # The "label" variable is used to pick out specific FHiCL files
+    # for EventBuilders, DataLoggers, Dispatchers and RoutingMasters;
+    # a given process's label is set in the boot file, alongside its
+    # host and port
+
     class Procinfo(object):
-        def __init__(self, name, host, port, fhicl=None, fhicl_file_path = []):
+        def __init__(self, name, host, port, label=None, fhicl=None, fhicl_file_path = []):
             self.name = name
             self.port = port
             self.host = host
+            self.label = label
             self.fhicl = fhicl     # Name of the input FHiCL document
             self.ffp = fhicl_file_path
             self.priority = 999
@@ -912,22 +920,16 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
 
     def check_daqinterface_config_info(self):
 
-        # Check that the configuration file actually contained the
+        # Check that the boot file actually contained the
         # definitions we wanted
 
-        # The BoardReaderMain info should be supplied by the
-        # configuration manager; info for both AggregatorMains and the
-        # EventBuilderMains (excluding their FHiCL documents) should
-        # be supplied in the DAQInterface configuration file
+        # The BoardReader info should be supplied by the configuration
+        # manager; info for the other artdaq process types (excluding
+        # their FHiCL documents) should be supplied in the
+        # boot file
 
-        if self.num_boardreaders() != 0 or \
-                self.num_eventbuilders() == 0:
-            errmsg = "Unexpected number of artdaq processes provided " \
-                "by the DAQInterface config file: " \
-                "%d BoardReaderMains, %d EventBuilderMains " \
-                "(expect 0 BoardReaderMains, >0 EventBuilderMains)" % \
-                (self.num_boardreaders(),
-                 self.num_eventbuilders())
+        if self.num_eventbuilders() == 0:
+            errmsg = "No EventBuilders appear to be defined in the boot file; please check your syntax"
 
             raise Exception(make_paragraph(errmsg))
 
@@ -1376,7 +1378,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
             self.daqinterface_config_file = self.get_daqinterface_config_info( daqinterface_config )
             self.check_daqinterface_config_info()
         except Exception:
-            revert_failed_boot("when trying to read the DAQInterface configuration \"%s\"" % (daqinterface_config ))
+            revert_failed_boot("when trying to read the DAQInterface boot file \"%s\"" % (daqinterface_config ))
             return
 
         if not hasattr(self, "daq_comp_list") or not self.daq_comp_list or self.daq_comp_list == {}:
@@ -1673,74 +1675,43 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                 self.print_log("e", traceback.format_exc())
                 self.alert_and_recover("An exception was thrown when creating the process FHiCL documents; see traceback above for more info")
                 return
-
-        # Highest-numbered aggregator fcl is intended for the dispatcher
-        dispatcher_fcl = sorted( glob.glob("%s/Aggregator*.fcl" % (config_subdirname)) )[-1]
                 
-        for proc_type in ["EventBuilder", "Aggregator", "DataLogger", "Dispatcher", "RoutingMaster"]:
+        rootfile_cntr = 0
 
-            rootfile_cntr = 0
-            unspecified_aggregator_cntr = 0
-            unspecified_routingmaster_cntr = 0
-            datalogger_cntr = 0
-            eventbuilder_cntr = 0
+        for i_proc in range(len(self.procinfos)):
 
-            for i_proc in range(len(self.procinfos)):
+            if "BoardReader" in self.procinfos[i_proc].name:
+                continue
 
-                if self.procinfos[i_proc].name == proc_type:
+            fcl = "%s/%s.fcl" % (config_subdirname, self.procinfos[i_proc].label)
 
-                    if proc_type == "EventBuilder":
-                        eventbuilder_cntr += 1
-                        fcl = "%s/EventBuilder%d.fcl" % (config_subdirname, eventbuilder_cntr)
-                        if not os.path.exists(fcl):
-                            fcl = "%s/EventBuilder.fcl" % (config_subdirname)
-                            if not os.path.exists(fcl):
-                                self.alert_and_recover(make_paragraph("Configuration \"%s\" can only support a maximum of %d EventBuilder(s); more than that have been requested in the file passed on the boot transition" % (self.config_for_run, eventbuilder_cntr - 1)))
-                                return
-                    elif proc_type == "Aggregator":
-                        unspecified_aggregator_cntr += 1
-                        if unspecified_aggregator_cntr == 1:
-                            fcl = "%s/Aggregator1.fcl" % (config_subdirname)
-                        else:
-                            fcl = "%s/Aggregator2.fcl" % (config_subdirname)
-                    elif proc_type == "DataLogger":
-                        datalogger_cntr += 1
-                        fcl = "%s/Aggregator%d.fcl" % (config_subdirname, datalogger_cntr)
-                        if fcl == dispatcher_fcl:
-                            self.alert_and_recover(make_paragraph("Configuration \"%s\" can only support a maximum of %d DataLogger(s); more than that have been requested in the file passed on the boot transition" % (self.config_for_run, datalogger_cntr - 1)))
-                            return
-                    elif proc_type == "Dispatcher":
-                        fcl = dispatcher_fcl
-                    elif proc_type == "RoutingMaster":
-                        unspecified_routingmaster_cntr += 1
-                        if unspecified_routingmaster_cntr == 1:
-                            fcl = "%s/RoutingMaster1.fcl" % (config_subdirname)
-                        else:
-                            fcl = "%s/RoutingMaster2.fcl" % (config_subdirname)
-                    else:
-                        assert False
-                        
-                    try:
-                        self.procinfos[i_proc].ffp = self.fhicl_file_path
-                        self.procinfos[i_proc].update_fhicl(fcl)
-                    except Exception:
-                        self.print_log("e", traceback.format_exc())
-                        self.alert_and_recover("An exception was thrown when creating the process FHiCL documents; see traceback above for more info")
-                        return
-                        
-                    fhicl_before_sub = self.procinfos[i_proc].fhicl_used
-                    
-                    if self.procinfos[i_proc].name == "DataLogger":
-                        rootfile_cntr_prefix = "dl"
-                    elif self.procinfos[i_proc].name == "EventBuilder":
-                        rootfile_cntr_prefix = "eb"
+            if not os.path.exists(fcl):
+                self.alert_and_recover(make_paragraph("Unable to find a FHiCL document \"%s.fcl\" in configuration \"%s\"; either remove the request for %s in the boot file or choose a new configuration" % \
+                                                      (self.procinfos[i_proc].label, self.config_for_run,
+                                                       self.procinfos[i_proc].label)))
+                return
 
-                    self.procinfos[i_proc].fhicl_used = re.sub("\.root", "_" + str(rootfile_cntr_prefix) + 
-                                                               str(rootfile_cntr+1) + ".root",
-                                                               self.procinfos[i_proc].fhicl_used)
+            try:
+                self.procinfos[i_proc].ffp = self.fhicl_file_path
+                self.procinfos[i_proc].update_fhicl(fcl)
+            except Exception:
+                self.print_log("e", traceback.format_exc())
+                self.alert_and_recover("An exception was thrown when creating the process FHiCL documents; see traceback above for more info")
+                return
 
-                    if self.procinfos[i_proc].fhicl_used != fhicl_before_sub:
-                        rootfile_cntr += 1
+            fhicl_before_sub = self.procinfos[i_proc].fhicl_used
+
+            if self.procinfos[i_proc].name == "DataLogger":
+                rootfile_cntr_prefix = "dl"
+            elif self.procinfos[i_proc].name == "EventBuilder":
+                rootfile_cntr_prefix = "eb"
+
+            self.procinfos[i_proc].fhicl_used = re.sub("\.root", "_" + str(rootfile_cntr_prefix) + 
+                                                       str(rootfile_cntr+1) + ".root",
+                                                       self.procinfos[i_proc].fhicl_used)
+
+            if self.procinfos[i_proc].fhicl_used != fhicl_before_sub:
+                rootfile_cntr += 1
 
         for procinfo in self.procinfos:
             assert not procinfo.fhicl is None and not procinfo.fhicl_used is None
