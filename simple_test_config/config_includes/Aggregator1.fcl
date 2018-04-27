@@ -1,25 +1,13 @@
 #include "standard_metrics_configs.fcl"
 #include "data_logging_parameters.fcl"
-
-services: {
-  scheduler: {
-    errorOnFailureToPut: false
-  }
-  NetMonTransportServiceInterface: {
-    service_provider: NetMonTransportService
-    broadcast_sends: true
-    nonblocking_sends: true
-	destinations: { }
-  }
-}
+#include "routing_master_parameters.fcl"
+#include "art_input_output_parameters.fcl"
 
 daq: {
   aggregator: {
     expected_events_per_bunch: 1
-    print_event_store_stats: true
     event_queue_depth: 40
     event_queue_wait_time: 5
-    every_sequence_id_should_be_present: true
 	max_fragment_size_bytes: 16777216
     buffer_count: 40
     onmon_event_prescale: 1
@@ -27,27 +15,28 @@ daq: {
 
     auto_suppression_enabled: false
 
-	routing_token_config: {
-		use_routing_master: false
-	}
+    routing_token_config: @local::artdaq_DL_routing_token_specification
 
-	sources: { }
+    sources: { }
   }
 
   metrics: @local::DL_metrics_default
 }
 
-source: {
-  module_type: NetMonInput
+services: {
+  scheduler: {
+    errorOnFailureToPut: false
+  }
+  NetMonTransportServiceInterface: @local::artdaq_DL_art_service_for_sending_events
 }
+
+source: @local::artdaq_DL_art_source_specification
 
 outputs: {
   @table::artdaq_DL_data_logging_specification
 
-  rootNetOutput: {
-    module_type: RootNetOutput
-    #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
-  }
+  rootNetOutput: @local::artdaq_DL_art_output_module_for_sending_events
+  #rootNetOutput.SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
 }
 
 physics: {

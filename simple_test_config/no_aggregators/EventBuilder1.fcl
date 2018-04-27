@@ -15,7 +15,7 @@ expected_fragments_per_event: 2
  max_incomplete_events: 75 # Same as boardreader sync interval
 # Same as boardreader sync interval
 verbose: false  
- send_requests: true  
+ send_requests: false
 	routing_token_config: {
 	use_routing_master: false
 	}

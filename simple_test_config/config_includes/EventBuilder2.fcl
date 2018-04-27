@@ -1,45 +1,36 @@
 #include "standard_metrics_configs.fcl"
+#include "routing_master_parameters.fcl"
+#include "art_input_output_parameters.fcl"
+
+daq: {
+  event_builder: {
+    expected_fragments_per_event: 0  # Will be set by DAQInterface
+    max_fragment_size_bytes: 16777216
+    use_art: true
+    buffer_count: 20
+    max_incomplete_events: 75 # Same as boardreader sync interval
+    verbose: true
+    send_requests: false
+
+    routing_token_config: @local::artdaq_EB_routing_token_specification
+
+    sources: { }
+  }
+  metrics: @local::EB_metrics_default
+} 
 
 services: {
   scheduler: {
     errorOnFailureToPut: false
   }
-  NetMonTransportServiceInterface: {
-    service_provider: NetMonTransportService
-    #broadcast_sends: true
-	destinations: {	}
-
-	routing_table_config: {
-	    use_routing_master: false
-	}
-  }
+  NetMonTransportServiceInterface: @local::artdaq_EB_art_service_for_sending_events
 }
 
-daq: {
-  event_builder: {
-	expected_fragments_per_event: 0  # Will be set by DAQInterface
-	max_fragment_size_bytes: 16777216
-	use_art: true
-	print_event_store_stats: true
-	buffer_count: 20
-	max_incomplete_events: 75 # Same as boardreader sync interval
-	verbose: true
-	send_requests: true
-
-	routing_token_config: {
-	use_routing_master: false
-	}
-
-	sources: { }
-  }
-  metrics: @local::EB_metrics_default
-} 
+source: @local::artdaq_EB_art_source_specification
 
 outputs: {
-  rootNetOutput: {
-    module_type: RootNetOutput
-    #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
-  }
+  rootNetOutput: @local::artdaq_EB_art_output_module_for_sending_events
+  #rootNetOutput.SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
 }
 
 physics: {
@@ -56,16 +47,13 @@ physics: {
     }
   }
 
-  producers: {
-  }
+  producers: { }
 
   filters: {
-
     prescaleMod2: {
        module_type: NthEvent
        nth: 2
     }
-
     prescaleMod3: {
        module_type: NthEvent
        nth: 3
@@ -78,9 +66,5 @@ physics: {
   a1: [ toy1Integ, toy2Integ ]
   my_output_modules: [ rootNetOutput ]
 }
-source: {
-  module_type: DemoInput
-  waiting_time: 2500000
-  resume_after_timeout: true
-}
+
 process_name: DAQ
