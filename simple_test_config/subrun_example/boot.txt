@@ -9,22 +9,28 @@ debug level: 1
 
 EventBuilder host: localhost
 EventBuilder port: 5235
+EventBuilder label: EventBuilder1
 
 EventBuilder host: localhost
 EventBuilder port: 5236
+EventBuilder label: EventBuilder2
 
 DataLogger host: localhost
 DataLogger port: 5265
+DataLogger label: DataLogger1
 
 DataLogger host: localhost
 DataLogger port: 5266
+DataLogger label: DataLogger2
 
 DataLogger host: localhost
 DataLogger port: 5267
+DataLogger label: DataLogger3
 
 DataLogger host: localhost
 DataLogger port: 5268
+DataLogger label: DataLogger4
 
 Dispatcher host: localhost
 Dispatcher port: 5269
-
+Dispatcher label: Dispatcher1
