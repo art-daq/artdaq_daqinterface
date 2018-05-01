@@ -652,7 +652,7 @@ class DAQInterface(Component):
             else:
                 host_to_write = os.environ["HOSTNAME"]
 
-            outf.write(host_to_write + "!  id: " + procinfo.port + " commanderPluginType: xmlrpc\n")
+            outf.write(host_to_write + "!  id: " + procinfo.port + " commanderPluginType: xmlrpc application_name: " + str(procinfo.label) + "\n")
 
         outf.close()
 
