@@ -7,6 +7,7 @@ import string
 import re
 
 from rc.control.utilities import table_range
+from rc.control.utilities import enclosing_table_range
 from rc.control.utilities import commit_check_throws_if_failure
 
 def bookkeeping_for_fhicl_documents_artdaq_v1_base(self):
@@ -389,7 +390,13 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 table_range(self.procinfos[i_proc].fhicl_used, \
                                 tablename)
 
-            if table_start != -1 and table_end != -1:
+            # 13-Apr-2018, KAB: modified this statement from an "if" test to
+            # a "while" loop so that it will modify all of the source and
+            # destination blocks in a file. This was motivated by changes to
+            # configuration files to move common parameter definitions into
+            # included files, and the subsequent creation of multiple source
+            # and destination blocks in PROLOGs.
+            while table_start != -1 and table_end != -1:
                 
                 node_index = -1
                 nth = -1
@@ -408,6 +415,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     create_sources_or_destinations_string(tablename, node_first, node_last, nth, node_index) + \
                     "\n } \n" + \
                     self.procinfos[i_proc].fhicl_used[table_end:]
+
+                (table_start, table_end) = \
+                    table_range(self.procinfos[i_proc].fhicl_used, \
+                                    tablename, table_end)
 
     expected_fragments_per_event = 0
 
@@ -450,19 +461,24 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         for i_proc in range(len(self.procinfos)):
             if "EventBuilder" in self.procinfos[i_proc].name or "DataLogger" in self.procinfos[i_proc].name:
 
-                res = re.search(r"^[^#]*RootOutput", self.procinfos[i_proc].fhicl_used)
+                # 17-Apr-2018, KAB: added the MULTILINE flag to get this search to behave as desired.
+                # I'm not sure what the -not-a-comment- directive in the search is intended to do.
+                res = re.search(r"^[^#]*RootOutput", self.procinfos[i_proc].fhicl_used, re.MULTILINE)
 
                 if res:
-                    start, end = table_range(self.procinfos[i_proc].fhicl_used, "RootOutput")
+                    # 17-Apr-2018, KAB: switched to using the "enclosing_table_range" function, rather
+                    # than "table_range", since we want to capture all of the text inside the same
+                    # block as the RootOutput FHiCL value.
+                    start, end = enclosing_table_range(self.procinfos[i_proc].fhicl_used, "RootOutput")
                     assert start != -1 and end != -1
 
                     rootoutput_table = self.procinfos[i_proc].fhicl_used[start:end]
-                    res = re.search(r"(.*fileName\s*:[\s\"]*)/[^\s]+/", 
-                                    self.procinfos[i_proc].fhicl_used)
-                    assert res
 
-                    rootoutput_table = re.sub(".*fileName\s*:[\s\"]*/[^\s]+/",
-                                              "%s%s" % (res.group(1), self.data_directory_override),
+                    # 11-Apr-2018, KAB: changed the substition to only apply to the text
+                    # in the rootoutput_table, and avoid picking up earlier fileName
+                    # parameter strings in the document.
+                    rootoutput_table = re.sub(r"(.*fileName\s*:[\s\"]*)/[^\s]+/",
+                                              r"\1" + self.data_directory_override,
                                               rootoutput_table)
 
                     self.procinfos[i_proc].fhicl_used = self.procinfos[i_proc].fhicl_used[:start] + \

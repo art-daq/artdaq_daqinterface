@@ -9,6 +9,9 @@
 These simple configuration examples show some of the functionality
 of the ARTDAQ toolkit, and serve as integration and acceptance tests.
 
+Note that some of them have individual README files that provide
+additional information about the configuration.
+
 =====================================================================
 =====================================================================
 
@@ -18,6 +21,17 @@ Demonstrates the AsciiSimulator_generator class and the AsciiDump
 ART module. This module can be used to verify ARTDAQ's data 
 preservation: AsciiSimulator can write a raw ASCII file which can be
 compared with the output of AsciiDump; they will be identical.
+
+=====================================================================
+
+combined_eb_and_DL:
+
+An ARTDAQ system consisting of several TOY1 Simulators, *no*
+EventBuilders, four DataLoggers, and a Dispatcher.
+The intention of this configuration is to demonstrate a system
+that combines the EventBuilding and DataLogging layers into one.
+As of 20-Apr-2018, this configuration is not yet working since
+there are DAQInterface changes that need to be made to support it.
 
 =====================================================================
 
@@ -73,6 +87,12 @@ processes.
 
 =====================================================================
 
+multiple_dataloggers:
+
+A version of the "demo" configuration with four DataLoggers.
+
+=====================================================================
+
 no_aggregators:
 
 TODO: Describe this configuration or remove it!!!
@@ -94,6 +114,29 @@ but sends data for each event the "DAQ" BoardReader generates, and
 a "CRV" BoardReader which samples uncorrelated data based
 on the Fragment timestamps, providing the events that occurred within
 a given time window around the "DAQ" events.
+
+* Note: Make sure that port 3001/udp is open so that the data requests get through.
+        If this example does not work, one should try disabling the
+        firewall on the test system. Instructions for do this can vary
+        greatly depending upon the system version _and_ who adminstrates
+        the system. For example, on mu2edaq01, the chant to try is:
+
+             systemctl stop slam-firewall
+
+        The request_address and request_port fhicl params, in the
+        example component0{1,2,3}_hw_cfg.fcl files, control the
+        multicast address and port (default 3001 as mentioned above)
+        used. These fhicl params are also applicable for the
+        event_builder block in the EventBuilder.fcl files. Additionally,
+        for the EventBuilder.fcl, there is a fhicl "output_address"
+        for controlling the output interface for the multicasts. This
+        parameter defaults to pick the first interface which will
+        be OK for a single node demo.
+        
+        One additional "gotcha" may be that multiple users have
+        tried to run the demos on the same system. As root:
+
+             rm -f /tmp/TransferInputShmem2.fcl /tmp/pmtConfig.*
 
 =====================================================================
 

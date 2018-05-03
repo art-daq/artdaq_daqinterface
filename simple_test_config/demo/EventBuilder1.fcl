@@ -23,7 +23,7 @@ daq: {
 	buffer_count: 20
 	max_incomplete_events: 75 # Same as boardreader sync interval
 	verbose: true
-	send_requests: true
+	send_requests: false
 
 	routing_token_config: {
 	use_routing_master: false

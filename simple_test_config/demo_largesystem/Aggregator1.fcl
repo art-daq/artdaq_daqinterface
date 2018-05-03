@@ -16,14 +16,9 @@ daq: {
     print_event_store_stats: true
     event_queue_depth: 40
     event_queue_wait_time: 5
-    every_sequence_id_should_be_present: true
 	max_fragment_size_bytes: 16777216
     buffer_count: 40
     onmon_event_prescale: 1
-    xmlrpc_client_list: ""
-    subrun_size_MB: -1
-    subrun_duration: -1
-    subrun_event_count: 0
     is_data_logger: true
 
     auto_suppression_enabled: false

@@ -18,10 +18,6 @@ daq: {
     buffer_count: 20
     event_queue_wait_time: 5
     onmon_event_prescale: 1
-    xmlrpc_client_list: ""
-    subrun_size_MB: -1
-    subrun_duration: -1
-    subrun_event_count: 0
     is_data_logger: true
 
 	routing_token_config: {
