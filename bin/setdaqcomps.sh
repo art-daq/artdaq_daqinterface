@@ -34,7 +34,9 @@ for comp in $components; do
     if [[ -n $comp_line ]]; then
 	host=$( echo $comp_line | awk '{print $2}' )
 	port=$( echo $comp_line | awk '{print $3}' )
-	xmlrpc_arg=${xmlrpc_arg}${comp}":array/(s/"${host}","${port}")"
+    label=$( echo $comp_line | awk '{print $4}' )
+    if [[ "x$label" == "x" ]];then label="BoardReader"; fi
+	xmlrpc_arg=${xmlrpc_arg}${comp}":array/(s/"${host}","${port}","${label}")"
 
 	test $comp_cntr != $num_components && xmlrpc_arg=${xmlrpc_arg}","
     else
