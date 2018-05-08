@@ -221,6 +221,7 @@ class DAQInterface(Component):
         self.in_recovery = False
         self.heartbeat_failure = False
         self.manage_processes = True
+        self.partition_number = None
 
         # "procinfos" will be an array of Procinfo structures (defined
         # below), where Procinfo contains all the info DAQInterface
@@ -652,8 +653,11 @@ class DAQInterface(Component):
                 host_to_write = procinfo.host
             else:
                 host_to_write = os.environ["HOSTNAME"]
-
-            outf.write(host_to_write + "!  id: " + procinfo.port + " commanderPluginType: xmlrpc application_name: " + str(procinfo.label) + "\n")
+                
+            if self.partition_number is None:
+                outf.write(host_to_write + "!  id: " + procinfo.port + " commanderPluginType: xmlrpc application_name: " + str(procinfo.label) + "\n")
+            else:
+                outf.write(host_to_write + "!  id: " + procinfo.port + " commanderPluginType: xmlrpc application_name: " + str(procinfo.label) + " partition_number: " + str(self.partition_number) + "\n")
 
         outf.close()
 
