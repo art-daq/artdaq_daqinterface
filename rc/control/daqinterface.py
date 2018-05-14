@@ -932,11 +932,6 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
         # their FHiCL documents) should be supplied in the
         # boot file
 
-        if self.num_eventbuilders() == 0:
-            errmsg = "No EventBuilders appear to be defined in the boot file; please check your syntax"
-
-            raise Exception(make_paragraph(errmsg))
-
         undefined_var = ""
 
         if self.pmt_host is None:
