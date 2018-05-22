@@ -1,5 +1,5 @@
 
-DAQ setup script: name_of_DAQ_setup_script_not_yet_defined
+DAQ setup script: <yourArtdaqInstallationDir>/setupARTDAQDEMO
 
 PMT host: localhost
 PMT port: 5400
@@ -20,18 +20,6 @@ EventBuilder label: EventBuilder2
 DataLogger host: localhost
 DataLogger port: 5265
 DataLogger label: DataLogger1
-
-# DataLogger host: localhost
-# DataLogger port: 5266
-# DataLogger label: DataLogger2
-
-# DataLogger host: localhost
-# DataLogger port: 5267
-# DataLogger label: DataLogger3
-
-# DataLogger host: localhost
-# DataLogger port: 5268
-# DataLogger label: DataLogger4
 
 Dispatcher host: localhost
 Dispatcher port: 5269
