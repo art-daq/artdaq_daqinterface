@@ -210,11 +210,66 @@ def execute_command_in_xterm(home, cmd):
 
     Popen(fullcmd, shell=True).wait()
 
+def date_and_time():
+    return Popen("date", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+
+def construct_checked_command(cmds):
+
+    checked_cmds = []
+
+    for cmd in cmds:
+        checked_cmds.append( cmd )
+
+        if not re.search(r"\s*&\s*$", cmd):
+            check_cmd = "if [[ \"$?\" != \"0\" ]]; then echo %s: Nonzero return value from the following command: \"%s\" >> /tmp/daqinterface_checked_command_failures.log; exit 1; fi " % (date_and_time(), cmd)
+            checked_cmds.append( check_cmd )
+
+    total_cmd = " ; ".join( checked_cmds )
+
+    return total_cmd
+
+def reformat_fhicl_document(setup_fhiclcpp, input_fhicl_string):
+
+    preformat_filename=Popen("mktemp", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    postformat_filename=Popen("mktemp", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+
+    with open(preformat_filename, "w") as preformat_file:
+        preformat_file.write(input_fhicl_string)
+
+    cmds = []
+
+    cmds.append("source %s" % (setup_fhiclcpp))
+    cmds.append("which fhicl-dump")
+    cmds.append("fhicl-dump -l 0 -c %s -o %s" % \
+                (preformat_filename, postformat_filename))
+
+    fullcmd = construct_checked_command( cmds )
+    
+    status = Popen(fullcmd, shell = True).wait()
+
+    exception_message = ""
+    if not os.path.exists( postformat_filename ):
+        exception_message=make_paragraph("Failure in %s: problem creating postformat file in fhicl-dump call" % (reformat_fhicl_document.__name__))
+    elif status != 0:
+        exception_message=make_paragraph("Failure in attempt of %s to reformat FHiCL; nonzero status returned" % (reformat_fhicl_document.__name__))
+
+    postformat_string = open( postformat_filename ).read()
+
+    os.unlink( preformat_filename )
+    os.unlink( postformat_filename )
+
+    if exception_message != "":
+        raise Exception(exception_message)
+    
+    return postformat_string
+        
+
 def main():
 
     paragraphed_string_test = False
     msgviewer_check_test = False
-    execute_command_in_xterm_test = True
+    execute_command_in_xterm_test = False
+    reformat_fhicl_document_test = True
 
     if paragraphed_string_test:
         sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
@@ -239,25 +294,31 @@ def main():
         execute_command_in_xterm(os.environ["PWD"], "echo Hello world")
         execute_command_in_xterm(os.environ["PWD"], "echo You should see an xclock appear; xclock ")
 
-def date_and_time():
-    return Popen("date", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    if reformat_fhicl_document_test:
+        inputstring = 'mytable: {   this: "and"        that: "and  the other"   }'
+        source_filename = Popen("mktemp", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
 
-def construct_checked_command(cmds):
+        # Note the setup string assumes cvmfs is available...
+        proddir = "/cvmfs/fermilab.opensciencegrid.org/products/artdaq"
+        print "This test assumes that %s is available" % (proddir)
 
-    checked_cmds = []
+        with open(source_filename, "w") as source_file:
+            source_file.write( "source %s/setup; setup fhiclcpp v4_05_01 -q prof:e14" % (proddir) )
 
-    for cmd in cmds:
-        checked_cmds.append( cmd )
+        outputstring = "Not set"
+        try:
+            outputstring = reformat_fhicl_document(source_filename, inputstring)
+        except Exception:
+            print "Exception caught"
 
-        if not re.search(r"\s*&\s*$", cmd):
-            check_cmd = "if [[ \"$?\" != \"0\" ]]; then echo %s: Nonzero return value from the following command: \"%s\" >> /tmp/daqinterface_checked_command_failures.log; exit 1; fi " % (date_and_time(), cmd)
-            checked_cmds.append( check_cmd )
+        os.unlink(source_filename)
 
-    total_cmd = " ; ".join( checked_cmds )
-
-    return total_cmd
-
-
+        print "Input FHiCL string: "
+        print inputstring
+        print
+        print "Output FHiCL string: "
+        print outputstring
+        print
 
 if __name__ == "__main__":
     main()
