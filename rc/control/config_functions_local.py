@@ -46,6 +46,9 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
 
     memberDict = {"name": None, "label": None, "host": None, "port": None, "fhicl": None}
 
+    num_expected_processes = 0
+    num_actual_processes = 0
+
     for line in inf.readlines():
 
         line = expand_environment_variable_in_string( line )
@@ -125,6 +128,9 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
             memberDict["name"] = res.group(1)
             memberDict[res.group(2)] = res.group(3)
 
+            if res.group(2) == "host":
+                num_expected_processes += 1
+
             # Has the dictionary been filled s.t. we can use it to
             # initalize a procinfo object?
 
@@ -143,8 +149,13 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
                                                     memberDict["host"],
                                                     memberDict["port"],
                                                     memberDict["label"]))
+                num_actual_processes += 1
+
                 for varname in memberDict.keys():
                     memberDict[varname] = None
+
+    if num_expected_processes != num_actual_processes:
+        raise Exception(make_paragraph("An inconsistency exists in the boot file; a host was defined in the file for %d artdaq processes, but there's only a complete set of info in the file for %d processes. This may be the result of using a boot file designed for an artdaq version prior to the addition of a label requirement (see https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/The_boot_file_reference for more)" % (num_expected_processes, num_actual_processes)))
 
     return daqinterface_config_filename
 
