@@ -34,8 +34,8 @@ for comp in $components; do
     if [[ -n $comp_line ]]; then
 	host=$( echo $comp_line | awk '{print $2}' )
 	port=$( echo $comp_line | awk '{print $3}' )
-	xmlrpc_arg=${xmlrpc_arg}${comp}":array/(s/"${host}","${port}")"
 
+	xmlrpc_arg=${xmlrpc_arg}${comp}":array/(s/"${host}","${port}")"
 	test $comp_cntr != $num_components && xmlrpc_arg=${xmlrpc_arg}","
     else
 	echo "Unable to find listing for component \"$comp\" in $components_file" >&2
