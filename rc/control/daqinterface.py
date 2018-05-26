@@ -1170,13 +1170,13 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
         # names we can use in the softlink
 
         for compname, socket in self.daq_comp_list.items():
-            host, port, label = socket
+            host, port = socket
             
             pids = get_pids("BoardReaderMain -c .*" + str(port) + ".*", host)
 
             if len(pids) == 1:
                 link_logfile_cmd = "ln -s %s/BoardReader*/%s-*-%s.log %s/boardreader/run%d-%s.log" % \
-                                   (self.log_directory, label, pids[0], self.log_directory, self.run_number, compname)
+                                   (self.log_directory, "BoardReader", pids[0], self.log_directory, self.run_number, compname)
                 if host != "localhost" and host != os.environ["HOSTNAME"]:
                     link_logfile_cmd = "ssh %s '%s'" % (host, link_logfile_cmd)
 
@@ -1399,15 +1399,11 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
 
         for compname, socket in self.daq_comp_list.items():
 
-            if not socket[2]:
-               label = "BoardReader"
-            else:
-               label = socket[2]
-            self.print_log("d", "%s labeled %s at %s:%s" % (compname, label, socket[0], socket[1]), 2)
+            self.print_log("d", "%s at %s:%s" % (compname, socket[0], socket[1]), 2)
  
             self.procinfos.append(self.Procinfo("BoardReader",
                                                 socket[0],
-                                                socket[1], label))
+                                                socket[1], compname))
 
             try:
                 for priority, regexp in enumerate(self.boardreader_priorities):
