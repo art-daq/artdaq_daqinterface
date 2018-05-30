@@ -703,9 +703,20 @@ class DAQInterface(Component):
             # v2_03_03 for details).
 
             default_contents = """ 
-udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" } 
 
-""" % (socket.gethostname())
+# This file was automatically generated as %s at %s on host %s, and is
+# the default file DAQInterface uses to determine how to modify the
+# standard MessageFacility configuration found in artdaq-core
+# v3_02_01's configureMessageFacility.cc file. You can edit the
+# contents below to change the behavior of how/where MessageFacility
+# messages are sent, though keep in mind that this FHiCL will be
+# nested inside a table. Or you can use a different file by setting
+# the environment variable DAQINTERFACE_MESSAGEFACILITY_FHICL to the
+# name of the other file.
+
+udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" } 
+
+""" % (messagefacility_fhicl_filename, date_and_time(), os.environ["HOSTNAME"], socket.gethostname())
         
 
             if not os.path.exists( messagefacility_fhicl_filename ):
