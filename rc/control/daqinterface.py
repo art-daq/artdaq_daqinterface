@@ -703,7 +703,7 @@ class DAQInterface(Component):
             # v2_03_03 for details).
 
             default_contents = """ 
-udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" } 
+udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" } 
 
 """ % (socket.gethostname())
         
