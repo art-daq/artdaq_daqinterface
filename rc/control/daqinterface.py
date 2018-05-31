@@ -975,74 +975,29 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
         logfilenames = []
 
-        host_count = {}
-
-        if procname == "BoardReader":
-            subdir = "BoardReader"
-        elif procname == "EventBuilder":
-            subdir = "EventBuilder"
-        elif procname == "Aggregator":
-            subdir = "Aggregator"
-        elif procname == "DataLogger":
-            subdir = "DataLogger"
-        elif procname == "Dispatcher":
-            subdir = "Dispatcher"
-        else:
-            assert False
-
-        translator = { "BoardReader":"BoardReader", 
-                       "EventBuilder":"EventBuilder",
-                       "Aggregator":"Aggregator",
-                       "RoutingMaster":"RoutingMaster",
-                       "DataLogger":"DataLogger",
-                       "Dispatcher":"Dispatcher" }
-
         for procinfo in self.procinfos:
-            if (procname == translator[ procinfo.name ] ):
-                if procinfo.host in host_count.keys():
-                    host_count[procinfo.host] += 1
+            if procinfo.name == procname:
+
+                if procinfo.host != "localhost":
+                    full_hostname = procinfo.host
                 else:
-                    host_count[procinfo.host] = 1
+                    full_hostname = os.environ["HOSTNAME"]
 
-        for host, count in host_count.items():
-            cmd = "ls -tr1 %s/%s*/*.log | tail -%d" % (self.log_directory,
-                                                         subdir, count)
+                res = re.search(r"^([^.]+)", full_hostname)
+                assert res
+                short_hostname = res.group(1)
 
-            if host != "localhost" and host != os.environ["HOSTNAME"]:
-                cmd = "ssh -f " + host + " '" + cmd + "'"
+                cmd = "ls -tr1 %s/%s-%s-%s/%s-%s-%s*.log | tail -1" % (self.log_directory,
+                                                                       procinfo.label, short_hostname, procinfo.port,
+                                                                       procinfo.label, short_hostname, procinfo.port)
 
-            max_num_checks = 5
-            num_checks = 0
-            pause_between_checks = 2
+                if procinfo.host != os.environ["HOSTNAME"]:
+                    cmd = "ssh -f " + procinfo.host + " '" + cmd + "'"
 
-            while True:
                 proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 proclines = proc.stdout.readlines()
 
-                if len(proclines) != count:
-
-                    if num_checks < max_num_checks:
-                        num_checks += 1
-                    
-                        self.print_log("w", "Didn't find expected logfiles with command \"%s\"; will wait %d seconds and then check again" % \
-                                       (cmd, pause_between_checks))
-
-                        sleep(pause_between_checks)
-                        continue
-                    else:
-                        raise Exception("Exception in DAQInterface: " + \
-                                            "command \"%s\" on host \"%s\" yielded didn't print the expected number of logfiles. Have the logfile directories been created?" % (cmd, host))
-                else:
-                    break
-
-            for line in proclines:
-
-                if host == "localhost":
-                    host_to_record = os.environ["HOSTNAME"]
-                else:
-                    host_to_record = host
-
-                logfilenames.append("%s:%s" % (host_to_record, line.strip()))
+                logfilenames.append("%s:%s" % (full_hostname, proclines[0].strip()))
 
         return logfilenames
 
@@ -1146,29 +1101,37 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
         assert hasattr(self, "eventbuilder_log_filenames")
         assert hasattr(self, "aggregator_log_filenames")
 
-        for loglist in [ self.eventbuilder_log_filenames, 
+        for loglist in [ self.boardreader_log_filenames,
+                         self.eventbuilder_log_filenames, 
                          self.aggregator_log_filenames ]:
-
-            proccntr=1
-
+            
             for fulllogname in loglist:
                 host = fulllogname.split(":")[0]
                 logname = "".join( fulllogname.split(":")[1:] )
+                label = fulllogname.split("/")[-1].split("-")[0]
 
-                if "EventBuilder" in logname:
-                    link_logfile_cmd = "ln -s %s %s/eventbuilder/run%d-EventBuilder%d.log" % \
-                                       (logname, self.log_directory, self.run_number, proccntr)
-                elif "DataLogger" in logname:
-                    link_logfile_cmd = "ln -s %s %s/datalogger/run%d-DataLogger%d.log" % \
-                                       (logname, self.log_directory, self.run_number, proccntr)
-                elif "Dispatcher" in logname:
-                    link_logfile_cmd = "ln -s %s %s/dispatcher/run%d-Dispatcher%d.log" % \
-                                       (logname, self.log_directory, self.run_number, proccntr)
+                proctype = ""
+
+                for procinfo in self.procinfos:
+                    if label == procinfo.label:
+                        proctype = procinfo.name
+
+                if "BoardReader" in proctype:
+                    subdir = "boardreader"
+                elif "EventBuilder" in proctype:
+                    subdir = "eventbuilder"
+                elif "DataLogger" in proctype:
+                    subdir = "datalogger"
+                elif "Dispatcher" in proctype:
+                    subdir = "dispatcher"
+                elif "RoutingMaster" in proctype:
+                    subdir = "routingmaster"
                 else:
-                    assert False, "The logfile naming convention was apparently changed"
+                    assert False, "Unknown process type \"%s\" found when soflinking logfiles" % (proctype)
+
+                link_logfile_cmd = "mkdir -p %s/%s; ln -s %s %s/%s/run%d-%s.log" % \
+                                   (self.log_directory, subdir, logname, self.log_directory, subdir, self.run_number, label)
                     
-                proccntr += 1
-                
                 if host != "localhost" and host != os.environ["HOSTNAME"]:
                     link_logfile_cmd = "ssh %s '%s'" % (host, link_logfile_cmd)
 
@@ -1176,29 +1139,6 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                 
                 if status != 0:
                     self.print_log("w", "WARNING: failure in executing %s" % (link_logfile_cmd))
-
-        # Boardreaders get special treatment since we have component
-        # names we can use in the softlink
-
-        for compname, socket in self.daq_comp_list.items():
-            host, port = socket
-            
-            pids = get_pids("BoardReaderMain -c .*" + str(port) + ".*", host)
-
-            if len(pids) == 1:
-                link_logfile_cmd = "ln -s %s/BoardReader*/%s-*-%s.log %s/boardreader/run%d-%s.log" % \
-                                   (self.log_directory, "BoardReader", pids[0], self.log_directory, self.run_number, compname)
-                if host != "localhost" and host != os.environ["HOSTNAME"]:
-                    link_logfile_cmd = "ssh %s '%s'" % (host, link_logfile_cmd)
-
-                status = Popen(link_logfile_cmd, shell=True).wait()
-                
-                if status != 0:
-                    self.print_log("w", "WARNING: failure in executing %s" % (link_logfile_cmd))
-            else:
-                self.print_log("w", "WARNING: unsuccessful finding boardreader at port %s on %s" % \
-                               port, host)
-
 
     # JCF, Nov-8-2015
 
