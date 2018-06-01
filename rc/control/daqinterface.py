@@ -92,11 +92,14 @@ class DAQInterface(Component):
     # host and port
 
     class Procinfo(object):
-        def __init__(self, name, host, port, label=None, fhicl=None, fhicl_file_path = []):
+        def __init__(self, name, host, port, label=None, subsystem=None, fhicl=None, fhicl_file_path = []):
             self.name = name
             self.port = port
             self.host = host
             self.label = label
+            if subsystem == None:
+                subsystem = 1
+            self.subsystem = subsystem
             self.fhicl = fhicl     # Name of the input FHiCL document
             self.ffp = fhicl_file_path
             self.priority = 999
@@ -191,7 +194,26 @@ class DAQInterface(Component):
                                         "unable to find file %s in list of "
                                         "the following fhicl_file_paths: %s" %
                                         (included_file, ffp_string)))
-                            
+
+    # "Subsystem" is a structure containing all the info about a given
+    # artdaq subsytem.
+
+    class Subsystem(object):
+        def __init__(self, id, source = None, destination = None):
+            self.id = id
+            self.source = source
+            self.destination = destination
+
+        def __lt__(self, other):
+            if self.id != other.id:
+
+                if self.destination == other.id:
+                    return True
+                else:
+                    return False
+            else:
+                return False # equal
+
     def print_log(self, severity, printstr, debuglevel=-999):
 
         dummy, month, day, time, timezone, year = date_and_time().split()
@@ -224,13 +246,21 @@ class DAQInterface(Component):
         self.partition_number = None
 
         # "procinfos" will be an array of Procinfo structures (defined
-        # below), where Procinfo contains all the info DAQInterface
+        # above), where Procinfo contains all the info DAQInterface
         # needs to know about an individual artdaq process: name,
         # host, port, and FHiCL initialization document. Filled
         # through a combination of info in the DAQInterface
         # configuration file as well as the components list
 
         self.procinfos = []
+
+
+        # "subsystems" is an array of Subsystem structures (defined above),
+        # where Subsystem contains all the information DAQInterface needs
+        # to know about artdaq subsystems: id, source subsystem, destination subsystem.
+        # Subsystems are an optional feature that allow users to build complex configurations
+        # with multiple request domains and levels of filtering.
+        self.subsystems = []
 
     # Constructor for DAQInterface begins here
 

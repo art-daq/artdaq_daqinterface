@@ -44,10 +44,12 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
                             "unable to locate configuration file \"" +
                             daqinterface_config_filename + "\""))
 
-    memberDict = {"name": None, "label": None, "host": None, "port": None, "fhicl": None}
+    memberDict = {"name": None, "label": None, "host": None, "port": None, "fhicl": None, "subsystem": None}
+    subsystemDict = {"id": None, "source": None, "destination": None}
 
     num_expected_processes = 0
     num_actual_processes = 0
+    expect_end_markers = False
 
     for line in inf.readlines():
 
@@ -115,30 +117,82 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
         if res:
             self.manage_processes = False
 
-        if "EventBuilder" in line or \
-                "DataLogger" in line or "Dispatcher" in line or \
-                "RoutingMaster" in line:
+        res = re.search(r"\s*use end markers\s*:\s[tT]rue", license)
+        if res:
+            expect_end_markers = True
+
+        res = re.search(r"\s*use end markers\s*:\s[fF]alse", license)
+        if res:
+            expect_end_markers = False
+
+        if "Subsystem" in line:
 
             res = re.search(r"\s*(\w+)\s+(\S+)\s*:\s*(\S+)", line)
 
             if not res:
                 raise Exception("Exception in DAQInterface: "
-                                "problem parsing " + daqinterface_config_filename)
+                                "problem parsing " + daqinterface_config_filename +
+                                " at line " + line)
+
+            subsystemDict[res.group(2)] = res.group(3)
+
+            filled = True
+            
+            for key, value in subsystemDict.items():
+                if value is None:
+                    filled = False
+
+            if filled:
+                self.subsystems.append(self.Subsystem(subsystemDict["id"],
+                                                    subsystemDict["source"],
+                                                    subsystemDict["destination"]))
+
+                for varname in subsystemDict.keys():
+                    subsystemDict[varname] = None
+
+        if "EventBuilder" in line or \
+                "DataLogger" in line or "Dispatcher" in line or \
+                "RoutingMaster" in line:
+
+            res = re.search(r"\s*(\w+)\s+(\S+)(?:\s*:\s*(\S+))?", line)
+
+            if not res:
+                raise Exception("Exception in DAQInterface: "
+                                "problem parsing " + daqinterface_config_filename+
+                                " at line " + line)
 
             memberDict["name"] = res.group(1)
-            memberDict[res.group(2)] = res.group(3)
+            if res.group(2) == "END":
+                filled = True
+                expect_end_markers = True
+            elif res.group(3) != None:
+                memberDict[res.group(2)] = res.group(3)
+                if res.group(2) == "subsystem" and int(res.group(3)) > main_subsystem:
+                    main_subsystem = int(res.group(3))
+            else:
+                raise Exception("Exception in DAQInterface: "
+                                "problem parsing " + daqinterface_config_filename+
+                                " at line " + line)
+            
 
             if res.group(2) == "host":
                 num_expected_processes += 1
 
             # Has the dictionary been filled s.t. we can use it to
             # initalize a procinfo object?
+            if not expect_end_markers:
+                filled = True
 
-            filled = True
-
+            complete = True
             for key, value in memberDict.items():
-                if value is None and not key == "fhicl":
-                    filled = False
+                if value is None and key != "fhicl" and key != "subsystem" and key != "label":
+                    complete = False
+
+            if expect_end_markers and filled and not complete:
+                raise Exception(make_paragraph("End marker encountered for %s but not all required fields were filled!" % memberDict["name"]))
+
+            if not complete:
+                filled = False
 
             # If it has been filled, then initialize a Procinfo
             # object, append it to procinfos, and reset the
@@ -148,7 +202,9 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
                 self.procinfos.append(self.Procinfo(memberDict["name"],
                                                     memberDict["host"],
                                                     memberDict["port"],
-                                                    memberDict["label"]))
+                                                    memberDict["label"],
+                                                    memberDict["subsystem"],
+                                                    memberDict["fhicl"]))
                 num_actual_processes += 1
 
                 for varname in memberDict.keys():
