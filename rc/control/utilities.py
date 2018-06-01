@@ -228,40 +228,49 @@ def construct_checked_command(cmds):
 
     return total_cmd
 
-def reformat_fhicl_document(setup_fhiclcpp, input_fhicl_string):
-
-    preformat_filename=Popen("mktemp", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
-    postformat_filename=Popen("mktemp", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
-
-    with open(preformat_filename, "w") as preformat_file:
-        preformat_file.write(input_fhicl_string)
+def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
 
     cmds = []
 
+    preformat_filenames=[ Popen("mktemp", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() for i in range(len(input_fhicl_strings))]
+    postformat_filenames=[ Popen("mktemp", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() for i in range(len(input_fhicl_strings))]
+
+    for preformat_filename, input_fhicl_string in zip(preformat_filenames, input_fhicl_strings):
+        with open(preformat_filename, "w") as preformat_file:
+            preformat_file.write(input_fhicl_string)
+
     cmds.append("source %s" % (setup_fhiclcpp))
     cmds.append("which fhicl-dump")
-    cmds.append("fhicl-dump -l 0 -c %s -o %s" % \
-                (preformat_filename, postformat_filename))
+    
+    for preformat_filename, postformat_filename in zip(preformat_filenames, postformat_filenames):
+        cmds.append("fhicl-dump -l 0 -c %s -o %s" % \
+                    (preformat_filename, postformat_filename))
 
     fullcmd = construct_checked_command( cmds )
     
     status = Popen(fullcmd, shell = True).wait()
 
     exception_message = ""
-    if not os.path.exists( postformat_filename ):
-        exception_message=make_paragraph("Failure in %s: problem creating postformat file in fhicl-dump call" % (reformat_fhicl_document.__name__))
-    elif status != 0:
-        exception_message=make_paragraph("Failure in attempt of %s to reformat FHiCL; nonzero status returned" % (reformat_fhicl_document.__name__))
 
-    postformat_string = open( postformat_filename ).read()
+    if status != 0:
+        exception_message = make_paragraph("Failure in attempt of %s to reformat FHiCL documents; nonzero status returned" % (reformat_fhicl_document.__name__))
 
-    os.unlink( preformat_filename )
-    os.unlink( postformat_filename )
+    postformat_fhicl_strings = []
+
+    for preformat_filename, postformat_filename in zip(preformat_filenames, postformat_filenames):
+        
+        if os.path.exists( postformat_filename ):
+            postformat_fhicl_strings.append( open( postformat_filename ).read() )
+            os.unlink( postformat_filename )
+        else:
+            exception_message = make_paragraph("Failure in %s: problem creating postformat file in fhicl-dump call" % (reformat_fhicl_document.__name__))
+        
+        os.unlink( preformat_filename )
 
     if exception_message != "":
-        raise Exception(exception_message)
-    
-    return postformat_string
+        raise Exception( exception_message )
+
+    return postformat_fhicl_strings
         
 
 def main():

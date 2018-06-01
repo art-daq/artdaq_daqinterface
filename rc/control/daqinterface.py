@@ -41,7 +41,7 @@ from rc.control.utilities import get_pids
 from rc.control.utilities import is_msgviewer_running
 from rc.control.utilities import date_and_time
 from rc.control.utilities import construct_checked_command
-from rc.control.utilities import reformat_fhicl_document
+from rc.control.utilities import reformat_fhicl_documents
 
 if not "DAQINTERFACE_FHICL_DIRECTORY" in os.environ:
     print
@@ -1676,9 +1676,11 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
             return
 
         with deepsuppression():
-            for i_proc in range(len(self.procinfos)):
-                self.procinfos[i_proc].fhicl_used = reformat_fhicl_document(self.daq_setup_script,
-                                                                            self.procinfos[i_proc].fhicl_used)
+            reformatted_fhicl_documents = reformat_fhicl_documents(self.daq_setup_script,
+                                                                   [ procinfo.fhicl_used for procinfo in self.procinfos ] )
+
+        for i_proc, reformatted_fhicl_document in enumerate(reformatted_fhicl_documents):
+            self.procinfos[i_proc].fhicl_used = reformatted_fhicl_document
 
         self.tmp_run_record = "/tmp/run_record_attempted_%s" % \
             (os.environ["USER"])
