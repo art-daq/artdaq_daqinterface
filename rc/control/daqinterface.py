@@ -236,7 +236,7 @@ class DAQInterface(Component):
 
     def __init__(self, logpath=None, name="toycomponent",
                  rpc_host="localhost", control_host='localhost',
-                 synchronous=True, rpc_port=6659):
+                 synchronous=True, rpc_port=6659, partition_number=999):
 
         # Initialize Component, the base class of DAQInterface
 
@@ -257,7 +257,7 @@ class DAQInterface(Component):
         self.tcp_base_port = 6300
         self.request_address = None
         self.request_port = None 
-        self.partition_number = None
+        self.partition_number = partition_number
         self.transfer = "Autodetect"
 
         self.daqinterface_base_dir = os.getcwd()
@@ -2093,12 +2093,15 @@ def get_args():  # no-coverage
         description="DAQInterface")
     parser.add_argument("-n", "--name", type=str, dest='name',
                         default="daqint", help="Component name")
+    parser.add_argument("-p", "--partition-number", type=int, dest='partition_number',
+                        default=888, help="Partition number")
     parser.add_argument("-r", "--rpc-port", type=int, dest='rpc_port',
                         default=5570, help="RPC port")
     parser.add_argument("-H", "--rpc-host", type=str, dest='rpc_host',
                         default='localhost', help="This hostname/IP addr")
     parser.add_argument("-c", "--control-host", type=str, dest='control_host',
                         default='localhost', help="Control host")
+
     return parser.parse_args()
 
 
@@ -2140,6 +2143,16 @@ def main():  # no-coverage
         return
 
     args = get_args()
+
+    max_partitions = 10
+    assert "partition_number" in vars(args)
+    partition_number = vars(args)["partition_number"]
+    if partition_number < 0 or partition_number > max_partitions - 1:
+        print
+        print make_paragraph(
+            "Error: requested partition has the value %d while it needs to be between 0 and %d, inclusive; please set the DAQINTERFACE_PARTITION_NUMBER environment variable accordingly and try again" % \
+            (partition_number, max_partitions-1))
+        return
 
     with DAQInterface(logpath=os.path.join(os.environ["HOME"], ".lbnedaqint.log"),
                       **vars(args)):
