@@ -664,11 +664,11 @@ class DAQInterface(Component):
         # create a text file which will be passed to artdaq's pmt.rb
         # program
 
-        pmtconfigname = "/tmp/pmtConfig." + \
+        self.pmtconfigname = "/tmp/pmtConfig." + \
             ''.join(random.choice(string.digits)
                     for _ in range(5))
 
-        outf = open(pmtconfigname, "w")
+        outf = open(self.pmtconfigname, "w")
 
         # List the process types in pmtConfig in order of
         # upstream-to-downstream so we can keep track of the rank
@@ -692,12 +692,12 @@ class DAQInterface(Component):
         outf.close()
 
         if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
-            status = Popen("scp -p " + pmtconfigname + " " +
+            status = Popen("scp -p " + self.pmtconfigname + " " +
                            self.pmt_host + ":/tmp", shell=True).wait()
 
             if status != 0:
                 raise Exception("Exception in DAQInterface: unable to copy " +
-                                pmtconfigname + " to " + self.pmt_host + ":/tmp")
+                                self.pmtconfigname + " to " + self.pmt_host + ":/tmp")
 
         self.launch_cmds = []
 
@@ -742,12 +742,12 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                 with open(messagefacility_fhicl_filename, "w") as outf_mf:
                     outf_mf.write( default_contents )
 
-            cmd = "pmt.rb -p " + self.pmt_port + " -d " + pmtconfigname + \
+            cmd = "pmt.rb -p " + self.pmt_port + " -d " + self.pmtconfigname + \
                 " --logpath " + self.log_directory + \
                 " --logfhicl " + messagefacility_fhicl_filename + " --display $DISPLAY & "
         else:
 
-            cmd = "pmt.rb -p " + self.pmt_port + " -d " + pmtconfigname + \
+            cmd = "pmt.rb -p " + self.pmt_port + " -d " + self.pmtconfigname + \
                 " --logpath " + self.log_directory + \
                 " --display $DISPLAY & "
    
@@ -766,7 +766,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
             with deepsuppression():
                 status = Popen(launchcmd, shell=True).wait()
 
-        if status != 0:
+        if status != 0:   
             raise Exception("Status error raised; commands were \"\n%s\n\n\". If logfiles exist, please check them for more information. Also try running the commands interactively in a new terminal (after source-ing the DAQInterface environment) for more info." %
                             ("\n".join(self.launch_cmds)))
             return
@@ -872,6 +872,14 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
 
 
     def kill_procs(self):
+
+        if hasattr(self, "pmtconfigname") and os.path.exists(self.pmtconfigname):
+            cmd = "rm -f %s" % (self.pmtconfigname)
+
+            if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
+                cmd = "ssh -f " + self.pmt_host + " '" + cmd + "'"
+
+            Popen(cmd, shell=True).wait()
 
         # JCF, 12/29/14
 
