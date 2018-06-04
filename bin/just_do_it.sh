@@ -261,7 +261,7 @@ function clean_shutdown() {
 
     if [[ "$state_true" == "1" ]]; then
     #read -n 1 -s -r -p "Press any key to stop"
-	$scriptdir/send_transition.sh stop
+	vcmd $scriptdir/send_transition.sh stop
 	wait_until_no_longer stopping
     fi
 
@@ -291,7 +291,7 @@ function clean_shutdown() {
     if true; then
 	
     #read -n 1 -s -r -p "Press any key to shutdown"
-	$scriptdir/send_transition.sh terminate
+	vcmd $scriptdir/send_transition.sh terminate
 
 	wait_until_no_longer terminating
 
