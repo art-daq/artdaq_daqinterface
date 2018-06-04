@@ -34,6 +34,35 @@ def get_config_info_base(self):
 def put_config_info_base(self):
     pass
 
+def check_members(self, memberDict, num_actual_processes):
+    # Has the dictionary been filled s.t. we can use it to
+    # initalize a procinfo object?
+    filled = True
+    for key, value in memberDict.items():
+        if value is None and key != "fhicl" and key != "subsystem" and key != "label":
+            filled = False
+
+    # If it has been filled, then initialize a Procinfo
+    # object, append it to procinfos, and reset the
+    # dictionary values to null strings
+
+    if memberDict["label"] == None and filled:
+        memberDict["label"] = memberDict["name"]
+
+    if filled:
+        self.procinfos.append(self.Procinfo(memberDict["name"],
+                                            memberDict["host"],
+                                            memberDict["port"],
+                                            memberDict["label"],
+                                            memberDict["subsystem"],
+                                            memberDict["fhicl"]))
+        num_actual_processes += 1
+
+        for varname in memberDict.keys():
+            memberDict[varname] = None
+
+    return num_actual_processes
+
 def get_daqinterface_config_info_base(self, daqinterface_config_filename):
 
     inf = open(daqinterface_config_filename)
@@ -49,15 +78,21 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
 
     num_expected_processes = 0
     num_actual_processes = 0
-    expect_end_markers = False
 
     for line in inf.readlines():
 
         line = expand_environment_variable_in_string( line )
 
         # Is this line a comment?
+        # Check for complete program definitions on comment or blank lines
         res = re.search(r"^\s*#", line)
         if res:
+            num_actual_processes = check_members(self, memberDict, num_actual_processes)
+            continue
+
+        res = re.search(r"^\s*$", line)
+        if res:
+            num_actual_processes = check_members(self, memberDict, num_actual_processes)
             continue
 
         res = re.search(r"\s*PMT host\s*:\s*(\S+)", line)
@@ -117,14 +152,6 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
         if res:
             self.manage_processes = False
 
-        res = re.search(r"\s*use end markers\s*:\s[tT]rue", license)
-        if res:
-            expect_end_markers = True
-
-        res = re.search(r"\s*use end markers\s*:\s[fF]alse", license)
-        if res:
-            expect_end_markers = False
-
         if "Subsystem" in line:
 
             res = re.search(r"\s*(\w+)\s+(\S+)\s*:\s*(\S+)", line)
@@ -132,7 +159,7 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
             if not res:
                 raise Exception("Exception in DAQInterface: "
                                 "problem parsing " + daqinterface_config_filename +
-                                " at line " + line)
+                                " at line \"" + line + "\"")
 
             subsystemDict[res.group(2)] = res.group(3)
 
@@ -154,61 +181,24 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
                 "DataLogger" in line or "Dispatcher" in line or \
                 "RoutingMaster" in line:
 
-            res = re.search(r"\s*(\w+)\s+(\S+)(?:\s*:\s*(\S+))?", line)
+            res = re.search(r"\s*(\w+)\s+(\S+)(?:\s*:\s*(\S+))?\s*$", line)
 
             if not res:
                 raise Exception("Exception in DAQInterface: "
                                 "problem parsing " + daqinterface_config_filename+
-                                " at line " + line)
+                                " at line \"" + line + "\"")
 
             memberDict["name"] = res.group(1)
-            if res.group(2) == "END":
-                filled = True
-                expect_end_markers = True
-            elif res.group(3) != None:
+            if res.group(3) != None:
                 memberDict[res.group(2)] = res.group(3)
-                if res.group(2) == "subsystem" and int(res.group(3)) > main_subsystem:
-                    main_subsystem = int(res.group(3))
             else:
                 raise Exception("Exception in DAQInterface: "
                                 "problem parsing " + daqinterface_config_filename+
-                                " at line " + line)
+                                " at line \"" + line + "\"" + res.group(0))
             
-
             if res.group(2) == "host":
                 num_expected_processes += 1
 
-            # Has the dictionary been filled s.t. we can use it to
-            # initalize a procinfo object?
-            if not expect_end_markers:
-                filled = True
-
-            complete = True
-            for key, value in memberDict.items():
-                if value is None and key != "fhicl" and key != "subsystem" and key != "label":
-                    complete = False
-
-            if expect_end_markers and filled and not complete:
-                raise Exception(make_paragraph("End marker encountered for %s but not all required fields were filled!" % memberDict["name"]))
-
-            if not complete:
-                filled = False
-
-            # If it has been filled, then initialize a Procinfo
-            # object, append it to procinfos, and reset the
-            # dictionary values to null strings
-
-            if filled:
-                self.procinfos.append(self.Procinfo(memberDict["name"],
-                                                    memberDict["host"],
-                                                    memberDict["port"],
-                                                    memberDict["label"],
-                                                    memberDict["subsystem"],
-                                                    memberDict["fhicl"]))
-                num_actual_processes += 1
-
-                for varname in memberDict.keys():
-                    memberDict[varname] = None
 
     if num_expected_processes != num_actual_processes:
         raise Exception(make_paragraph("An inconsistency exists in the boot file; a host was defined in the file for %d artdaq processes, but there's only a complete set of info in the file for %d processes. This may be the result of using a boot file designed for an artdaq version prior to the addition of a label requirement (see https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/The_boot_file_reference for more)" % (num_expected_processes, num_actual_processes)))
