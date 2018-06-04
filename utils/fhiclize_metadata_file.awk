@@ -117,13 +117,16 @@
 END {
 
     # This section exists because the last line is an aggregator logfile line
-    printf "\naggregator_logfiles: ["
-    for (i = 1; i <= length(aggregators); ++i) {
-	if (i != length(aggregators)) {
+
+    if ( length(aggregators) > 0 ) {
+      printf "\naggregator_logfiles: ["
+      for (i = 1; i <= length(aggregators); ++i) {
+   	if (i != length(aggregators)) {
 	    printf "\"%s\", ", aggregators[i]
 	} else {
 	    printf "\"%s\"]\n", aggregators[i]
 	}
+     }
     }
-    aggregator_section_active = 0
+   aggregator_section_active = 0
 }
