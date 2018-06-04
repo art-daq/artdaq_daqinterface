@@ -16,6 +16,7 @@ examples: `basename $0` boot.txt 0
 --bootfile    File to pass on Boot transition (overrides first parameter)
 --runduration Number of seconds to run the daq (overrides second parameter)
 --runs        Number of start/stop transitions to run (Default: $runs)
+-v, --verbose show major commands being executed
 "
 
 # Process script arguments and options
@@ -34,6 +35,7 @@ while [ -n "${1-}" ];do
         case "$op" in
             \?*|h*)     eval $op1chr; do_help=1;;
             -help)      eval $op1arg; do_help=1;;
+            v*|-verbose) eval $op1chr; opt_verbose=1;;
             -config)    eval $reqarg; config=$1; shift;;
             -comps)     eval $reqarg; comp_mode=1 daqcomps=$1; shift;;
             -compfile)  eval $reqarg; comp_file=$1; shift;;  
@@ -88,6 +90,24 @@ else
     exit 110
 fi
 
+vcmd() {
+    if [ -n "${opt_verbose-}" ];then
+        # the following attemps to format the command/options similar to when "set -x" is active
+        args=
+        for xx in "$@"; do
+            if echo "$xx" | /bin/egrep " |['\"]" >/dev/null;then
+                # need quoting
+                aa=`echo "$xx" | sed -e "s/'/'\\\\\''/g"`
+                args="${args:+$args }'$aa'"
+            else
+                args="${args:+$args }$xx"
+            fi
+        done
+        echo "+ $args"
+        unset args
+    fi
+    "$@"
+}
 
 starttime=$(date +%s)
 
@@ -145,9 +165,9 @@ function main() {
 	exit 50
     fi
 
-    $scriptdir/setdaqcomps.sh $daqcomps
+    vcmd $scriptdir/setdaqcomps.sh $daqcomps
 
-    $scriptdir/send_transition.sh boot $daqintconfig
+    vcmd $scriptdir/send_transition.sh boot $daqintconfig
 
     wait_until_no_longer booting
 
@@ -168,7 +188,7 @@ function main() {
     while (( $config_cntr < 1 )); do 
 
 	config_cntr=$(( config_cntr + 1 ))
-    $scriptdir/send_transition.sh config $config
+    vcmd $scriptdir/send_transition.sh config $config
 
     wait_until_no_longer configuring
 
@@ -186,7 +206,7 @@ function main() {
 	counter=0
 	while [ $counter -lt $runs ]; do
 		#read -n 1 -s -r -p "Press any key to start"
-		$scriptdir/send_transition.sh start
+		vcmd $scriptdir/send_transition.sh start
 
 		wait_until_no_longer starting
 
@@ -214,7 +234,7 @@ function main() {
 
 		if [[ "$state_true" == "1" ]]; then
 			#read -n 1 -s -r -p "Press any key to stop"
-			$scriptdir/send_transition.sh stop
+			vcmd $scriptdir/send_transition.sh stop
 			wait_until_no_longer stopping
 		fi
 
