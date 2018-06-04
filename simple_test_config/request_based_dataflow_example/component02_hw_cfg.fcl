@@ -45,7 +45,7 @@ separate_data_thread: true # MUST be true for requests to be applied! If request
 
 nADCcounts: 2000
 
-throttle_usecs: 1000000 # 1 Hz
+throttle_usecs: 100000
 
 distribution_type: 2
 
