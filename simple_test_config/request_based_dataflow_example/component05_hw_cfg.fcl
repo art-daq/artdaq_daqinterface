@@ -30,24 +30,29 @@ hardware_poll_interval_us: 0 # How often, in microseconds, checkHWStatus_() shou
 
     # Generated Parameters: 
     generator: ToySimulator
-    fragment_type: TOY1
-    fragment_id: 0
-    board_id: 0
-    starting_fragment_id: 0
-    random_seed: 9079
+    fragment_type: TOY2
+    fragment_id: 4
+    board_id: 4
+    starting_fragment_id: 4
+    random_seed: 738
     sleep_on_stop_us: 500000 
 
     # Generator-Specific Configuration:
     
-request_mode: "Ignored" # Possible values are: Ignored, Single, Buffer, Window
+request_mode: "Window" # Possible values are: Ignored, Single, Buffer, Window
+
+request_window_offset: 0 # Request message contains tzero. Window will be from tzero - offset to tz-o + width
+request_window_width: 0 # These settings correspond to "two before, two after"
+stale_request_timeout: "0xFFFFFFFF" # How long to wait before discarding request messages that are outside the available data
+request_windows_are_unique: true # If request windows are unique, avoids a copy operation, but the same data point cannot be used for two requests. If this is not anticipated, leave set to "true"
 
 separate_data_thread: true # MUST be true for requests to be applied! If requesting is not desired, but a separate readout thread is, set this to true, requests_enabled to false and request_mode to ignored.
 
-nADCcounts: 2000
+nADCcounts: 100
 
-throttle_usecs: 100000 # 10 Hz
+throttle_usecs: 102000
 
-distribution_type: 1
+distribution_type: 0
 
 timestamp_scale_factor: 1
 

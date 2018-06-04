@@ -14,6 +14,7 @@ sys.path.append(dbdirs[0] + "/../bin")
 import subprocess
 from subprocess import Popen
 from rc.control.deepsuppression import deepsuppression
+from rc.control.utilities import make_paragraph
 
 import re
 import os
@@ -92,9 +93,14 @@ def put_config_info_base(self):
     cmds.append( "cp -rp " + runrecord + " . ")
     cmds.append( "chmod 777 " + runnum )
     cmds.append( "cat " + runnum + "/metadata.txt | awk -f $scriptdir/fhiclize_metadata_file.awk > " + runnum + "/metadata.fcl" )
+    cmds.append( "cat " + runnum + "/boot.txt | awk -f $scriptdir/fhiclize_boot_file.awk > " + runnum + "/boot.fcl" )
     cmds.append( "rm -f " + runnum + "/*.txt")
-    cmds.append("cp -p %s/conf/schema.fcl ." % os.environ["ARTDAQ_DATABASE_FQ_DIR"])
-    
+
+    if os.getenv("ARTDAQ_DATABASE_CONFDIR") is None:
+        raise Exception(make_paragraph("Environment variable ARTDAQ_DATABASE_CONFDIR needs to be set in order for DAQInterface to determine where to find the schema.fcl file needed to archive configurations to the database; since ARTDAQ_DATABASE_CONFDIR is not set this may indicate that the version of artdaq_database you're using is old"))
+
+    cmds.append("cp -p %s/schema.fcl ." % os.environ["ARTDAQ_DATABASE_CONFDIR"])
+
     status = Popen( "; ".join( cmds ), shell=True).wait()
 
     for filename in [tmpdir, "%s/%s" % (tmpdir, runnum), "%s/%s/metadata.fcl" % (tmpdir, runnum)] :

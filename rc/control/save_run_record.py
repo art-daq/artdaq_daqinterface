@@ -30,9 +30,7 @@ def save_run_record_base(self):
         else:
             procinfo_host_to_record = procinfo.host
 
-        outf = open(outdir + "/" + procinfo.name + "_" +
-                    procinfo_host_to_record + "_" +
-                    procinfo.port + ".fcl", "w")
+        outf = open(outdir + "/" + procinfo.label + ".fcl", "w")
 
         outf.write(procinfo.fhicl_used)
         outf.close()

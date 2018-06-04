@@ -41,8 +41,8 @@ hardware_poll_interval_us: 0 # How often, in microseconds, checkHWStatus_() shou
     
 request_mode: "Window" # Possible values are: Ignored, Single, Buffer, Window
 
-request_window_offset: 2 # Request message contains tzero. Window will be from tzero - offset to tz-o + width
-request_window_width: 5 # These settings correspond to "two before, two after"
+request_window_offset: 0 # Request message contains tzero. Window will be from tzero - offset to tz-o + width
+request_window_width: 0 # These settings correspond to "two before, two after"
 stale_request_timeout: "0xFFFFFFFF" # How long to wait before discarding request messages that are outside the available data
 request_windows_are_unique: true # If request windows are unique, avoids a copy operation, but the same data point cannot be used for two requests. If this is not anticipated, leave set to "true"
 
@@ -50,7 +50,7 @@ separate_data_thread: true # MUST be true for requests to be applied! If request
 
 nADCcounts: 100
 
-throttle_usecs: 20000 # 50 Hz
+throttle_usecs: 101000
 
 distribution_type: 0
 

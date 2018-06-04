@@ -1,28 +1,31 @@
 services: {
   scheduler: {
-    fileMode: NOMERGE
     errorOnFailureToPut: false
   }
   NetMonTransportServiceInterface: {
     service_provider: NetMonTransportService
+    broadcast_sends: true
+    nonblocking_sends: true
+	destinations: { }
   }
 }
 
 daq: {
   aggregator: {
-    expected_events_per_bunch: 1
+    expected_fragments_per_event: 1
+	max_fragment_size_bytes: 16777216
     print_event_store_stats: true
-    event_queue_depth: 20
+    buffer_count: 20
     event_queue_wait_time: 5
     onmon_event_prescale: 1
     is_data_logger: true
 
-    auto_suppression_enabled: false
+	routing_token_config: {
+		use_routing_master: false
+	}
 
+	auto_suppression_enabled: false
 	sources: { }
-
-	broadcast_sends: true
-	destinations: {	}
   }
 
   metrics: {
@@ -32,19 +35,22 @@ daq: {
       fileName: "/tmp/aggregator/agg_%UID%_metrics.log"
       uniquify: true
     }
-
   }
-
 }
 
 source: {
   module_type: NetMonInput
 }
 outputs: {
+  rootNetOutput: {
+    module_type: RootNetOutput
+    #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
+  }
+
   normalOutput: {
     module_type: RootOutput
     fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%to_%#.root"
-    fileProperties: { maxSubRuns: 1 maxRuns: 1  }
+    fileProperties: { maxSubRuns: 1 maxRuns: 1 maxSize: 8192000 }
     fastCloning: false
     compressionLevel: 3
   }
@@ -69,10 +75,10 @@ physics: {
        module_type: ArtdaqDemoBuildInfo
        instance_name: ArtdaqDemo
      }
-   }
+  }
 
   p2: [ BuildInfo ]
-
   my_output_modules: [ normalOutput ]
+  my_mpi_output_modules: [ rootNetOutput ]
 }
-process_name: DAQAG
+process_name: DAQDL
