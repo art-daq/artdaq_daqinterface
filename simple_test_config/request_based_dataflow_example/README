@@ -35,6 +35,5 @@ Some notes:
   listed here, we expect there to be 7 "toy" fragments (of type TOY1 or TOY2) when
   the system is run with the 'run_demo' command listed above (all three components included).
   [Side note: it may be helpful to temporarily disable the limiting of high-rate TRACE/log
-   messages when running this dump routine.  To do that, you can set the TRACE_LIMIT_MS
-   env var to something like 'export TRACE_LIMIT_MS=1000,500,1500' (and then set it back
-   to "10,500,1500" when you're done).]
+   messages when running this dump routine.  The best way to do that is to unset the
+   TRACE env vars that are set in your current environment (e.g. 'unset TRACE_NAME').]
