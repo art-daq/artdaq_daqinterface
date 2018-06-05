@@ -995,7 +995,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                                                                        procinfo.label, short_hostname, procinfo.port,
                                                                        procinfo.label, short_hostname, procinfo.port)
 
-                if procinfo.host != os.environ["HOSTNAME"]:
+                if procinfo.host != os.environ["HOSTNAME"] and procinfo.host != "localhost":
                     cmd = "ssh -f " + procinfo.host + " '" + cmd + "'"
 
                 proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -1352,13 +1352,24 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                 self.alert_and_recover("An exception was thrown in get_commit_hash; see traceback above for more info")
                 return
 
-        for compname, socket in self.daq_comp_list.items():
+        for i_boardreader, compname in enumerate(self.daq_comp_list):
 
-            self.print_log("d", "%s at %s:%s" % (compname, socket[0], socket[1]), 2)
+            boardreader_host, boardreader_port = self.daq_comp_list[ compname ]
+
+            # Make certain the formula below for calculating the port
+            # # matches with the formula used to calculate the ports
+            # for the other artdaq processes when the boot file is
+            # read in
+
+            if boardreader_port == "-1":
+                boardreader_port = str( 10100 + self.partition_number*1000 + i_boardreader )
+                self.daq_comp_list[ compname ] = boardreader_host, boardreader_port
+
+            self.print_log("d", "%s at %s:%s" % (compname, boardreader_host, boardreader_port), 2)
  
             self.procinfos.append(self.Procinfo("BoardReader",
-                                                socket[0],
-                                                socket[1], compname))
+                                                boardreader_host,
+                                                boardreader_port, compname))
 
             try:
                 for priority, regexp in enumerate(self.boardreader_priorities):
@@ -2122,7 +2133,7 @@ def main():  # no-coverage
         return
 
     if "DAQINTERFACE_STANDARD_SOURCEFILE_SOURCED" not in os.environ.keys():
-        print make_paragraph("Won't launch DAQInterface; you first need to run \"source source_me\" from the base directory of this package")
+        print make_paragraph("Won't launch DAQInterface; you first need to run \"source $ARTDAQ_DAQINTERFACE_DIR/source_me\"")
         print
         return
 
@@ -2148,6 +2159,9 @@ def main():  # no-coverage
 
     args = get_args()
 
+    # Make sure the requested partition number is in a desired range,
+    # and that it isn't already being used
+
     max_partitions = 10
     assert "partition_number" in vars(args)
     partition_number = vars(args)["partition_number"]
@@ -2157,6 +2171,13 @@ def main():  # no-coverage
             "Error: requested partition has the value %d while it needs to be between 0 and %d, inclusive; please set the DAQINTERFACE_PARTITION_NUMBER environment variable accordingly and try again" % \
             (partition_number, max_partitions-1))
         return
+
+    greptoken = "python.*daqinterface.py.*--partition-number\s\+%d\s\+" % (partition_number)
+    pids = get_pids(greptoken)
+    if len(pids) > 1:  
+        print make_paragraph("There already appears to be a DAQInterface instance running on the requested partition number (%s); please either kill the instance (if it's yours) or use a different partition. Run \"listdaqinterfaces.sh\" for more info." % (partition_number))
+        return
+
 
     with DAQInterface(logpath=os.path.join(os.environ["HOME"], ".lbnedaqint.log"),
                       **vars(args)):
