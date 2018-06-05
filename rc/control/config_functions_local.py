@@ -170,6 +170,12 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
                     else:
                         memberDict[varname] = "not set"
 
+    # Unless I'm mistaken, we don't yet have an official default for
+    # the pmt port given a partition #
+
+    if not hasattr(self, "pmt_port") or self.pmt_port is None:
+        self.pmt_port = str( int(self.rpc_port) + 1 )
+
     if num_expected_processes != num_actual_processes:
         raise Exception(make_paragraph("An inconsistency exists in the boot file; a host was defined in the file for %d artdaq processes, but there's only a complete set of info in the file for %d processes. This may be the result of using a boot file designed for an artdaq version prior to the addition of a label requirement (see https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/The_boot_file_reference for more)" % (num_expected_processes, num_actual_processes)))
 

@@ -221,6 +221,7 @@ class DAQInterface(Component):
         self.in_recovery = False
         self.heartbeat_failure = False
         self.manage_processes = True
+        self.pmt_port = None
 
         # "procinfos" will be an array of Procinfo structures (defined
         # below), where Procinfo contains all the info DAQInterface
@@ -258,6 +259,7 @@ class DAQInterface(Component):
         self.request_port = None 
         self.partition_number = partition_number
         self.transfer = "Autodetect"
+        self.rpc_port = rpc_port
 
         self.daqinterface_base_dir = os.getcwd()
             
@@ -306,8 +308,8 @@ class DAQInterface(Component):
                     "changes, and restart.") + "\n")
             sys.exit(1)
 
-        self.print_log("i", make_paragraph("DAQInterface launched and now in \"%s\" state, listening on port %d" % 
-                                           (self.state(self.name), rpc_port)))
+        self.print_log("i", make_paragraph("DAQInterface in partition %s launched and now in \"%s\" state, listening on port %d" % 
+                                           (self.partition_number, self.state(self.name), self.rpc_port)))
 
     get_config_info = get_config_info_base
     put_config_info = put_config_info_base
@@ -1319,6 +1321,12 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
         def revert_failed_boot(failed_action):
             self.reset_variables()            
             self.revert_failed_transition(failed_action)
+
+        if not hasattr(self, "daq_comp_list") or self.daq_comp_list is None \
+           or len(self.daq_comp_list) == 0:
+            self.print_log("e", make_paragraph("No components appear to have been requested; you need to first call setdaqcomps (\"setdaqcomps.sh\" at the command line). System remains in \"stopped\" state."))
+            self.revert_state_change(self.name, self.state(self.name))
+            return
 
         self.print_log("i", "\n%s: BOOT transition underway" % \
             (date_and_time()))

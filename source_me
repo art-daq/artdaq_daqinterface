@@ -77,6 +77,12 @@ if [[ -z $HOSTNAME ]]; then
    echo
 fi
 
+# daqinterface_functions.sh expects DAQINTERFACE_PARTITION_NUMBER to
+# be defined
+
+if [[ -z $DAQINTERFACE_PARTITION_NUMBER ]]; then
+   export DAQINTERFACE_PARTITION_NUMBER=0
+fi
 
 . $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
 
@@ -93,9 +99,8 @@ mkdir -p $DAQINTERFACE_LOGDIR
 
 export DAQINTERFACE_LOGFILE=$DAQINTERFACE_LOGDIR/DAQInterface_port\${DAQINTERFACE_PORT}.log
 
-if [[ -z $DAQINTERFACE_PARTITION_NUMBER ]]; then
-   export DAQINTERFACE_PARTITION_NUMBER=0
-fi
+# Make sure the logic to derive DAQInterface port # from partition #
+# is the same as in daqinterface_functions.sh!
 
 alias DAQInterface="export DAQINTERFACE_PORT=\$(( 10000 + \$DAQINTERFACE_PARTITION_NUMBER * 1000 )); stdbuf -oL $ARTDAQ_DAQINTERFACE_DIR/rc/control/daqinterface.py --partition-number \$DAQINTERFACE_PARTITION_NUMBER --rpc-port \$DAQINTERFACE_PORT  2>&1 | tee -a $DAQINTERFACE_LOGFILE "
 
