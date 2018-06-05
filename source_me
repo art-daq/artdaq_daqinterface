@@ -93,13 +93,11 @@ mkdir -p $DAQINTERFACE_LOGDIR
 
 export DAQINTERFACE_LOGFILE=$DAQINTERFACE_LOGDIR/DAQInterface_port\${DAQINTERFACE_PORT}.log
 
-export DAQINTERFACE_PORT=$( get_highest_used_port )
+if [[ -z $DAQINTERFACE_PARTITION_NUMBER ]]; then
+   export DAQINTERFACE_PARTITION_NUMBER=0
+fi
 
-# Notice that the value of "get_highest_used_port" can change between
-# when this script is sourced and when an instance of DAQInterface is
-# actually launched...
-
-alias DAQInterface="export DAQINTERFACE_PORT=\$( get_highest_used_port ); export DAQINTERFACE_PORT=\$(( \$DAQINTERFACE_PORT + 10 )); stdbuf -oL $ARTDAQ_DAQINTERFACE_DIR/rc/control/daqinterface.py --rpc-port \$DAQINTERFACE_PORT 2>&1 | tee -a $DAQINTERFACE_LOGFILE "
+alias DAQInterface="export DAQINTERFACE_PORT=\$(( 10000 + \$DAQINTERFACE_PARTITION_NUMBER * 1000 )); stdbuf -oL $ARTDAQ_DAQINTERFACE_DIR/rc/control/daqinterface.py --partition-number \$DAQINTERFACE_PARTITION_NUMBER --rpc-port \$DAQINTERFACE_PORT  2>&1 | tee -a $DAQINTERFACE_LOGFILE "
 
 export PATH=$ARTDAQ_DAQINTERFACE_DIR/bin:$PATH
 

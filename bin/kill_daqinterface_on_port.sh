@@ -4,7 +4,7 @@
 
 for port in "$@"; do
 
-    daqinterface_pid=$( ps aux | grep -E "python.*daqinterface.py\s+--rpc-port\s+$port" | grep -v grep | awk '{print $2}' )
+    daqinterface_pid=$( ps aux | grep -E "python.*daqinterface.py.*--rpc-port\s+$port" | grep -v grep | awk '{print $2}' )
     tee_pid=$( ps aux | grep -E "tee.*DAQInterface_port${port}.log" | grep -v grep | awk '{print $2}' )
 
     if [[ -n $daqinterface_pid ]]; then

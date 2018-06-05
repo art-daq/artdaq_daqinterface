@@ -2,7 +2,7 @@
 
 function list_daqinterfaces() {
 
-ps aux | grep "python.*daqinterface.py" | grep -v grep | awk '{ print "DAQInterface instance was launched at "$9" by "$1" listening on port "$NF  }'
+ps aux | grep "python.*daqinterface.py" | grep -v grep | awk '{ print "DAQInterface instance was launched at "$9" by "$1" in partition "$14" listening on port "$NF  }'
 
 }
 

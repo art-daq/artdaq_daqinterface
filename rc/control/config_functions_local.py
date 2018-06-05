@@ -44,7 +44,7 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
                             "unable to locate configuration file \"" +
                             daqinterface_config_filename + "\""))
 
-    memberDict = {"name": None, "label": None, "host": None, "port": None, "fhicl": None}
+    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None}
 
     num_expected_processes = 0
     num_actual_processes = 0
@@ -145,14 +145,30 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
             # dictionary values to null strings
 
             if filled:
+
+                num_actual_processes += 1
+                
+                if memberDict["port"] == "not set":
+                    
+                    # Not necessarily the same as artdaq's idea of rank...
+                    rank = len(self.daq_comp_list) + num_actual_processes - 1
+                           
+                    memberDict["port"] = str( 10100 + \
+                                              self.partition_number*1000 + \
+                                              rank )
+
+
                 self.procinfos.append(self.Procinfo(memberDict["name"],
                                                     memberDict["host"],
                                                     memberDict["port"],
                                                     memberDict["label"]))
-                num_actual_processes += 1
+
 
                 for varname in memberDict.keys():
-                    memberDict[varname] = None
+                    if varname != "port":
+                        memberDict[varname] = None
+                    else:
+                        memberDict[varname] = "not set"
 
     if num_expected_processes != num_actual_processes:
         raise Exception(make_paragraph("An inconsistency exists in the boot file; a host was defined in the file for %d artdaq processes, but there's only a complete set of info in the file for %d processes. This may be the result of using a boot file designed for an artdaq version prior to the addition of a label requirement (see https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/The_boot_file_reference for more)" % (num_expected_processes, num_actual_processes)))
