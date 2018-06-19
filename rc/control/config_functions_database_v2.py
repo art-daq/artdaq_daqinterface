@@ -110,6 +110,29 @@ def put_config_info_base(self):
     if status != 0:
         raise Exception("Problem during execution of the following:\n %s" % "\n".join(cmds))
 
+    #Popen("cp %s/%s/boot.fcl %s/%s/DataflowConfiguration.fcl" % (tmpdir, runnum, tmpdir, runnum), shell=True).wait()
+    shutil.copyfile( "%s/%s/boot.fcl" % (tmpdir, runnum), "%s/%s/DataflowConfiguration.fcl" % (tmpdir, runnum))
+
+    with open( "%s/%s/DataflowConfiguration.fcl" % (tmpdir, runnum), "a" ) as dataflow_file:
+
+        proc_attrs = ["host", "port", "label"]
+
+        proc_line = {}
+
+        for proc_attr in proc_attrs:
+            proc_line[proc_attr] = "BoardReader_%ss: [" % (proc_attr) 
+
+        for procinfo in self.procinfos:
+            if "BoardReader" in procinfo.name:
+                proc_line["host"] += "\"%s\"," % (procinfo.host)
+                proc_line["port"] += "\"%s\"," % (procinfo.port)
+                proc_line["label"] += "\"%s\"," % (procinfo.label)
+
+        for proc_attr, proc_attr_line in proc_line.items():
+            proc_attr_line = proc_attr_line[:-1] # Strip the trailing comma
+            proc_line[ proc_attr ] = proc_attr_line + "]"
+            dataflow_file.write("\n" + proc_line[ proc_attr ] )
+        
 
     basedir=os.getcwd()
     os.chdir( tmpdir )
