@@ -132,10 +132,15 @@ def listconfigs_base(self):
     print
     print "Available configurations: "
 
+    config_cntr = 0
+
     with open("/tmp/listconfigs_" + os.environ["USER"] + ".txt", "w") as outf:
         for config in getListOfAvailableRunConfigurations():
-            outf.write(config + "\n")
-            print config
+            config_cntr += 1
+
+            if config_cntr <= self.max_configurations_to_list:
+                outf.write(config + "\n")
+                print config
 
 def main():
 

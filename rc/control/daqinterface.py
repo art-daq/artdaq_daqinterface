@@ -395,6 +395,7 @@ class DAQInterface(Component):
         self.use_messageviewer = True
         self.fake_messagefacility = False
         self.data_directory_override = None
+        self.max_configurations_to_list = 1000000
 
         self.productsdir = None
 
@@ -441,6 +442,8 @@ class DAQInterface(Component):
                 self.max_fragment_size_bytes = int( line.split()[-1].strip())
                 if self.max_fragment_size_bytes % 8 != 0:
                     raise Exception("Value for \"max_fragment_size_bytes\" in settings file \"%s\" should be a multiple of 8" % (os.environ["DAQINTERFACE_SETTINGS"]))
+            elif "max_configurations_to_list" in line:
+                self.max_configurations_to_list = int( line.split()[-1].strip() )
             elif "all_events_to_all_dispatchers" in line:
                 token = line.split()[-1].strip()
                 

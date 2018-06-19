@@ -78,16 +78,6 @@ fi
 
 . $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
-rm -f /tmp/listconfigs_${USER}.txt
-$scriptdir/listconfigs.sh 
-
-if [[ "$?" == "0" ]]; then
-    config=$( grep "^${config}[0-9]*$" /tmp/listconfigs_${USER}.txt  | sort -n | tail -1 )
-else
-    echo "There was a problem getting a list of configurations" >&2
-    exit 110
-fi
-
 
 starttime=$(date +%s)
 
