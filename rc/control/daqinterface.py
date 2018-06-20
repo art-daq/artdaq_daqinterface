@@ -1748,6 +1748,8 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                 self.alert_and_recover("Error in DAQInterface: a nonzero value was returned executing \"%s\"" %
                                        cmd)
                 return
+            else:
+                shutil.rmtree(self.tmp_run_record)
         else:
             self.alert_and_recover("Error in DAQInterface: unable to find temporary run records directory %s" % 
                                    self.tmp_run_record)
