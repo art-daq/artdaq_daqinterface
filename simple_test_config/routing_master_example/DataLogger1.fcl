@@ -1,10 +1,12 @@
 services: {
   scheduler: {
-    fileMode: NOMERGE
     errorOnFailureToPut: false
   }
   NetMonTransportServiceInterface: {
     service_provider: NetMonTransportService
+    broadcast_sends: true
+    nonblocking_sends: true
+	destinations: { }
   }
 }
 
@@ -12,17 +14,20 @@ daq: {
   aggregator: {
     expected_events_per_bunch: 1
     print_event_store_stats: true
-    event_queue_depth: 20
+    event_queue_depth: 40
     event_queue_wait_time: 5
+	max_fragment_size_bytes: 16777216
+    buffer_count: 40
     onmon_event_prescale: 1
     is_data_logger: true
 
     auto_suppression_enabled: false
 
-	sources: { }
+	routing_token_config: {
+		use_routing_master: false
+	}
 
-	broadcast_sends: true
-	destinations: {	}
+	sources: { }
   }
 
   metrics: {
@@ -32,7 +37,6 @@ daq: {
       fileName: "/tmp/aggregator/agg_%UID%_metrics.log"
       uniquify: true
     }
-
   }
 
 }
@@ -48,6 +52,10 @@ outputs: {
     fastCloning: false
     compressionLevel: 3
   }
+  rootNetOutput: {
+    module_type: RootNetOutput
+    #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
+  }
 
 }
 physics: {
@@ -58,6 +66,11 @@ physics: {
      module_type: CheckIntegrity
      raw_data_label: daq
      frag_type: TOY1
+   }
+   checkintegrity2: {
+     module_type: CheckIntegrity
+     raw_data_label: daq
+     frag_type: TOY2
    }
 
   }
@@ -72,7 +85,8 @@ physics: {
    }
 
   p2: [ BuildInfo ]
-
+  a1: [ checkintegrity, checkintegrity2 ]
   my_output_modules: [ normalOutput ]
+  my_mpi_output_modules: [rootNetOutput]
 }
-process_name: DAQAG
+process_name: DAQDL
