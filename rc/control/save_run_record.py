@@ -5,6 +5,8 @@ import re
 import subprocess
 from subprocess import Popen
 import traceback
+from rc.control.utilities import make_paragraph
+
 
 def save_run_record_base(self):
 
@@ -14,13 +16,14 @@ def save_run_record_base(self):
     outdir = self.tmp_run_record
 
     try:
-        os.mkdir(outdir)
+        os.makedirs(outdir)
     except Exception:
-        self.print_log("Exception raised during creation of %s ; this may occur because %s already exists, in which case this is not an error" % (outdir, outdir))
+        raise Exception(make_paragraph("Exception raised during creation of %s" % (outdir)))
+        return
+
 
     if not os.path.exists(outdir):
-        self.alert_and_recover("Problem creating output "
-                               "directory " + outdir)
+        raise Exception("Problem creating output directory %s" % (outdir))
         return
 
     for procinfo in self.procinfos:
