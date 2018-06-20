@@ -1671,8 +1671,9 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
         for i_proc, reformatted_fhicl_document in enumerate(reformatted_fhicl_documents):
             self.procinfos[i_proc].fhicl_used = reformatted_fhicl_document
 
-        self.tmp_run_record = "/tmp/run_record_attempted_%s" % \
-            (os.environ["USER"])
+        self.tmp_run_record = "/tmp/run_record_attempted_%s/%s" % \
+            (os.environ["USER"],
+            Popen("date +%a_%b_%d_%H:%M:%S.%N", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip())
         
         if os.path.exists(self.tmp_run_record):
             shutil.rmtree(self.tmp_run_record)
