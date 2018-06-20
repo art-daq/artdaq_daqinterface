@@ -55,6 +55,15 @@ def save_run_record_base(self):
     if not os.path.exists(outdir + "/setup.txt"):
         self.alert_and_recover("Problem creating file %s/setup.txt" % (outdir))
 
+    assert os.path.exists( os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"] )
+
+    Popen("cp -p " + os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"] +
+          " " + outdir + "/known_boardreaders_list.txt", shell=True,
+          stdout=subprocess.PIPE).wait()
+
+    if not os.path.exists(outdir + "/known_boardreaders_list.txt"):
+        self.alert_and_recover("Problem creating file " + outdir + "/known_boardreaders_list.txt")
+
     # JCF, 11/20/14
 
     # Now save "metadata" about the run in the
