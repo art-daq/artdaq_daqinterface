@@ -93,10 +93,10 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
             self.request_address = res.group(1)
             continue
 
-        res = re.search(r"\s*partition_id\s*:\s*(\S+)",
+        res = re.search(r"\s*partition_number\s*:\s*(\S+)",
                         line)
         if res:
-            self.partition_id = int( res.group(1) )
+            self.partition_number = int( res.group(1) )
             continue
 
         res = re.search(r"\s*debug level\s*:\s*(\S+)",

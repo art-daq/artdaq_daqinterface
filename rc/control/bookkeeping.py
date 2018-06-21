@@ -452,9 +452,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                        "request_port: %d" % (self.request_port), 
                                                        self.procinfos[i_proc].fhicl_used)
 
-        if not self.partition_id is None:
-            self.procinfos[i_proc].fhicl_used = re.sub("partition_id\s*:\s*[0-9]+", 
-                                                       "partition_id: %d" % (self.partition_id), 
+        if not self.partition_number is None:
+            self.procinfos[i_proc].fhicl_used = re.sub("partition_number\s*:\s*[0-9]+", 
+                                                       "partition_number: %d" % (self.partition_number), 
                                                        self.procinfos[i_proc].fhicl_used)
     
     if not self.data_directory_override is None:
