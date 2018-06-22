@@ -1848,7 +1848,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
         print
 
-        if os.path.exists(self.tmp_run_record):
+        if hasattr(self, "tmp_run_record") and os.path.exists(self.tmp_run_record):
             shutil.rmtree(self.tmp_run_record)
 
         if self.manage_processes:
