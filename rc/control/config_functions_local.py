@@ -96,8 +96,7 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
         res = re.search(r"\s*partition_number\s*:\s*(\S+)",
                         line)
         if res:
-            self.partition_number = int( res.group(1) )
-            continue
+            raise Exception(make_paragraph("Jun-24-2018: the variable \"partition_number\" was found in the boot file %s; this use is deprecated as \"partition_number\" is now set by the DAQINTERFACE_PARTITION_NUMBER environment variable" % (daqinterface_config_filename))
 
         res = re.search(r"\s*debug level\s*:\s*(\S+)",
                         line)
@@ -163,7 +162,6 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
                                                     memberDict["port"],
                                                     memberDict["label"]))
 
-
                 for varname in memberDict.keys():
                     if varname != "port":
                         memberDict[varname] = None
@@ -178,6 +176,7 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
 
     if num_expected_processes != num_actual_processes:
         raise Exception(make_paragraph("An inconsistency exists in the boot file; a host was defined in the file for %d artdaq processes, but there's only a complete set of info in the file for %d processes. This may be the result of using a boot file designed for an artdaq version prior to the addition of a label requirement (see https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/The_boot_file_reference for more)" % (num_expected_processes, num_actual_processes)))
+
 
     return daqinterface_config_filename
 

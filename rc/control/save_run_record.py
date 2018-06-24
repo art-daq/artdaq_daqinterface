@@ -28,11 +28,6 @@ def save_run_record_base(self):
 
     for procinfo in self.procinfos:
 
-        if procinfo.host == "localhost":
-            procinfo_host_to_record = os.environ["HOSTNAME"]
-        else:
-            procinfo_host_to_record = procinfo.host
-
         outf = open(outdir + "/" + procinfo.label + ".fcl", "w")
 
         outf.write(procinfo.fhicl_used)
