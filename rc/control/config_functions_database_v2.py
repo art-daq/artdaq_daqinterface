@@ -94,6 +94,7 @@ def put_config_info_base(self):
     cmds.append( "chmod 777 " + runnum )
     cmds.append( "cat " + runnum + "/metadata.txt | awk -f $scriptdir/fhiclize_metadata_file.awk > " + runnum + "/metadata.fcl" )
     cmds.append( "cat " + runnum + "/boot.txt | awk -f $scriptdir/fhiclize_boot_file.awk > " + runnum + "/boot.fcl" )
+    cmds.append( "cat " + runnum + "/known_boardreaders_list.txt | sed -r 's/^\s*(\S+)\s+(\S+)\s+(\S+)/\\1: [\"\\2\", \"\\3\"]/' > " + runnum + "/known_boardreaders_list.fcl")
     cmds.append( "rm -f " + runnum + "/*.txt")
 
     if os.getenv("ARTDAQ_DATABASE_CONFDIR") is None:
@@ -155,10 +156,15 @@ def listconfigs_base(self):
     print
     print "Available configurations: "
 
+    config_cntr = 0
+
     with open("/tmp/listconfigs_" + os.environ["USER"] + ".txt", "w") as outf:
         for config in getListOfAvailableRunConfigurations():
-            outf.write(config + "\n")
-            print config
+            config_cntr += 1
+
+            if config_cntr <= self.max_configurations_to_list:
+                outf.write(config + "\n")
+                print config
 
 def main():
 

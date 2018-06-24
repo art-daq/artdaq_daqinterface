@@ -396,6 +396,7 @@ class DAQInterface(Component):
         self.use_messageviewer = True
         self.fake_messagefacility = False
         self.data_directory_override = None
+        self.max_configurations_to_list = 1000000
 
         self.productsdir = None
 
@@ -442,6 +443,8 @@ class DAQInterface(Component):
                 self.max_fragment_size_bytes = int( line.split()[-1].strip())
                 if self.max_fragment_size_bytes % 8 != 0:
                     raise Exception("Value for \"max_fragment_size_bytes\" in settings file \"%s\" should be a multiple of 8" % (os.environ["DAQINTERFACE_SETTINGS"]))
+            elif "max_configurations_to_list" in line:
+                self.max_configurations_to_list = int( line.split()[-1].strip() )
             elif "all_events_to_all_dispatchers" in line:
                 token = line.split()[-1].strip()
                 
@@ -1672,8 +1675,9 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
         for i_proc, reformatted_fhicl_document in enumerate(reformatted_fhicl_documents):
             self.procinfos[i_proc].fhicl_used = reformatted_fhicl_document
 
-        self.tmp_run_record = "/tmp/run_record_attempted_%s" % \
-            (os.environ["USER"])
+        self.tmp_run_record = "/tmp/run_record_attempted_%s/%s" % \
+            (os.environ["USER"],
+            Popen("date +%a_%b_%d_%H:%M:%S.%N", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip())
         
         if os.path.exists(self.tmp_run_record):
             shutil.rmtree(self.tmp_run_record)

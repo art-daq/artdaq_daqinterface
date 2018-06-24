@@ -2,6 +2,7 @@
 import os
 import stat
 import re
+import glob
 import subprocess
 from subprocess import Popen
 import traceback
@@ -23,17 +24,35 @@ def save_run_record_base(self):
                                "directory " + outdir)
         return
 
+    # JCF, Jun-20-2018
+    
+    # protoDUNE-specific - you should NOT see this on the develop
+    # branch: I write the FHiCL documents not just to the subdirectory
+    # of /tmp/run_record_attempted_np04daq, which ensures that the
+    # correct run record is saved, but also to
+    # /tmp/run_record_attempted_np04daq itself, so that the interface
+    # with JCOP isn't broken. Notice that it's far less likely that
+    # another partition will clobber the documents in
+    # /tmp/run_record_attempted_np04daq between when DAQInterface
+    # creates them and JCOP picks them up, than when DAQInterface
+    # creates them and they get saved on run start - in this
+    # best-of-both-worlds approach, JCOP can continue using
+    # /tmp/run_record_attempted_np04daq while we can still be
+    # confident the correct run record is saved
+
+    old_outdir = "/tmp/run_record_attempted_%s" % (os.environ["USER"])
+    assert os.path.exists( old_outdir )
+    
+    for oldfhicl in glob.glob( "%s/*.fcl" % (old_outdir)):
+        os.unlink(oldfhicl)
+
     for procinfo in self.procinfos:
 
-        if procinfo.host == "localhost":
-            procinfo_host_to_record = os.environ["HOSTNAME"]
-        else:
-            procinfo_host_to_record = procinfo.host
+        for outd in [ old_outdir, outdir ]:
+            outf = open(outd + "/" + procinfo.label + ".fcl", "w")
 
-        outf = open(outdir + "/" + procinfo.label + ".fcl", "w")
-
-        outf.write(procinfo.fhicl_used)
-        outf.close()
+            outf.write(procinfo.fhicl_used)
+            outf.close()
 
     # For good measure, let's also save the DAQInterface configuration file
 
@@ -54,6 +73,15 @@ def save_run_record_base(self):
 
     if not os.path.exists(outdir + "/setup.txt"):
         self.alert_and_recover("Problem creating file %s/setup.txt" % (outdir))
+
+    assert os.path.exists( os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"] )
+
+    Popen("cp -p " + os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"] +
+          " " + outdir + "/known_boardreaders_list.txt", shell=True,
+          stdout=subprocess.PIPE).wait()
+
+    if not os.path.exists(outdir + "/known_boardreaders_list.txt"):
+        self.alert_and_recover("Problem creating file " + outdir + "/known_boardreaders_list.txt")
 
     # JCF, 11/20/14
 
