@@ -96,7 +96,7 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
         res = re.search(r"\s*partition_number\s*:\s*(\S+)",
                         line)
         if res:
-            raise Exception(make_paragraph("Jun-24-2018: the variable \"partition_number\" was found in the boot file %s; this use is deprecated as \"partition_number\" is now set by the DAQINTERFACE_PARTITION_NUMBER environment variable" % (daqinterface_config_filename))
+            raise Exception(make_paragraph("Jun-24-2018: the variable \"partition_number\" was found in the boot file %s; this use is deprecated as \"partition_number\" is now set by the DAQINTERFACE_PARTITION_NUMBER environment variable" % (daqinterface_config_filename)))
 
         res = re.search(r"\s*debug level\s*:\s*(\S+)",
                         line)
@@ -218,6 +218,7 @@ def listconfigs_base(self):
 
     print
     print "See file \"%s\" for saved record of the above configurations" % (listconfigs_file)
+    print make_paragraph("Please note that for the time being, the optional max_configurations_to_list variable which may be set in %s is only applicable when working with the database" % os.environ["DAQINTERFACE_SETTINGS"])
     print
 
 def main():
