@@ -71,6 +71,10 @@
   }
 
   metrics: {
+	brReport: {
+	  metricPluginType: "report"
+	  level: 1
+	}
 	brFile: {
 	  metricPluginType: "file"
 	  level: 3
