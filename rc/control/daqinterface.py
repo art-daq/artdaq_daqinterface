@@ -855,14 +855,6 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
     def kill_procs(self):
 
-        if hasattr(self, "pmtconfigname") and os.path.exists(self.pmtconfigname):
-            cmd = "rm -f %s" % (self.pmtconfigname)
-
-            if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
-                cmd = "ssh -f " + self.pmt_host + " '" + cmd + "'"
-
-            Popen(cmd, shell=True).wait()
-
         # JCF, 12/29/14
 
         # If the PMT host hasn't been defined, we can be sure there
@@ -1853,6 +1845,14 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
         if hasattr(self, "tmp_run_record") and os.path.exists(self.tmp_run_record):
             shutil.rmtree(self.tmp_run_record)
+
+        if hasattr(self, "pmtconfigname") and os.path.exists(self.pmtconfigname):
+            cmd = "rm -f %s" % (self.pmtconfigname)
+
+            if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
+                cmd = "ssh -f " + self.pmt_host + " '" + cmd + "'"
+
+            Popen(cmd, shell=True).wait()
 
         if self.manage_processes:
 
