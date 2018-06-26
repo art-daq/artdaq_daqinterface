@@ -324,38 +324,6 @@ function check_run_records() {
     ls -ltr $recorddir/$runnum 
 }
 
-function check_event_count() {
-    
-    metadata_file=$recorddir/$runnum/metadata.txt
-
-    if [[ ! -e $metadata_file ]]; then
-	echo "Unable to find expected metadata file $metadata_file" >&2
-	return
-    fi
-
-    events_in_metadata=$( awk '/^\s*Total events/ { print $NF }' $metadata_file )
-
-    if [[ -z $events_in_metadata ]]; then
-	echo "Unable to find value for total events in $metadata_file" >&2
-	return
-    fi
-
-    events_in_rootfiles=$( $( dirname $0 )/rootfile_event_count.sh $runnum )
-
-    if ! [[ "$?" == "0" ]]; then 
-    	echo "Unable to determine the # of events from the expected *.root files" >&2
-    	return
-    fi
-
-    if [[ "$events_in_metadata" == "$events_in_rootfiles" ]]; then
-    	echo "Event count in saved metadata and event count in *.root files agree (${events_in_metadata})" 
-    else
-    	echo "Event count in saved metadata (${events_in_metadata}) and event count in *.root files (${events_in_rootfiles}) don't agree" >&2
-    fi
-
-}
-
-
 main $@
 
 #echo
@@ -364,8 +332,6 @@ echo
 check_run_records
 echo
 $( dirname $0 )/compare_run_record_and_rootfile.sh $runnum
-echo
-check_event_count
 echo
 
 endtime=$(date +%s)
