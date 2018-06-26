@@ -398,6 +398,7 @@ class DAQInterface(Component):
         self.fake_messagefacility = False
         self.data_directory_override = None
         self.max_configurations_to_list = 1000000
+        self.disable_unique_rootfile_labels = False
 
         self.productsdir = None
 
@@ -455,6 +456,14 @@ class DAQInterface(Component):
                     self.all_events_to_all_dispatchers = False
                 else:
                     raise Exception("all_events_to_all_dispatchers must be set to either [Tt]rue or [Ff]alse")
+            elif "disable_unique_rootfile_labels" in line:
+                token = line.split()[-1].strip()
+                if "true" in token or "True" in token:
+                    self.disable_unique_rootfile_labels = True
+                elif "false" in token or "False" in token:
+                    self.disable_unique_rootfile_labels = False
+                else:
+                    raise Exception("disable_unique_rootfile_labels must be set to either [Tt]rue or [Ff]alse")
             elif "use_messageviewer" in line:
                 token = line.split()[-1].strip()
                 
@@ -1668,20 +1677,21 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                 self.alert_and_recover("An exception was thrown when creating the process FHiCL documents; see traceback above for more info")
                 return
 
-            fhicl_before_sub = self.procinfos[i_proc].fhicl_used
+            if not self.disable_unique_rootfile_labels:
+                fhicl_before_sub = self.procinfos[i_proc].fhicl_used
 
-            if self.procinfos[i_proc].name == "DataLogger":
-                rootfile_cntr_prefix = "dl"
-            elif self.procinfos[i_proc].name == "EventBuilder":
-                rootfile_cntr_prefix = "eb"
+                if self.procinfos[i_proc].name == "DataLogger":
+                    rootfile_cntr_prefix = "dl"
+                elif self.procinfos[i_proc].name == "EventBuilder":
+                    rootfile_cntr_prefix = "eb"
 
-            self.procinfos[i_proc].fhicl_used = re.sub("\.root(\"|\s+)",
+                self.procinfos[i_proc].fhicl_used = re.sub("\.root(\"|\s+)",
                                                        "_" + str(rootfile_cntr_prefix) + 
                                                        str(rootfile_cntr+1) + ".root" + r"\1",
                                                        self.procinfos[i_proc].fhicl_used)
 
-            if self.procinfos[i_proc].fhicl_used != fhicl_before_sub:
-                rootfile_cntr += 1
+                if self.procinfos[i_proc].fhicl_used != fhicl_before_sub:
+                    rootfile_cntr += 1
 
         for procinfo in self.procinfos:
             assert not procinfo.fhicl is None and not procinfo.fhicl_used is None
