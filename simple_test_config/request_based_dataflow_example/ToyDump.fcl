@@ -9,6 +9,7 @@ physics:
       frag_type: TOY1
       num_adcs_to_show: 10   # Obviously this should be no more than ADC counts per fragment
       dump_to_screen: true
+      num_adcs_to_write: -1
     }
 
     printBuildInfo: {
