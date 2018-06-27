@@ -2,12 +2,12 @@ services: {
   scheduler: {
     errorOnFailureToPut: false
   }
-  NetMonTransportServiceInterface: {
-    service_provider: NetMonTransportService
-    broadcast_sends: true
-    nonblocking_sends: true
-	destinations: { }
-  }
+  #NetMonTransportServiceInterface: {
+  #  service_provider: NetMonTransportService
+  #  broadcast_sends: true
+  #  nonblocking_sends: true
+  #  destinations: { }
+  #}
 }
 
 daq: {
@@ -42,10 +42,10 @@ source: {
   module_type: NetMonInput
 }
 outputs: {
-  rootNetOutput: {
-    module_type: RootNetOutput
-    #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
-  }
+  #rootNetOutput: {
+  #  module_type: RootNetOutput
+  #  #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
+  #}
 
   normalOutput: {
     module_type: RootOutput
@@ -79,6 +79,6 @@ physics: {
 
   p2: [ BuildInfo ]
   my_output_modules: [ normalOutput ]
-  my_mpi_output_modules: [ rootNetOutput ]
+  #my_mpi_output_modules: [ rootNetOutput ]
 }
 process_name: DAQDL
