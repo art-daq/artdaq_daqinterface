@@ -253,7 +253,7 @@ def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
     exception_message = ""
 
     if status != 0:
-        exception_message = make_paragraph("Failure in attempt of %s to reformat FHiCL documents; nonzero status returned" % (reformat_fhicl_document.__name__))
+        exception_message = make_paragraph("Failure in attempt of %s to reformat FHiCL documents; nonzero status returned. This may indicate a problem with the setup file %s" % (reformat_fhicl_documents.__name__, setup_fhiclcpp))
 
     postformat_fhicl_strings = []
 
@@ -263,7 +263,7 @@ def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
             postformat_fhicl_strings.append( open( postformat_filename ).read() )
             os.unlink( postformat_filename )
         else:
-            exception_message = make_paragraph("Failure in %s: problem creating postformat file in fhicl-dump call" % (reformat_fhicl_document.__name__))
+            exception_message = make_paragraph("Failure in %s: problem creating postformat file in fhicl-dump call" % (reformat_fhicl_documents.__name__))
         
         os.unlink( preformat_filename )
 
