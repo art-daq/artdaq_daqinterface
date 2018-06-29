@@ -1630,9 +1630,10 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
             fcl = "%s/%s.fcl" % (config_subdirname, self.procinfos[i_proc].label)
 
             if not os.path.exists(fcl):
-                self.alert_and_recover(make_paragraph("Unable to find a FHiCL document \"%s.fcl\" in configuration \"%s\"; either remove the request for %s in the boot file or choose a new configuration" % \
+                self.print_log("e", make_paragraph("Unable to find a FHiCL document \"%s.fcl\" in configuration \"%s\"; either remove the request for %s in the boot file and redo the transitions or choose a new configuration" % \
                                                       (self.procinfos[i_proc].label, self.config_for_run,
                                                        self.procinfos[i_proc].label)))
+                self.revert_failed_transition("looking for all needed FHiCL documents")
                 return
 
             try:
