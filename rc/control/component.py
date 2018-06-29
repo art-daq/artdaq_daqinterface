@@ -94,6 +94,8 @@ class Component(ContextObject):
         if name != self.name:
             return
         oldstate = self.dict_state_from.get(requested, requested)
+        assert "|" not in oldstate, "More than one possibility for what the previous state was"
+
         trep = datetime.datetime.utcnow()
         self.__state = oldstate
 
@@ -131,7 +133,7 @@ class Component(ContextObject):
             allowed_transitions = []
 
             for key, val in self.dict_state_from.items():
-                if val == self.__state:
+                if self.__state in val:
                     allowed_transitions.append( key )
 
             assert len(allowed_transitions) > 0, "Zero allowed transitions"
