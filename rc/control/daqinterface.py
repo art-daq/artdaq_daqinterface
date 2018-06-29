@@ -254,7 +254,6 @@ class DAQInterface(Component):
         self.heartbeat_failure = False
 
         self.debug_level = 10000
-        self.tcp_base_port = 6300
         self.request_address = None
         self.request_port = None 
         self.partition_number = partition_number
