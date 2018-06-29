@@ -61,6 +61,14 @@ class Component(ContextObject):
                     "resuming": "paused",
                     "terminating": "ready|booted"}
 
+        self.dict_correct_grammar = {"booting":"boot",
+                                     "shutting":"shutdown",
+                                     "stopping":"stop",
+                                     "configuring":"config",
+                                     "starting":"start",
+                                     "pausing":"pause",
+                                     "resuming":"resume",
+                                     "terminating":"terminate"}
     def state(self, name):
         if name != self.name:
             return "unknown"
@@ -98,6 +106,16 @@ class Component(ContextObject):
     def listconfigs(self):
         assert False, "This version of the function should not be called"
 
+    # JCF, Jun-29-2018
+
+    # While print_log here seemingly does nothing, this can be
+    # overridden in derived classes s.t.  messages not just in derived
+    # classes but here in Component can be decorated with, e.g., a
+    # severity level
+
+    def print_log(self, severity, printstr, debuglevel=-999):
+        print printstr
+
     def state_change(self, name, requested, state_args):
         if name != self.name:
             return
@@ -106,9 +124,9 @@ class Component(ContextObject):
         if requested in self.dict_state_from.keys() and \
                 self.__state not in self.dict_state_from[ requested ]:
 
-            print "\nWARNING: Unable to accept transition request " \
+            self.print_log("w", "\nWARNING: Unable to accept transition request " \
                 "\"%s\" from current state \"%s\"; the command will have no effect." % \
-                (requested, self.__state)
+                (requested, self.__state))
 
             allowed_transitions = []
 
@@ -118,8 +136,8 @@ class Component(ContextObject):
 
             assert len(allowed_transitions) > 0, "Zero allowed transitions"
 
-            print "Can accept the following transition request(s): " + \
-                ", ".join( allowed_transitions )
+            self.print_log("w", "Can accept the following transition request(s): " + \
+                ", ".join( [ self.dict_correct_grammar[ transition ] for transition in allowed_transitions ] ) )
             return
 
         # set out transition state now.
