@@ -307,8 +307,8 @@ class DAQInterface(Component):
                     "changes, and restart.") + "\n")
             sys.exit(1)
 
-        self.print_log("i", make_paragraph("DAQInterface in partition %s launched and now in \"%s\" state, listening on port %d" % 
-                                           (self.partition_number, self.state(self.name), self.rpc_port)))
+        self.print_log("i", "DAQInterface in partition %s launched and now in \"%s\" state, listening on port %d" % 
+                                           (self.partition_number, self.state(self.name), self.rpc_port))
 
     get_config_info = get_config_info_base
     put_config_info = put_config_info_base
