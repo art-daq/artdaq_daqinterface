@@ -97,7 +97,7 @@ mkdir -p $DAQINTERFACE_LOGDIR
 # change is reflected in the information message that appears after
 # source-ing this script 
 
-export DAQINTERFACE_LOGFILE=$DAQINTERFACE_LOGDIR/DAQInterface_port\${DAQINTERFACE_PORT}.log
+export DAQINTERFACE_LOGFILE=$DAQINTERFACE_LOGDIR/DAQInterface_partition\${DAQINTERFACE_PARTITION_NUMBER}.log
 
 # Make sure the logic to derive DAQInterface port # from partition #
 # is the same as in daqinterface_functions.sh!
@@ -186,11 +186,13 @@ heredoc
 fi
 
 
-echo
-echo "* The command was successful"
-echo "* To launch, just type \"DAQInterface &\" (excluding quotes, ampersand optional)" 
-echo "* Output will be logged in ${DAQINTERFACE_LOGDIR}/DAQInterface_port<N>.log, where <N> is the port DAQInterface is listening on"
-echo "* Help is available at https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Artdaq-daqinterface"
+cat<<EOF
+* The command was successful
+* To launch, just type "DAQInterface &" (excluding quotes, ampersand optional)
+* Output will be logged in ${DAQINTERFACE_LOGDIR}/DAQInterface_partition<N>.log, where <N> 
+  is the partition the DAQInterface instance is on
+* Help is available at https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Artdaq-daqinterface
+EOF
  
 echo
 
