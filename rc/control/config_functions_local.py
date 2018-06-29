@@ -80,10 +80,6 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
         if res:
             raise Exception(make_paragraph("Jun-29-2018: the variable \"tcp_base_port\" was found in the boot file %s; this use is deprecated as tcp port values are now set internally in artdaq since artdaq commit d338b810c589a177ff1a34d82fa82a459cc1704b" % (daqinterface_config_filename)))
 
-        if res:
-            self.tcp_base_port = int( res.group(1) )
-            continue
-
         res = re.search(r"\s*request_port\s*:\s*(\S+)",
                         line)
         if res:
