@@ -1,5 +1,5 @@
 
-DAQ setup script: name_of_DAQ_setup_script_not_yet_defined
+DAQ setup script: name_of_DAQ_setup_script_not_yet_defined 
 
 PMT host: localhost
 PMT port: 5400
@@ -27,6 +27,3 @@ RoutingMaster host: localhost
 RoutingMaster port: 5275
 RoutingMaster label: RoutingMaster1
 
-RoutingMaster host: localhost
-RoutingMaster port: 5276
-RoutingMaster label: RoutingMaster2

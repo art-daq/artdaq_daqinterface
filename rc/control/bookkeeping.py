@@ -127,8 +127,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v2_base(self):
                     host_to_display = procinfo.host
 
                 proc_hosts.append( 
-                    "{rank: %d host: \"%s\" portOffset: %d}" % \
-                        (num_existing, host_to_display, self.tcp_base_port + 100*num_existing))
+                    "{rank: %d host: \"%s\" }" % \
+                        (num_existing, host_to_display))
 
     proc_hosts_string = ", ".join( proc_hosts )
 
@@ -288,8 +288,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             host_to_display = procinfo.host
 
         proc_hosts.append( 
-            "{rank: %d host: \"%s\" portOffset: %d}" % \
-                (num_existing, host_to_display, self.tcp_base_port + (1+len(self.procinfos))*num_existing))
+            "{rank: %d host: \"%s\"}" % \
+                (num_existing, host_to_display))
 
     proc_hosts_string = ", ".join( proc_hosts )
 

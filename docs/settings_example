@@ -14,7 +14,6 @@
 # to receive commands)
 
 log_directory: /tmp
-data_directory_override: /tmp
 record_directory: $HOME/run_records
 package_hashes_to_save: [ artdaq-demo, artdaq-core-demo, artdaq ]
 productsdir_for_bash_scripts: $HOME/path_to_product_dir_not_yet_defined/products
