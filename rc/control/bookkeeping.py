@@ -9,6 +9,7 @@ import re
 from rc.control.utilities import table_range
 from rc.control.utilities import enclosing_table_range
 from rc.control.utilities import commit_check_throws_if_failure
+from rc.control.utilities import make_paragraph
 
 def bookkeeping_for_fhicl_documents_artdaq_v1_base(self):
 
@@ -256,17 +257,16 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     send_1_over_N = True
 
-    try:
-        if self.all_events_to_all_dispatchers:
-            send_1_over_N = False
-    except Exception:
-        pass # We don't care if variable above is undefined
+    if self.all_events_to_all_dispatchers:
+        send_1_over_N = False
+    else:
+        raise Exception(make_paragraph("all_events_to_all_dispatchers is set to false in the settings file %s; this use is deprecated so it should either be set to true or removed entirely (default is true)" % (os.environ["DAQINTERFACE_SETTINGS"])))
 
     max_fragment_size_words = self.max_fragment_size_bytes / 8
 
     if os.path.exists(self.daq_dir + "/srcs/artdaq"):
         commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
-                                           "68cb53e576dd6afea7950ca6286a08f5f329b966", "May 9, 2017", True)
+                                           "d338b810c589a177ff1a34d82fa82a459cc1704b", "June 29, 2018", True)
 
     num_data_loggers = 0
     num_dispatchers = 0

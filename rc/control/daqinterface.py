@@ -386,7 +386,9 @@ class DAQInterface(Component):
         self.log_directory = None
         self.record_directory = None
         self.daq_setup_script = None
-        self.package_hashes_to_save = None
+        self.package_hashes_to_save = []
+        self.productsdir_for_bash_scripts = None
+        self.max_fragment_size_bytes = None
 
         self.boardreader_timeout = 30
         self.eventbuilder_timeout = 30
@@ -398,6 +400,7 @@ class DAQInterface(Component):
         self.data_directory_override = None
         self.max_configurations_to_list = 1000000
         self.disable_unique_rootfile_labels = False
+        self.all_events_to_all_dispatchers = True
 
         self.productsdir = None
 
@@ -405,23 +408,30 @@ class DAQInterface(Component):
 
             line = expand_environment_variable_in_string( line )
 
+            # Allow same-line comments
+            res = re.search(r"^(.*)#.*", line)
+            if res:
+                line = res.group(1)
+                print "Line is now \"%s\"" % (line)
+
+            line = line.strip()
+            print "Line is now \"%s\"" % (line)
+
             if re.search(r"^\s*#", line):
                 continue
-            elif "log_directory" in line:
+            elif "log_directory" in line or "log directory" in line:
                 self.log_directory = line.split()[-1].strip()
-            elif "record_directory" in line:
+            elif "record_directory" in line or "record directory" in line:
                 self.record_directory = line.split()[-1].strip()
-            elif "productsdir_for_bash_scripts" in line:
+            elif "productsdir_for_bash_scripts" in line or "productsdir for bash scripts" in line:
                 self.productsdir = line.split()[-1].strip()
-            elif "package_hashes_to_save" in line:
+            elif "package_hashes_to_save" in line or "package hashes to save" in line:
                 res = re.search(r".*\[(.*)\].*", line)
 
                 if not res:
                     raise Exception(make_paragraph(
                             "Unable to parse package_hashes_to_save line in the settings file, %s" % \
                                 (os.environ["DAQINTERFACE_SETTINGS"])))
-
-                self.package_hashes_to_save = []
 
                 if res.group(1).strip() == "":
                     continue
@@ -432,21 +442,21 @@ class DAQInterface(Component):
                     package = string.replace(package, "\"", "")
                     package = string.replace(package, " ", "") # strip() doesn't seem to work here
                     self.package_hashes_to_save.append(package)
-            elif "boardreader timeout" in line:
+            elif "boardreader_timeout" in line or "boardreader timeout" in line:
                 self.boardreader_timeout = int( line.split()[-1].strip() )
-            elif "eventbuilder timeout" in line:
+            elif "eventbuilder_timeout" in line or "eventbuilder timeout" in line:
                 self.eventbuilder_timeout = int( line.split()[-1].strip() )
-            elif "aggregator timeout" in line:
+            elif "aggregator_timeout" in line or "aggregator timeout" in line:
                 self.aggregator_timeout = int( line.split()[-1].strip() )
-            elif "boardreader priorities" in line:
+            elif "boardreader_priorities" in line or "boardreader priorities" in line:
                 self.boardreader_priorities = [regexp.strip() for regexp in line.split()[2:] if ":" not in regexp]
-            elif "max_fragment_size_bytes" in line:
+            elif "max_fragment_size_bytes" in line or "max fragment size bytes" in line:
                 self.max_fragment_size_bytes = int( line.split()[-1].strip())
                 if self.max_fragment_size_bytes % 8 != 0:
                     raise Exception("Value for \"max_fragment_size_bytes\" in settings file \"%s\" should be a multiple of 8" % (os.environ["DAQINTERFACE_SETTINGS"]))
-            elif "max_configurations_to_list" in line:
+            elif "max_configurations_to_list" in line or "max configurations to list" in line:
                 self.max_configurations_to_list = int( line.split()[-1].strip() )
-            elif "all_events_to_all_dispatchers" in line:
+            elif "all_events_to_all_dispatchers" in line or "all events to all dispatchers" in line:
                 token = line.split()[-1].strip()
                 
                 if "true" in token or "True" in token:
@@ -455,7 +465,7 @@ class DAQInterface(Component):
                     self.all_events_to_all_dispatchers = False
                 else:
                     raise Exception("all_events_to_all_dispatchers must be set to either [Tt]rue or [Ff]alse")
-            elif "disable_unique_rootfile_labels" in line:
+            elif "disable_unique_rootfile_labels" in line or "disable unique rootfile labels" in line:
                 token = line.split()[-1].strip()
                 if "true" in token or "True" in token:
                     self.disable_unique_rootfile_labels = True
@@ -463,25 +473,25 @@ class DAQInterface(Component):
                     self.disable_unique_rootfile_labels = False
                 else:
                     raise Exception("disable_unique_rootfile_labels must be set to either [Tt]rue or [Ff]alse")
-            elif "use_messageviewer" in line:
+            elif "use_messageviewer" in line or "use messageviewer" in line:
                 token = line.split()[-1].strip()
                 
                 res = re.search(r"[Ff]alse", token)
 
                 if res:
                     self.use_messageviewer = False
-            elif "fake_messagefacility" in line:
+            elif "fake_messagefacility" in line or "fake messagefacility" in line:
                 token = line.split()[-1].strip()
                 
                 res = re.search(r"[Tt]rue", token)
 
                 if res:
                     self.fake_messagefacility = True
-            elif "data_directory_override" in line:
+            elif "data_directory_override" in line or "data directory override" in line:
                 self.data_directory_override = line.split()[-1].strip()
                 if self.data_directory_override[-1] != "/":
                     self.data_directory_override = self.data_directory_override + "/"
-            elif "transfer_plugin_to_use" in line:
+            elif "transfer_plugin_to_use" in line or "transfer plugin to use" in line:
                 self.transfer = line.split()[-1].strip()
                 
 
@@ -493,8 +503,11 @@ class DAQInterface(Component):
         if self.record_directory is None:
             missing_vars.append("record_directory")
 
-        if self.package_hashes_to_save is None or self.package_hashes_to_save is []:
-            missing_vars.append("package_hashes_to_save")
+        if self.productsdir is None:
+            missing_vars.append("productsdir_for_bash_scripts")
+
+        if self.max_fragment_size_bytes is None:
+            missing_vars.append("max_fragment_size_bytes")
 
         if len(missing_vars) > 0:
             missing_vars_string = ", ".join(missing_vars)

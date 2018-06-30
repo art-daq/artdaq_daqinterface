@@ -168,9 +168,9 @@ def commit_check_throws_if_failure(packagedir, commit_hash, date, request_after)
     proclines = proc.stdout.readlines()
 
     if request_after and len(proclines) != 1:
-        raise Exception("Unable to find expected git commit hash %s (%s) in directory \"%s\"; this means the version of code in that directory isn't the one expected" % (commit_hash, date, packagedir))
+        raise Exception(make_paragraph("Unable to find expected git commit hash %s (%s) in directory \"%s\"; this means the version of code in that directory isn't the one expected" % (commit_hash, date, packagedir)))
     elif not request_after and len(proclines) != 0:
-        raise Exception("Unexpectedly found git commit hash %s (%s) in directory \"%s\"; this means the version of code in that directory isn't the one expected" % (commit_hash, date, packagedir))
+        raise Exception(make_paragraph("Unexpectedly found git commit hash %s (%s) in directory \"%s\"; this means the version of code in that directory isn't the one expected" % (commit_hash, date, packagedir)))
 
 def is_msgviewer_running():
     
