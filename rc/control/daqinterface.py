@@ -412,10 +412,8 @@ class DAQInterface(Component):
             res = re.search(r"^(.*)#.*", line)
             if res:
                 line = res.group(1)
-                print "Line is now \"%s\"" % (line)
 
             line = line.strip()
-            print "Line is now \"%s\"" % (line)
 
             if re.search(r"^\s*#", line):
                 continue
