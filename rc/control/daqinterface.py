@@ -1384,7 +1384,10 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
             # read in
 
             if boardreader_port == "-1":
-                boardreader_port = str( 10100 + self.partition_number*1000 + i_boardreader )
+                boardreader_port = str( int(os.environ["ARTDAQ_BASE_PORT"]) + \
+                                        100 + \
+                                        self.partition_number*int(os.environ["ARTDAQ_PORTS_PER_PARTITION"]) + \
+                                        i_boardreader )
                 self.daq_comp_list[ compname ] = boardreader_host, boardreader_port
 
             self.print_log("d", "%s at %s:%s" % (compname, boardreader_host, boardreader_port), 2)
