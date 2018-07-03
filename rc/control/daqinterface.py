@@ -1879,12 +1879,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
         if self.manage_processes:
 
-            self.print_log("w", "\nCurrently not sending a shutdown transition to the Dispatcher process")
-            
             for procinfo in self.procinfos:
-
-                if "Dispatcher" in procinfo.name:
-                    continue
 
                 try:
                     procinfo.lastreturned = procinfo.server.daq.shutdown()
