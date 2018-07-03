@@ -431,7 +431,26 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             if not res:
                 expected_fragments_per_event += 1
             else:
-                continue                
+                continue           
+
+    for procinfo in self.procinfos:
+        
+        if "RoutingMaster" in procinfo.name:
+
+            sender_ranks = "sender_ranks: [%s]" % ( ",".join( 
+                [ str(rank) for rank in range(0,self.num_boardreaders()) ] ))
+            receiver_ranks = "receiver_ranks: [%s]" % ( ",".join( 
+                [ str(rank) for rank in range(self.num_boardreaders(), 
+                                              self.num_boardreaders() + self.num_eventbuilders()) ] ))
+
+            self.procinfos[i_proc].fhicl_used = re.sub("sender_ranks\s*:\s*\[.*\]",
+                                                       sender_ranks,
+                                                       self.procinfos[i_proc].fhicl_used)
+
+            self.procinfos[i_proc].fhicl_used = re.sub("receiver_ranks\s*:\s*\[.*\]",
+                                                       receiver_ranks,
+                                                       self.procinfos[i_proc].fhicl_used)
+     
 
     for i_proc in range(len(self.procinfos)):
         if "DataLogger" in self.procinfos[i_proc].name or "Dispatcher" in self.procinfos[i_proc].name:

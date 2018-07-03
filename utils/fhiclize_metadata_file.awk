@@ -56,6 +56,24 @@
 	}
     }
 
+    if (routingmaster_section_active) {
+	if ( $0 !~ /^\s*$/) {
+	    routingmasters[++routingmaster_cntr] = $1
+	    next
+	} else {
+	    printf "\nroutingmaster_logfiles: ["
+	    for (i = 1; i <= length(routingmasters); ++i) {
+		if (i != length(routingmasters)) {
+		    printf "\"%s\", ", routingmasters[i]
+		} else {
+		    printf "\"%s\"]\n", routingmasters[i]
+		}
+	    }
+	    routingmaster_section_active = 0
+	}
+    }
+
+
     if (aggregator_section_active) {
 
 	if ( $0 !~ /^\s*$/) {

@@ -691,8 +691,8 @@ class DAQInterface(Component):
 
         self.launch_cmds = []
 
-        for logdir in ["pmt", "masterControl", "boardreader", "eventbuilder",
-                       "dispatcher", "datalogger"]:
+        for logdir in ["pmt", "boardreader", "eventbuilder",
+                       "dispatcher", "datalogger", "routingmaster"]:
             if not os.path.exists( "%s/%s" % (self.log_directory, logdir)):
                 self.launch_cmds.append("mkdir -p -m 0777 " + "%s/%s" % (self.log_directory, logdir) )
 
@@ -1120,10 +1120,12 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
         assert hasattr(self, "eventbuilder_log_filenames")
         assert hasattr(self, "aggregator_log_filenames")
+        assert hasattr(self, "routingmaster_log_filenames")
 
         for loglist in [ self.boardreader_log_filenames,
                          self.eventbuilder_log_filenames, 
-                         self.aggregator_log_filenames ]:
+                         self.aggregator_log_filenames,
+                         self.routingmaster_log_filenames ]:
             
             for fulllogname in loglist:
                 host = fulllogname.split(":")[0]
@@ -1584,6 +1586,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                 self.datalogger_log_filenames = self.get_logfilenames("DataLogger")
                 self.dispatcher_log_filenames = self.get_logfilenames("Dispatcher")
                 self.aggregator_log_filenames = self.get_logfilenames("Aggregator") + self.datalogger_log_filenames + self.dispatcher_log_filenames
+                self.routingmaster_log_filenames = self.get_logfilenames("RoutingMaster")
 
             except Exception:
                 self.print_log("e", traceback.format_exc())
