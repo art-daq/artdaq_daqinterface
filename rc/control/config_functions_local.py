@@ -151,8 +151,9 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
                     # Not necessarily the same as artdaq's idea of rank...
                     rank = len(self.daq_comp_list) + num_actual_processes - 1
                            
-                    memberDict["port"] = str( 10100 + \
-                                              self.partition_number*1000 + \
+                    memberDict["port"] = str( int(os.environ["ARTDAQ_BASE_PORT"]) + \
+                                              100 + \
+                                              self.partition_number*int(os.environ["ARTDAQ_PORTS_PER_PARTITION"]) + \
                                               rank )
 
 

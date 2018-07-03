@@ -84,9 +84,6 @@ if [[ -z $DAQINTERFACE_PARTITION_NUMBER ]]; then
    export DAQINTERFACE_PARTITION_NUMBER=0
 fi
 
-. $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
-
-
 if [[ -z $DAQINTERFACE_LOGDIR ]]; then
    export DAQINTERFACE_LOGDIR=/tmp/daqinterface_${USER}
 fi
@@ -99,10 +96,20 @@ mkdir -p $DAQINTERFACE_LOGDIR
 
 export DAQINTERFACE_LOGFILE=$DAQINTERFACE_LOGDIR/DAQInterface_partition\${DAQINTERFACE_PARTITION_NUMBER}.log
 
+if [[ -z $ARTDAQ_BASE_PORT ]]; then
+   export ARTDAQ_BASE_PORT=10000
+fi
+
+if [[ -z $ARTDAQ_PORTS_PER_PARTITION ]]; then
+   export ARTDAQ_PORTS_PER_PARTITION=1000
+fi
+
+. $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
+
 # Make sure the logic to derive DAQInterface port # from partition #
 # is the same as in daqinterface_functions.sh!
 
-alias DAQInterface="export DAQINTERFACE_PORT=\$(( 10000 + \$DAQINTERFACE_PARTITION_NUMBER * 1000 )); stdbuf -oL $ARTDAQ_DAQINTERFACE_DIR/rc/control/daqinterface.py --partition-number \$DAQINTERFACE_PARTITION_NUMBER --rpc-port \$DAQINTERFACE_PORT  2>&1 | tee -a $DAQINTERFACE_LOGFILE "
+alias DAQInterface="export DAQINTERFACE_PORT=\$(( \$ARTDAQ_BASE_PORT + \$DAQINTERFACE_PARTITION_NUMBER * \$ARTDAQ_PORTS_PER_PARTITION )); stdbuf -oL $ARTDAQ_DAQINTERFACE_DIR/rc/control/daqinterface.py --partition-number \$DAQINTERFACE_PARTITION_NUMBER --rpc-port \$DAQINTERFACE_PORT  2>&1 | tee -a $DAQINTERFACE_LOGFILE "
 
 export PATH=$ARTDAQ_DAQINTERFACE_DIR/bin:$PATH
 

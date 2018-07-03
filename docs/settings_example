@@ -24,4 +24,4 @@ aggregator timeout: 30
 
 max_fragment_size_bytes: 1000000
 
-all_events_to_all_dispatchers: true
+
