@@ -258,6 +258,8 @@ class DAQInterface(Component):
         self.request_address = None
         self.request_port = None 
         self.partition_number = None
+        self.table_update_address = None
+        self.routing_base_port = None
         self.transfer = "Autodetect"
 
         self.daqinterface_base_dir = os.getcwd()
@@ -956,6 +958,11 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
         if not os.path.exists(self.daq_setup_script ):
             raise Exception(make_paragraph(
                                 self.daq_setup_script + " script not found"))
+
+        num_requested_routingmasters = len( [ procinfo.name for procinfo in self.procinfos 
+                                              if procinfo.name == "RoutingMaster" ]  )
+        if num_requested_routingmasters > 1:
+            raise Exception(make_paragraph("%d RoutingMaster processes defined in the boot file provided; you can't have more than one" % (num_requested_routingmasters)))
 
 
     # JCF, Dec-1-2016
