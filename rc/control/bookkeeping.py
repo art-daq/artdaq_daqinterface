@@ -505,6 +505,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         assert len(routingmaster_hostnames) == 0 or len(routingmaster_hostnames) == 1
     
         if len(routingmaster_hostnames) == 1:
+            if routingmaster_hostnames[0] == "localhost":
+                routingmaster_hostnames[0] = os.environ["HOSTNAME"]
             self.procinfos[i_proc].fhicl_used = re.sub("routing_master_hostname\s*:\s*\S+",
                                                        "routing_master_hostname: \"%s\"" % (routingmaster_hostnames[0].strip("\"")),
                                                        self.procinfos[i_proc].fhicl_used)
