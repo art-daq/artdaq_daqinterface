@@ -256,6 +256,8 @@ class DAQInterface(Component):
         self.debug_level = 10000
         self.request_address = None
         self.request_port = None 
+        self.table_update_address = None
+        self.routing_base_port = None
         self.partition_number = partition_number
         self.transfer = "Autodetect"
         self.rpc_port = rpc_port
@@ -691,8 +693,8 @@ class DAQInterface(Component):
 
         self.launch_cmds = []
 
-        for logdir in ["pmt", "masterControl", "boardreader", "eventbuilder",
-                       "dispatcher", "datalogger"]:
+        for logdir in ["pmt", "boardreader", "eventbuilder",
+                       "dispatcher", "datalogger", "routingmaster"]:
             if not os.path.exists( "%s/%s" % (self.log_directory, logdir)):
                 self.launch_cmds.append("mkdir -p -m 0777 " + "%s/%s" % (self.log_directory, logdir) )
 
@@ -985,6 +987,11 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
             raise Exception(make_paragraph(
                                 self.daq_setup_script + " script not found"))
 
+        num_requested_routingmasters = len( [ procinfo.name for procinfo in self.procinfos 
+                                              if procinfo.name == "RoutingMaster" ]  )
+        if num_requested_routingmasters > 1:
+            raise Exception(make_paragraph("%d RoutingMaster processes defined in the boot file provided; you can't have more than one" % (num_requested_routingmasters)))
+
 
     # JCF, Dec-1-2016
 
@@ -1120,10 +1127,12 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
         assert hasattr(self, "eventbuilder_log_filenames")
         assert hasattr(self, "aggregator_log_filenames")
+        assert hasattr(self, "routingmaster_log_filenames")
 
         for loglist in [ self.boardreader_log_filenames,
                          self.eventbuilder_log_filenames, 
-                         self.aggregator_log_filenames ]:
+                         self.aggregator_log_filenames,
+                         self.routingmaster_log_filenames ]:
             
             for fulllogname in loglist:
                 host = fulllogname.split(":")[0]
@@ -1587,6 +1596,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                 self.datalogger_log_filenames = self.get_logfilenames("DataLogger")
                 self.dispatcher_log_filenames = self.get_logfilenames("Dispatcher")
                 self.aggregator_log_filenames = self.get_logfilenames("Aggregator") + self.datalogger_log_filenames + self.dispatcher_log_filenames
+                self.routingmaster_log_filenames = self.get_logfilenames("RoutingMaster")
 
             except Exception:
                 self.print_log("e", traceback.format_exc())
@@ -1879,12 +1889,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
         if self.manage_processes:
 
-            self.print_log("w", "\nCurrently not sending a shutdown transition to the Dispatcher process")
-            
             for procinfo in self.procinfos:
-
-                if "Dispatcher" in procinfo.name:
-                    continue
 
                 try:
                     procinfo.lastreturned = procinfo.server.daq.shutdown()

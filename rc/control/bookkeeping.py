@@ -280,6 +280,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     proc_hosts = []
 
     for procinfo in self.procinfos:
+        if procinfo.name == "RoutingMaster":
+            continue
+        
         num_existing = len(proc_hosts)
 
         if procinfo.host == "localhost":
@@ -431,7 +434,26 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             if not res:
                 expected_fragments_per_event += 1
             else:
-                continue                
+                continue           
+
+    for procinfo in self.procinfos:
+        
+        if "RoutingMaster" in procinfo.name:
+
+            sender_ranks = "sender_ranks: [%s]" % ( ",".join( 
+                [ str(rank) for rank in range(0,self.num_boardreaders()) ] ))
+            receiver_ranks = "receiver_ranks: [%s]" % ( ",".join( 
+                [ str(rank) for rank in range(self.num_boardreaders(), 
+                                              self.num_boardreaders() + self.num_eventbuilders()) ] ))
+
+            self.procinfos[i_proc].fhicl_used = re.sub("sender_ranks\s*:\s*\[.*\]",
+                                                       sender_ranks,
+                                                       self.procinfos[i_proc].fhicl_used)
+
+            self.procinfos[i_proc].fhicl_used = re.sub("receiver_ranks\s*:\s*\[.*\]",
+                                                       receiver_ranks,
+                                                       self.procinfos[i_proc].fhicl_used)
+     
 
     for i_proc in range(len(self.procinfos)):
         if "DataLogger" in self.procinfos[i_proc].name or "Dispatcher" in self.procinfos[i_proc].name:
@@ -455,7 +477,38 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         self.procinfos[i_proc].fhicl_used = re.sub("partition_number\s*:\s*[0-9]+", 
                                                    "partition_number: %d" % (self.partition_number), 
                                                    self.procinfos[i_proc].fhicl_used)
+
+        if self.table_update_address is None:
+            self.table_update_address = "227.129.%d.129" % (self.partition_number)
+
+        self.procinfos[i_proc].fhicl_used = re.sub("table_update_address\s*:\s*[\"0-9\.]+", 
+                                                   "table_update_address: \"%s\"" % (self.table_update_address.strip("\"")), 
+                                                   self.procinfos[i_proc].fhicl_used)
+        
+        if self.routing_base_port is None:
+            self.routing_base_port = int(os.environ["ARTDAQ_BASE_PORT"]) + 10 + \
+                                     int(os.environ["ARTDAQ_PORTS_PER_PARTITION"])*self.partition_number
+
+        self.procinfos[i_proc].fhicl_used = re.sub("routing_token_port\s*:\s*[0-9]+", 
+                                                   "routing_token_port: %d" % (int(self.routing_base_port)), 
+                                                   self.procinfos[i_proc].fhicl_used)
+
+        self.procinfos[i_proc].fhicl_used = re.sub("table_acknowledge_port\s*:\s*[0-9]+", 
+                                                   "table_acknowledge_port: %d" % (int(self.routing_base_port) + 20), 
+                                                   self.procinfos[i_proc].fhicl_used)
+
+        self.procinfos[i_proc].fhicl_used = re.sub("table_update_port\s*:\s*[0-9]+", 
+                                                   "table_update_port: 3001", 
+                                                   self.procinfos[i_proc].fhicl_used)
+
+        routingmaster_hostnames = [procinfo.host for procinfo in self.procinfos if procinfo.name == "RoutingMaster"]
+        assert len(routingmaster_hostnames) == 0 or len(routingmaster_hostnames) == 1
     
+        if len(routingmaster_hostnames) == 1:
+            self.procinfos[i_proc].fhicl_used = re.sub("routing_master_hostname\s*:\s*\S+",
+                                                       "routing_master_hostname: \"%s\"" % (routingmaster_hostnames[0].strip("\"")),
+                                                       self.procinfos[i_proc].fhicl_used)
+
     if not self.data_directory_override is None:
         for i_proc in range(len(self.procinfos)):
             if "EventBuilder" in self.procinfos[i_proc].name or "DataLogger" in self.procinfos[i_proc].name:
