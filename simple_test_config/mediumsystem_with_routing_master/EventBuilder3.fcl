@@ -25,6 +25,7 @@ daq: {
 	send_init_fragments: false
 	verbose: false
 	send_requests: true
+	request_address: 227.128.12.26
 
     routing_token_config: {
         ## True if using the Routing Master
