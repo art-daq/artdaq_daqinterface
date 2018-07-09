@@ -25,6 +25,7 @@ daq: {
 	send_init_fragments: false
 	verbose: false
 	send_requests: true
+	expected_art_event_processing_time_us: 2000000
 	
 	routing_token_config: {
 	use_routing_master: false
