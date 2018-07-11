@@ -398,6 +398,7 @@ class DAQInterface(Component):
         self.routingmaster_timeout = 30
 
         self.use_messageviewer = True
+        self.advanced_memory_usage = False
         self.fake_messagefacility = False
         self.data_directory_override = None
         self.max_configurations_to_list = 1000000
@@ -465,7 +466,15 @@ class DAQInterface(Component):
 
                 if res:
                     self.use_messageviewer = False
-            elif "fake_messagefacility" in line:
+            elif "advanced_memory_usage" in line or "advanced memory usage" in line:
+                token = line.split()[-1].strip()
+                
+                res = re.search(r"[Tt]rue", token)
+
+                if res:
+                    self.advanced_memory_usage = True
+            elif "fake_messagefacility" in line or "fake messagefacility" in line:
+
                 token = line.split()[-1].strip()
                 
                 res = re.search(r"[Tt]rue", token)
@@ -490,6 +499,9 @@ class DAQInterface(Component):
 
         if self.package_hashes_to_save is None or self.package_hashes_to_save is []:
             missing_vars.append("package_hashes_to_save")
+
+        if not self.advanced_memory_usage and self.max_fragment_size_bytes is None:
+            missing_vars.append("max_fragment_size_bytes")
 
         if self.advanced_memory_usage and self.max_fragment_size_bytes is not None:
             raise Exception(make_paragraph("Since advanced_memory_usage is set to true in the settings file (%s), max_fragment_size_bytes must NOT be set (i.e., delete it or comment it out)" % (os.environ["DAQINTERFACE_SETTINGS"])))
