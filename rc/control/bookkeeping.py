@@ -269,6 +269,40 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                        "routing_master_hostname: \"%s\"" % (routingmaster_hostnames[0].strip("\"")),
                                                        self.procinfos[i_proc].fhicl_used)
 
+    if self.advanced_memory_usage:
+
+        max_event_size = 0
+
+        for procinfo in self.procinfos:
+            
+            if not "BoardReader" in procinfo.name:
+                continue
+            
+            res = re.search(r"^\s*max_fragment_size_bytes\s*:\s*([0-9]+)", self.procinfos[i_proc].fhicl_used)
+            
+            if res:
+                max_event_size += int(res.group(1))
+            else:
+                raise Exception(make_paragraph("Unable to find the max_fragment_size_bytes variable in the FHiCL document for %s; this is needed since \"advanced_memory_usage\" is set to true in the settings file, %s" % (procinfo.label, os.environ["DAQINTERFACE_SETTINGS"])))
+        
+        print "max_event_size is %d" % (max_event_size)
+            
+        for i_proc in range(len(self.procinfos)):
+            if "BoardReader" not in self.procinfos[i_proc].name:
+                if re.search(r"max_event_size_bytes\s*:\s*[0-9]+", self.procinfos[i_proc].fhicl_used):
+                    self.procinfos[i_proc].fhicl_used = re.sub("max_event_size_bytes\s*:\s*[0-9]+",
+                                                               "max_event_size_bytes: %d" % (max_event_size),
+                                                               self.procinfos[i_proc].fhicl_used)
+                else:
+
+                    res = re.search(r"\n(\s*buffer_count\s*:\s*[0-9]+)", self.procinfos[i_proc].fhicl_used)
+
+                    assert res, "artdaq's FHiCL requirements have changed since this code was written"
+                    
+                    self.procinfos[i_proc].fhicl_used = re.sub(r"\n(\s*buffer_count\s*:\s*[0-9]+)",
+                                                               "\n%s\nmax_event_size_bytes: %d" % (res.group(1), max_event_size),
+                                                               self.procinfos[i_proc].fhicl_used)
+
     if not self.data_directory_override is None:
         for i_proc in range(len(self.procinfos)):
             if "EventBuilder" in self.procinfos[i_proc].name or "DataLogger" in self.procinfos[i_proc].name:
