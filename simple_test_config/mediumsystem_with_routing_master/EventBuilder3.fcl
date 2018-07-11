@@ -25,7 +25,7 @@ daq: {
 	send_init_fragments: false
 	verbose: false
 	send_requests: true
-	request_address: "227.128.13.26"
+	request_address: "227.128.12.26"
 	expected_art_event_processing_time_us: 2000000
 
     routing_token_config: {

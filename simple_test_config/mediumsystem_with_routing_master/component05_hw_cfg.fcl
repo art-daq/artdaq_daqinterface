@@ -27,7 +27,7 @@ data_buffer_depth_fragments: 1000
 data_buffer_depth_mb: 1000
 
 request_port: 3001
-request_address: "227.128.13.26" # Multicast request address
+request_address: "227.128.12.26" # Multicast request address
 
 request_window_offset: 0 # Request message contains tzero. Window will be from tzero - offset to tz-o + width
 request_window_width: 0 # These settings correspond to "two before, two after"
