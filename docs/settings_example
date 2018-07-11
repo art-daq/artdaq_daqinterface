@@ -14,6 +14,7 @@
 # to receive commands)
 
 log_directory: /tmp
+data_directory_override: /tmp
 record_directory: $HOME/run_records
 package_hashes_to_save: [ artdaq-demo, artdaq-core-demo, artdaq ]
 productsdir_for_bash_scripts: $HOME/path_to_product_dir_not_yet_defined/products
@@ -22,6 +23,9 @@ boardreader timeout: 60
 eventbuilder timeout: 30
 aggregator timeout: 30
 
-max_fragment_size_bytes: 1000000
-
-
+# Currently (as of 2018-07-10) needs to be big enough for all simple_test_config/ examples.
+# The "biggest" example has 10 BR's -- so the xfer between the EB and DL needs to be able
+# to handle the data from the 10 BRs.
+max_fragment_size_bytes: 91000000
+ 
+all_events_to_all_dispatchers: true
