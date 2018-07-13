@@ -221,6 +221,7 @@ class DAQInterface(Component):
         self.in_recovery = False
         self.heartbeat_failure = False
         self.manage_processes = True
+        self.disable_recovery = False
         self.pmt_port = None
 
         # "procinfos" will be an array of Procinfo structures (defined
@@ -249,6 +250,7 @@ class DAQInterface(Component):
                            skip_init=False)
 
         self.manage_processes = True
+        self.disable_recovery = False
 
         self.in_recovery = False
         self.heartbeat_failure = False
@@ -1935,6 +1937,14 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
             (date_and_time()))
 
         self.in_recovery = True
+
+        if self.disable_recovery:
+            self.print_log("i", "Skipping cleanup of artdaq processes, this recover step is effectively a no-op")
+
+            self.in_recovery = False
+            self.complete_state_change(self.name, "recovering")
+            self.print_log("i", "\n%s: RECOVER transition complete" % (date_and_time()))
+            return
 
         def attempted_stop(self, procinfo):
 
