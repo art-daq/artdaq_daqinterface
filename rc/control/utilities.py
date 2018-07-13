@@ -253,7 +253,7 @@ def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
     exception_message = ""
 
     if status != 0:
-        exception_message = make_paragraph("Failure in attempt of %s to reformat FHiCL documents; nonzero status returned" % (reformat_fhicl_documents.__name__))
+        exception_message = make_paragraph("Failure in attempt of %s to reformat FHiCL documents; nonzero status returned. This is likely either because one of the FHiCL documents in the configuration contains a FHiCL syntax error or because there was a problem with the sourcing of \"%s\"; try increasing the debug level in the boot file to 2 or higher to get more info" % (reformat_fhicl_documents.__name__, setup_fhiclcpp))
 
     postformat_fhicl_strings = []
 

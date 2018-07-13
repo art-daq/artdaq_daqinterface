@@ -224,7 +224,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                        self.procinfos[i_proc].fhicl_used)
         if not self.request_address is None:
             self.procinfos[i_proc].fhicl_used = re.sub("request_address\s*:\s*[\"0-9\.]+", 
-                                                       "request_address: \"%s\"" % (self.request_address), 
+                                                       "request_address: \"%s\"" % (self.request_address.strip("\"")), 
                                                        self.procinfos[i_proc].fhicl_used)
 
         if not self.request_port is None:

@@ -1728,9 +1728,13 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
             self.alert_and_recover("An exception was thrown when performing bookkeeping on the process FHiCL documents; see traceback above for more info")
             return
 
-        with deepsuppression():
+        if self.debug_level <= 1:
+            with deepsuppression():
+                reformatted_fhicl_documents = reformat_fhicl_documents(self.daq_setup_script,
+                                                                       [ procinfo.fhicl_used for procinfo in self.procinfos ] )
+        else:
             reformatted_fhicl_documents = reformat_fhicl_documents(self.daq_setup_script,
-                                                                   [ procinfo.fhicl_used for procinfo in self.procinfos ] )
+                                                                       [ procinfo.fhicl_used for procinfo in self.procinfos ] )
 
         for i_proc, reformatted_fhicl_document in enumerate(reformatted_fhicl_documents):
             self.procinfos[i_proc].fhicl_used = reformatted_fhicl_document
