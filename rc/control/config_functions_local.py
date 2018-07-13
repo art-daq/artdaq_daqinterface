@@ -134,6 +134,17 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
         if res:
             self.manage_processes = False
 
+        res = re.search(r"\s*disable recovery\s*:\s*[tT]rue",
+                        line)
+        if res:
+            self.disable_recovery = True
+
+        res = re.search(r"\s*disable recovery\s*:\s*[fF]alse",
+                        line)
+        if res:
+            self.disable_recovery = False
+
+
         if "EventBuilder" in line or \
                 "DataLogger" in line or "Dispatcher" in line or \
                 "RoutingMaster" in line:
