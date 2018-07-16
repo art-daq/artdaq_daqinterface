@@ -1025,7 +1025,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
                 proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 proclines = proc.stdout.readlines()
-
+                
                 logfilenames.append("%s:%s" % (full_hostname, proclines[0].strip()))
 
         return logfilenames
