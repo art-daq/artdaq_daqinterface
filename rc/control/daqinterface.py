@@ -990,12 +990,12 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                                                                        procinfo.label, short_hostname, procinfo.port,
                                                                        procinfo.label, short_hostname, procinfo.port)
 
-                if procinfo.host != os.environ["HOSTNAME"]:
+                if procinfo.host != os.environ["HOSTNAME"] and procinfo.host != "localhost":
                     cmd = "ssh -f " + procinfo.host + " '" + cmd + "'"
 
                 proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 proclines = proc.stdout.readlines()
-
+                
                 logfilenames.append("%s:%s" % (full_hostname, proclines[0].strip()))
 
         return logfilenames

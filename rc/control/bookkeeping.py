@@ -309,10 +309,16 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         for i in range(first, last):
             if nth == -1:
-                nodes.append( 
-                    "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d host_map: [%s]}" % \
-                    (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_size_words, \
-                     proc_hosts_string))
+                if i == first or nodetype == "destinations":
+                    nodes.append( 
+                        "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d host_map: [%s]}" % \
+                        (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_size_words, \
+                         proc_hosts_string))
+                else:
+                    nodes.append( 
+                        "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d}" % \
+                        (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_size_words))
+
             else:
 
                 if nodetype == "destinations":
@@ -322,10 +328,15 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 elif nodetype == "sources":
                     offset = this_node_index
 
-                nodes.append( 
-                    "%s%d: { transferPluginType: NthEvent nth: %d offset: %d physical_transfer_plugin: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d } host_map: [%s]}" % \
-                    (prefix, i, nth, offset,self.transfer, nodetype[:-1], i, max_fragment_size_words, \
-                     proc_hosts_string))
+                if i == first or nodetype == "destinations":
+                    nodes.append( 
+                        "%s%d: { transferPluginType: NthEvent nth: %d offset: %d physical_transfer_plugin: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d } host_map: [%s]}" % \
+                        (prefix, i, nth, offset,self.transfer, nodetype[:-1], i, max_fragment_size_words, \
+                         proc_hosts_string))
+                else:
+                    nodes.append( 
+                        "%s%d: { transferPluginType: NthEvent nth: %d offset: %d physical_transfer_plugin: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d }}" % \
+                        (prefix, i, nth, offset,self.transfer, nodetype[:-1], i, max_fragment_size_words))
 
         return "\n".join( nodes )
 
