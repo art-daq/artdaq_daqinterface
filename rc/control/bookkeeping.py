@@ -363,7 +363,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             source_node_last = source_node_first + self.num_boardreaders()
             destination_node_first = self.num_boardreaders() + \
                 self.num_eventbuilders()
-            destination_node_last = destination_node_first + num_data_loggers  
+            if num_data_loggers > 0:
+                destination_node_last = destination_node_first + num_data_loggers  
+            else:
+                destination_node_last = destination_node_first + num_dispatchers
 
         elif "DataLogger" in self.procinfos[i_proc].name:
             is_data_logger = True
@@ -382,9 +385,14 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         elif "Dispatcher" in self.procinfos[i_proc].name:
             is_dispatcher = True
 
-            source_node_first = self.num_boardreaders() + \
-                                self.num_eventbuilders()
-            source_node_last = source_node_first + num_data_loggers
+            if num_data_loggers > 0:
+                source_node_first = self.num_boardreaders() + \
+                                    self.num_eventbuilders()
+                source_node_last = source_node_first + num_data_loggers
+            else:
+                source_node_first = self.num_boardreaders()
+                source_node_last = source_node_first + self.num_eventbuilders()
+
         elif "RoutingMaster" in self.procinfos[i_proc].name:
             pass
         else:
