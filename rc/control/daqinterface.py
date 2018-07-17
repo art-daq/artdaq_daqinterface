@@ -260,6 +260,7 @@ class DAQInterface(Component):
         self.partition_number = None
         self.table_update_address = None
         self.routing_base_port = None
+        self.zmq_fragment_connection_out = None
         self.transfer = "Autodetect"
 
         self.daqinterface_base_dir = os.getcwd()
