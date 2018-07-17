@@ -1681,8 +1681,9 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
             return
 
         with deepsuppression():
-            reformatted_fhicl_documents = reformat_fhicl_documents(self.daq_setup_script,
+            reformatted_fhicl_documents = reformat_fhicl_documents("~np04daq/.jcfree/Documents/setup_fhiclcpp",
                                                                    [ procinfo.fhicl_used for procinfo in self.procinfos ] )
+        
 
         for i_proc, reformatted_fhicl_document in enumerate(reformatted_fhicl_documents):
             self.procinfos[i_proc].fhicl_used = reformatted_fhicl_document

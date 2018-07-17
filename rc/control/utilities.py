@@ -8,6 +8,8 @@ from subprocess import Popen
 
 from time import sleep
 
+from multiprocessing.pool import ThreadPool
+
 def expand_environment_variable_in_string(line):
 
     res = re.search(r"^(.*)(\$[A-Z][A-Z_0-9]*)(.*)", line)
@@ -230,8 +232,17 @@ def construct_checked_command(cmds):
 
 def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
 
-    cmds = []
+    cmd = "grep -c ^processor /proc/cpuinfo"
 
+    nprocessors = Popen(cmd, shell=True,
+                        stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+
+    if not re.search(r"^[0-9]+$", nprocessors):
+        raise Exception(make_paragraph("A problem occurred when DAQInterface tried to execute \"%s\"; result was not an integer" % \
+                                       (cmd)))
+
+    pool = ThreadPool(int(nprocessors)*4)  # 4 cores per processor on np04-srv-010; let's get greedy
+    
     preformat_filenames=[ Popen("mktemp", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() for i in range(len(input_fhicl_strings))]
     postformat_filenames=[ Popen("mktemp", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() for i in range(len(input_fhicl_strings))]
 
@@ -239,36 +250,38 @@ def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
         with open(preformat_filename, "w") as preformat_file:
             preformat_file.write(input_fhicl_string)
 
-    cmds.append("source %s" % (setup_fhiclcpp))
-    cmds.append("which fhicl-dump")
-    
-    for preformat_filename, postformat_filename in zip(preformat_filenames, postformat_filenames):
+    def reformat_single_document(index):
+
+        cmds = []
+        cmds.append("source %s" % (setup_fhiclcpp))
+        cmds.append("which fhicl-dump")
         cmds.append("fhicl-dump -l 0 -c %s -o %s" % \
-                    (preformat_filename, postformat_filename))
+                    (preformat_filenames[index], postformat_filenames[index]))
 
-    fullcmd = construct_checked_command( cmds )
-    
-    status = Popen(fullcmd, shell = True).wait()
+        fullcmd = construct_checked_command( cmds )
+        fullcmd = "; ".join( cmds )
 
-    exception_message = ""
+        status = Popen(fullcmd, shell = True).wait()
 
-    if status != 0:
-        exception_message = make_paragraph("Failure in attempt of %s to reformat FHiCL documents; nonzero status returned. This may indicate a problem with the setup file %s" % (reformat_fhicl_documents.__name__, setup_fhiclcpp))
+        exception_message = ""
 
-    postformat_fhicl_strings = []
+        if status != 0:
+            exception_message = make_paragraph("Failure in attempt of %s to reformat a FHiCL document; nonzero status returned. This may indicate a problem with the setup file %s" % (reformat_single_document.__name__, setup_fhiclcpp))
 
-    for preformat_filename, postformat_filename in zip(preformat_filenames, postformat_filenames):
-        
-        if os.path.exists( postformat_filename ):
-            postformat_fhicl_strings.append( open( postformat_filename ).read() )
-            os.unlink( postformat_filename )
+        if os.path.exists( postformat_filenames[index] ):
+            formatted_fhicl_string = open( postformat_filenames[index] ).read()
+            os.unlink( postformat_filenames[index] )
         else:
-            exception_message = make_paragraph("Failure in %s: problem creating postformat file in fhicl-dump call" % (reformat_fhicl_documents.__name__))
+            exception_message = make_paragraph("Failure in %s: problem creating postformat file in fhicl-dump call" % (reformat_single_document.__name__))
         
-        os.unlink( preformat_filename )
+        os.unlink( preformat_filenames[index] )
 
-    if exception_message != "":
-        raise Exception( exception_message )
+        if exception_message != "":
+            raise Exception( exception_message )
+        
+        return formatted_fhicl_string
+
+    postformat_fhicl_strings = pool.map(reformat_single_document, range(len(input_fhicl_strings)))
 
     return postformat_fhicl_strings
         
