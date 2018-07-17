@@ -1755,7 +1755,8 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
         run_documents = self.get_run_documents()
 
         for i_proc in range(len(self.procinfos)):
-           if "Aggregator" in self.procinfos[i_proc].name or "DataLogger" in self.procinfos[i_proc].name:
+            if "RootOutput" in self.procinfos[i_proc].fhicl_used and \
+               re.search(r"fileName\s*:\s*.*\.root", self.procinfos[i_proc].fhicl_used, re.MULTILINE):
                self.procinfos[i_proc].fhicl_used = self.procinfos[i_proc].fhicl_used + run_documents
 
         # JCF, Mar-6-2018
