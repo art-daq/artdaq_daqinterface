@@ -262,12 +262,12 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                    "routing_token_port: %d" % (int(self.routing_base_port)), 
                                                    self.procinfos[i_proc].fhicl_used)
 
-        self.procinfos[i_proc].fhicl_used = re.sub("table_acknowledge_port\s*:\s*[0-9]+", 
-                                                   "table_acknowledge_port: %d" % (int(self.routing_base_port) + 20), 
+        self.procinfos[i_proc].fhicl_used = re.sub("table_update_port\s*:\s*[0-9]+", 
+                                                   "table_update_port: %d" % (int(self.routing_base_port) + 10), 
                                                    self.procinfos[i_proc].fhicl_used)
 
-        self.procinfos[i_proc].fhicl_used = re.sub("table_update_port\s*:\s*[0-9]+", 
-                                                   "table_update_port: 3001", 
+        self.procinfos[i_proc].fhicl_used = re.sub("table_acknowledge_port\s*:\s*[0-9]+", 
+                                                   "table_acknowledge_port: %d" % (int(self.routing_base_port) + 20), 
                                                    self.procinfos[i_proc].fhicl_used)
 
         routingmaster_hostnames = [procinfo.host for procinfo in self.procinfos if procinfo.name == "RoutingMaster"]
