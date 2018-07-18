@@ -23,7 +23,8 @@ request_mode: "Ignored" # Possible values are: Ignored, Single, Buffer, Window
 
 nADCcounts: 2000
 
-throttle_usecs: 100000 # 10 Hz
+throttle_usecs: 0
+usecs_between_sends: 100000 # 10 Hz
 
 distribution_type: 1
 
