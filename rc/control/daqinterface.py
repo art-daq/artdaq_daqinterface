@@ -1660,7 +1660,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
             if self.procinfos[i_proc].name == "DataLogger":
                 rootfile_cntr_prefix = "dl"
             elif self.procinfos[i_proc].name == "EventBuilder":
-                rootfile_cntr_prefix = "eb"
+                rootfile_cntr_prefix = "dl" # Same extension as DataLogger so we don't confuse protoDUNE offline
 
             self.procinfos[i_proc].fhicl_used = re.sub("\.root(\"|\s+)",
                                                        "_" + str(rootfile_cntr_prefix) + 
