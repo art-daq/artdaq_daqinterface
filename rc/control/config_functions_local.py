@@ -104,6 +104,25 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
             self.routing_base_port = res.group(1)
             continue
 
+        res = re.search(r"\s*zmq_fragment_connection_out\s*:\s*(\S+)",
+                        line)
+        if res:
+            self.zmq_fragment_connection_out = int( res.group(1) )
+            continue
+
+
+        res = re.search(r"\s*partition_number\s*:\s*(\S+)",
+                        line)
+        if res:
+            self.table_update_address = res.group(1)
+            continue
+
+        res = re.search(r"\s*routing_base_port\s*:\s*(\S+)",
+                        line)
+        if res:
+            self.routing_base_port = res.group(1)
+            continue
+
         res = re.search(r"\s*partition_number\s*:\s*(\S+)",
                         line)
         if res:

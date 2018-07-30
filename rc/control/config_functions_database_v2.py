@@ -110,10 +110,13 @@ def put_config_info_base(self):
     if status != 0:
         raise Exception("Problem during execution of the following:\n %s" % "\n".join(cmds))
 
-    #Popen("cp %s/%s/boot.fcl %s/%s/DataflowConfiguration.fcl" % (tmpdir, runnum, tmpdir, runnum), shell=True).wait()
-    shutil.copyfile( "%s/%s/boot.fcl" % (tmpdir, runnum), "%s/%s/DataflowConfiguration.fcl" % (tmpdir, runnum))
 
-    with open( "%s/%s/DataflowConfiguration.fcl" % (tmpdir, runnum), "a" ) as dataflow_file:
+    with open( "%s/%s/DataflowConfiguration.fcl" % (tmpdir, runnum), "w" ) as dataflow_file:
+
+        with open( "%s/%s/boot.fcl" % (tmpdir, runnum) ) as boot_file:
+            for line in boot_file.readlines():
+                if "debug_level" not in line and not line == "":
+                    dataflow_file.write("\n" + line)
 
         proc_attrs = ["host", "port", "label"]
 
@@ -132,7 +135,35 @@ def put_config_info_base(self):
             proc_attr_line = proc_attr_line[:-1] # Strip the trailing comma
             proc_line[ proc_attr ] = proc_attr_line + "]"
             dataflow_file.write("\n" + proc_line[ proc_attr ] )
+
+        with open( "%s/%s/metadata.fcl" % (tmpdir, runnum) ) as metadata_file:
+            for line in metadata_file.readlines():
+                if "Start_time" not in line and "Stop_time" not in line and not line == "":
+                    dataflow_file.write("\n" + line)
+
+    with open( "%s/%s/RunHistory.fcl" % (tmpdir, runnum), "w" ) as runhistory_file:
+        runhistory_file.write("\nrun_number: %s" % (runnum))
         
+        has_start_time = False
+        has_stop_time = False
+
+        with open( "%s/%s/metadata.fcl" % (tmpdir, runnum) ) as metadata_file:
+            for line in metadata_file.readlines():
+                if "Start_time" in line:
+                    runhistory_file.write("\n" + line)
+                    has_start_time = True
+                elif "Stop_time" in line:
+                    runhistory_file.write("\n" + line)
+                    has_stop_time = True
+                elif "config_name" in line:
+                    runhistory_file.write("\n" + line) 
+                elif "components" in line:
+                    runhistory_file.write("\n" + line)
+
+            if not has_start_time:
+                runhistory_file.write("\nStart_time: \"Unknown\"")
+            if not has_stop_time:
+                runhistory_file.write("\nStop_time: \"Unknown\"")
 
     basedir=os.getcwd()
     os.chdir( tmpdir )

@@ -27,5 +27,4 @@ aggregator timeout: 30
 # The "biggest" example has 10 BR's -- so the xfer between the EB and DL needs to be able
 # to handle the data from the 10 BRs.
 max_fragment_size_bytes: 91000000
- 
 all_events_to_all_dispatchers: true
