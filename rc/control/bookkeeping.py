@@ -73,20 +73,19 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     proc_hosts = []
 
-    for procinfo in self.procinfos:
-        if procinfo.name == "RoutingMaster":
-            continue
-        
-        num_existing = len(proc_hosts)
+    for procname in ["BoardReader", "EventBuilder", "DataLogger", "Dispatcher"] :
 
-        if procinfo.host == "localhost":
-            host_to_display = os.environ["HOSTNAME"]
-        else:
-            host_to_display = procinfo.host
+        for procinfo in self.procinfos:
+            if procname in procinfo.name:
+                if procinfo.host == "localhost":
+                    host_to_display = os.environ["HOSTNAME"]
+                else:
+                    host_to_display = procinfo.host
 
-        proc_hosts.append( 
-            "{rank: %d host: \"%s\"}" % \
-                (num_existing, host_to_display))
+                num_existing = len(proc_hosts)
+                proc_hosts.append( 
+                    "{rank: %d host: \"%s\"}" % \
+                    (num_existing, host_to_display))
 
     proc_hosts_string = ", ".join( proc_hosts )
 
