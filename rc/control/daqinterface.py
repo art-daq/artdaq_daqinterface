@@ -44,6 +44,7 @@ from rc.control.utilities import date_and_time
 from rc.control.utilities import construct_checked_command
 from rc.control.utilities import reformat_fhicl_documents
 from rc.control.utilities import fhicl_writes_root_file
+from rc.control.utilities import get_commit_hash
 
 if not "DAQINTERFACE_FHICL_DIRECTORY" in os.environ:
     print
@@ -946,29 +947,6 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
 
         return
 
-    # JCF, 12/2/14
-
-    # Given the directory name of a git repository, this will return
-    # the most recent hash commit in the repo
-
-    def get_commit_hash(self, gitrepo):
-
-        if not os.path.exists(gitrepo):
-            raise Exception(make_paragraph("Expected git directory \"%s\" not found; this is needed because the relevant package is in the \"package_hashes_to_save\" list found in %s" % (gitrepo, os.environ["DAQINTERFACE_SETTINGS"])))
-
-        cmds = []
-        cmds.append("cd %s" % (gitrepo))
-        cmds.append("git log | head -1 | awk '{print $2}'")
-
-        proc = Popen(";".join(cmds), shell=True,
-                     stdout=subprocess.PIPE)
-        proclines = proc.stdout.readlines()
-
-        if len(proclines) != 1 or len(proclines[0].strip()) != 40:
-            raise Exception(make_paragraph("Commit hash for \"%s\" not found; this was requested in the \"packages_hashes_to_save\" list found in %s" % (gitrepo, os.environ["DAQINTERFACE_SETTINGS"])))
-
-        return proclines[0].strip()
-
     def check_daqinterface_config_info(self):
 
         # Check that the boot file actually contained the
@@ -1357,7 +1335,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
             pkg_full_path = "%s/srcs/%s" % (self.daq_dir, pkgname.replace("-", "_"))
 
             try: 
-                self.package_hash_dict[pkgname] = self.get_commit_hash( pkg_full_path )
+                self.package_hash_dict[pkgname] = get_commit_hash( pkg_full_path )
             except Exception:
                 self.print_log("e", traceback.format_exc())
                 self.alert_and_recover("An exception was thrown in get_commit_hash; see traceback above for more info")
