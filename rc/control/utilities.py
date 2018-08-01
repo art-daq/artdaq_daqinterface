@@ -271,6 +271,29 @@ def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
         raise Exception( exception_message )
 
     return postformat_fhicl_strings
+
+# JCF, 12/2/14
+
+# Given the directory name of a git repository, this will return
+# the most recent hash commit in the repo
+
+def get_commit_hash(gitrepo):
+
+    if not os.path.exists(gitrepo):
+        return "Unknown"
+
+    cmds = []
+    cmds.append("cd %s" % (gitrepo))
+    cmds.append("git log | head -1 | awk '{print $2}'")
+
+    proc = Popen(";".join(cmds), shell=True,
+                 stdout=subprocess.PIPE)
+    proclines = proc.stdout.readlines()
+
+    if len(proclines) != 1 or len(proclines[0].strip()) != 40:
+        raise Exception(make_paragraph("Commit hash for \"%s\" not found; this was requested in the \"packages_hashes_to_save\" list found in %s" % (gitrepo, os.environ["DAQINTERFACE_SETTINGS"])))
+
+    return proclines[0].strip()
         
 
 def main():

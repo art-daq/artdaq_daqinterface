@@ -6,7 +6,7 @@ import subprocess
 from subprocess import Popen
 import traceback
 from rc.control.utilities import make_paragraph
-
+from rc.control.utilities import get_commit_hash
 
 def save_run_record_base(self):
 
@@ -88,7 +88,7 @@ def save_run_record_base(self):
     if "ARTDAQ_DAQINTERFACE_VERSION" in os.environ.keys():
         outf.write("DAQInterface commit: %s\n" % ( os.environ["ARTDAQ_DAQINTERFACE_VERSION"] ) )
     else:
-        outf.write("DAQInterface commit: %s\n" % ( self.get_commit_hash(os.environ["ARTDAQ_DAQINTERFACE_DIR"]) ) )
+        outf.write("DAQInterface commit: %s\n" % ( get_commit_hash(os.environ["ARTDAQ_DAQINTERFACE_DIR"]) ) )
 
     for pkg in sorted(self.package_hash_dict.keys()):
         outf.write("%s commit: %s\n" % (pkg, self.package_hash_dict[ pkg ] ))
