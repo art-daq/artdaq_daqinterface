@@ -264,9 +264,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     max_fragment_size_words = self.max_fragment_size_bytes / 8
 
-    if os.path.exists(self.daq_dir + "/srcs/artdaq"):
-        commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
-                                           "68cb53e576dd6afea7950ca6286a08f5f329b966", "May 9, 2017", True)
+    #if os.path.exists(self.daq_dir + "/srcs/artdaq"):
+    #    commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
+    #                                       "d338b810c589a177ff1a34d82fa82a459cc1704b", "June 29, 2018", True)
 
     num_data_loggers = 0
     num_dispatchers = 0

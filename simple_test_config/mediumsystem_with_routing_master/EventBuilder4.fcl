@@ -21,13 +21,14 @@ daq: {
 	max_event_size_bytes: 16777216
 	use_art: true
 	print_event_store_stats: true
-	buffer_count: 20
+	broadcast_buffer_count: 5
+	buffer_count: 5
 	send_init_fragments: false
 	verbose: false
 	send_requests: true
 	request_port: 3001
 	request_address: "227.128.12.26"
-	expected_art_event_processing_time_us: 2000000
+	expected_art_event_processing_time_us: 100000
 	
 	routing_token_config: {
 	use_routing_master: false

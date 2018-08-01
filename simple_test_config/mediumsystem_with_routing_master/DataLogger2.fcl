@@ -15,11 +15,12 @@ daq: {
     expected_fragments_per_event: 1
     max_event_size_bytes: 16777216
     print_event_store_stats: true
-    buffer_count: 20
+    broadcast_buffer_count: 5
+	buffer_count: 5
     event_queue_wait_time: 5
     onmon_event_prescale: 1
     is_data_logger: true
-    expected_art_event_processing_time_us: 2000000
+    expected_art_event_processing_time_us: 100000
     restart_crashed_art_processes: false
 
 	routing_token_config: {

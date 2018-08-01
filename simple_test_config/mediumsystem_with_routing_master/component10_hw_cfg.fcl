@@ -39,6 +39,7 @@ separate_data_thread: true # MUST be true for requests to be applied! If request
 separate_monitoring_thread: false # Whether a thread should be started which periodically calls checkHWStatus_, a user-defined function which should be used to check hardware status registers and report to MetricMan.
 hardware_poll_interval_us: 0 # How often, in microseconds, checkHWStatus_() should be called. 0 to disable.
 
+tcp_send_buffer_size:1400
 nADCcounts: 500000
 
 throttle_usecs: 0

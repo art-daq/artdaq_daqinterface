@@ -21,6 +21,7 @@ sleep_on_stop_us: 0
     
 request_mode: "Ignored" # Possible values are: Ignored, Single, Buffer, Window
 
+tcp_send_buffer_size:1400
 nADCcounts: 2000
 
 throttle_usecs: 0
