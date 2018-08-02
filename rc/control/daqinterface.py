@@ -1680,8 +1680,12 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
             self.alert_and_recover("An exception was thrown when performing bookkeeping on the process FHiCL documents; see traceback above for more info")
             return
 
-        with deepsuppression():
-            reformatted_fhicl_documents = reformat_fhicl_documents("~np04daq/.jcfree/Documents/setup_fhiclcpp",
+        if self.debug_level <= 1:
+            with deepsuppression():
+                reformatted_fhicl_documents = reformat_fhicl_documents(os.environ["HOME"] + "/.setup_fhiclcpp",
+                                                                       [ procinfo.fhicl_used for procinfo in self.procinfos ] )
+        else:
+            reformatted_fhicl_documents = reformat_fhicl_documents(os.environ["HOME"] + "/.setup_fhiclcpp",
                                                                    [ procinfo.fhicl_used for procinfo in self.procinfos ] )
         
 

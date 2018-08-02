@@ -232,6 +232,9 @@ def construct_checked_command(cmds):
 
 def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
 
+    if not os.path.exists( setup_fhiclcpp ):
+        raise Exception(make_paragraph("Expected fhiclcpp setup script %s doesn't appear to exist" % (setup_fhiclcpp)))
+    
     cmd = "grep -c ^processor /proc/cpuinfo"
 
     nprocessors = Popen(cmd, shell=True,
@@ -266,7 +269,7 @@ def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
         exception_message = ""
 
         if status != 0:
-            exception_message = make_paragraph("Failure in attempt of %s to reformat a FHiCL document; nonzero status returned. This may indicate a problem with the setup file %s" % (reformat_single_document.__name__, setup_fhiclcpp))
+            exception_message = make_paragraph("Failure in attempt of %s to reformat a FHiCL document; nonzero status returned. This may indicate either a problem with the setup file %s or a problem with the FHiCL code itself (see %s for the code in question)" % (reformat_single_document.__name__, setup_fhiclcpp, preformat_filenames[index]))
 
         if os.path.exists( postformat_filenames[index] ):
             formatted_fhicl_string = open( postformat_filenames[index] ).read()
@@ -274,10 +277,10 @@ def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
         else:
             exception_message = make_paragraph("Failure in %s: problem creating postformat file in fhicl-dump call" % (reformat_single_document.__name__))
         
-        os.unlink( preformat_filenames[index] )
-
         if exception_message != "":
             raise Exception( exception_message )
+
+        os.unlink( preformat_filenames[index] )
         
         return formatted_fhicl_string
 
