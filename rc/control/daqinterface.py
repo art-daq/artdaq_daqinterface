@@ -238,7 +238,7 @@ class DAQInterface(Component):
 
     def __init__(self, logpath=None, name="toycomponent",
                  rpc_host="localhost", control_host='localhost',
-                 synchronous=True, rpc_port=6659):
+                 synchronous=True, rpc_port=6659, partition_number=999):
 
         # Initialize Component, the base class of DAQInterface
 
@@ -2113,6 +2113,8 @@ def get_args():  # no-coverage
         description="DAQInterface")
     parser.add_argument("-n", "--name", type=str, dest='name',
                         default="daqint", help="Component name")
+    parser.add_argument("-p", "--partition-number", type=int, dest='partition_number',
+                        default=888, help="Partition number")
     parser.add_argument("-r", "--rpc-port", type=int, dest='rpc_port',
                         default=5570, help="RPC port")
     parser.add_argument("-H", "--rpc-host", type=str, dest='rpc_host',
