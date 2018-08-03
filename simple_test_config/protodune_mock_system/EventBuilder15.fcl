@@ -27,11 +27,18 @@ daq: {
 	send_requests: true
 	request_port: 3001
 	request_address: "227.128.12.26"
-	expected_art_event_processing_time_us: 2000000
+	expected_art_event_processing_time_us: 1000000
 	
-	routing_token_config: {
-	use_routing_master: false
-	}
+    routing_token_config: {
+        ## True if using the Routing Master
+        use_routing_master: true
+
+        ## Port to send tokens on
+        routing_token_port: 35555  # default
+
+        ## Hostname or IP of RoutingMaster
+        routing_master_hostname: "localhost"  # default
+    }
 
 	sources: { }
   }
@@ -42,13 +49,14 @@ daq: {
 	  fileName: "/tmp/eventbuilder/evb_%UID%_metrics.log"
 	  uniquify: true
 	}
+	report: {
+		metricPluginType: "report"
+		level: 2
+	}
   }
 } 
 
 outputs: {
-  rootNetOutput: {
-    module_type: RootNetOutput
-  }
 }
 
 physics: {
@@ -59,7 +67,6 @@ physics: {
   producers: {
   }
 
-  my_output_modules: [ rootNetOutput ]
 }
 source: {
   module_type: DemoInput

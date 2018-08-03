@@ -62,5 +62,9 @@
 	#   port: 20030
 	#   namespace: "artdaq."
 	# }
+	report: {
+		metricPluginType: "report"
+		level: 2
+	}
   }
 }

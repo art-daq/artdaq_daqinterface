@@ -82,5 +82,9 @@ timestamp_scale_factor: 1
 	  fileName: "/tmp/boardreader/br_%UID%_metrics.log"
 	  uniquify: true
 	}
+	report: {
+		metricPluginType: "report"
+		level: 2
+	}
   }
 }

@@ -17,10 +17,6 @@ EventBuilder host: mu2edaq05
 EventBuilder port: 5236
 EventBuilder label: EventBuilder2
 
-EventBuilder host: mu2edaq06
-EventBuilder port: 5237
-EventBuilder label: EventBuilder3
-
 EventBuilder host: mu2edaq07
 EventBuilder port: 5237
 EventBuilder label: EventBuilder3
@@ -72,3 +68,7 @@ EventBuilder label: EventBuilder14
 EventBuilder host: mu2edaq07
 EventBuilder port: 5249
 EventBuilder label: EventBuilder15
+
+RoutingMaster host: mu2edaq01
+RoutingMaster port: 5360
+RoutingMaster label: RoutingMaster1
