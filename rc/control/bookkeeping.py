@@ -516,8 +516,12 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                        self.procinfos[i_proc].fhicl_used)
 
         if not self.zmq_fragment_connection_out is None:
-            self.procinfos[i_proc].fhicl_used = re.sub("zmq_fragment_connection_out\s*:\s*[0-9]+",
-                                                       "zmq_fragment_connection_out: %d" % (int(self.zmq_fragment_connection_out)),
+            res = re.search(r"zmq_fragment_connection_out\s*:\s*\"(.*:)[0-9]+\"", self.procinfos[i_proc].fhicl_used)
+            if res:
+                self.procinfos[i_proc].fhicl_used = re.sub("zmq_fragment_connection_out\s*:\s*\"\S+\"",
+                                                       "zmq_fragment_connection_out: \"%s%d\"" % \
+                                                           (res.group(1), 
+                                                            int(self.zmq_fragment_connection_out)),
                                                        self.procinfos[i_proc].fhicl_used)
 
         routingmaster_hostnames = [procinfo.host for procinfo in self.procinfos if procinfo.name == "RoutingMaster"]
