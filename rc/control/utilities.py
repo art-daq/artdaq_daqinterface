@@ -253,41 +253,56 @@ def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
         with open(preformat_filename, "w") as preformat_file:
             preformat_file.write(input_fhicl_string)
 
-    def reformat_single_document(index):
+    def reformat_subset_of_documents(indices):
 
         cmds = []
         cmds.append("source %s" % (setup_fhiclcpp))
         cmds.append("which fhicl-dump")
-        cmds.append("fhicl-dump -l 0 -c %s -o %s" % \
-                    (preformat_filenames[index], postformat_filenames[index]))
+        for index in indices:
+            cmds.append("fhicl-dump -l 0 -c %s -o %s" % \
+                        (preformat_filenames[index], postformat_filenames[index]))
 
         fullcmd = construct_checked_command( cmds )
-        fullcmd = "; ".join( cmds )
 
         status = Popen(fullcmd, shell = True).wait()
 
         exception_message = ""
+        formatted_fhicl_strings = []
 
         if status != 0:
-            exception_message = make_paragraph("Failure in attempt of %s to reformat a FHiCL document; nonzero status returned. This may indicate either a problem with the setup file %s or a problem with the FHiCL code itself (see %s for the code in question)" % (reformat_single_document.__name__, setup_fhiclcpp, preformat_filenames[index]))
+            exception_message = make_paragraph("Failure in attempt of %s to reformat a FHiCL document; nonzero status returned. This may indicate either a problem with the setup file %s or a problem with the FHiCL code itself" % (reformat_subset_of_documents.__name__, setup_fhiclcpp))
 
-        if os.path.exists( postformat_filenames[index] ):
-            formatted_fhicl_string = open( postformat_filenames[index] ).read()
-            os.unlink( postformat_filenames[index] )
-        else:
-            exception_message = make_paragraph("Failure in %s: problem creating postformat file in fhicl-dump call" % (reformat_single_document.__name__))
+        for index in indices:
+            if os.path.exists( postformat_filenames[index] ):
+                formatted_fhicl_strings.append( open( postformat_filenames[index] ).read() )
+                os.unlink( postformat_filenames[index] )
+            else:
+                exception_message = make_paragraph("Failure in %s: problem creating postformat file in fhicl-dump call" % (reformat_subset_of_documents.__name__))
         
         if exception_message != "":
             raise Exception( exception_message )
 
-        os.unlink( preformat_filenames[index] )
-        
-        return formatted_fhicl_string
+        for index in indices:
+            os.unlink( preformat_filenames[index] )
 
-    postformat_fhicl_strings = pool.map(reformat_single_document, range(len(input_fhicl_strings)))
+        return formatted_fhicl_strings   # End of reformat_subset_of_documents()
 
-    return postformat_fhicl_strings
-        
+    document_set_size = 8
+    num_total_documents = len(input_fhicl_strings)
+
+    if num_total_documents > document_set_size:
+        document_sets = [ range(i, i+document_set_size) for i in range(0, num_total_documents, document_set_size) if i+document_set_size < num_total_documents]
+        remainder_set = range( document_sets[-1][-1] + 1, num_total_documents)
+    
+        if len(remainder_set) > 0:
+            document_sets.append( remainder_set )
+    else:
+        document_sets = [ range(num_total_documents) ]
+
+    postformat_fhicl_document_lists = pool.map(reformat_subset_of_documents, document_sets)
+
+    return [ postformat_fhicl_document for postformat_fhicl_document_list in postformat_fhicl_document_lists \
+                  for postformat_fhicl_document in postformat_fhicl_document_list ]
 
 def main():
 
@@ -320,6 +335,7 @@ def main():
         execute_command_in_xterm(os.environ["PWD"], "echo You should see an xclock appear; xclock ")
 
     if reformat_fhicl_document_test:
+        assert False, "Due to code changes made on Aug-5-2018, this test is no longer valid"
         inputstring = 'mytable: {   this: "and"        that: "and  the other"   }'
         source_filename = Popen("mktemp", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
 
