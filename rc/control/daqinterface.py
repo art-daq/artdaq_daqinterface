@@ -43,6 +43,7 @@ from rc.control.utilities import date_and_time
 from rc.control.utilities import construct_checked_command
 from rc.control.utilities import reformat_fhicl_documents
 from rc.control.utilities import get_commit_hash
+from rc.control.utilities import fhicl_writes_root_file
 
 if not "DAQINTERFACE_FHICL_DIRECTORY" in os.environ:
     print
@@ -1730,26 +1731,6 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
             self.print_log("w", make_paragraph(
                     "WARNING: an exception was thrown when attempting to save the run record. While datataking may be able to proceed, this may also indicate a serious problem"))
 
-        run_documents = self.get_run_documents()
-
-        for i_proc in range(len(self.procinfos)):
-            if "RootOutput" in self.procinfos[i_proc].fhicl_used and \
-               re.search(r"fileName\s*:\s*.*\.root", self.procinfos[i_proc].fhicl_used, re.MULTILINE):
-               self.procinfos[i_proc].fhicl_used = self.procinfos[i_proc].fhicl_used + run_documents
-
-        # JCF, Mar-6-2018
-
-        # Bit of a chicken-and-egg issue, but basically, after
-        # decorating the DataLogger FHiCL documents with all run
-        # documents saved in the run record as above (so they're later
-        # retrievable via art's config_dumper) clobber and then redo
-        # the temporary run record with the now-decorated DataLogger documents
-
-        if os.path.exists(self.tmp_run_record):
-            shutil.rmtree(self.tmp_run_record)
-
-        self.save_run_record()
-
         if self.manage_processes:
 
             try:
@@ -1764,6 +1745,30 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
             except Exception:
                 self.print_log("w", traceback.format_exc())
                 self.print_log("w", make_paragraph("WARNING: an exception was caught when trying to launch the online monitoring processes; online monitoring won't work though this will not affect actual datataking"))
+
+            self.print_log("i", "Adding archive entries to config for diskwriting processes...")
+
+            for procinfo_index in range(len(self.procinfos)):
+                if "EventBuilder" in self.procinfos[procinfo_index].name or "DataLogger" in self.procinfos[procinfo_index].name:
+                    if fhicl_writes_root_file(self.procinfos[procinfo_index].fhicl_used):
+
+                        for procinfo_with_fhicl_to_save in self.procinfos:
+                            self.print_log("i", "Saving FHiCL for %s to %s" % (procinfo_with_fhicl_to_save.label,
+                                                                               self.procinfos[procinfo_index].label))
+                            try:
+                                self.procinfos[procinfo_index].lastreturned = self.procinfos[procinfo_index].server.daq.add_config_archive_entry( procinfo_with_fhicl_to_save.label, re.sub("'","\"", procinfo_with_fhicl_to_save.fhicl_used))                  
+                            except:
+                                self.print_log("e", traceback.format_exc())
+                                self.alert_and_recover(make_paragraph("An exception was thrown when attempting to add archive entry for %s to %s; see traceback above for more info" % (procinfo_with_fhicl_to_save.label, self.procinfos[procinfo_index].label)))
+                                return
+
+                            if self.procinfos[procinfo_index].lastreturned != "Success":
+                                raise Exception( make_paragraph( "Attempt to add config archive entry for %s to %s was unsuccessful" % \
+                                                                 (procinfo_with_fhicl_to_save.label, self.procinfos[procinfo_index].label)))
+
+                        
+
+        self.print_log("i", "Done adding archive entries to config")
 
         self.complete_state_change(self.name, "configuring")
 

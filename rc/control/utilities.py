@@ -296,6 +296,17 @@ def get_commit_hash(gitrepo):
     return proclines[0].strip()
         
 
+
+def fhicl_writes_root_file(fhicl_string):
+
+    # 17-Apr-2018, KAB: added the MULTILINE flag to get this search to behave as desired.                                             
+
+    if "RootOutput" in fhicl_string and \
+       re.search(r"^\s*fileName\s*:\s*.*\.root", fhicl_string, re.MULTILINE):
+        return True
+    else:
+        return False
+
 def main():
 
     paragraphed_string_test = False
