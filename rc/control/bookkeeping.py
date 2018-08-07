@@ -9,6 +9,7 @@ import re
 from rc.control.utilities import table_range
 from rc.control.utilities import enclosing_table_range
 from rc.control.utilities import commit_check_throws_if_failure
+from rc.control.utilities import fhicl_writes_root_file
 
 def bookkeeping_for_fhicl_documents_artdaq_v1_base(self):
 
@@ -485,7 +486,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                        self.procinfos[i_proc].fhicl_used)
         if not self.request_address is None:
             self.procinfos[i_proc].fhicl_used = re.sub("request_address\s*:\s*[\"0-9\.]+", 
-                                                       "request_address: \"%s\"" % (self.request_address), 
+                                                       "request_address: \"%s\"" % (self.request_address.strip("\"")), 
                                                        self.procinfos[i_proc].fhicl_used)
 
         if not self.request_port is None:
@@ -536,11 +537,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         for i_proc in range(len(self.procinfos)):
             if "EventBuilder" in self.procinfos[i_proc].name or "DataLogger" in self.procinfos[i_proc].name:
 
-                # 17-Apr-2018, KAB: added the MULTILINE flag to get this search to behave as desired.
-                # I'm not sure what the -not-a-comment- directive in the search is intended to do.
-                res = re.search(r"^[^#]*RootOutput", self.procinfos[i_proc].fhicl_used, re.MULTILINE)
-
-                if res:
+                if fhicl_writes_root_file(self.procinfos[i_proc].fhicl_used):
                     # 17-Apr-2018, KAB: switched to using the "enclosing_table_range" function, rather
                     # than "table_range", since we want to capture all of the text inside the same
                     # block as the RootOutput FHiCL value.

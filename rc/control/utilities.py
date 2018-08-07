@@ -304,6 +304,17 @@ def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
     return [ postformat_fhicl_document for postformat_fhicl_document_list in postformat_fhicl_document_lists \
                   for postformat_fhicl_document in postformat_fhicl_document_list ]
 
+
+def fhicl_writes_root_file(fhicl_string):
+
+    # 17-Apr-2018, KAB: added the MULTILINE flag to get this search to behave as desired.                                             
+
+    if "RootOutput" in fhicl_string and \
+       re.search(r"^\s*fileName\s*:\s*.*\.root", fhicl_string, re.MULTILINE):
+        return True
+    else:
+        return False
+
 def main():
 
     paragraphed_string_test = False
