@@ -53,6 +53,14 @@ daq: {
 		metricPluginType: "report"
 		level: 2
 	}
+	 ganglia: {
+	   metricPluginType: "ganglia"
+	   level: 3
+	   reporting_interval: 15.0
+	 
+	   configFile: "/etc/ganglia/gmond.conf"
+	   group: "ARTDAQ"
+	 }
   }
 } 
 
