@@ -1009,66 +1009,6 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
         return logfilenames
 
-    # JCF, Aug-12-2016
-
-    # get_run_documents is intended to be called after the FHiCL
-    # documents have been fully formatted and are ready to send to the
-    # artdaq processes; essentially, this just creates a big string
-    # which FHiCL can parse but doesn't actually use, and which
-    # contains all the FHiCL documents used for all processes, as well
-    # as other information pertinent to the run (its metadata output
-    # file, etc.). This string is intended to be concatenated at the
-    # end of the diskwriting aggregator FHiCL document(s) so that any
-    # output file from the DAQ will have a full record of how the DAQ
-    # was configured when the file was created when "config_dumper -P
-    # <rootfile>" is run
-
-    def get_run_documents(self):
-
-        runstring = "\n\nrun_documents: {\n"
-        
-        for procinfo in self.procinfos:
-
-            fhicl_readable_hostname = procinfo.host
-            fhicl_readable_hostname = fhicl_readable_hostname.replace(".","_")
-            fhicl_readable_hostname = fhicl_readable_hostname.replace("-","_")
-
-            runstring += "\n\n  " + procinfo.name.upper() + "_" + fhicl_readable_hostname + \
-                "_" + str(procinfo.port) + ": '\n"
-
-            dressed_fhicl = re.sub("'","\"", procinfo.fhicl_used)
-            runstring += dressed_fhicl
-            runstring += "\n  '\n"
-        
-        def get_arbitrary_file(filename, label):
-            try:
-                file = open(filename)
-            except:
-                self.alert_and_recover("Exception in DAQInterface: unable to find file \"%s\"" % 
-                                       (filename))
-                return "999"
-
-            contents = "\n  " + label + ": '\n"
-
-            for line in file:
-                line = re.sub("'","\\'", line)
-                contents += line
-
-            contents += "\n  '\n"
-            return contents
-
-        indir = self.tmp_run_record
-
-        metadata_filename = indir + "/metadata.txt"
-        runstring += get_arbitrary_file(metadata_filename, "run_metadata")
-
-        config_filename = indir + "/boot.txt"        
-        runstring += get_arbitrary_file(config_filename, "run_daqinterface_boot")
-
-        runstring += "} \n\n"
-
-        return runstring
-
     def softlink_logfiles(self):
         
         linked_pmt_logfile = False
@@ -1752,11 +1692,25 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                 if "EventBuilder" in self.procinfos[procinfo_index].name or "DataLogger" in self.procinfos[procinfo_index].name:
                     if fhicl_writes_root_file(self.procinfos[procinfo_index].fhicl_used):
 
+                        labeled_fhicl_documents = []
+
                         for procinfo_with_fhicl_to_save in self.procinfos:
-                            self.print_log("i", "Saving FHiCL for %s to %s" % (procinfo_with_fhicl_to_save.label,
+                            labeled_fhicl_documents.append( (procinfo_with_fhicl_to_save.label, \
+                                                             re.sub("'","\"", procinfo_with_fhicl_to_save.fhicl_used)) )
+
+                        for filestub in ["metadata", "boot" ]:
+                            with open("%s/%s.txt" % ( self.tmp_run_record, filestub ) ) as inf:
+                                contents = inf.read()
+                                contents = re.sub("'","\"", contents)
+                                contents = re.sub('"', '\"', contents)
+                                labeled_fhicl_documents.append( (filestub,
+                                                                 'contents: "\n%s\n"\n' % (contents)) )
+                        for label, contents in labeled_fhicl_documents:
+
+                            self.print_log("i", "Saving FHiCL for %s to %s" % (label,
                                                                                self.procinfos[procinfo_index].label))
                             try:
-                                self.procinfos[procinfo_index].lastreturned = self.procinfos[procinfo_index].server.daq.add_config_archive_entry( procinfo_with_fhicl_to_save.label, re.sub("'","\"", procinfo_with_fhicl_to_save.fhicl_used))                  
+                                self.procinfos[procinfo_index].lastreturned = self.procinfos[procinfo_index].server.daq.add_config_archive_entry( label, contents )
                             except:
                                 self.print_log("e", traceback.format_exc())
                                 self.alert_and_recover(make_paragraph("An exception was thrown when attempting to add archive entry for %s to %s; see traceback above for more info" % (procinfo_with_fhicl_to_save.label, self.procinfos[procinfo_index].label)))
@@ -1764,11 +1718,10 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
                             if self.procinfos[procinfo_index].lastreturned != "Success":
                                 raise Exception( make_paragraph( "Attempt to add config archive entry for %s to %s was unsuccessful" % \
-                                                                 (procinfo_with_fhicl_to_save.label, self.procinfos[procinfo_index].label)))
+                                                                 (label, self.procinfos[procinfo_index].label)))
+            
 
-                        
-
-        self.print_log("i", "Done adding archive entries to config")
+            self.print_log("i", "Done adding archive entries to config")
 
         self.complete_state_change(self.name, "configuring")
 
