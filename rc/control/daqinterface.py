@@ -1647,12 +1647,27 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
             self.alert_and_recover("An exception was thrown when performing bookkeeping on the process FHiCL documents; see traceback above for more info")
             return
 
+        fhiclcpp_setup_file = os.environ["HOME"] + "/.setup_fhiclcpp"
+        if not os.path.exists(fhiclcpp_setup_file):
+            self.print_log("w", make_paragraph("File \"%s\", needed for formatting FHiCL configurations, does not appear to exist; will attempt to auto-generate one..." % (fhiclcpp_setup_file)))
+            with open( fhiclcpp_setup_file, "w") as outf:
+                outf.write("source %s/setup\n" % (self.productsdir))
+                fhiclcpp_to_setup_line = Popen("source %s/setup; ups list -aK+ fhiclcpp | sort -n" % (self.productsdir), 
+                                               shell=True, stdout=subprocess.PIPE).stdout.readlines()[-1]
+                outf.write("setup %s %s -q %s\n" % (fhiclcpp_to_setup_line.split()[0],
+                                                  fhiclcpp_to_setup_line.split()[1],
+                                                  fhiclcpp_to_setup_line.split()[3]))
+
+            if os.path.exists( fhiclcpp_setup_file ):
+                self.print_log("w", make_paragraph("\"%s\" has been auto-generated; you may want to check to see that it correctly sets up the fhiclcpp package..." % (fhiclcpp_setup_file)))
+            else:
+                raise Exception(make_paragraph("Error: was unable to find or create a file \"%s\"" % (fhiclcpp_setup_file)))
         if self.debug_level <= 1:
             with deepsuppression():
-                reformatted_fhicl_documents = reformat_fhicl_documents(self.daq_setup_script,
+                reformatted_fhicl_documents = reformat_fhicl_documents(fhiclcpp_setup_file,
                                                                        [ procinfo.fhicl_used for procinfo in self.procinfos ] )
         else:
-            reformatted_fhicl_documents = reformat_fhicl_documents(self.daq_setup_script,
+            reformatted_fhicl_documents = reformat_fhicl_documents(fhiclcpp_setup_file,
                                                                        [ procinfo.fhicl_used for procinfo in self.procinfos ] )
 
         for i_proc, reformatted_fhicl_document in enumerate(reformatted_fhicl_documents):
