@@ -25,7 +25,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     if os.path.exists(self.daq_dir + "/srcs/artdaq"):
         commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
-                                           "d338b810c589a177ff1a34d82fa82a459cc1704b", "June 29, 2018", True)
+                                           "b434f3b71dd5c87da68d6b13f040701ff610fee1", "July 15, 2018", True)
 
     num_data_loggers = 0
     num_dispatchers = 0
