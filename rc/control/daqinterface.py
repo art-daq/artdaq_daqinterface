@@ -1255,6 +1255,40 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
         self.print_log("e", (traceback.format_exc()))
         self.print_log("e", make_paragraph("An exception was thrown when %s; exception has been caught and system remains in the \"%s\" state" % \
                                  (failed_action, self.state(self.name))))
+
+    # labeled_fhicl_documents is actually a list of tuples of the form
+    # [ ("label", "fhicl string") ] to be saved to the process indexed
+    # in self.procinfos by procinfo_index via "add_config_archive_entry"
+
+    def archive_documents(self, labeled_fhicl_documents):
+
+        for procinfo_index in range(len(self.procinfos)):
+            if "EventBuilder" in self.procinfos[procinfo_index].name or "DataLogger" in self.procinfos[procinfo_index].name:
+                if fhicl_writes_root_file(self.procinfos[procinfo_index].fhicl_used):
+
+                    for label, contents in labeled_fhicl_documents:
+
+                        self.print_log("i", "Saving FHiCL for %s to %s" % (label,
+                                                                           self.procinfos[procinfo_index].label))
+                        try:
+                            self.procinfos[procinfo_index].lastreturned = self.procinfos[procinfo_index].server.daq.add_config_archive_entry( label, contents )
+                        except:
+                            self.print_log("e", traceback.format_exc())
+                            self.alert_and_recover(make_paragraph("An exception was thrown when attempting to add archive entry for %s to %s; see traceback above for more info" % (label, self.procinfos[procinfo_index].label)))
+                            return
+
+                        if self.procinfos[procinfo_index].lastreturned != "Success":
+                            raise Exception( make_paragraph( "Attempt to add config archive entry for %s to %s was unsuccessful" % \
+                                                             (label, self.procinfos[procinfo_index].label)))
+
+    def update_archived_metadata(self):
+        with open("%s/%s/metadata.txt" % ( self.record_directory, str(self.run_number) ) ) as inf:
+            contents = inf.read()
+            contents = re.sub("'","\"", contents)
+            contents = re.sub('"', '\"', contents)
+
+        self.archive_documents([ ("metadata", 'contents: "\n%s\n"\n' % (contents)) ])
+
         
     # do_boot(), do_config(), do_start_running(), etc., are the
     # functions which get called in the runner() function when a
@@ -1703,38 +1737,21 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
             self.print_log("i", "Adding archive entries to config for diskwriting processes...")
 
-            for procinfo_index in range(len(self.procinfos)):
-                if "EventBuilder" in self.procinfos[procinfo_index].name or "DataLogger" in self.procinfos[procinfo_index].name:
-                    if fhicl_writes_root_file(self.procinfos[procinfo_index].fhicl_used):
+            labeled_fhicl_documents = []
 
-                        labeled_fhicl_documents = []
+            for procinfo_with_fhicl_to_save in self.procinfos:
+                labeled_fhicl_documents.append( (procinfo_with_fhicl_to_save.label, \
+                                                 re.sub("'","\"", procinfo_with_fhicl_to_save.fhicl_used)) )
 
-                        for procinfo_with_fhicl_to_save in self.procinfos:
-                            labeled_fhicl_documents.append( (procinfo_with_fhicl_to_save.label, \
-                                                             re.sub("'","\"", procinfo_with_fhicl_to_save.fhicl_used)) )
+            for filestub in ["metadata", "boot" ]:
+                with open("%s/%s.txt" % ( self.tmp_run_record, filestub ) ) as inf:
+                    contents = inf.read()
+                    contents = re.sub("'","\"", contents)
+                    contents = re.sub('"', '\"', contents)
+                    labeled_fhicl_documents.append( (filestub,
+                                                     'contents: "\n%s\n"\n' % (contents)) )
 
-                        for filestub in ["metadata", "boot" ]:
-                            with open("%s/%s.txt" % ( self.tmp_run_record, filestub ) ) as inf:
-                                contents = inf.read()
-                                contents = re.sub("'","\"", contents)
-                                contents = re.sub('"', '\"', contents)
-                                labeled_fhicl_documents.append( (filestub,
-                                                                 'contents: "\n%s\n"\n' % (contents)) )
-                        for label, contents in labeled_fhicl_documents:
-
-                            self.print_log("i", "Saving FHiCL for %s to %s" % (label,
-                                                                               self.procinfos[procinfo_index].label))
-                            try:
-                                self.procinfos[procinfo_index].lastreturned = self.procinfos[procinfo_index].server.daq.add_config_archive_entry( label, contents )
-                            except:
-                                self.print_log("e", traceback.format_exc())
-                                self.alert_and_recover(make_paragraph("An exception was thrown when attempting to add archive entry for %s to %s; see traceback above for more info" % (procinfo_with_fhicl_to_save.label, self.procinfos[procinfo_index].label)))
-                                return
-
-                            if self.procinfos[procinfo_index].lastreturned != "Success":
-                                raise Exception( make_paragraph( "Attempt to add config archive entry for %s to %s was unsuccessful" % \
-                                                                 (label, self.procinfos[procinfo_index].label)))
-            
+            self.archive_documents(labeled_fhicl_documents)
 
             self.print_log("i", "Done adding archive entries to config")
 
@@ -1796,6 +1813,8 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
         self.save_metadata_value("Start time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
 
+        # self.update_archived_metadata()
+
         self.print_log("i", "\nRun info can be found locally at %s\n" % \
                 (run_record_directory))
 
@@ -1811,6 +1830,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
         self.save_metadata_value("Stop time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
 
+        # self.update_archived_metadata()
 
         self.stop_datataking()
 
