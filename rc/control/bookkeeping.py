@@ -20,11 +20,47 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     else:
         raise Exception(make_paragraph("all_events_to_all_dispatchers is set to false in the settings file %s; this use is deprecated so it should either be set to true or removed entirely (default is true)" % (os.environ["DAQINTERFACE_SETTINGS"])))
 
-    max_fragment_size_words = self.max_fragment_size_bytes / 8
+    if self.advanced_memory_usage:
 
-    if os.path.exists(self.daq_dir + "/srcs/artdaq"):
-        commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
-                                           "d338b810c589a177ff1a34d82fa82a459cc1704b", "June 29, 2018", True)
+        max_event_size = 0
+
+        for procinfo in self.procinfos:
+
+            res = re.search(r"\s*max_fragment_size_bytes\s*:\s*([0-9]+)", procinfo.fhicl_used)
+            
+            if "BoardReader" in procinfo.name:
+                if res:
+                    max_event_size += int(res.group(1))
+                else:
+                    raise Exception(make_paragraph("Unable to find the max_fragment_size_bytes variable in the FHiCL document for %s; this is needed since \"advanced_memory_usage\" is set to true in the settings file, %s" % (procinfo.label, os.environ["DAQINTERFACE_SETTINGS"])))
+            else:
+                if res:
+                    raise Exception(make_paragraph("max_fragment_size_bytes is found in the FHiCL document for %s; this parameter must not appear in FHiCL documents for non-BoardReader artdaq processes" % (procinfo.label)))
+        
+        for i_proc in range(len(self.procinfos)):
+            if "BoardReader" not in self.procinfos[i_proc].name:
+                if re.search(r"max_event_size_bytes\s*:\s*[0-9]+", self.procinfos[i_proc].fhicl_used):
+                    self.procinfos[i_proc].fhicl_used = re.sub("max_event_size_bytes\s*:\s*[0-9]+",
+                                                               "max_event_size_bytes: %d" % (max_event_size),
+                                                               self.procinfos[i_proc].fhicl_used)
+                else:
+
+                    res = re.search(r"\n(\s*buffer_count\s*:\s*[0-9]+)", self.procinfos[i_proc].fhicl_used)
+
+                    assert res, "artdaq's FHiCL requirements have changed since this code was written"
+                    
+                    self.procinfos[i_proc].fhicl_used = re.sub(r"\n(\s*buffer_count\s*:\s*[0-9]+)",
+                                                               "\n%s\nmax_event_size_bytes: %d" % (res.group(1), max_event_size),
+                                                               self.procinfos[i_proc].fhicl_used)
+
+    if self.advanced_memory_usage:
+        max_fragment_size_words = max_event_size / 8   # Aug-15-2018: this will be improved on...
+    else:
+        max_fragment_size_words = self.max_fragment_size_bytes / 8
+
+    # if os.path.exists(self.daq_dir + "/srcs/artdaq"):
+    #     commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
+    #                                        "d338b810c589a177ff1a34d82fa82a459cc1704b", "June 29, 2018", True)
 
     num_data_loggers = 0
     num_dispatchers = 0
@@ -269,39 +305,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                        "routing_master_hostname: \"%s\"" % (routingmaster_hostnames[0].strip("\"")),
                                                        self.procinfos[i_proc].fhicl_used)
 
-    if self.advanced_memory_usage:
-
-        max_event_size = 0
-
-        for procinfo in self.procinfos:
-            
-            if not "BoardReader" in procinfo.name:
-                continue
-            
-            res = re.search(r"^\s*max_fragment_size_bytes\s*:\s*([0-9]+)", self.procinfos[i_proc].fhicl_used)
-            
-            if res:
-                max_event_size += int(res.group(1))
-            else:
-                raise Exception(make_paragraph("Unable to find the max_fragment_size_bytes variable in the FHiCL document for %s; this is needed since \"advanced_memory_usage\" is set to true in the settings file, %s" % (procinfo.label, os.environ["DAQINTERFACE_SETTINGS"])))
-        
-        print "max_event_size is %d" % (max_event_size)
-            
-        for i_proc in range(len(self.procinfos)):
-            if "BoardReader" not in self.procinfos[i_proc].name:
-                if re.search(r"max_event_size_bytes\s*:\s*[0-9]+", self.procinfos[i_proc].fhicl_used):
-                    self.procinfos[i_proc].fhicl_used = re.sub("max_event_size_bytes\s*:\s*[0-9]+",
-                                                               "max_event_size_bytes: %d" % (max_event_size),
-                                                               self.procinfos[i_proc].fhicl_used)
-                else:
-
-                    res = re.search(r"\n(\s*buffer_count\s*:\s*[0-9]+)", self.procinfos[i_proc].fhicl_used)
-
-                    assert res, "artdaq's FHiCL requirements have changed since this code was written"
-                    
-                    self.procinfos[i_proc].fhicl_used = re.sub(r"\n(\s*buffer_count\s*:\s*[0-9]+)",
-                                                               "\n%s\nmax_event_size_bytes: %d" % (res.group(1), max_event_size),
-                                                               self.procinfos[i_proc].fhicl_used)
 
     if not self.data_directory_override is None:
         for i_proc in range(len(self.procinfos)):
