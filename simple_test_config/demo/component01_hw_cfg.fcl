@@ -8,6 +8,7 @@
 
 	sleep_on_stop_us: 0
 
+
 	 # Possible values are: Ignored, Single, Buffer, Window
 	request_mode: "Ignored"
 
@@ -59,6 +60,7 @@
 	  random_seed: 8250
 	  sleep_on_stop_us: 500000 
 	  nADCcounts: 40
+       	max_fragment_size_bytes: 10000
 	  throttle_usecs: 100000
 	  distribution_type: 2
 	  timestamp_scale_factor: 1

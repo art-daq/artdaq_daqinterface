@@ -263,7 +263,43 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     except Exception:
         pass # We don't care if variable above is undefined
 
-    max_fragment_size_words = self.max_fragment_size_bytes / 8
+    if self.advanced_memory_usage:
+
+        max_event_size = 0
+
+        for procinfo in self.procinfos:
+
+            res = re.search(r"\s*max_fragment_size_bytes\s*:\s*([0-9]+)", procinfo.fhicl_used)
+            
+            if "BoardReader" in procinfo.name:
+                if res:
+                    max_event_size += int(res.group(1))
+                else:
+                    raise Exception(make_paragraph("Unable to find the max_fragment_size_bytes variable in the FHiCL document for %s; this is needed since \"advanced_memory_usage\" is set to true in the settings file, %s" % (procinfo.label, os.environ["DAQINTERFACE_SETTINGS"])))
+            else:
+                if res:
+                    raise Exception(make_paragraph("max_fragment_size_bytes is found in the FHiCL document for %s; this parameter must not appear in FHiCL documents for non-BoardReader artdaq processes" % (procinfo.label)))
+        
+        for i_proc in range(len(self.procinfos)):
+            if "BoardReader" not in self.procinfos[i_proc].name:
+                if re.search(r"max_event_size_bytes\s*:\s*[0-9]+", self.procinfos[i_proc].fhicl_used):
+                    self.procinfos[i_proc].fhicl_used = re.sub("max_event_size_bytes\s*:\s*[0-9]+",
+                                                               "max_event_size_bytes: %d" % (max_event_size),
+                                                               self.procinfos[i_proc].fhicl_used)
+                else:
+
+                    res = re.search(r"\n(\s*buffer_count\s*:\s*[0-9]+)", self.procinfos[i_proc].fhicl_used)
+
+                    assert res, "artdaq's FHiCL requirements have changed since this code was written"
+                    
+                    self.procinfos[i_proc].fhicl_used = re.sub(r"\n(\s*buffer_count\s*:\s*[0-9]+)",
+                                                               "\n%s\nmax_event_size_bytes: %d" % (res.group(1), max_event_size),
+                                                               self.procinfos[i_proc].fhicl_used)
+
+    if self.advanced_memory_usage:
+        max_fragment_size_words = max_event_size / 8   # Aug-15-2018: this will be improved on...
+    else:
+        max_fragment_size_words = self.max_fragment_size_bytes / 8
 
     if os.path.exists(self.daq_dir + "/srcs/artdaq"):
         commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
