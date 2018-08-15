@@ -1813,8 +1813,6 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
         self.save_metadata_value("Start time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
 
-        # self.update_archived_metadata()
-
         self.print_log("i", "\nRun info can be found locally at %s\n" % \
                 (run_record_directory))
 
@@ -1829,8 +1827,6 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
         self.save_metadata_value("Stop time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
-
-        # self.update_archived_metadata()
 
         self.stop_datataking()
 
