@@ -21,11 +21,57 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     else:
         raise Exception(make_paragraph("all_events_to_all_dispatchers is set to false in the settings file %s; this use is deprecated so it should either be set to true or removed entirely (default is true)" % (os.environ["DAQINTERFACE_SETTINGS"])))
 
-    max_fragment_size_words = self.max_fragment_size_bytes / 8
-
     if os.path.exists(self.daq_dir + "/srcs/artdaq"):
         commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
                                            "b434f3b71dd5c87da68d6b13f040701ff610fee1", "July 15, 2018", True)
+
+    if self.advanced_memory_usage:
+
+        memory_scale_factor = 1.1
+        max_event_size = 0
+        max_fragment_sizes = []
+
+        for procinfo in self.procinfos:
+
+            res = re.search(r"\s*max_fragment_size_bytes\s*:\s*([0-9]+)", procinfo.fhicl_used)
+            
+            if "BoardReader" in procinfo.name:
+                if res:
+                    max_fragment_size = int(res.group(1))
+                    max_fragment_size = int(round(max_fragment_size*memory_scale_factor))
+
+                    if max_fragment_size % 8 != 0:
+                        max_fragment_size += (8 - max_fragment_size % 8)
+
+                    assert max_fragment_size % 8 == 0, "Max fragment size not divisible by 8"
+                    
+                    max_event_size += max_fragment_size
+
+                    max_fragment_sizes.append( (procinfo.label, max_fragment_size) ) 
+                else:
+                    raise Exception(make_paragraph("Unable to find the max_fragment_size_bytes variable in the FHiCL document for %s; this is needed since \"advanced_memory_usage\" is set to true in the settings file, %s" % (procinfo.label, os.environ["DAQINTERFACE_SETTINGS"])))
+            else:
+                if res:
+                    raise Exception(make_paragraph("max_fragment_size_bytes is found in the FHiCL document for %s; this parameter must not appear in FHiCL documents for non-BoardReader artdaq processes" % (procinfo.label)))
+        
+        for i_proc in range(len(self.procinfos)):
+            if "BoardReader" not in self.procinfos[i_proc].name:
+                if re.search(r"max_event_size_bytes\s*:\s*[0-9]+", self.procinfos[i_proc].fhicl_used):
+                    self.procinfos[i_proc].fhicl_used = re.sub("max_event_size_bytes\s*:\s*[0-9]+",
+                                                               "max_event_size_bytes: %d" % (max_event_size),
+                                                               self.procinfos[i_proc].fhicl_used)
+                else:
+
+                    res = re.search(r"\n(\s*buffer_count\s*:\s*[0-9]+)", self.procinfos[i_proc].fhicl_used)
+
+                    assert res, "artdaq's FHiCL requirements have changed since this code was written"
+                    
+                    self.procinfos[i_proc].fhicl_used = re.sub(r"\n(\s*buffer_count\s*:\s*[0-9]+)",
+                                                               "\n%s\nmax_event_size_bytes: %d" % (res.group(1), max_event_size),
+                                                               self.procinfos[i_proc].fhicl_used)
+
+    if not self.advanced_memory_usage:
+        max_fragment_size_words = self.max_fragment_size_bytes / 8
 
     num_data_loggers = 0
     num_dispatchers = 0
@@ -38,8 +84,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     proc_hosts = []
 
-    for procname in ["BoardReader", "EventBuilder", "DataLogger", "Dispatcher"] :
+    # Assumption here is that when pmtConfig was created, processes
+    # were listed in type order of upstream-to-downstream
 
+    for procname in ["BoardReader", "EventBuilder", "DataLogger", "Dispatcher"] :
         for procinfo in self.procinfos:
             if procname in procinfo.name:
                 if procinfo.host == "localhost":
@@ -54,7 +102,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     proc_hosts_string = ", ".join( proc_hosts )
 
-    def create_sources_or_destinations_string(nodetype, first, last, nth = -1, this_node_index = -1):
+    def create_sources_or_destinations_string(i_proc, nodetype, first, last, nth = -1, this_node_index = -1):
 
         if nodetype == "sources":
             prefix = "s"
@@ -68,15 +116,40 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         for i in range(first, last):
             if nth == -1:
                 if i == first or nodetype == "destinations":
-                    nodes.append( 
-                        "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d host_map: [%s]}" % \
-                        (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_size_words, \
-                         proc_hosts_string))
+                    host_map_string = "host_map: [%s]" % (proc_hosts_string)
+                else:
+                    host_map_string = ""
+
+                if self.advanced_memory_usage:
+                    
+                    if "BoardReader" in self.procinfos[i_proc].name:
+
+                        list_of_one_fragment_size = [ proctuple[1] for proctuple in max_fragment_sizes if 
+                                                      proctuple[0] == self.procinfos[i_proc].label ]
+                        assert len(list_of_one_fragment_size) == 1
+
+                        max_fragment_size = list_of_one_fragment_size[0]
+
+                        nodes.append( 
+                            "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
+                            (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_size / 8, \
+                             host_map_string))
+                    elif "EventBuilder" in self.procinfos[i_proc].name and nodetype == "sources":
+                        nodes.append( 
+                            "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
+                            (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_sizes[i][1] / 8, \
+                             host_map_string))
+
+                    else:
+                        nodes.append( 
+                            "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
+                            (prefix, i, self.transfer, nodetype[:-1], i, max_event_size / 8, \
+                             host_map_string))
                 else:
                     nodes.append( 
-                        "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d}" % \
-                        (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_size_words))
-
+                        "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
+                        (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_size_words, \
+                         host_map_string))
             else:
 
                 if nodetype == "destinations":
@@ -192,7 +265,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 self.procinfos[i_proc].fhicl_used = \
                     self.procinfos[i_proc].fhicl_used[:table_start] + \
                     "\n" + tablename + ": { \n" + \
-                    create_sources_or_destinations_string(tablename, node_first, node_last, nth, node_index) + \
+                    create_sources_or_destinations_string(i_proc, tablename, node_first, node_last, nth, node_index) + \
                     "\n } \n" + \
                     self.procinfos[i_proc].fhicl_used[table_end:]
 
@@ -287,6 +360,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             self.procinfos[i_proc].fhicl_used = re.sub("routing_master_hostname\s*:\s*\S+",
                                                        "routing_master_hostname: \"%s\"" % (routingmaster_hostnames[0].strip("\"")),
                                                        self.procinfos[i_proc].fhicl_used)
+
 
     if not self.data_directory_override is None:
         for i_proc in range(len(self.procinfos)):

@@ -402,6 +402,7 @@ class DAQInterface(Component):
         self.routingmaster_timeout = 30
 
         self.use_messageviewer = True
+        self.advanced_memory_usage = False
         self.fake_messagefacility = False
         self.data_directory_override = None
         self.max_configurations_to_list = 1000000
@@ -484,6 +485,13 @@ class DAQInterface(Component):
 
                 if res:
                     self.use_messageviewer = False
+            elif "advanced_memory_usage" in line or "advanced memory usage" in line:
+                token = line.split()[-1].strip()
+                
+                res = re.search(r"[Tt]rue", token)
+
+                if res:
+                    self.advanced_memory_usage = True
             elif "fake_messagefacility" in line or "fake messagefacility" in line:
                 token = line.split()[-1].strip()
                 
@@ -510,7 +518,7 @@ class DAQInterface(Component):
         if self.productsdir is None:
             missing_vars.append("productsdir_for_bash_scripts")
 
-        if self.max_fragment_size_bytes is None:
+        if not self.advanced_memory_usage and self.max_fragment_size_bytes is None:
             missing_vars.append("max_fragment_size_bytes")
 
         if len(missing_vars) > 0:
@@ -520,6 +528,11 @@ class DAQInterface(Component):
                                 "Unable to parse the following variable(s) meant to be set in the "
                                 "settings file, %s" % \
                                     (os.environ["DAQINTERFACE_SETTINGS"] + ": " + missing_vars_string ) ))
+
+        if self.advanced_memory_usage and not self.max_fragment_size_bytes:
+            raise Exception(make_paragraph("max_fragment_size_bytes isn't set in the settings file, "
+                                           "%s; this needs to be set since advanced_memory_usage isn't set to true" %
+                                           os.environ["DAQINTERFACE_SETTINGS"]))
         
                     
 
@@ -672,18 +685,21 @@ class DAQInterface(Component):
 
         outf = open(self.pmtconfigname, "w")
 
-        for procinfo in self.procinfos:
+        # List the process types in pmtConfig in order of
+        # upstream-to-downstream so we can keep track of the rank
+        # during bookkeeping
 
-            for procname in ["BoardReader", "EventBuilder", "Aggregator", "RoutingMaster", "DataLogger", "Dispatcher"]:
+        for procname in ["BoardReader", "EventBuilder", "DataLogger", "Dispatcher", "RoutingMaster"]:
+            for procinfo in self.procinfos:
                 if procname in procinfo.name:
                     outf.write(procname + "Main!")
 
-            if procinfo.host != "localhost":
-                host_to_write = procinfo.host
-            else:
-                host_to_write = os.environ["HOSTNAME"]
-                
-            outf.write(host_to_write + "!  id: " + procinfo.port + " commanderPluginType: xmlrpc application_name: " + str(procinfo.label) + " partition_number: " + str(self.partition_number) + "\n")
+                    if procinfo.host != "localhost":
+                        host_to_write = procinfo.host
+                    else:
+                        host_to_write = os.environ["HOSTNAME"]
+
+                    outf.write(host_to_write + "!  id: " + procinfo.port + " commanderPluginType: xmlrpc application_name: " + str(procinfo.label) + " partition_number: " + str(self.partition_number) + "\n")
 
         outf.close()
 
