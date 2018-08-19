@@ -22,7 +22,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     if self.advanced_memory_usage:
 
+        memory_scale_factor = 1.1
         max_event_size = 0
+        max_fragment_sizes = []
 
         for procinfo in self.procinfos:
 
@@ -30,7 +32,17 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             
             if "BoardReader" in procinfo.name:
                 if res:
-                    max_event_size += int(res.group(1))
+                    max_fragment_size = int(res.group(1))
+                    max_fragment_size = int(round(max_fragment_size*memory_scale_factor))
+
+                    if max_fragment_size % 8 != 0:
+                        max_fragment_size += (8 - max_fragment_size % 8)
+
+                    assert max_fragment_size % 8 == 0, "Max fragment size not divisible by 8"
+                    
+                    max_event_size += max_fragment_size
+
+                    max_fragment_sizes.append( (procinfo.label, max_fragment_size) ) 
                 else:
                     raise Exception(make_paragraph("Unable to find the max_fragment_size_bytes variable in the FHiCL document for %s; this is needed since \"advanced_memory_usage\" is set to true in the settings file, %s" % (procinfo.label, os.environ["DAQINTERFACE_SETTINGS"])))
             else:
@@ -53,9 +65,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                                "\n%s\nmax_event_size_bytes: %d" % (res.group(1), max_event_size),
                                                                self.procinfos[i_proc].fhicl_used)
 
-    if self.advanced_memory_usage:
-        max_fragment_size_words = max_event_size / 8   # Aug-15-2018: this will be improved on...
-    else:
+    if not self.advanced_memory_usage:
         max_fragment_size_words = self.max_fragment_size_bytes / 8
 
     # if os.path.exists(self.daq_dir + "/srcs/artdaq"):
@@ -73,6 +83,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     proc_hosts = []
 
+    # Assumption here is that when pmtConfig was created, processes
+    # were listed in type order of upstream-to-downstream
+
     for procname in ["BoardReader", "EventBuilder", "DataLogger", "Dispatcher"] :
 
         for procinfo in self.procinfos:
@@ -89,7 +102,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     proc_hosts_string = ", ".join( proc_hosts )
 
-    def create_sources_or_destinations_string(nodetype, first, last, nth = -1, this_node_index = -1):
+    def create_sources_or_destinations_string(i_proc, nodetype, first, last, nth = -1, this_node_index = -1):
 
         if nodetype == "sources":
             prefix = "s"
@@ -102,10 +115,37 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         for i in range(first, last):
             if nth == -1:
-                nodes.append( 
-                    "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d host_map: [%s]}" % \
-                    (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_size_words, \
-                     proc_hosts_string))
+                if self.advanced_memory_usage:
+                    
+                    if "BoardReader" in self.procinfos[i_proc].name:
+
+                        list_of_one_fragment_size = [ proctuple[1] for proctuple in max_fragment_sizes if 
+                                                      proctuple[0] == self.procinfos[i_proc].label ]
+                        assert len(list_of_one_fragment_size) == 1
+
+                        max_fragment_size = list_of_one_fragment_size[0]
+
+                        nodes.append( 
+                            "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d host_map: [%s]}" % \
+                            (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_size / 8, \
+                             proc_hosts_string))
+                    elif "EventBuilder" in self.procinfos[i_proc].name and nodetype == "sources":
+                        nodes.append( 
+                            "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d host_map: [%s]}" % \
+                            (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_sizes[i][1] / 8, \
+                             proc_hosts_string))
+
+                    else:
+                        nodes.append( 
+                            "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d host_map: [%s]}" % \
+                            (prefix, i, self.transfer, nodetype[:-1], i, max_event_size / 8, \
+                             proc_hosts_string))
+                else:
+                    nodes.append( 
+                        "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d host_map: [%s]}" % \
+                        (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_size_words, \
+                         proc_hosts_string))
+                    
             else:
 
                 if nodetype == "destinations":
@@ -208,7 +248,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 self.procinfos[i_proc].fhicl_used = \
                     self.procinfos[i_proc].fhicl_used[:table_start] + \
                     "\n" + tablename + ": { \n" + \
-                    create_sources_or_destinations_string(tablename, node_first, node_last, nth, node_index) + \
+                    create_sources_or_destinations_string(i_proc, tablename, node_first, node_last, nth, node_index) + \
                     "\n } \n" + \
                     self.procinfos[i_proc].fhicl_used[table_end:]
 
