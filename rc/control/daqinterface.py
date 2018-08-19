@@ -650,21 +650,24 @@ class DAQInterface(Component):
 
         outf = open(pmtconfigname, "w")
 
-        for procinfo in self.procinfos:
+        # List the process types in pmtConfig in order of
+        # upstream-to-downstream so we can keep track of the rank
+        # during bookkeeping
 
-            for procname in ["BoardReader", "EventBuilder", "Aggregator", "RoutingMaster", "DataLogger", "Dispatcher"]:
+        for procname in ["BoardReader", "EventBuilder", "DataLogger", "Dispatcher", "RoutingMaster"]:
+            for procinfo in self.procinfos:
                 if procname in procinfo.name:
                     outf.write(procname + "Main!")
 
-            if procinfo.host != "localhost":
-                host_to_write = procinfo.host
-            else:
-                host_to_write = os.environ["HOSTNAME"]
-                
-            if self.partition_number is None:
-                outf.write(host_to_write + "!  id: " + procinfo.port + " commanderPluginType: xmlrpc application_name: " + str(procinfo.label) + "\n")
-            else:
-                outf.write(host_to_write + "!  id: " + procinfo.port + " commanderPluginType: xmlrpc application_name: " + str(procinfo.label) + " partition_number: " + str(self.partition_number) + "\n")
+                if procinfo.host != "localhost":
+                    host_to_write = procinfo.host
+                else:
+                    host_to_write = os.environ["HOSTNAME"]
+
+                if self.partition_number is None:
+                    outf.write(host_to_write + "!  id: " + procinfo.port + " commanderPluginType: xmlrpc application_name: " + str(procinfo.label) + "\n")
+                else:
+                    outf.write(host_to_write + "!  id: " + procinfo.port + " commanderPluginType: xmlrpc application_name: " + str(procinfo.label) + " partition_number: " + str(self.partition_number) + "\n")
 
         outf.close()
 
