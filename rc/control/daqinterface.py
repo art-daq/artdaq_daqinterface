@@ -583,6 +583,12 @@ class DAQInterface(Component):
                 num_dataloggers += 1
         return num_dataloggers
 
+    def unique_nodes(self):
+        nn = []
+        for procinfo in self.procinfos:
+            if procinfo.host not in nn: nn.append(procinfo.host)
+        return nn
+
     def have_artdaq_mfextensions(self):
 
         cmds = []
@@ -1892,7 +1898,8 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
 
         if self.disable_recovery:
             self.print_log("i", "Skipping cleanup of artdaq processes, this recover step is effectively a no-op")
-
+            Popen("rgang "+','.join(self.unique_nodes())+" '. /mu2e/ups/setup;setup TRACE v3_13_07;TRACE_MSGMAX=0 tfreeze'",
+                  shell=True).wait()
             self.in_recovery = False
             self.complete_state_change(self.name, "recovering")
             self.print_log("i", "\n%s: RECOVER transition complete" % (date_and_time()))

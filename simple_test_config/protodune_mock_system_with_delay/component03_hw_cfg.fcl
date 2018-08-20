@@ -24,7 +24,7 @@ request_mode: "Window" # Possible values are: Ignored, Single, Buffer, Window
 end_of_run_quiet_timeout_ms: 1000 # Time, in milliseconds, that the entire system must be quiet for check_stop to return true in request mode. 
 
 data_buffer_depth_fragments: 1000
-data_buffer_depth_mb: 1000
+data_buffer_depth_mb: 3000
 
 request_port: 3001
 request_address: "227.128.12.26" # Multicast request address
@@ -42,7 +42,7 @@ hardware_poll_interval_us: 0 # How often, in microseconds, checkHWStatus_() shou
 nADCcounts: 8257360 # Fragment Size = 24 B + 2 * nADCcounts ~ 15.75 MB
 
 throttle_usecs: 0
-usecs_between_sends: 62500
+usecs_between_sends: 50000
 
 distribution_type: 3
 

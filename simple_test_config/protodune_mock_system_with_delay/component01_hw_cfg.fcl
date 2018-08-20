@@ -24,7 +24,7 @@ request_mode: "Ignored" # Possible values are: Ignored, Single, Buffer, Window
 nADCcounts: 2000 # Fragment Size = 24 B + 2 * nADCcounts
 
 throttle_usecs: 0
-usecs_between_sends: 62500
+usecs_between_sends: 50000
 
 distribution_type: 1
 
