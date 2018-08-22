@@ -498,8 +498,11 @@ class DAQInterface(Component):
                                 "Unable to parse the following variable(s) meant to be set in the "
                                 "settings file, %s" % \
                                     (os.environ["DAQINTERFACE_SETTINGS"] + ": " + missing_vars_string ) ))
-        
-                    
+
+        if not self.advanced_memory_usage and not self.max_fragment_size_bytes:
+            raise Exception(make_paragraph("max_fragment_size_bytes isn't set in the settings file, "
+                                           "%s; this needs to be set since advanced_memory_usage isn't set to true" %
+                                           os.environ["DAQINTERFACE_SETTINGS"]))
 
     def check_proc_transition(self, target_state):
 
