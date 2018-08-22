@@ -55,7 +55,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     raise Exception(make_paragraph("max_fragment_size_bytes is found in the FHiCL document for %s; this parameter must not appear in FHiCL documents for non-BoardReader artdaq processes" % (procinfo.label)))
         
         for i_proc in range(len(self.procinfos)):
-            if "BoardReader" not in self.procinfos[i_proc].name:
+            if "BoardReader" not in self.procinfos[i_proc].name and "RoutingMaster" not in self.procinfos[i_proc].name:
                 if re.search(r"max_event_size_bytes\s*:\s*[0-9]+", self.procinfos[i_proc].fhicl_used):
                     self.procinfos[i_proc].fhicl_used = re.sub("max_event_size_bytes\s*:\s*[0-9]+",
                                                                "max_event_size_bytes: %d" % (max_event_size),
@@ -64,7 +64,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
                     res = re.search(r"\n(\s*buffer_count\s*:\s*[0-9]+)", self.procinfos[i_proc].fhicl_used)
 
-                    assert res, "artdaq's FHiCL requirements have changed since this code was written"
+                    assert res, "artdaq's FHiCL requirements have changed since this code was written (the 'buffer_count' parameter needs to be added to the  " + self.procinfos[i_proc].name + " configuration document)"
                     
                     self.procinfos[i_proc].fhicl_used = re.sub(r"\n(\s*buffer_count\s*:\s*[0-9]+)",
                                                                "\n%s\nmax_event_size_bytes: %d" % (res.group(1), max_event_size),
