@@ -491,6 +491,9 @@ class DAQInterface(Component):
         if self.package_hashes_to_save is None or self.package_hashes_to_save is []:
             missing_vars.append("package_hashes_to_save")
 
+        if self.advanced_memory_usage and self.max_fragment_size_bytes is not None:
+            raise Exception(make_paragraph("Since advanced_memory_usage is set to true in the settings file (%s), max_fragment_size_bytes must NOT be set (i.e., delete it or comment it out)" % (os.environ["DAQINTERFACE_SETTINGS"])))
+
         if len(missing_vars) > 0:
             missing_vars_string = ", ".join(missing_vars)
             print
