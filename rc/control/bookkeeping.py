@@ -33,7 +33,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         for procinfo in self.procinfos:
 
-            res = re.search(r"\s*max_fragment_size_bytes\s*:\s*([0-9]+)", procinfo.fhicl_used)
+            res = re.search(r"\n\s*max_fragment_size_bytes\s*:\s*([0-9]+)", procinfo.fhicl_used)
             
             if "BoardReader" in procinfo.name:
                 if res:
@@ -56,7 +56,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         
         for i_proc in range(len(self.procinfos)):
             if "BoardReader" not in self.procinfos[i_proc].name and "RoutingMaster" not in self.procinfos[i_proc].name:
-                if re.search(r"max_event_size_bytes\s*:\s*[0-9]+", self.procinfos[i_proc].fhicl_used):
+                if re.search(r"\n\s*max_event_size_bytes\s*:\s*[0-9]+", self.procinfos[i_proc].fhicl_used):
                     self.procinfos[i_proc].fhicl_used = re.sub("max_event_size_bytes\s*:\s*[0-9]+",
                                                                "max_event_size_bytes: %d" % (max_event_size),
                                                                self.procinfos[i_proc].fhicl_used)
@@ -64,7 +64,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
                     res = re.search(r"\n(\s*buffer_count\s*:\s*[0-9]+)", self.procinfos[i_proc].fhicl_used)
 
-                    assert res, "artdaq's FHiCL requirements have changed since this code was written (the 'buffer_count' parameter needs to be added to the  " + self.procinfos[i_proc].name + " configuration document)"
+                    assert res, make_paragraph("artdaq's FHiCL requirements have changed since this code was written (DAQInterface expects a parameter called 'buffer_count' in %s, but this doesn't appear to exist -> DAQInterface code needs to be changed to accommodate this)" % (self.procinfos[i_proc].label))
                     
                     self.procinfos[i_proc].fhicl_used = re.sub(r"\n(\s*buffer_count\s*:\s*[0-9]+)",
                                                                "\n%s\nmax_event_size_bytes: %d" % (res.group(1), max_event_size),
