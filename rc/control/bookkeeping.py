@@ -33,11 +33,11 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         for procinfo in self.procinfos:
 
-            res = re.search(r"\n\s*max_fragment_size_bytes\s*:\s*([0-9]+)", procinfo.fhicl_used)
+            res = re.findall(r"\n[^#]*max_fragment_size_bytes\s*:\s*([0-9]+)", procinfo.fhicl_used)
             
             if "BoardReader" in procinfo.name:
-                if res:
-                    max_fragment_size = int(res.group(1))
+                if len(res) > 0:
+                    max_fragment_size = int(res[-1])
                     max_fragment_size = int(round(max_fragment_size*memory_scale_factor))
 
                     if max_fragment_size % 8 != 0:
@@ -51,12 +51,12 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 else:
                     raise Exception(make_paragraph("Unable to find the max_fragment_size_bytes variable in the FHiCL document for %s; this is needed since \"advanced_memory_usage\" is set to true in the settings file, %s" % (procinfo.label, os.environ["DAQINTERFACE_SETTINGS"])))
             else:
-                if res:
+                if len(res) > 0:
                     raise Exception(make_paragraph("max_fragment_size_bytes is found in the FHiCL document for %s; this parameter must not appear in FHiCL documents for non-BoardReader artdaq processes" % (procinfo.label)))
         
         for i_proc in range(len(self.procinfos)):
             if "BoardReader" not in self.procinfos[i_proc].name and "RoutingMaster" not in self.procinfos[i_proc].name:
-                if re.search(r"\n\s*max_event_size_bytes\s*:\s*[0-9]+", self.procinfos[i_proc].fhicl_used):
+                if re.search(r"\n[^#]*max_event_size_bytes\s*:\s*[0-9]+", self.procinfos[i_proc].fhicl_used):
                     self.procinfos[i_proc].fhicl_used = re.sub("max_event_size_bytes\s*:\s*[0-9]+",
                                                                "max_event_size_bytes: %d" % (max_event_size),
                                                                self.procinfos[i_proc].fhicl_used)
