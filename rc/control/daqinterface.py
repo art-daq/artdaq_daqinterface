@@ -1337,29 +1337,44 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
 
         # Crosscheck against JCOP's rank table
 
-        jcop_ranks_filename = "/tmp/ranks%s.txt" % (self.partition_number)
+        def check_against_ranks_table(partition_number):
+            jcop_ranks_filename = "/tmp/ranks%s.txt" % (partition_number)
+
+            with open(jcop_ranks_filename) as jcop_ranks_file:
+                jcop_label_and_rank_list = [ ( line.split()[2], int(line.split()[3]) ) \
+                                             for line in jcop_ranks_file.readlines() if \
+                                             len(line.split()) == 4 and \
+                                             re.search(r"^[0-9]+$", line.split()[-1]) ]
+
+                if len(self.procinfos) != len(jcop_label_and_rank_list):
+                    raise Exception(make_paragraph("Mismatch between number of processes DAQInterface determined exists (%d) and the number of processes found in JCOP's rank file %s, %d" % (len(self.procinfos), jcop_ranks_filename, len(jcop_label_and_rank_list))))
+
+                if "RoutingMaster" in [ label for (label, rank) in jcop_label_and_rank_list ]:
+                    if "RoutingMaster" not in jcop_label_and_rank_list[-1][0]:
+                        raise Exception(make_paragraph("A RoutingMaster was found listed in JCOP's rank file, %s, but it wasn't the last process listed - this is required by DAQInterface"))
+
+                for label, rank in jcop_label_and_rank_list:
+                    if len(self.procinfos) < rank or \
+                       self.procinfos[rank].label != label:
+                        raise Exception(make_paragraph("Mismatch between process associated with rank %d found in JCOP's rank file %s (%s) and what DAQInterface determined rank %d to be (%s)") % \
+                                        (rank, jcop_ranks_filename, label, rank, self.procinfos[rank].label))
+
+        possible_run_control_partitions = [ self.partition_number ]
         
-        with open(jcop_ranks_filename) as jcop_ranks_file:
-            jcop_label_and_rank_list = [ ( line.split()[2], int(line.split()[3]) ) \
-                                         for line in jcop_ranks_file.readlines() if \
-                                         len(line.split()) == 4 and \
-                                         re.search(r"^[0-9]+$", line.split()[-1]) ]
+        if self.partition_number == 0 or self.partition_number == 1:
+            possible_run_control_partitions.append( self.partition_number + 4 )
 
-            if len(self.procinfos) != len(jcop_label_and_rank_list):
-                raise Exception(make_paragraph("Mismatch between number of processes DAQInterface determined exists (%d) and the number of processes found in JCOP's rank file, %s" % (len(self.procinfos), len(jcop_label_and_rank_list))))
-
-            if "RoutingMaster" in [ label for (label, rank) in jcop_label_and_rank_list ]:
-                if "RoutingMaster" not in jcop_label_and_rank_list[-1][0]:
-                    raise Exception(make_paragraph("A RoutingMaster was found listed in JCOP's rank file, %s, but it wasn't the last process listed - this is required by DAQInterface"))
-
-            for label, rank in jcop_label_and_rank_list:
-                if len(self.procinfos) < rank or \
-                   self.procinfos[rank].label != label:
-                    raise Exception(make_paragraph("Mismatch between process associated with rank %d found in JCOP's rank file %s (%s) and what DAQInterface determined rank %d to be (%s)") % \
-                                    (rank, jcop_ranks_filename, label, rank, self.procinfos[rank].label))
-
-
-
+        for partition in possible_run_control_partitions:
+            
+            try:
+                check_against_ranks_table( partition )
+            except Exception:
+                if partition == possible_run_control_partitions[-1]:
+                    raise
+                else:
+                    continue
+            break   
+            
         # JCF, Oct-18-2017
 
         # After a discussion with Ron about how trace commands need to
