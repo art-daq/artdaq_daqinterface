@@ -391,6 +391,7 @@ class DAQInterface(Component):
         self.record_directory = None
         self.daq_setup_script = None
         self.package_hashes_to_save = None
+        self.max_fragment_size_bytes = None
 
         self.boardreader_timeout = 30
         self.eventbuilder_timeout = 30
