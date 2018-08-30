@@ -370,7 +370,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     # 17-Apr-2018, KAB: switched to using the "enclosing_table_range" function, rather
                     # than "table_range", since we want to capture all of the text inside the same
                     # block as the RootOutput FHiCL value.
+                    # 30-Aug-2018, KAB: added support for RootDAQOutput
                     start, end = enclosing_table_range(self.procinfos[i_proc].fhicl_used, "RootOutput")
+                    if start == -1 and end == -1:
+                        start, end = enclosing_table_range(self.procinfos[i_proc].fhicl_used, "RootDAQOut")
                     assert start != -1 and end != -1
 
                     rootoutput_table = self.procinfos[i_proc].fhicl_used[start:end]
