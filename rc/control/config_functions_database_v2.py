@@ -138,7 +138,10 @@ def put_config_info_base(self):
     os.chdir( tmpdir )
 
     with deepsuppression():
-        archiveRunConfiguration( self.config_for_run, runnum )
+        result = archiveRunConfiguration( self.config_for_run, runnum )
+
+    if not result:
+        raise Exception(make_paragraph("There was an error attempting to archive the FHiCL documents (temporarily saved in %s); this may be because of an issue with the schema file, %s/schema.fcl, such as an unlisted fragment generator" % (tmpdir, os.environ["ARTDAQ_DATABASE_CONFDIR"])))
 
     os.chdir( basedir )
 
