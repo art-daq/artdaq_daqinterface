@@ -50,7 +50,7 @@ outputs: {
   }
 
   normalOutput: {
-    module_type: RootOutput
+    module_type: RootDAQOut
     fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%#.root"
     fileProperties: { maxSubRuns: 1 maxRuns: 1 maxSize: 8192000 maxEvents: 1000 }
     fastCloning: false
