@@ -5,6 +5,7 @@ import re
 import glob
 import subprocess
 from subprocess import Popen
+from shutil import copyfile
 import traceback
 
 def save_run_record_base(self):
@@ -141,6 +142,41 @@ def save_run_record_base(self):
 
     outf.write("\n")
     outf.close()
+
+
+    ranksfile = "%s/ranks.txt" % (outdir)
+    if not self.manage_processes:
+        ranksfile_rc = "/tmp/ranks%d.txt" % (self.partition_number_rc)
+        if os.path.exists( ranksfile_rc ):
+            copyfile( ranksfile_rc, ranksfile )
+        else:
+            raise Exception(make_paragraph("Unable to find expected ranks file produced by RC, \"%s\"" % (ranksfile_rc)))
+    else:
+        with open(ranksfile, "w") as outfile:
+            outfile.write("        host   port         procName  rank\n")
+            outfile.write("\n")
+
+            rank = 0
+
+            with open(self.pmtconfigname) as infile:
+                for line in infile.readlines():
+                    res = re.search(r"^[A-Za-z]+!([^!]+)", line)
+                    assert res
+                    host = res.group(1)
+
+                    res = re.search(r"\s*id\s*:\s*([0-9]+)", line)
+                    assert res
+                    port = res.group(1)
+
+                    res = re.search(r"\s*application_name\s*:\s*([^\s]+)", line)
+                    assert res
+                    label = res.group(1)
+
+                    outfile.write("%s\t%s\t%s\t%d\n" % (host, port, label, rank))
+                    rank += 1
+
+            outfile.close()
+
 
     if self.debug_level >= 2:
         print "Saved run configuration records in %s" % \

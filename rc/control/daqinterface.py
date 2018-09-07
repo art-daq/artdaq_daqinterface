@@ -224,6 +224,7 @@ class DAQInterface(Component):
         self.heartbeat_failure = False
         self.manage_processes = True
         self.partition_number = None
+        self.partition_number_rc = None
 
         # "procinfos" will be an array of Procinfo structures (defined
         # below), where Procinfo contains all the info DAQInterface
@@ -260,6 +261,7 @@ class DAQInterface(Component):
         self.request_address = None
         self.request_port = None 
         self.partition_number = None
+        self.partition_number_rc = None
         self.table_update_address = None
         self.routing_base_port = None
         self.zmq_fragment_connection_out = None
@@ -1344,7 +1346,12 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
         self.procinfos.sort()
 
         if not self.manage_processes:
-            # Crosscheck against JCOP's rank table
+
+            # Crosscheck against JCOP's rank table, and as an added
+            # bonus, pick up the RC partition, which may be 4 units
+            # greater than the partition number listed in the boot
+            # file (e.g., partition 5 will have partition_number set
+            # to 1 in the boot file)
 
             def check_against_ranks_table(partition_number):
                 jcop_ranks_filename = "/tmp/ranks%s.txt" % (partition_number)
@@ -1377,6 +1384,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
 
                 try:
                     check_against_ranks_table( partition )
+                    self.partition_number_rc = partition
                 except Exception:
                     if partition == possible_run_control_partitions[-1]:
                         raise
