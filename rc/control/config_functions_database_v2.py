@@ -115,26 +115,51 @@ def put_config_info_base(self):
 
         with open( "%s/%s/boot.fcl" % (tmpdir, runnum) ) as boot_file:
             for line in boot_file.readlines():
-                if "debug_level" not in line and not line == "":
+                
+                ignore_line = False
+
+                for procname in ["EventBuilder", "DataLogger", "Dispatcher", "RoutingMaster"] :
+                    res = re.search(r"^\s*%s_" % (procname), line)
+                    if res:
+                        ignore_line = True
+                        break
+
+                if "debug_level" in line or line == "":
+                    ignore_line = True
+
+                if not ignore_line:
                     dataflow_file.write("\n" + line)
 
-        proc_attrs = ["host", "port", "label"]
+        proc_attrs = ["host", "port", "label", "rank"]
+        proc_types = ["BoardReader", "EventBuilder", "DataLogger", "Dispatcher", "RoutingMaster"]
 
         proc_line = {}
 
-        for proc_attr in proc_attrs:
-            proc_line[proc_attr] = "BoardReader_%ss: [" % (proc_attr) 
+        with open("%s/ranks.txt" % (runrecord)) as ranksfile:
+            for line in ranksfile.readlines():
+                res = re.search(r"^\s*(\S+)\s+([0-9]+)\s+(\S+)\s+([0-9]+)\s*$", line)
+                if res:
+                    host, port, label, rank = res.group(1), res.group(2), res.group(3), res.group(4)
+                    
+                    for procinfo in self.procinfos:
+                        if label == procinfo.label:
+                            assert host == procinfo.host
+                            assert port == procinfo.port
 
-        for procinfo in self.procinfos:
-            if "BoardReader" in procinfo.name:
-                proc_line["host"] += "\"%s\"," % (procinfo.host)
-                proc_line["port"] += "\"%s\"," % (procinfo.port)
-                proc_line["label"] += "\"%s\"," % (procinfo.label)
+                            # "host" used for the check, but could just as well be "port", "label" or "rank"
+                            if "%s_host" % (procinfo.name) not in proc_line.keys():
+                                for proc_attr in proc_attrs:
+                                    proc_line["%s_%s" % (procinfo.name, proc_attr)] = "%s_%ss: [" % (procinfo.name, proc_attr)
+                            
+                            proc_line["%s_host" % (procinfo.name)] += "\"%s\"," % (procinfo.host)
+                            proc_line["%s_port" % (procinfo.name)] += "\"%s\"," % (procinfo.port)
+                            proc_line["%s_label" % (procinfo.name)] += "\"%s\"," % (procinfo.label)
+                            proc_line["%s_rank" % (procinfo.name)] += "\"%s\"," % (rank)
 
-        for proc_attr, proc_attr_line in proc_line.items():
-            proc_attr_line = proc_attr_line[:-1] # Strip the trailing comma
-            proc_line[ proc_attr ] = proc_attr_line + "]"
-            dataflow_file.write("\n" + proc_line[ proc_attr ] )
+        for proc_line_key, proc_line_value in proc_line.items():
+            proc_line_value = proc_line_value[:-1] # Strip the trailing comma
+            proc_line[ proc_line_key ] = proc_line_value + "]"
+            dataflow_file.write("\n" + proc_line[ proc_line_key ] )
 
         with open( "%s/%s/metadata.fcl" % (tmpdir, runnum) ) as metadata_file:
             for line in metadata_file.readlines():
@@ -180,7 +205,7 @@ def put_config_info_base(self):
     assert res, "Unable to find uuidgen-generated temporary directory, will perform no deletions"
 
     shutil.rmtree( tmpdir )
-    
+
     return
 
 def listdaqcomps_base(self):
