@@ -121,6 +121,35 @@ def save_run_record_base(self):
     outf.write("\n")
     outf.close()
 
+    ranksfile = "%s/ranks.txt" % (outdir)
+
+    with open(ranksfile, "w") as outfile:
+        outfile.write("        host   port         label  rank\n")
+        outfile.write("\n")
+
+        rank = 0
+
+        with open(self.pmtconfigname) as infile:
+            for line in infile.readlines():
+                res = re.search(r"^[A-Za-z]+!([^!]+)", line)
+                assert res
+                host = res.group(1)
+
+                res = re.search(r"\s*id\s*:\s*([0-9]+)", line)
+                assert res
+                port = res.group(1)
+
+                res = re.search(r"\s*application_name\s*:\s*([^\s]+)", line)
+                assert res
+                label = res.group(1)
+
+                outfile.write("%s\t%s\t%s\t%d\n" % (host, port, label, rank))
+                rank += 1
+
+        outfile.close()
+
+
+
     if self.debug_level >= 2:
         print "Saved run configuration records in %s" % \
             (outdir)
