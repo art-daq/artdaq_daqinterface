@@ -169,26 +169,25 @@ def put_config_info_base(self):
     with open( "%s/%s/RunHistory.fcl" % (tmpdir, runnum), "w" ) as runhistory_file:
         runhistory_file.write("\nrun_number: %s" % (runnum))
         
-        has_start_time = False
-        has_stop_time = False
-
         with open( "%s/%s/metadata.fcl" % (tmpdir, runnum) ) as metadata_file:
             for line in metadata_file.readlines():
-                if "Start_time" in line:
-                    runhistory_file.write("\n" + line)
-                    has_start_time = True
-                elif "Stop_time" in line:
-                    runhistory_file.write("\n" + line)
-                    has_stop_time = True
-                elif "config_name" in line:
+                if "config_name" in line:
                     runhistory_file.write("\n" + line) 
                 elif "components" in line:
                     runhistory_file.write("\n" + line)
 
-            if not has_start_time:
-                runhistory_file.write("\nStart_time: \"Unknown\"")
-            if not has_stop_time:
-                runhistory_file.write("\nStop_time: \"Unknown\"")
+        with open( "/tmp/info_to_archive_partition%d.txt" % (self.partition_number_rc)) as rc_info_file:
+
+            # Including run_type below in case someone provides a multiword run type...
+            vars_to_fhiclize = ["start_time", "run_type"]
+
+            for line in rc_info_file.readlines():
+                for var in vars_to_fhiclize:
+                    if var in line:
+                        fhiclized_line = re.sub(r'^\s*%s\s*:\s*(.*\S)' % (var), r'%s: "\1"' % (var), line)
+                        runhistory_file.write("\n%s" % (fhiclized_line))
+
+            runhistory_file.write("\nstop_time: \"Unknown\"")
 
     basedir=os.getcwd()
     os.chdir( tmpdir )

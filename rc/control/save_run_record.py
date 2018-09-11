@@ -84,6 +84,13 @@ def save_run_record_base(self):
     if not os.path.exists(outdir + "/known_boardreaders_list.txt"):
         self.alert_and_recover("Problem creating file " + outdir + "/known_boardreaders_list.txt")
 
+    if not self.manage_processes:
+        copyfile("/tmp/info_to_archive_partition%d.txt" % (self.partition_number_rc), \
+                 "%s/rc_info.txt" % (outdir))
+
+    if not os.path.exists("%s/rc_info.txt" % (outdir)):
+        self.alert_and_recover(make_paragraph("Problem copying /tmp/info_to_archive_partition%d.txt into %s/rc_info.txt; does original file exist?" % (self.partition_number_rc, outdir)))
+
     # JCF, 11/20/14
 
     # Now save "metadata" about the run in the
