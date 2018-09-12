@@ -176,18 +176,19 @@ def put_config_info_base(self):
                 elif "components" in line:
                     runhistory_file.write("\n" + line)
 
-        with open( "/tmp/info_to_archive_partition%d.txt" % (self.partition_number_rc)) as rc_info_file:
+        if not self.manage_processes:
+            with open( "/tmp/info_to_archive_partition%d.txt" % (self.partition_number_rc)) as rc_info_file:
 
-            # Including run_type below in case someone provides a multiword run type...
-            vars_to_fhiclize = ["start_time", "run_type"]
+                # Including run_type below in case someone provides a multiword run type...
+                vars_to_fhiclize = ["start_time", "run_type"]
 
-            for line in rc_info_file.readlines():
-                for var in vars_to_fhiclize:
-                    if var in line:
-                        fhiclized_line = re.sub(r'^\s*%s\s*:\s*(.*\S)' % (var), r'%s: "\1"' % (var), line)
-                        runhistory_file.write("\n%s" % (fhiclized_line))
+                for line in rc_info_file.readlines():
+                    for var in vars_to_fhiclize:
+                        if var in line:
+                            fhiclized_line = re.sub(r'^\s*%s\s*:\s*(.*\S)' % (var), r'%s: "\1"' % (var), line)
+                            runhistory_file.write("\n%s" % (fhiclized_line))
 
-            runhistory_file.write("\nstop_time: \"Unknown\"")
+                runhistory_file.write("\nstop_time: \"Unknown\"")
 
     basedir=os.getcwd()
     os.chdir( tmpdir )

@@ -1117,6 +1117,38 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                 if status != 0:
                     self.print_log("w", "WARNING: failure in executing %s" % (link_logfile_cmd))
 
+    def execute_trace_script(self, transition):
+        
+        trace_script = "/nfs/sw/control_files/trace/trace_control.sh"
+        
+        if os.path.exists(trace_script):
+
+            trace_file=""
+            with open(self.daq_setup_script) as inf:
+                for line in inf.readlines():
+                    res = re.search(r"^\s*export\s+TRACE_FILE=(\S+)", line)
+                    if res:
+                        trace_file = res.group(1)
+
+            if trace_file == "":
+                raise Exception(make_paragraph("Exception in %s: unable to determine TRACE_FILE setting from \"%s\"" % (self.execute_trace_script.__name__, self.daq_setup_script)))
+
+            nodes_for_rgang={}
+            for procinfo in self.procinfos:
+                nodes_for_rgang[ procinfo.host ] = 1
+                
+            cmd = "%s %s --run %d --transition %s --node-list=\"%s\"" % \
+                  (trace_script, trace_file, self.run_number, transition, \
+                   " ".join(nodes_for_rgang.keys()))
+            self.print_log("d", "Executing \"%s\"" % (cmd), 2)
+
+            retval = Popen(cmd, shell=True).wait()
+
+            if retval != 0:
+                self.print_log("w", make_paragraph("WARNING: \"%s\" yielded a nonzero return value" % (cmd)))
+
+
+
     # JCF, Nov-8-2015
 
     # The core functionality for "do_command" is that it will launch a
@@ -1723,6 +1755,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
         try:
             self.save_run_record()            
         except Exception:
+            self.print_log("e", traceback.format_exc())
             self.print_log("w", make_paragraph(
                     "WARNING: an exception was thrown when attempting to save the run record. While datataking may be able to proceed, this may also indicate a serious problem"))
 
@@ -1820,6 +1853,8 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
             self.alert_and_recover("An exception was thrown when trying to save configuration info; see traceback above for more info")
             return
 
+        self.execute_trace_script("start")
+
         if self.manage_processes:
 
             try:
@@ -1862,6 +1897,8 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                 self.print_log("e", traceback.format_exc())
                 self.alert_and_recover("An exception was thrown when attempting to send the \"stop\" transition to the artdaq processes; see traceback above for more info")
                 return
+
+        self.execute_trace_script("stop")
 
         self.complete_state_change(self.name, "stopping")
         self.print_log("i", "STOP transition complete for run %d" % \
