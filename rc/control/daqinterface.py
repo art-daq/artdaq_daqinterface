@@ -1617,7 +1617,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
             
             for dirname, dummy, filenames in os.walk( self.config_dirname ):
                 for filename in filenames:
-                    if filename == component + "_hw_cfg.fcl":
+                    if filename == component + "_hw_cfg.fcl" or filename == component + ".fcl":
                         component_fhicl = dirname + "/" + filename
                         self.print_log("d", "Found component fcl file %s" % component_fhicl,2)
             
