@@ -16,15 +16,8 @@ def save_run_record_base(self):
 
     outdir = self.tmp_run_record
 
-    try:
-        os.mkdir(outdir)
-    except Exception:
-        self.print_log("Exception raised during creation of %s ; this may occur because %s already exists, in which case this is not an error" % (outdir, outdir))
-
-    if not os.path.exists(outdir):
-        self.alert_and_recover("Problem creating output "
-                               "directory " + outdir)
-        return
+    os.mkdir(outdir) 
+    assert os.path.exists( outdir )
 
     # JCF, Jun-20-2018
     
@@ -42,15 +35,39 @@ def save_run_record_base(self):
     # /tmp/run_record_attempted_np04daq while we can still be
     # confident the correct run record is saved
 
+    # JCF, Sep-13-2018
+
+    # Two additions:
+
+    # (1) I'm writing not just the FHiCL documents, but also
+    # metadata.txt, so that RC can access it and save it in the root
+    # file via the put_config_info_archive function in artdaq
+
+    # (2) I'm now writing out to a third area,
+    # /tmp/run_record_attempted_np04daq/<RC partition>, to allay fears
+    # of clobbering from other partitions in use
+
     old_outdir = "/tmp/run_record_attempted_%s" % (os.environ["USER"])
     assert os.path.exists( old_outdir )
-    
-    for oldfhicl in glob.glob( "%s/*.fcl" % (old_outdir)):
-        os.unlink(oldfhicl)
+
+    partition_outdir = "/tmp/run_record_attempted_%s/%d" % (os.environ["USER"], self.partition_number_rc)
+    assert os.path.exists( partition_outdir )
+
+    if not self.manage_processes:
+        globs = ["*.fcl", "metadata.txt"]
+
+        for oldfiles in [ glob.glob( "%s/%s" % (rcdir, fileglob)) for rcdir in [old_outdir, partition_outdir] for fileglob in globs ]:
+            for oldfile in oldfiles:
+                os.unlink(oldfile)
 
     for procinfo in self.procinfos:
+        
+        if not self.manage_processes:
+            outdirs = [ old_outdir, outdir, partition_outdir ]
+        else:
+            outdirs = [ outdir ]
 
-        for outd in [ old_outdir, outdir ]:
+        for outd in outdirs:
             outf = open(outd + "/" + procinfo.label + ".fcl", "w")
 
             outf.write(procinfo.fhicl_used)
@@ -102,7 +119,9 @@ def save_run_record_base(self):
     # JCF, Dec-4-2016: changed to metadata.txt, as this is executed
     # before the start transition
 
-    outf = open(outdir + "/metadata.txt", "w")
+    metadata_basename = "metadata.txt"
+
+    outf = open(outdir + "/" + metadata_basename, "w")
 
     outf.write("Config name: %s\n" % self.config_for_run)
 
@@ -151,6 +170,9 @@ def save_run_record_base(self):
     outf.write("\n")
     outf.close()
 
+    if not self.manage_processes:
+        for rcdir in [old_outdir, partition_outdir]:
+            copyfile(outdir + "/" + metadata_basename, rcdir + "/" + metadata_basename)
 
     ranksfile = "%s/ranks.txt" % (outdir)
     if not self.manage_processes:
