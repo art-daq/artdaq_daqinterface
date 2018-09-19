@@ -1871,7 +1871,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
 
         self.start_datataking()
 
-        self.save_metadata_value("Start time", \
+        self.save_metadata_value("DAQInterface start time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
 
         self.print_log("i", "\nRun info can be found locally at %s\n" % \
@@ -1886,7 +1886,7 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
         self.print_log("i", "\n%s: STOP transition underway for run %d" % \
             (date_and_time(), self.run_number))
 
-        self.save_metadata_value("Stop time", \
+        self.save_metadata_value("DAQInterface stop time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
 
         try:
