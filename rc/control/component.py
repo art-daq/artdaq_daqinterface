@@ -131,7 +131,7 @@ class Component(ContextObject):
             allowed_transitions = []
 
             for key, val in self.dict_state_from.items():
-                if val == self.__state:
+                if self.__state in val:
                     allowed_transitions.append( key )
 
             assert len(allowed_transitions) > 0, "Zero allowed transitions"
