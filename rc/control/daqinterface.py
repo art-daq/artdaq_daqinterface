@@ -50,11 +50,13 @@ if not "DAQINTERFACE_FHICL_DIRECTORY" in os.environ:
 elif os.environ["DAQINTERFACE_FHICL_DIRECTORY"] == "IGNORED":
     from rc.control.config_functions_database_v2 import get_config_info_base
     from rc.control.config_functions_database_v2 import put_config_info_base
+    from rc.control.config_functions_database_v2 import put_config_info_on_stop_base
     from rc.control.config_functions_database_v2 import listconfigs_base
 
 else:
     from rc.control.config_functions_local import get_config_info_base
     from rc.control.config_functions_local import put_config_info_base
+    from rc.control.config_functions_local import put_config_info_on_stop_base
     from rc.control.config_functions_local import listconfigs_base
 
 from rc.control.config_functions_local import get_daqinterface_config_info_base
@@ -319,6 +321,7 @@ class DAQInterface(Component):
 
     get_config_info = get_config_info_base
     put_config_info = put_config_info_base
+    put_config_info_on_stop = put_config_info_on_stop_base
     get_daqinterface_config_info = get_daqinterface_config_info_base
     listdaqcomps = listdaqcomps_base
     listconfigs = listconfigs_base
@@ -1885,6 +1888,13 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
 
         self.save_metadata_value("Stop time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
+
+        try:
+            self.put_config_info_on_stop()
+        except Exception:
+            self.print_log("e", traceback.format_exc())
+            self.alert_and_recover("An exception was thrown when trying to save configuration info; see traceback above for more info")
+            return
 
 
         self.stop_datataking()

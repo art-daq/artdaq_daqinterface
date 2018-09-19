@@ -244,7 +244,7 @@ def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
         raise Exception(make_paragraph("A problem occurred when DAQInterface tried to execute \"%s\"; result was not an integer" % \
                                        (cmd)))
 
-    pool = ThreadPool(int(nprocessors)*4)  # 4 cores per processor on np04-srv-010; let's get greedy
+    pool = ThreadPool(int(nprocessors))
     
     preformat_filenames=[ Popen("mktemp", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() for i in range(len(input_fhicl_strings))]
     postformat_filenames=[ Popen("mktemp", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() for i in range(len(input_fhicl_strings))]

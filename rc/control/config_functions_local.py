@@ -29,9 +29,12 @@ def get_config_info_base(self):
 
     return config_dirname_subdir, ffp
 
-# put_config_info_base should be a no-op 
+# put_config_info_base and put_config_info_on_stop_base should be no-ops
 
 def put_config_info_base(self):
+    pass
+
+def put_config_info_on_stop_base(self):
     pass
 
 def get_daqinterface_config_info_base(self, daqinterface_config_filename):

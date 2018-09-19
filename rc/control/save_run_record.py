@@ -47,13 +47,14 @@ def save_run_record_base(self):
     # /tmp/run_record_attempted_np04daq/<RC partition>, to allay fears
     # of clobbering from other partitions in use
 
-    old_outdir = "/tmp/run_record_attempted_%s" % (os.environ["USER"])
-    assert os.path.exists( old_outdir )
-
-    partition_outdir = "/tmp/run_record_attempted_%s/%d" % (os.environ["USER"], self.partition_number_rc)
-    assert os.path.exists( partition_outdir )
-
     if not self.manage_processes:
+
+        old_outdir = "/tmp/run_record_attempted_%s" % (os.environ["USER"])
+        assert os.path.exists( old_outdir )
+
+        partition_outdir = "/tmp/run_record_attempted_%s/%d" % (os.environ["USER"], self.partition_number_rc)
+        assert os.path.exists( partition_outdir )
+
         globs = ["*.fcl", "metadata.txt"]
 
         for oldfiles in [ glob.glob( "%s/%s" % (rcdir, fileglob)) for rcdir in [old_outdir, partition_outdir] for fileglob in globs ]:
