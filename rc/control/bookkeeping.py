@@ -35,6 +35,11 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         min_majorver = "3"
         min_minorver = "03"
         min_minorerver = "00"
+        
+        # ...so we'll also have a list of versions where if the artdaq
+        # version matches one of them, we'll be considered OK
+
+        other_allowed_versions = ["v3_02_01a"]
 
         cmd = ". %s; ups active | sed -r -n '/^artdaq\\s+/s/^artdaq\\s+(\\S+).*/\\1/p'" % \
               (self.daq_setup_script)
@@ -67,6 +72,12 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 passes_requirement = True
             elif int(minorver) == int(min_minorver):
                 if int(minorerver) >= int(min_minorerver):
+                    passes_requirement = True
+
+        if not passes_requirement:
+            version = "v%s_%s_%s%s" % (majorver, minorver, minorerver, extension)
+            for an_allowed_version in other_allowed_versions:
+                if version == an_allowed_version:
                     passes_requirement = True
                 
         if not passes_requirement:
