@@ -1287,8 +1287,8 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
                     for label, contents in labeled_fhicl_documents:
 
-                        self.print_log("i", "Saving FHiCL for %s to %s" % (label,
-                                                                           self.procinfos[procinfo_index].label))
+                        self.print_log("d", "Saving FHiCL for %s to %s" % (label,
+                                                                           self.procinfos[procinfo_index].label), 2)
                         try:
                             self.procinfos[procinfo_index].lastreturned = self.procinfos[procinfo_index].server.daq.add_config_archive_entry( label, contents )
                         except:
@@ -1755,7 +1755,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                 self.print_log("w", traceback.format_exc())
                 self.print_log("w", make_paragraph("WARNING: an exception was caught when trying to launch the online monitoring processes; online monitoring won't work though this will not affect actual datataking"))
 
-            self.print_log("i", "Adding archive entries to config for diskwriting processes...")
+            self.print_log("d", "Adding archive entries to config for diskwriting processes...", 2)
 
             labeled_fhicl_documents = []
 
@@ -1773,7 +1773,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
             self.archive_documents(labeled_fhicl_documents)
 
-            self.print_log("i", "Done adding archive entries to config")
+            self.print_log("d", "Done adding archive entries to config", 2)
 
         self.complete_state_change(self.name, "configuring")
 
