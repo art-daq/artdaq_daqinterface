@@ -42,7 +42,6 @@ from rc.control.utilities import is_msgviewer_running
 from rc.control.utilities import date_and_time
 from rc.control.utilities import construct_checked_command
 from rc.control.utilities import reformat_fhicl_documents
-from rc.control.utilities import get_commit_hash
 from rc.control.utilities import fhicl_writes_root_file
 
 if not "DAQINTERFACE_FHICL_DIRECTORY" in os.environ:
@@ -1369,18 +1368,6 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
         if not hasattr(self, "daq_comp_list") or not self.daq_comp_list or self.daq_comp_list == {}:
             revert_failed_boot("when checking for the list of components meant to be provided by the \"setdaqcomps\" call")
             return
-
-        self.package_hash_dict = {}
-
-        for pkgname in self.package_hashes_to_save:
-            pkg_full_path = "%s/srcs/%s" % (self.daq_dir, pkgname.replace("-", "_"))
-
-            try: 
-                self.package_hash_dict[pkgname] = get_commit_hash( pkg_full_path )
-            except Exception:
-                self.print_log("e", traceback.format_exc())
-                self.alert_and_recover("An exception was thrown in get_commit_hash; see traceback above for more info")
-                return
 
         for i_boardreader, compname in enumerate(self.daq_comp_list):
 
