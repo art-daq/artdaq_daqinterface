@@ -77,7 +77,7 @@ test"
 
 set -o pipefail   # See, e.g., https://stackoverflow.com/questions/1221833/pipe-output-and-capture-exit-status-in-bash
 
-config_dumper -P $rootfile 2> /dev/null | sed -r 's/\\n/\n/g'  | sed -r '1,/run_daqinterface_boot/d;/^\s*"\s*$/,$d;s/\\"/"/g'  > $temporary_daqinterface_boot_file 
+config_dumper -P $rootfile 2> /dev/null | sed -r 's/\\n/\n/g'  | sed -r '1,/boot: "contents/d;/^\s*\\"\s*$/,$d;s/\\"/"/g'  > $temporary_daqinterface_boot_file 
 
 if [[ "$?" != "0" ]]; then
     echo "An error occurred in the config_dumper pipe command, aborting..."
@@ -88,7 +88,7 @@ if [[ ! -s $temporary_daqinterface_boot_file ]]; then
     echo "It appears no DAQInterface boot info was saved in $rootfile" 
 fi
 
-config_dumper -P $rootfile 2> /dev/null  | sed -r 's/\\n/\n/g'  | sed -r '1,/run_metadata/d;/"/,$d' > $temporary_metadata_file 
+config_dumper -P $rootfile 2> /dev/null  | sed -r 's/\\n/\n/g'  | sed -r '1,/metadata: "contents/d;/^\s*\\"\s*$/,$d' > $temporary_metadata_file 
 
 if [[ "$?" != "0" ]]; then
     echo "An error occurred in the config_dumper pipe command, aborting..."
