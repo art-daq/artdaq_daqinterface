@@ -1109,6 +1109,31 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                 if status != 0:
                     self.print_log("w", "WARNING: failure in executing %s" % (link_logfile_cmd))
 
+    def get_package_version(self, package):    
+
+        cmd = ". %s; ups active | sed -r -n '/^%s\\s+/s/^%s\\s+(\\S+).*/\\1/p'" % \
+              (self.daq_setup_script, package, package)
+        proc =  Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        stdoutlines = proc.stdout.readlines()
+        stderrlines = proc.stderr.readlines()
+
+        # Arguably too strict...
+        if len(stderrlines) > 0:
+            raise Exception("Error in %s: the command \"%s\" yields output to stderr:\n\"%s\"" % \
+                            (self.get_package_version.__name__, cmd, "".join(stderrlines)))
+
+        if len(stdoutlines) == 0:
+            raise Exception("Error in %s: the command \"%s\" yields no output to stdout" % \
+                            (self.get_package_version.__name__, cmd))
+            
+        version = stdoutlines[-1].strip()
+
+        if not re.search(r"v[0-9]_[0-9]{2}_[0-9]{2}(.*)", version):
+            raise Exception(make_paragraph("Error in %s: the version of the package \"%s\" this function has determined, \"%s\", is not the expected vX_YY_ZZoptionalextension format" % (self.get_package_version.__name__, package, version)))
+        
+        return version
+
     # JCF, Nov-8-2015
 
     # The core functionality for "do_command" is that it will launch a

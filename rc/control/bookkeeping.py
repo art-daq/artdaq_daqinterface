@@ -5,8 +5,6 @@ sys.path.append( os.environ["ARTDAQ_DAQINTERFACE_DIR"] )
 
 import string
 import re
-import subprocess
-from subprocess import Popen
 
 from rc.control.utilities import table_range
 from rc.control.utilities import enclosing_table_range
@@ -41,23 +39,13 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         other_allowed_versions = ["v3_02_01a"]
 
-        cmd = ". %s; ups active | sed -r -n '/^artdaq\\s+/s/^artdaq\\s+(\\S+).*/\\1/p'" % \
-              (self.daq_setup_script)
-        proc =  Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        version = self.get_package_version("artdaq")
 
-        stdoutlines = proc.stdout.readlines()
-        stderrlines = proc.stderr.readlines()
-        
-        if len(stderrlines) > 0:
-            raise Exception("Error: the command \"%s\" yields output to stderr:\n\"%s\"" % (cmd, "".join(stderrlines)))
-
-        if len(stdoutlines) == 0:
-            raise Exception("The command \"%s\" yields no output to stdout")
-            
-        res = re.search(r"v([0-9])_([0-9]{2})_([0-9]{2})(.*)", stdoutlines[-1])
+        res = re.search(r"v([0-9])_([0-9]{2})_([0-9]{2})(.*)", version)
     
         if not res:
-            raise Exception("Last line of stdout from command \"%s\" does not contain the artdaq version in use" % (cmd))
+            raise Exception("Problem parsing the calculated version of artdaq, %s" % (version))
+
         majorver = res.group(1)
         minorver = res.group(2)
         minorerver = res.group(3)
@@ -75,7 +63,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     passes_requirement = True
 
         if not passes_requirement:
-            version = "v%s_%s_%s%s" % (majorver, minorver, minorerver, extension)
             for an_allowed_version in other_allowed_versions:
                 if version == an_allowed_version:
                     passes_requirement = True
