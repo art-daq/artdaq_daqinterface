@@ -88,7 +88,7 @@ if [[ ! -s $temporary_daqinterface_boot_file ]]; then
     echo "It appears no DAQInterface boot info was saved in $rootfile" 
 fi
 
-config_dumper -P $rootfile 2> /dev/null  | sed -r 's/\\n/\n/g'  | sed -r '1,/metadata: "contents/d;/^\s*\\"\s*$/,$d' > $temporary_metadata_file 
+config_dumper -P $rootfile 2> /dev/null  | sed -r 's/\\n/\n/g;s/\\"/"/g'  | sed -r '1,/metadata: "contents/d;/^\s*"\s*$/,$d' > $temporary_metadata_file 
 
 if [[ "$?" != "0" ]]; then
     echo "An error occurred in the config_dumper pipe command, aborting..."

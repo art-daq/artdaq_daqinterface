@@ -329,9 +329,29 @@ def get_commit_hash(gitrepo):
         raise Exception(make_paragraph("Commit hash for \"%s\" not found; this was requested in the \"packages_hashes_to_save\" list found in %s" % (gitrepo, os.environ["DAQINTERFACE_SETTINGS"])))
 
     return proclines[0].strip()
+
+def get_commit_comment( gitrepo ):
+    
+    max_length = 50
+    
+    if not os.path.exists(gitrepo):
+        return ""
+
+    cmds = []
+    cmds.append("cd %s" % (gitrepo))
+    cmds.append("git log --format=%B -n 1 HEAD")
+    proc = Popen(";".join(cmds), shell=True,
+                 stdout=subprocess.PIPE)
+    single_line_comment = " ".join( proc.stdout.readlines() )
+
+    for badchar in [ '\n', '"', "'" ]:
+        single_line_comment = single_line_comment.replace(badchar, "")
+
+    if len(single_line_comment) > max_length:
+        single_line_comment = single_line_comment[0:max_length] + "..."
+
+    return single_line_comment
         
-
-
 def fhicl_writes_root_file(fhicl_string):
 
     # 17-Apr-2018, KAB: added the MULTILINE flag to get this search to behave as desired.

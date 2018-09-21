@@ -7,6 +7,7 @@ from subprocess import Popen
 import traceback
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_commit_hash
+from rc.control.utilities import get_commit_comment
 
 def save_run_record_base(self):
 
@@ -99,6 +100,7 @@ def save_run_record_base(self):
         if os.path.exists( pkg_full_path ):
             try: 
                 self.package_info_dict[pkgname] = get_commit_hash( pkg_full_path )
+                self.package_info_dict[pkgname] += " \"%s\"" % (get_commit_comment( pkg_full_path ))
             except Exception:
                 self.print_log("e", traceback.format_exc())
                 self.alert_and_recover("An exception was thrown in get_commit_hash; see traceback above for more info")
