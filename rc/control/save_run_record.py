@@ -5,6 +5,9 @@ import re
 import subprocess
 from subprocess import Popen
 import traceback
+from rc.control.utilities import make_paragraph
+from rc.control.utilities import get_commit_hash
+from rc.control.utilities import get_commit_comment
 
 def save_run_record_base(self):
 
@@ -14,21 +17,17 @@ def save_run_record_base(self):
     outdir = self.tmp_run_record
 
     try:
-        os.mkdir(outdir)
+        os.makedirs(outdir)
     except Exception:
-        self.print_log("Exception raised during creation of %s ; this may occur because %s already exists, in which case this is not an error" % (outdir, outdir))
+        raise Exception(make_paragraph("Exception raised during creation of %s" % (outdir)))
+        return
+
 
     if not os.path.exists(outdir):
-        self.alert_and_recover("Problem creating output "
-                               "directory " + outdir)
+        raise Exception("Problem creating output directory %s" % (outdir))
         return
 
     for procinfo in self.procinfos:
-
-        if procinfo.host == "localhost":
-            procinfo_host_to_record = os.environ["HOSTNAME"]
-        else:
-            procinfo_host_to_record = procinfo.host
 
         outf = open(outdir + "/" + procinfo.label + ".fcl", "w")
 
@@ -54,6 +53,15 @@ def save_run_record_base(self):
 
     if not os.path.exists(outdir + "/setup.txt"):
         self.alert_and_recover("Problem creating file %s/setup.txt" % (outdir))
+
+    assert os.path.exists( os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"] )
+
+    Popen("cp -p " + os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"] +
+          " " + outdir + "/known_boardreaders_list.txt", shell=True,
+          stdout=subprocess.PIPE).wait()
+
+    if not os.path.exists(outdir + "/known_boardreaders_list.txt"):
+        self.alert_and_recover("Problem creating file " + outdir + "/known_boardreaders_list.txt")
 
     # JCF, 11/20/14
 
@@ -81,10 +89,27 @@ def save_run_record_base(self):
     if "ARTDAQ_DAQINTERFACE_VERSION" in os.environ.keys():
         outf.write("DAQInterface commit: %s\n" % ( os.environ["ARTDAQ_DAQINTERFACE_VERSION"] ) )
     else:
-        outf.write("DAQInterface commit: %s\n" % ( self.get_commit_hash(os.environ["ARTDAQ_DAQINTERFACE_DIR"]) ) )
+        outf.write("DAQInterface commit: %s\n" % ( get_commit_hash(os.environ["ARTDAQ_DAQINTERFACE_DIR"]) ) )
 
-    for pkg in sorted(self.package_hash_dict.keys()):
-        outf.write("%s commit: %s\n" % (pkg, self.package_hash_dict[ pkg ] ))
+
+    self.package_info_dict = {}
+
+    for pkgname in self.package_hashes_to_save:
+        pkg_full_path = "%s/srcs/%s" % (self.daq_dir, pkgname.replace("-", "_"))
+
+        if os.path.exists( pkg_full_path ):
+            try: 
+                self.package_info_dict[pkgname] = get_commit_hash( pkg_full_path )
+                self.package_info_dict[pkgname] += " \"%s\"" % (get_commit_comment( pkg_full_path ))
+            except Exception:
+                self.print_log("e", traceback.format_exc())
+                self.alert_and_recover("An exception was thrown in get_commit_hash; see traceback above for more info")
+                return
+        else:
+            self.package_info_dict[pkgname] = self.get_package_version( pkgname.replace("-", "_") )
+
+    for pkg in sorted(self.package_info_dict.keys()):
+        outf.write("%s commit/version: %s\n" % (pkg, self.package_info_dict[ pkg ] ))
 
     if self.pmt_host == "localhost":
         pmt_host_to_record = os.environ["HOSTNAME"]
@@ -100,6 +125,7 @@ def save_run_record_base(self):
 
         logtuples = [("boardreader", self.boardreader_log_filenames),
                      ("eventbuilder", self.eventbuilder_log_filenames),
+                     ("routingmaster", self.routingmaster_log_filenames),
                      ("aggregator", self.aggregator_log_filenames)]
 
         for logtuple in logtuples:
@@ -112,6 +138,35 @@ def save_run_record_base(self):
 
     outf.write("\n")
     outf.close()
+
+    ranksfile = "%s/ranks.txt" % (outdir)
+
+    with open(ranksfile, "w") as outfile:
+        outfile.write("        host   port         label  rank\n")
+        outfile.write("\n")
+
+        rank = 0
+
+        with open(self.pmtconfigname) as infile:
+            for line in infile.readlines():
+                res = re.search(r"^[A-Za-z]+!([^!]+)", line)
+                assert res
+                host = res.group(1)
+
+                res = re.search(r"\s*id\s*:\s*([0-9]+)", line)
+                assert res
+                port = res.group(1)
+
+                res = re.search(r"\s*application_name\s*:\s*([^\s]+)", line)
+                assert res
+                label = res.group(1)
+
+                outfile.write("%s\t%s\t%s\t%d\n" % (host, port, label, rank))
+                rank += 1
+
+        outfile.close()
+
+
 
     if self.debug_level >= 2:
         print "Saved run configuration records in %s" % \

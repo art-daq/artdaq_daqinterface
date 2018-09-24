@@ -8,6 +8,8 @@ from subprocess import Popen
 
 from time import sleep
 
+from multiprocessing.pool import ThreadPool
+
 def expand_environment_variable_in_string(line):
 
     res = re.search(r"^(.*)(\$[A-Z][A-Z_0-9]*)(.*)", line)
@@ -168,9 +170,9 @@ def commit_check_throws_if_failure(packagedir, commit_hash, date, request_after)
     proclines = proc.stdout.readlines()
 
     if request_after and len(proclines) != 1:
-        raise Exception("Unable to find expected git commit hash %s (%s) in directory \"%s\"; this means the version of code in that directory isn't the one expected" % (commit_hash, date, packagedir))
+        raise Exception(make_paragraph("Unable to find expected git commit hash %s (%s) in directory \"%s\"; this means the version of code in that directory isn't the one expected" % (commit_hash, date, packagedir)))
     elif not request_after and len(proclines) != 0:
-        raise Exception("Unexpectedly found git commit hash %s (%s) in directory \"%s\"; this means the version of code in that directory isn't the one expected" % (commit_hash, date, packagedir))
+        raise Exception(make_paragraph("Unexpectedly found git commit hash %s (%s) in directory \"%s\"; this means the version of code in that directory isn't the one expected" % (commit_hash, date, packagedir)))
 
 def is_msgviewer_running():
     
@@ -228,9 +230,23 @@ def construct_checked_command(cmds):
 
     return total_cmd
 
+
 def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
 
-    cmds = []
+    if not os.path.exists( setup_fhiclcpp ):
+        raise Exception(make_paragraph("Expected fhiclcpp setup script %s doesn't appear to exist" % (setup_fhiclcpp)))
+
+    cmd = "grep -c ^processor /proc/cpuinfo"
+
+    nprocessors = Popen(cmd, shell=True,
+                        stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+
+    if not re.search(r"^[0-9]+$", nprocessors):
+        raise Exception(make_paragraph("A problem occurred when DAQInterface tried to execute \"%s\"; result was not an intege\
+r" % \
+                                       (cmd)))
+
+    pool = ThreadPool(int(nprocessors))
 
     preformat_filenames=[ Popen("mktemp", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() for i in range(len(input_fhicl_strings))]
     postformat_filenames=[ Popen("mktemp", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() for i in range(len(input_fhicl_strings))]
@@ -239,39 +255,113 @@ def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
         with open(preformat_filename, "w") as preformat_file:
             preformat_file.write(input_fhicl_string)
 
-    cmds.append("source %s" % (setup_fhiclcpp))
-    cmds.append("which fhicl-dump")
+    def reformat_subset_of_documents(indices):
+
+        cmds = []
+        cmds.append("source %s" % (setup_fhiclcpp))
+        cmds.append("which fhicl-dump")
+        for index in indices:
+            cmds.append("fhicl-dump -l 0 -c %s -o %s" % \
+                        (preformat_filenames[index], postformat_filenames[index]))
+
+        fullcmd = construct_checked_command( cmds )
+
+        status = Popen(fullcmd, shell = True).wait()
+
+        exception_message = ""
+        formatted_fhicl_strings = []
+
+        if status != 0:
+            exception_message = make_paragraph("Failure in attempt of %s to reformat a FHiCL document; nonzero status returned. This may indicate either a problem with the setup file %s or a problem with the FHiCL code itself" % (reformat_subset_of_documents.__name__, setup_fhiclcpp))
+
+        for index in indices:
+            if os.path.exists( postformat_filenames[index] ):
+                formatted_fhicl_strings.append( open( postformat_filenames[index] ).read() )
+                os.unlink( postformat_filenames[index] )
+            else:
+                exception_message = make_paragraph("Failure in %s: problem creating postformat file in fhicl-dump call" % (reformat_subset_of_documents.__name__))
+
+        if exception_message != "":
+            raise Exception( exception_message )
+
+        for index in indices:
+            os.unlink( preformat_filenames[index] )
+
+        return formatted_fhicl_strings   # End of reformat_subset_of_documents()
+
+        
+    document_set_size = 8
+    num_total_documents = len(input_fhicl_strings)
+
+    if num_total_documents > document_set_size:
+        document_sets = [ range(i, i+document_set_size) for i in range(0, num_total_documents, document_set_size) if i+document_set_size < num_total_documents]
+        remainder_set = range( document_sets[-1][-1] + 1, num_total_documents)
+
+        if len(remainder_set) > 0:
+            document_sets.append( remainder_set )
+    else:
+        document_sets = [ range(num_total_documents) ]
+
+    postformat_fhicl_document_lists = pool.map(reformat_subset_of_documents, document_sets)
+
+    return [ postformat_fhicl_document for postformat_fhicl_document_list in postformat_fhicl_document_lists \
+                  for postformat_fhicl_document in postformat_fhicl_document_list ]
+
+# JCF, 12/2/14
+
+# Given the directory name of a git repository, this will return
+# the most recent hash commit in the repo
+
+def get_commit_hash(gitrepo):
+
+    if not os.path.exists(gitrepo):
+        return "Unknown"
+
+    cmds = []
+    cmds.append("cd %s" % (gitrepo))
+    cmds.append("git log | head -1 | awk '{print $2}'")
+
+    proc = Popen(";".join(cmds), shell=True,
+                 stdout=subprocess.PIPE)
+    proclines = proc.stdout.readlines()
+
+    if len(proclines) != 1 or len(proclines[0].strip()) != 40:
+        raise Exception(make_paragraph("Commit hash for \"%s\" not found; this was requested in the \"packages_hashes_to_save\" list found in %s" % (gitrepo, os.environ["DAQINTERFACE_SETTINGS"])))
+
+    return proclines[0].strip()
+
+def get_commit_comment( gitrepo ):
     
-    for preformat_filename, postformat_filename in zip(preformat_filenames, postformat_filenames):
-        cmds.append("fhicl-dump -l 0 -c %s -o %s" % \
-                    (preformat_filename, postformat_filename))
-
-    fullcmd = construct_checked_command( cmds )
+    max_length = 50
     
-    status = Popen(fullcmd, shell = True).wait()
+    if not os.path.exists(gitrepo):
+        return ""
 
-    exception_message = ""
+    cmds = []
+    cmds.append("cd %s" % (gitrepo))
+    cmds.append("git log --format=%B -n 1 HEAD")
+    proc = Popen(";".join(cmds), shell=True,
+                 stdout=subprocess.PIPE)
+    single_line_comment = " ".join( proc.stdout.readlines() )
 
-    if status != 0:
-        exception_message = make_paragraph("Failure in attempt of %s to reformat FHiCL documents; nonzero status returned" % (reformat_fhicl_document.__name__))
+    for badchar in [ '\n', '"', "'" ]:
+        single_line_comment = single_line_comment.replace(badchar, "")
 
-    postformat_fhicl_strings = []
+    if len(single_line_comment) > max_length:
+        single_line_comment = single_line_comment[0:max_length] + "..."
 
-    for preformat_filename, postformat_filename in zip(preformat_filenames, postformat_filenames):
+    return single_line_comment
         
-        if os.path.exists( postformat_filename ):
-            postformat_fhicl_strings.append( open( postformat_filename ).read() )
-            os.unlink( postformat_filename )
-        else:
-            exception_message = make_paragraph("Failure in %s: problem creating postformat file in fhicl-dump call" % (reformat_fhicl_document.__name__))
-        
-        os.unlink( preformat_filename )
+def fhicl_writes_root_file(fhicl_string):
 
-    if exception_message != "":
-        raise Exception( exception_message )
+    # 17-Apr-2018, KAB: added the MULTILINE flag to get this search to behave as desired.
+    # 30-Aug-2018, KAB: added support for RootDAQOutput
 
-    return postformat_fhicl_strings
-        
+    if ( "RootOutput" in fhicl_string or "RootDAQOut" in fhicl_string ) and \
+       re.search(r"^\s*fileName\s*:\s*.*\.root", fhicl_string, re.MULTILINE):
+        return True
+    else:
+        return False
 
 def main():
 
@@ -304,6 +394,7 @@ def main():
         execute_command_in_xterm(os.environ["PWD"], "echo You should see an xclock appear; xclock ")
 
     if reformat_fhicl_document_test:
+        assert False, "This test is deprecated until function signature is brought up-to-date"
         inputstring = 'mytable: {   this: "and"        that: "and  the other"   }'
         source_filename = Popen("mktemp", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
 
