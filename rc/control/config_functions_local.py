@@ -49,7 +49,8 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
     num_expected_processes = 0
     num_actual_processes = 0
 
-    for line in inf.readlines():
+    lines = inf.readlines()
+    for i_line, line in enumerate(lines):
 
         line = expand_environment_variable_in_string( line )
 
@@ -147,11 +148,12 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
                 if res.group(2) == "host":
                     num_expected_processes += 1
 
-        # Taken from Eric: if a line is blank or a comment, check to
-        # see if we've got a complete set of info for an artdaq
-        # process
+        # Taken from Eric: if a line is blank or a comment or we've
+        # reached the last line in the boot file, check to see if
+        # we've got a complete set of info for an artdaq process
 
-        if re.search(r"^\s*#", line) or re.search(r"^\s*$", line):
+        if re.search(r"^\s*#", line) or re.search(r"^\s*$", line) or \
+           i_line == len(lines) - 1:
 
             filled = True
 

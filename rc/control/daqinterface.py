@@ -983,8 +983,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
             raise Exception(make_paragraph(errmsg))
 
         if not os.path.exists(self.daq_setup_script ):
-            raise Exception(make_paragraph(
-                                self.daq_setup_script + " script not found"))
+            raise Exception(self.daq_setup_script + " script not found")
 
         num_requested_routingmasters = len( [ procinfo.name for procinfo in self.procinfos 
                                               if procinfo.name == "RoutingMaster" ]  )
