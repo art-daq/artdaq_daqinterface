@@ -17,6 +17,7 @@ import glob
 import stat
 from threading import Thread
 import shutil
+from shutil import copyfile
 import socket
 
 from rc.io.timeoutclient import TimeoutServerProxy
@@ -1856,6 +1857,13 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
             self.alert_and_recover("An exception was thrown when trying to save configuration info; see traceback above for more info")
             return
 
+        if not self.manage_processes:
+            copyfile("/tmp/info_to_archive_partition%d.txt" % (self.partition_number_rc), \
+                     "%s/rc_info_start.txt" % (run_record_directory))
+
+            if not os.path.exists("%s/rc_info_start.txt" % (run_record_directory)):
+                self.alert_and_recover(make_paragraph("Problem copying /tmp/info_to_archive_partition%d.txt into %s/rc_info_start.txt; does original file exist?" % (self.partition_number_rc, run_record_directory)))
+
         self.execute_trace_script("start")
 
         if self.manage_processes:
@@ -1898,6 +1906,16 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
 
 
         self.stop_datataking()
+
+        if not self.manage_processes:
+            run_record_directory = "%s/%s" % \
+                                   (self.record_directory, str(self.run_number))
+
+            copyfile("/tmp/info_to_archive_partition%d.txt" % (self.partition_number_rc), \
+                     "%s/rc_info_stop.txt" % (run_record_directory))
+
+            if not os.path.exists("%s/rc_info_stop.txt" % (run_record_directory)):
+                self.alert_and_recover(make_paragraph("Problem copying /tmp/info_to_archive_partition%d.txt into %s/rc_info_stop.txt; does original file exist?" % (self.partition_number_rc, run_record_directory)))
 
         if self.manage_processes:
 
