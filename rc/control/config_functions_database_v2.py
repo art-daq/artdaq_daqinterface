@@ -15,6 +15,7 @@ import subprocess
 from subprocess import Popen
 from rc.control.deepsuppression import deepsuppression
 from rc.control.utilities import make_paragraph
+from rc.control.utilities import fhiclize_document
 import shutil
 from shutil import copyfile
 
@@ -180,17 +181,8 @@ def put_config_info_base(self):
                     runhistory_file.write("\n" + line)
 
         if not self.manage_processes:
-            with open( "/tmp/info_to_archive_partition%d.txt" % (self.partition_number_rc)) as rc_info_file:
-
-                # Including run_type below in case someone provides a multiword run type...
-                vars_to_fhiclize = ["start_time", "run_type"]
-
-                for line in rc_info_file.readlines():
-                    for var in vars_to_fhiclize:
-                        if var in line:
-                            fhiclized_line = re.sub(r'^\s*%s\s*:\s*(.*\S)' % (var), r'%s: "\1"' % (var), line)
-                            runhistory_file.write("\n%s" % (fhiclized_line))
-
+            runhistory_file.write( fhiclize_document( "/tmp/info_to_archive_partition%d.txt" % (self.partition_number_rc) ) )
+                                   
     basedir=os.getcwd()
     os.chdir( tmpdir )
 
@@ -219,16 +211,10 @@ def put_config_info_on_stop_base(self):
     os.mkdir(tmpdir)
     os.mkdir("%s/%s" % (tmpdir, runnum))
     os.chdir(tmpdir)
+    
 
     with open( "%s/%s/RunHistory2.fcl" % (tmpdir, runnum), "w" ) as runhistory_file:
-        with open( "/tmp/info_to_archive_partition%d.txt" % (self.partition_number_rc)) as rc_info_file:
-            vars_to_fhiclize = ["stop_time"]
-
-            for line in rc_info_file.readlines():
-                for var in vars_to_fhiclize:
-                    if var in line:
-                        fhiclized_line = re.sub(r'^\s*%s\s*:\s*(.*\S)' % (var), r'%s: "\1"' % (var), line)
-                        runhistory_file.write("\n%s" % (fhiclized_line))
+        runhistory_file.write( fhiclize_document( "/tmp/info_to_archive_partition%d.txt" % (self.partition_number_rc) ) )
 
     copyfile("%s/schema.fcl" % (os.environ["ARTDAQ_DATABASE_CONFDIR"]), "%s/schema.fcl" % (tmpdir))
 

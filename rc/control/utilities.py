@@ -315,12 +315,41 @@ def fhicl_writes_root_file(fhicl_string):
     else:
         return False
 
+def fhiclize_document(filename):
+    
+    fhiclized_lines = []
+
+    with open(filename) as inf:
+        for line in inf.readlines():
+            # Parse any line that's not blank or a comment
+            if not re.search(r"^\s*$", line) and not re.search(r"^\s*#.*$", line):
+                res = re.search(r"^\s*(\S[^:]*):\s*(\S.*)[\s]", line)
+                if res:
+                    key = res.group(1)
+                    key = "_".join( key.split() )
+
+                    value = res.group(2)
+                    value = value.strip(' "')
+                    value = value.strip("'")
+                    value = value.replace("\"", "\\\"")
+
+                    fhiclized_lines.append("%s: \"%s\"" % (key, value))
+                else:
+                    print "WARNING: %s not able to FHiCLize the line \"%s\"" % \
+                        (fhiclize_document.__name__, line.rstrip())
+            else:
+                continue
+    return "\n".join( fhiclized_lines )
+                
+            
+
 def main():
 
     paragraphed_string_test = False
     msgviewer_check_test = False
     execute_command_in_xterm_test = False
-    reformat_fhicl_document_test = True
+    reformat_fhicl_document_test = False
+    fhiclize_document_test = True
 
     if paragraphed_string_test:
         sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
@@ -371,6 +400,14 @@ def main():
         print "Output FHiCL string: "
         print outputstring
         print
+
+    if fhiclize_document_test:
+        result = fhiclize_document("/tmp/deleteme.txt")
+        print
+        print "-----------------------------------------------"
+        print result
+        print "-----------------------------------------------"
+
 
 if __name__ == "__main__":
     main()
