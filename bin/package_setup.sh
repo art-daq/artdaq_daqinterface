@@ -46,6 +46,38 @@ if [[ -n $proddir ]]; then
 	return 60
     fi
 
+    unsetup_all()
+    {
+	for pp in `printenv | sed -ne '/^SETUP_/{s/SETUP_//;s/=.*//;p}'`;do
+            test $pp = UPS && continue;
+            prod=`echo $pp | tr 'A-Z' 'a-z'`;
+            eval "tmp=\${SETUP_$pp-}";
+            test -z "$tmp" && echo already unsetup && continue;
+            unsetup -j $prod;
+	done
+    }
+
+    # Call Ron's unsetup function. Remove the ups packages of the
+    # environment which sourced package_setup to avoid unnecessary version
+    # conflicts. Note that this also requires that package_setup not have
+    # already been sourced in the environment; if it HAS, then unsetup_all
+    # will remove a package which the externval environment needs
+
+    if [[ -z $DAQINTERFACE_ALREADY_CALLED_PACKAGE_SETUP ]]; then
+	export DAQINTERFACE_ALREADY_CALLED_PACKAGE_SETUP=true
+	unsetup_all
+    else
+	cat >&2 <<EOF
+
+        DEVELOPER ERROR: package_setup.sh shouldn't be sourced twice
+        in the same environment as its first action is to unsetup any
+        previously-set-up ups package. Please contact John Freeman at
+        jcfree@fnal.gov. 
+
+EOF
+	return 1
+    fi
+
     setup_cmd=$( ups list -aK+ $packagename | sort -n | tail -1 | awk '{print "setup $packagename",$2," -q ", $4}' )
     eval $setup_cmd
 
