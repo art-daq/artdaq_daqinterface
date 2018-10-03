@@ -21,6 +21,27 @@ setupscript=$recorddir/$runnum/setup.txt
 
 if [[ -e $setupscript ]]; then
 
+    if [[ -n $PRODUCTS ]]; then
+	proddir=$( echo $PRODUCTS | tr ":" "\n" | head -1 )
+
+	if [[ -e $proddir/setup ]]; then
+	    . $proddir/setup
+	else
+	    echo "Unable to find file $proddir/setup despite $proddir appearing in the PRODUCTS environment variable, $PRODUCTS" >&2
+	    exit 100
+	fi
+
+	# Ron's unsetup function
+
+	for pp in `printenv | sed -ne '/^SETUP_/{s/SETUP_//;s/=.*//;p}'`;do
+            test $pp = UPS && continue;
+            prod=`echo $pp | tr 'A-Z' 'a-z'`;
+            eval "tmp=\${SETUP_$pp-}";
+            test -z "$tmp" && echo already unsetup && continue;
+            unsetup -j $prod;
+	done
+    fi
+
     . $setupscript 2>&1 > /dev/null
 
     if [[ "$?" != "0" ]]; then

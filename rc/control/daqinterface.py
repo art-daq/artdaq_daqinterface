@@ -43,6 +43,7 @@ from rc.control.utilities import date_and_time
 from rc.control.utilities import construct_checked_command
 from rc.control.utilities import reformat_fhicl_documents
 from rc.control.utilities import fhicl_writes_root_file
+from rc.control.utilities import bash_unsetup_command
 
 if not "DAQINTERFACE_FHICL_DIRECTORY" in os.environ:
     print
@@ -621,6 +622,7 @@ class DAQInterface(Component):
     def have_artdaq_mfextensions(self):
 
         cmds = []
+        cmds.append(bash_unsetup_command)
         cmds.append(". %s" % (self.daq_setup_script))
         cmds.append('if test -n "$SETUP_ARTDAQ_MFEXTENSIONS" -o -d "$ARTDAQ_MFEXTENSIONS_DIR"; then true; else false; fi')
 
@@ -639,6 +641,7 @@ class DAQInterface(Component):
         assert self.have_artdaq_mfextensions()
 
         cmds = []
+        cmds.append(bash_unsetup_command)
         cmds.append(". %s" % (self.daq_setup_script))
         cmds.append('if [ -n "$SETUP_ARTDAQ_MFEXTENSIONS" ]; then printenv SETUP_ARTDAQ_MFEXTENSIONS; else echo "artdaq_mfextensions $ARTDAQ_MFEXTENSIONS_VERSION $MRB_QUALS";fi')
 
@@ -721,7 +724,7 @@ class DAQInterface(Component):
                 self.launch_cmds.append("mkdir -p -m 0777 " + "%s/%s" % (self.log_directory, logdir) )
 
         self.launch_cmds.append(". %s/setup" % self.productsdir)  
-        self.launch_cmds.append("for pp in `printenv | sed -ne '/^SETUP_/{s/SETUP_//;s/=.*//;p}'`; do test $pp = UPS && continue; prod=`echo $pp | tr 'A-Z' 'a-z'`; unsetup -j $prod; done")  
+        self.launch_cmds.append( bash_unsetup_command )
         self.launch_cmds.append("source " + self.daq_setup_script )
         self.launch_cmds.append("which pmt.rb")  # Sanity check capable of returning nonzero
 
@@ -1109,8 +1112,8 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
     def get_package_version(self, package):    
 
-        cmd = ". %s; ups active | sed -r -n '/^%s\\s+/s/^%s\\s+(\\S+).*/\\1/p'" % \
-              (self.daq_setup_script, package, package)
+        cmd = "%s ; . %s; ups active | sed -r -n '/^%s\\s+/s/^%s\\s+(\\S+).*/\\1/p'" % \
+              (bash_unsetup_command, self.daq_setup_script, package, package)
         proc =  Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         stdoutlines = proc.stdout.readlines()
@@ -1417,7 +1420,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
             with deepsuppression():
                 for procinfo in self.procinfos:
                     if procinfo.host not in already_sourced.keys():
-                        cmd = ". " + self.daq_setup_script
+                        cmd = "%s ; . %s" % (bash_unsetup_command, self.daq_setup_script)
 
                         if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
                             cmd = "ssh %s '%s'" % (procinfo.host, cmd)
@@ -1530,6 +1533,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                                                   (version, qualifiers)))
 
                     cmds = []
+                    cmds.append(bash_unsetup_command)
                     cmds.append(". %s" % (self.daq_setup_script))
                     cmds.append("which msgviewer")
                     cmds.append("msgviewer -c $ARTDAQ_MFEXTENSIONS_DIR/fcl/msgviewer.fcl 2>&1 > /dev/null &" )
@@ -1712,27 +1716,32 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
             self.alert_and_recover("An exception was thrown when performing bookkeeping on the process FHiCL documents; see traceback above for more info")
             return
 
-        fhiclcpp_setup_file = os.environ["HOME"] + "/.setup_fhiclcpp"
-        if not os.path.exists(fhiclcpp_setup_file):
-            self.print_log("w", make_paragraph("File \"%s\", needed for formatting FHiCL configurations, does not appear to exist; will attempt to auto-generate one..." % (fhiclcpp_setup_file)))
-            with open( fhiclcpp_setup_file, "w") as outf:
+        if not os.path.exists(os.environ["DAQINTERFACE_SETUP_FHICLCPP"]):
+            self.print_log("w", make_paragraph("File \"%s\", needed for formatting FHiCL configurations, does not appear to exist; will attempt to auto-generate one..." % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"])))
+            with open( os.environ["DAQINTERFACE_SETUP_FHICLCPP"], "w") as outf:
                 outf.write("source %s/setup\n" % (self.productsdir))
-                fhiclcpp_to_setup_line = Popen("source %s/setup; ups list -aK+ fhiclcpp | sort -n" % (self.productsdir), 
-                                               shell=True, stdout=subprocess.PIPE).stdout.readlines()[-1]
+                lines = Popen("source %s/setup; ups list -aK+ fhiclcpp | sort -n" % (self.productsdir), 
+                                               shell=True, stdout=subprocess.PIPE).stdout.readlines()
+                if len(lines) > 0:
+                    fhiclcpp_to_setup_line = lines[-1]
+                else:
+                    os.unlink( os.environ["DAQINTERFACE_SETUP_FHICLCPP"] )
+                    raise Exception(make_paragraph("Unable to find fhiclcpp ups product in products directory \"%s\" provided in the DAQInterface settings file, \"%s\"" % (self.productsdir, os.environ["DAQINTERFACE_SETTINGS"])))
+
                 outf.write("setup %s %s -q %s\n" % (fhiclcpp_to_setup_line.split()[0],
                                                   fhiclcpp_to_setup_line.split()[1],
                                                   fhiclcpp_to_setup_line.split()[3]))
 
-            if os.path.exists( fhiclcpp_setup_file ):
-                self.print_log("w", make_paragraph("\"%s\" has been auto-generated; you may want to check to see that it correctly sets up the fhiclcpp package..." % (fhiclcpp_setup_file)))
+            if os.path.exists( os.environ["DAQINTERFACE_SETUP_FHICLCPP"] ):
+                self.print_log("w", make_paragraph("\"%s\" has been auto-generated; you may want to check to see that it correctly sets up the fhiclcpp package..." % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"])))
             else:
-                raise Exception(make_paragraph("Error: was unable to find or create a file \"%s\"" % (fhiclcpp_setup_file)))
+                raise Exception(make_paragraph("Error: was unable to find or create a file \"%s\"" % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"])))
         if self.debug_level <= 1:
             with deepsuppression():
-                reformatted_fhicl_documents = reformat_fhicl_documents(fhiclcpp_setup_file,
+                reformatted_fhicl_documents = reformat_fhicl_documents(os.environ["DAQINTERFACE_SETUP_FHICLCPP"],
                                                                        [ procinfo.fhicl_used for procinfo in self.procinfos ] )
         else:
-            reformatted_fhicl_documents = reformat_fhicl_documents(fhiclcpp_setup_file,
+            reformatted_fhicl_documents = reformat_fhicl_documents(os.environ["DAQINTERFACE_SETUP_FHICLCPP"],
                                                                        [ procinfo.fhicl_used for procinfo in self.procinfos ] )
 
         for i_proc, reformatted_fhicl_document in enumerate(reformatted_fhicl_documents):
