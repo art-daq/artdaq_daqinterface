@@ -6,7 +6,7 @@ runs=1
 
 env_opts_var=`basename $0 | sed 's/\.sh$//' | tr 'a-z-' 'A-Z_'`_OPTS
 USAGE="\
-   usage: `basename $0` [options] <file to pass on boot transition> <daq running time in seconds (0 if you want to run until ctrl-C is hit)>
+   usage: `basename $0` [options] <file to pass on boot transition> <daq running time in seconds (0 if you want to run until Ctrl-c is hit)>
 examples: `basename $0` boot.txt 0
           `basename $0` --config demo_no_aggregators 20
 --help        This help message
@@ -113,9 +113,7 @@ fi
 highest_runnum=$( ls -1 $recorddir | sort -n | tail -1 )
 runnum=$(( highest_runnum + 1 ))
 
-# See below for definition of "clean_shutdown" function
-
-trap "clean_shutdown" SIGHUP SIGINT SIGTERM
+trap "echo Received request to end running" SIGHUP SIGINT SIGTERM
 
 daqutils_script=$scriptdir/daqutils.sh
 
@@ -213,7 +211,7 @@ function main() {
 			echo "Will acquire data for $daq_time_in_seconds seconds"
 			sleep $daq_time_in_seconds
 		else
-			echo "Will acquire data until Ctrl-C is hit"
+			echo "Will acquire data until Ctrl-c is hit"
 			sleep 10000000000
 		fi
 
@@ -231,30 +229,6 @@ function main() {
 		counter=$(($counter + 1))
 	done
 
-	clean_shutdown
-}
-
-# clean_shutdown() will be called either (A) after the DAQ has run for
-# the user-requested period of time, or (B) after ctrl-C has been hit
-# (in which case it's called by the external_termination() handler
-# function. It will issue a "stop" if it sees the DAQ is in the
-# "running" state; either way, it issues a "terminate"
-
-function clean_shutdown() {
-
-    echo "Entered clean_shutdown"
-
-    # Stop the DAQ, if necessary
-    
-    state_true="0"
-    check_for_state "running" state_true
-
-    if [[ "$state_true" == "1" ]]; then
-    #read -n 1 -s -r -p "Press any key to stop"
-	vcmd $scriptdir/send_transition.sh stop
-	wait_until_no_longer stopping
-    fi
-
     sleep 1
 
     state_true="0"
@@ -265,35 +239,17 @@ function clean_shutdown() {
 	exit 80
     fi
 
-    # $scriptdir/send_transition.sh shutdown
-    # wait_until_no_longer shutting
-
-    # sleep 1
-
-    # state_true="0"
-    # check_for_state "booted" state_true
-
-    # if [[ "$state_true" != "1" ]]; then
-    # 	echo "DAQ unexpectedly not in booted state; exiting "$( basename $0)
-    # 	exit 81
-    # fi
-
-    if true; then
-	
     #read -n 1 -s -r -p "Press any key to shutdown"
-	vcmd $scriptdir/send_transition.sh terminate
+    vcmd $scriptdir/send_transition.sh terminate
 
-	wait_until_no_longer terminating
+    wait_until_no_longer terminating
 
-	state_true="0"
-	check_for_state "stopped" state_true
+    state_true="0"
+    check_for_state "stopped" state_true
 
-	if [[ "$state_true" != "1" ]]; then
-	    echo "DAQ unexpectedly not in stopped state;  exiting "$( basename $0)
-	    exit 90
-	fi
-    else
-	echo "Skipping the terminate step"
+    if [[ "$state_true" != "1" ]]; then
+	echo "DAQ unexpectedly not in stopped state;  exiting "$( basename $0)
+	exit 90
     fi
 }
 
