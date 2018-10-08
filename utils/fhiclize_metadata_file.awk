@@ -116,8 +116,12 @@
 	    components[++component_cntr] = secondpart
 	    components_section_active = 1
 	    next
-	} else if (firstpart ~ /^\/.*\/ commit/) {
-	    next
+	} else if (firstpart ~ /commit\/version/) {
+	    gsub("[- ]", "_", firstpart)
+	    sub("commit\/version", "commit_or_version", firstpart)
+	    gsub("\"", " ", secondpart); # Strip the quotes surrounding the commit
+	    # comment, otherwise quotes added later
+	    # will render illegal FHiCL
 	} else if (firstpart ~ "pmt logfile") {
 	    printf "pmt_logfiles_wildcard: \"%s\"\n", secondpart
 	    next
