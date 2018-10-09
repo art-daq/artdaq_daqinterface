@@ -12,7 +12,7 @@ function file_locations() {
 
 file_locations=""
 
-for proctype in Aggregator DataLogger ; do
+for proctype in EventBuilder Aggregator DataLogger ; do
     for file in $( ls $recorddir/$runnum/${proctype}*.fcl 2>/dev/null ) ; do
 
 	rootfile_host=$( echo $file | sed -r 's/.*'${proctype}'_(.*)_.*/\1/' )

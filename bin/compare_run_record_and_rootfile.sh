@@ -21,6 +21,27 @@ setupscript=$recorddir/$runnum/setup.txt
 
 if [[ -e $setupscript ]]; then
 
+    if [[ -n $PRODUCTS ]]; then
+	proddir=$( echo $PRODUCTS | tr ":" "\n" | head -1 )
+
+	if [[ -e $proddir/setup ]]; then
+	    . $proddir/setup
+	else
+	    echo "Unable to find file $proddir/setup despite $proddir appearing in the PRODUCTS environment variable, $PRODUCTS" >&2
+	    exit 100
+	fi
+
+	# Ron's unsetup function
+
+	for pp in `printenv | sed -ne '/^SETUP_/{s/SETUP_//;s/=.*//;p}'`;do
+            test $pp = UPS && continue;
+            prod=`echo $pp | tr 'A-Z' 'a-z'`;
+            eval "tmp=\${SETUP_$pp-}";
+            test -z "$tmp" && echo already unsetup && continue;
+            unsetup -j $prod;
+	done
+    fi
+
     . $setupscript 2>&1 > /dev/null
 
     if [[ "$?" != "0" ]]; then
@@ -77,7 +98,7 @@ test"
 
 set -o pipefail   # See, e.g., https://stackoverflow.com/questions/1221833/pipe-output-and-capture-exit-status-in-bash
 
-config_dumper -P $rootfile 2> /dev/null | sed -r 's/\\n/\n/g'  | sed -r '1,/run_daqinterface_boot/d;/^\s*"\s*$/,$d;s/\\"/"/g'  > $temporary_daqinterface_boot_file 
+config_dumper -P $rootfile 2> /dev/null | sed -r 's/\\n/\n/g'  | sed -r '1,/boot: "contents/d;/^\s*\\"\s*$/,$d;s/\\"/"/g'  > $temporary_daqinterface_boot_file 
 
 if [[ "$?" != "0" ]]; then
     echo "An error occurred in the config_dumper pipe command, aborting..."
@@ -88,7 +109,7 @@ if [[ ! -s $temporary_daqinterface_boot_file ]]; then
     echo "It appears no DAQInterface boot info was saved in $rootfile" 
 fi
 
-config_dumper -P $rootfile 2> /dev/null  | sed -r 's/\\n/\n/g'  | sed -r '1,/run_metadata/d;/"/,$d' > $temporary_metadata_file 
+config_dumper -P $rootfile 2> /dev/null  | sed -r 's/\\n/\n/g;s/\\"/"/g'  | sed -r '1,/metadata: "contents/d;/^\s*"\s*$/,$d' > $temporary_metadata_file 
 
 if [[ "$?" != "0" ]]; then
     echo "An error occurred in the config_dumper pipe command, aborting..."

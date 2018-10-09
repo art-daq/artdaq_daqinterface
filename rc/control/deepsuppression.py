@@ -37,3 +37,10 @@ class deepsuppression(object):
         # Close the null files
         os.close(self.null_fds[0])
         os.close(self.null_fds[1])
+
+        # JCF, Sep-15-2018
+
+        # The duplicates of the initial stdin and stdout also need to be closed...
+        
+        os.close(self.save_fds[0])
+        os.close(self.save_fds[1])

@@ -192,6 +192,7 @@ heredoc
      return 1
 fi
 
+export DAQINTERFACE_SETUP_FHICLCPP=$( dirname $DAQINTERFACE_SETTINGS )/.setup_fhiclcpp
 
 cat<<EOF
 * The command was successful
