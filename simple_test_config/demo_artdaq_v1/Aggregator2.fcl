@@ -76,20 +76,20 @@ source: {
 }
 outputs: {
   #normalOutput: {
-  #  module_type: RootOutput
+  #  module_type: RootDAQOut
   #  fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%to.root"
   #  compressionLevel: 0
   #}
 
   #normalOutputMod2: {
-  #  module_type: RootOutput
+  #  module_type: RootDAQOut
   #  fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%to_mod2.root"
   #  SelectEvents: { SelectEvents: [ pmod2 ] }
   #  compressionLevel: 0
   #}
 
   #normalOutputMod3: {
-  #  module_type: RootOutput
+  #  module_type: RootDAQOut
   #  fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%to_mod3.root"
   #  SelectEvents: { SelectEvents: [ pmod3 ] }
   #  compressionLevel: 0

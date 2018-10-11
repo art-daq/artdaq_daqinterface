@@ -21,7 +21,7 @@ Some notes:
   events to the Dispatcher. Of course, it is possible to configure a system to do
   otherwise, and such a system will run, but only one of the N events sent to the
   Dispatcher will be de-serializable. This is because the different DataLogger
-  configurations (different RootOutput filenames) will violate the requirement
+  configurations (different RootDAQOut filenames) will violate the requirement
   that upstream art configurations must be identical in order for downstream
   processes to understand them.
   It was hoped that this restriction would be removed in art v2.08+, but that
