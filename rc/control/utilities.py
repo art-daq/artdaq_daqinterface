@@ -10,7 +10,7 @@ from time import sleep
 
 from multiprocessing.pool import ThreadPool
 
-bash_unsetup_command="for pp in `printenv | sed -ne '/^SETUP_/{s/SETUP_//;s/=.*//;p}'`; do test $pp = UPS && continue; prod=`echo $pp | tr 'A-Z' 'a-z'`; unsetup -j $prod; done"
+bash_unsetup_command="type unsetup && for pp in `printenv | sed -ne '/^SETUP_/{s/SETUP_//;s/=.*//;p}'`; do test $pp = UPS && continue; prod=`echo $pp | tr 'A-Z' 'a-z'`; unsetup -j $prod; done || echo 0"
 
 def expand_environment_variable_in_string(line):
 
