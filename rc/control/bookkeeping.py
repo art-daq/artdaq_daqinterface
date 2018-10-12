@@ -322,12 +322,22 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         if "BoardReader" in procinfo.name:
 
-            res = re.search(r"[^#]\s*sends_no_fragments:\s*[Tt]rue", procinfo.fhicl_used)
+            generated_fragments_per_event = 1
 
-            if not res:
-                expected_fragments_per_event += 1
-            else:
-                continue           
+            # JCF, Oct-12-2018: "sends_no_fragments: true" is
+            # logically the same as "generated_fragments_per_event:
+            # 0", but I'm keeping it for reasons of backwards
+            # compatibility
+
+            if re.search(r"\n\s*sends_no_fragments\s*:\s*[Tt]rue", procinfo.fhicl_used):
+                generated_fragments_per_event = 0
+
+            res = re.search(r"\n\s*generated_fragments_per_event\s*:\s*([0-9]+)", procinfo.fhicl_used)
+
+            if res:
+                generated_fragments_per_event = int(res.group(1))
+
+            expected_fragments_per_event += generated_fragments_per_event
 
     for procinfo in self.procinfos:
         
