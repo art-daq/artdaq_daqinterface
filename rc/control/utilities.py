@@ -213,7 +213,7 @@ def execute_command_in_xterm(home, cmd):
     Popen(fullcmd, shell=True).wait()
 
 def date_and_time():
-    return Popen("date", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    return Popen("LC_ALL=\"en_US.UTF-8\" date", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
 
 def construct_checked_command(cmds):
 
