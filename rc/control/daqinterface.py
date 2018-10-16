@@ -1733,7 +1733,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                                                   fhiclcpp_to_setup_line.split()[3]))
 
             if os.path.exists( os.environ["DAQINTERFACE_SETUP_FHICLCPP"] ):
-                self.print_log("w", make_paragraph("\"%s\" has been auto-generated; you may want to check to see that it correctly sets up the fhiclcpp package..." % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"])))
+                self.print_log("w", "\"%s\" has been auto-generated; you may want to check to see that it correctly sets up the fhiclcpp package..." % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"]))
             else:
                 raise Exception(make_paragraph("Error: was unable to find or create a file \"%s\"" % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"])))
         if self.debug_level <= 1:
