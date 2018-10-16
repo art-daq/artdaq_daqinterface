@@ -1720,6 +1720,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
             self.print_log("w", make_paragraph("File \"%s\", needed for formatting FHiCL configurations, does not appear to exist; will attempt to auto-generate one..." % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"])))
             with open( os.environ["DAQINTERFACE_SETUP_FHICLCPP"], "w") as outf:
                 outf.write("source %s/setup\n" % (self.productsdir))
+                outf.write( bash_unsetup_command )
                 lines = Popen("source %s/setup; ups list -aK+ fhiclcpp | sort -n" % (self.productsdir), 
                                                shell=True, stdout=subprocess.PIPE).stdout.readlines()
                 if len(lines) > 0:
