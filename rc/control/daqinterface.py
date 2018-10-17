@@ -1881,8 +1881,8 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                 return
 
         self.complete_state_change(self.name, "stopping")
-        self.print_log("i", "STOP transition complete for run %d" % \
-            (self.run_number))
+        self.print_log("i", "\n%s: STOP transition complete for run %d" % \
+            (date_and_time(), self.run_number))
 
     def do_terminate(self):
 
