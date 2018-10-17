@@ -1721,7 +1721,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
             with open( os.environ["DAQINTERFACE_SETUP_FHICLCPP"], "w") as outf:
                 outf.write("source %s/setup\n" % (self.productsdir))
                 outf.write( bash_unsetup_command + "\n" )
-                lines = Popen("source %s/setup; ups list -aK+ fhiclcpp | sort -n" % (self.productsdir), 
+                lines = Popen("export PRODUCTS= ; source %s/setup; ups list -aK+ fhiclcpp | sort -n" % (self.productsdir), 
                                                shell=True, stdout=subprocess.PIPE).stdout.readlines()
                 if len(lines) > 0:
                     fhiclcpp_to_setup_line = lines[-1]
