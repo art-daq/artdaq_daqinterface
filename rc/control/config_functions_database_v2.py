@@ -40,7 +40,7 @@ def get_config_info_base(self):
     Popen("mkdir -p %s" % config_dir, shell=True).wait()
     os.chdir( config_dir )
 
-    with deepsuppression():
+    with deepsuppression(self.debug_level < 2):
         result = exportConfiguration( self.config_for_run )
 
     if not result:
@@ -172,7 +172,7 @@ def put_config_info_base(self):
     basedir=os.getcwd()
     os.chdir( tmpdir )
 
-    with deepsuppression():
+    with deepsuppression(self.debug_level < 2):
         result = archiveRunConfiguration( self.config_for_run, runnum )
 
     if not result:

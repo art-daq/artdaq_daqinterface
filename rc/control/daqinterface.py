@@ -628,7 +628,7 @@ class DAQInterface(Component):
 
         checked_cmd = construct_checked_command( cmds )
         
-        with deepsuppression():
+        with deepsuppression(self.debug_level < 3):
             status = Popen(checked_cmd, shell = True).wait()
 
         if status == 0:
@@ -788,11 +788,8 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
         self.print_log("d", "PROCESS LAUNCH COMMANDS: \n" + "\n".join( self.launch_cmds ), 2)
 
-        if self.debug_level >= 3:
+        with deepsuppression(self.debug_level < 4):
             status = Popen(launchcmd, shell=True).wait()
-        else:
-            with deepsuppression():
-                status = Popen(launchcmd, shell=True).wait()
 
         if status != 0:   
             raise Exception("Status error raised; commands were \"\n%s\n\n\". If logfiles exist, please check them for more information. Also try running the commands interactively in a new terminal (after source-ing the DAQInterface environment) for more info." %
@@ -1417,7 +1414,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
         sourcing_ok = True
 
         if self.manage_processes:
-            with deepsuppression():
+            with deepsuppression(self.debug_level < 3):
                 for procinfo in self.procinfos:
                     if procinfo.host not in already_sourced.keys():
                         cmd = "%s ; . %s" % (bash_unsetup_command, self.daq_setup_script)
@@ -1540,7 +1537,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
                     msgviewercmd = construct_checked_command( cmds )
 
-                    with deepsuppression():
+                    with deepsuppression(self.debug_level < 3):
 
                         status = Popen(msgviewercmd, shell=True).wait()
 
@@ -1737,13 +1734,9 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                 self.print_log("w", "\"%s\" has been auto-generated; you may want to check to see that it correctly sets up the fhiclcpp package..." % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"]))
             else:
                 raise Exception(make_paragraph("Error: was unable to find or create a file \"%s\"" % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"])))
-        if self.debug_level <= 1:
-            with deepsuppression():
-                reformatted_fhicl_documents = reformat_fhicl_documents(os.environ["DAQINTERFACE_SETUP_FHICLCPP"],
-                                                                       [ procinfo.fhicl_used for procinfo in self.procinfos ] )
-        else:
+        with deepsuppression(self.debug_level < 2):
             reformatted_fhicl_documents = reformat_fhicl_documents(os.environ["DAQINTERFACE_SETUP_FHICLCPP"],
-                                                                       [ procinfo.fhicl_used for procinfo in self.procinfos ] )
+                                                                   [ procinfo.fhicl_used for procinfo in self.procinfos ] )
 
         for i_proc, reformatted_fhicl_document in enumerate(reformatted_fhicl_documents):
             self.procinfos[i_proc].fhicl_used = reformatted_fhicl_document
