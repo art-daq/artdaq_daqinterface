@@ -291,8 +291,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         
         if "RoutingMaster" in procinfo.name:
 
+            wib_ranks = [ label_and_rank[1] for label_and_rank in self.jcop_label_and_rank_list if "wib" in label_and_rank[0] ]
+
             sender_ranks = "sender_ranks: [%s]" % ( ",".join( 
-                [ str(rank) for rank in range(0,self.num_boardreaders()) ] ))
+                [ str(rank) for rank in range(0,self.num_boardreaders()) if rank not in wib_ranks ] ))
             receiver_ranks = "receiver_ranks: [%s]" % ( ",".join( 
                 [ str(rank) for rank in range(self.num_boardreaders(), 
                                               self.num_boardreaders() + self.num_eventbuilders()) ] ))

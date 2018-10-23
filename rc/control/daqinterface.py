@@ -228,6 +228,7 @@ class DAQInterface(Component):
         self.manage_processes = True
         self.partition_number = None
         self.partition_number_rc = None
+        self.jcop_label_and_rank_list = []
 
         # "procinfos" will be an array of Procinfo structures (defined
         # below), where Procinfo contains all the info DAQInterface
@@ -265,6 +266,7 @@ class DAQInterface(Component):
         self.request_port = None 
         self.partition_number = None
         self.partition_number_rc = None
+        self.jcop_label_and_rank_list = []
         self.table_update_address = None
         self.routing_base_port = None
         self.zmq_fragment_connection_out = None
@@ -1393,19 +1395,19 @@ udp : { type : "UDP" threshold : "INFO"  port : 30000 host : "%s" }
                 jcop_ranks_filename = "/tmp/ranks%s.txt" % (partition_number)
 
                 with open(jcop_ranks_filename) as jcop_ranks_file:
-                    jcop_label_and_rank_list = [ ( line.split()[2], int(line.split()[3]) ) \
-                                                 for line in jcop_ranks_file.readlines() if \
-                                                 len(line.split()) == 4 and \
-                                                 re.search(r"^[0-9]+$", line.split()[-1]) ]
+                    self.jcop_label_and_rank_list = [ ( line.split()[2], int(line.split()[3]) ) \
+                                                      for line in jcop_ranks_file.readlines() if \
+                                                      len(line.split()) == 4 and \
+                                                      re.search(r"^[0-9]+$", line.split()[-1]) ]
 
-                    if len(self.procinfos) != len(jcop_label_and_rank_list):
-                        raise Exception(make_paragraph("Mismatch between number of processes DAQInterface determined exists (%d) and the number of processes found in JCOP's rank file %s, %d" % (len(self.procinfos), jcop_ranks_filename, len(jcop_label_and_rank_list))))
+                    if len(self.procinfos) != len(self.jcop_label_and_rank_list):
+                        raise Exception(make_paragraph("Mismatch between number of processes DAQInterface determined exists (%d) and the number of processes found in JCOP's rank file %s, %d" % (len(self.procinfos), jcop_ranks_filename, len(self.jcop_label_and_rank_list))))
 
-                    if "RoutingMaster" in [ label for (label, rank) in jcop_label_and_rank_list ]:
-                        if "RoutingMaster" not in jcop_label_and_rank_list[-1][0]:
+                    if "RoutingMaster" in [ label for (label, rank) in self.jcop_label_and_rank_list ]:
+                        if "RoutingMaster" not in self.jcop_label_and_rank_list[-1][0]:
                             raise Exception(make_paragraph("A RoutingMaster was found listed in JCOP's rank file, %s, but it wasn't the last process listed - this is required by DAQInterface"))
 
-                    for label, rank in jcop_label_and_rank_list:
+                    for label, rank in self.jcop_label_and_rank_list:
                         if len(self.procinfos) < rank or \
                            self.procinfos[rank].label != label:
                             raise Exception(make_paragraph("Mismatch between process associated with rank %d found in JCOP's rank file %s (%s) and what DAQInterface determined rank %d to be (%s)") % \
