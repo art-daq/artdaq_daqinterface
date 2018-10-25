@@ -327,6 +327,7 @@ def fhiclize_document(filename):
                 if res:
                     key = res.group(1)
                     key = "_".join( key.split() )
+                    key = re.sub(r"[\(\)/]", "_", key)
 
                     value = res.group(2)
                     value = value.strip(' "')
