@@ -24,7 +24,51 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     if os.path.exists(self.daq_dir + "/srcs/artdaq"):
         commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
-                                           "68cb53e576dd6afea7950ca6286a08f5f329b966", "May 9, 2017", True)
+                                       "b434f3b71dd5c87da68d6b13f040701ff610fee1", "July 15, 2018", True)
+    else:
+
+        # JCF, Sep-20-2018: not yet logic for requiring an artdaq                                                        
+        # version with a letter at the end of it (e.g., v3_02_01a as                                                     
+        # opposed to v3_02_01)                                                                                           
+
+        min_majorver = "3"
+        min_minorver = "03"
+        min_minorerver = "00"
+
+        # ...so we'll also have a list of versions where if the artdaq                                                   
+        # version matches one of them, we'll be considered OK                                                            
+
+        other_allowed_versions = ["v3_02_01a"]
+
+        version = self.get_package_version("artdaq")
+
+        res = re.search(r"v([0-9])_([0-9]{2})_([0-9]{2})(.*)", version)
+
+        if not res:
+            raise Exception("Problem parsing the calculated version of artdaq, %s" % (version))
+
+        majorver = res.group(1)
+        minorver = res.group(2)
+        minorerver = res.group(3)
+        extension = res.group(4)
+        passes_requirement = False
+
+        if int(majorver) > int(min_majorver):
+            passes_requirement = True
+        elif int(majorver) == int(min_majorver):
+            if int(minorver) > int(min_minorver):
+                passes_requirement = True
+            elif int(minorver) == int(min_minorver):
+                if int(minorerver) >= int(min_minorerver):
+                    passes_requirement = True
+
+        if not passes_requirement:
+            for an_allowed_version in other_allowed_versions:
+                if version == an_allowed_version:
+                    passes_requirement = True
+
+        if not passes_requirement:
+            raise Exception(make_paragraph("Version of artdaq set up by setup script \"%s\" is v%s_%s_%s%s; need a version at least as recent as v%s_%s_%s" % (self.daq_setup_script, majorver, minorver, minorerver, extension, min_majorver, min_minorver, min_minorerver)))
 
     if self.advanced_memory_usage:
 
