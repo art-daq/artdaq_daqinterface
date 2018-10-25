@@ -8,6 +8,7 @@ import traceback
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_commit_hash
 from rc.control.utilities import get_commit_comment
+from rc.control.utilities import expand_environment_variable_in_string
 
 def save_run_record_base(self):
 
@@ -35,14 +36,16 @@ def save_run_record_base(self):
         outf.close()
 
     # For good measure, let's also save the DAQInterface configuration file
+    # JCF, Oct-25-2018: but save it with environment variables expanded (see Issue #21225)
 
     config_saved_name = "boot.txt"
+    
+    with open("%s/%s" % (outdir, config_saved_name), "w") as outf:
+        with open( self.daqinterface_config_file ) as inf:
+            for line in inf.readlines():
+                outf.write( expand_environment_variable_in_string( line ) )
 
-    Popen("cp -p " + self.daqinterface_config_file + " " + outdir +
-          "/" + config_saved_name,
-          shell=True, stdout=subprocess.PIPE).wait()
-
-    if not os.path.exists(outdir + "/" + config_saved_name):
+    if not os.path.exists("%s/%s" % (outdir, config_saved_name)):
         self.alert_and_recover("Problem creating file %s/%s" %
                                (outdir, config_saved_name))
 
