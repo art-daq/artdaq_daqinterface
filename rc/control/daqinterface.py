@@ -286,11 +286,6 @@ class DAQInterface(Component):
 
         self.exception = False
 
-        # This will contain the directory with the FHiCL documents
-        # which initialize the artdaq processes
-
-        self.config_dirname = None
-
         self.__do_boot = False
         self.__do_shutdown = False
         self.__do_config = False
@@ -1595,86 +1590,53 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                         (date_and_time()))
 
 
-    def do_config(self, config_for_run = None):
+    def do_config(self, subconfigs_for_run = []):
 
         self.print_log("i", "\n%s: CONFIG transition underway" % \
             (date_and_time()))
 
         os.chdir(self.daqinterface_base_dir)
 
-        if not config_for_run:
-            self.config_for_run = self.run_params["config"]
+        if not subconfigs_for_run:
+            self.subconfigs_for_run = self.run_params["config"]
         else:
-            self.config_for_run = config_for_run
+            self.subconfigs_for_run = subconfigs_for_run
+
+        self.subconfigs_for_run = [ "demo" ]
+
+        self.print_log( "e", "JCF, Oct-30-2018: for development purposes, the subconfigs for the run are being set internally to \"%s\"" % (" ".join( self.subconfigs_for_run ) ) )
 
         try:
-            self.config_dirname, self.fhicl_file_path = self.get_config_info()
+            tmpdir_for_fhicl, self.fhicl_file_path = self.get_config_info()
+            assert "/tmp" == tmpdir_for_fhicl[:4]
+            self.print_log("d", "Using temporary fhicl directory %s" % tmpdir_for_fhicl,2)
         except:
             self.revert_failed_transition("calling get_config_info()")
             return
 
-        self.print_log("d", "Config name: %s" % self.config_for_run, 1)
+        self.print_log("d", "Config name: %s" % ( " ".join(self.subconfigs_for_run) ), 1)
         self.print_log("d", "Selected DAQ comps: %s" %
                        self.daq_comp_list, 1)
         for ffp_path in self.fhicl_file_path:
             self.print_log("d", "\tIncluding FHICL FILE PATH %s" % ffp_path,2)
 
-        for component, socket in self.daq_comp_list.items():
-
-            self.print_log("d",  make_paragraph( 
-                "Searching for the FHiCL document for %s in directory %s given configuration \"%s\"" % \
-                (component, self.config_dirname, self.config_for_run)), 2)
-
-            component_fhicl = "the_file_is_not_yet_found"
-            
-            for dirname, dummy, filenames in os.walk( self.config_dirname ):
-                for filename in filenames:
-                    if filename == component + "_hw_cfg.fcl" or filename == component + ".fcl":
-                        component_fhicl = dirname + "/" + filename
-                        self.print_log("d", "Found component fcl file %s" % component_fhicl,2)
-            
-            if not os.path.exists(component_fhicl):
-                self.revert_state_change(self.name, self.state(self.name))
-
-                msg = "Unable to find FHiCL document for component \"%s\" after searching in directory %s; system remains in the \"%s\" state." % \
-                    (component, self.config_dirname, self.state(self.name))
-
-                msg += " Please either select a configuration which contains this component or " + \
-                    "terminate and then " + \
-                    "boot only with components which exist for configuration \"%s\"." % \
-                    (self.config_for_run)
-
-                self.print_log("e", make_paragraph(msg))
-
-                return
-
-            config_subdirname = os.path.dirname(component_fhicl)
-            self.print_log("d", "Using config subdir name %s" % config_subdirname,2)
-                    
-            try:
-                for i_proc in range(len(self.procinfos)):
-
-                    if self.procinfos[i_proc].host == socket[0] and \
-                            self.procinfos[i_proc].port == socket[1]:
-                        self.procinfos[i_proc].ffp = self.fhicl_file_path
-                        self.procinfos[i_proc].update_fhicl(component_fhicl)
-            except Exception:
-                self.print_log("e", traceback.format_exc())
-                self.alert_and_recover("An exception was thrown when creating the process FHiCL documents; see traceback above for more info")
-                return
-                
         rootfile_cntr = 0
 
         for i_proc in range(len(self.procinfos)):
 
-            if "BoardReader" in self.procinfos[i_proc].name:
-                continue
+            matching_filenames = [ "%s.fcl" % self.procinfos[i_proc].label ]
+            if "BoardReader" in self.procinfos[i_proc].name:  # For backwards compatibility (see Issue #20803)
+                matching_filenames.append( "%s_hw_cfg.fcl" % self.procinfos[i_proc].label )
 
-            fcl = "%s/%s.fcl" % (config_subdirname, self.procinfos[i_proc].label)
+            for dirname, dummy, filenames in os.walk( tmpdir_for_fhicl ):
+                for filename in filenames:
+                    if filename in matching_filenames:
+                        fcl = "%s/%s" % (dirname, filename)
+                        self.print_log("d", "Found FHiCL document for %s called %s" % (self.procinfos[i_proc].label, fcl), 2)
 
             if not os.path.exists(fcl):
-                self.print_log("e", make_paragraph("Unable to find a FHiCL document \"%s.fcl\" in configuration \"%s\"; either remove the request for %s in the boot file and redo the transitions or choose a new configuration" % \
-                                                      (self.procinfos[i_proc].label, self.config_for_run,
+                self.print_log("e", make_paragraph("Unable to find a FHiCL document for %s in configuration \"%s\"; either remove the request for %s in the boot file and redo the transitions or choose a new configuration" % \
+                                                      (self.procinfos[i_proc].label, " ".join(self.subconfigs_for_run),
                                                        self.procinfos[i_proc].label)))
                 self.revert_failed_transition("looking for all needed FHiCL documents")
                 return
@@ -1687,7 +1649,8 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                 self.alert_and_recover("An exception was thrown when creating the process FHiCL documents; see traceback above for more info")
                 return
 
-            if not self.disable_unique_rootfile_labels:
+            if not self.disable_unique_rootfile_labels and \
+               ("EventBuilder" in self.procinfos[i_proc].name or "DataLogger" in self.procinfos[i_proc].name):
                 fhicl_before_sub = self.procinfos[i_proc].fhicl_used
 
                 if self.procinfos[i_proc].name == "DataLogger":
@@ -1705,6 +1668,9 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
         for procinfo in self.procinfos:
             assert not procinfo.fhicl is None and not procinfo.fhicl_used is None
+
+        assert "/tmp" == tmpdir_for_fhicl[:4] and len(tmpdir_for_fhicl) > 4
+        shutil.rmtree( tmpdir_for_fhicl )
 
         try:
             self.bookkeeping_for_fhicl_documents()
