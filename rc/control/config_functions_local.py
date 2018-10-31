@@ -25,10 +25,11 @@ def get_config_info_base(self):
     os.mkdir(tmpdir)
 
     ffp = []
-    subconfigs = self.subconfigs_for_run
-    #subconfigs.append( "common_code" )
 
-    for subconfig in subconfigs:
+    if os.path.exists( "%s/common_code" % get_config_parentdir() ):
+        self.subconfigs_for_run.append( "common_code" ) # For backwards-compatibility with earlier versions of this function
+
+    for subconfig in self.subconfigs_for_run:
         subconfig_dir = "%s/%s" % (get_config_parentdir(), subconfig)
         
         if os.path.exists( subconfig_dir ):
@@ -38,8 +39,6 @@ def get_config_info_base(self):
             ffp.append( tmp_subconfig_dir )
         else:
             raise Exception(make_paragraph("Error: unable to find expected directory of FHiCL configuration files \"%s\"" % (subconfig_dir) ))
-
-    ffp.append( "%s/common_code" % (tmpdir))
 
     return tmpdir, ffp
 

@@ -27,9 +27,18 @@ case $cmd in
 	xmlrpc_arg="daqinterface_config:s/"${daqinterface_config_file}
 	;;
     "config")
-	test $# == 2 || badargs=true 
+	test $# -gt 1 || badargs=true 
 	translated_cmd="configuring"
-	xmlrpc_arg="config:s/"$2
+
+	xmlrpc_arg="config:array/("
+	shift
+	for subconfig in $@ ; do
+	    if [[ "$subconfig" != "${@: -1}" ]] ; then   # "${@: -1}" is the last argument
+		xmlrpc_arg="${xmlrpc_arg}s/${subconfig},"
+	    else
+		xmlrpc_arg="${xmlrpc_arg}s/${subconfig})"
+	    fi
+	done
 	;;
     "start")
 	test $# == 1 || test $# == 2 || badargs=true 

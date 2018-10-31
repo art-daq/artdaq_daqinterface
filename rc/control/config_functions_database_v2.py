@@ -32,6 +32,8 @@ def config_basedir(self):
 
 def get_config_info_base(self):
 
+    assert False, "JCF, Oct-30-2018: get_config_info for database use not yet developed on feature/use_subconfigurations branch"
+
     basedir = os.getcwd()
 
     uuidgen=Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()

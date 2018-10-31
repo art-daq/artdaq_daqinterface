@@ -1286,6 +1286,8 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
     def setdaqcomps(self, daq_comp_list):
         self.daq_comp_list = daq_comp_list
+        self.print_log("i", "%s called with %s" % (self.setdaqcomps.__name__, 
+                                                   " ".join( [ label for label in self.daq_comp_list.keys() ] )))
 
     def revert_failed_transition(self, failed_action):
         self.revert_state_change(self.name, self.state(self.name))
@@ -1590,7 +1592,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                         (date_and_time()))
 
 
-    def do_config(self, subconfigs_for_run = []):
+    def do_config(self, subconfigs_for_run = [] ):
 
         self.print_log("i", "\n%s: CONFIG transition underway" % \
             (date_and_time()))
@@ -1601,10 +1603,6 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
             self.subconfigs_for_run = self.run_params["config"]
         else:
             self.subconfigs_for_run = subconfigs_for_run
-
-        self.subconfigs_for_run = [ "demo" ]
-
-        self.print_log( "e", "JCF, Oct-30-2018: for development purposes, the subconfigs for the run are being set internally to \"%s\"" % (" ".join( self.subconfigs_for_run ) ) )
 
         try:
             tmpdir_for_fhicl, self.fhicl_file_path = self.get_config_info()
@@ -1635,7 +1633,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                         self.print_log("d", "Found FHiCL document for %s called %s" % (self.procinfos[i_proc].label, fcl), 2)
 
             if not os.path.exists(fcl):
-                self.print_log("e", make_paragraph("Unable to find a FHiCL document for %s in configuration \"%s\"; either remove the request for %s in the boot file and redo the transitions or choose a new configuration" % \
+                self.print_log("e", make_paragraph("Unable to find a FHiCL document for %s in configuration \"%s\"; either remove the request for %s in the setdaqcomps.sh command (boardreader) or boot file (other artdaq process types) and redo the transitions or choose a new configuration" % \
                                                       (self.procinfos[i_proc].label, " ".join(self.subconfigs_for_run),
                                                        self.procinfos[i_proc].label)))
                 self.revert_failed_transition("looking for all needed FHiCL documents")
