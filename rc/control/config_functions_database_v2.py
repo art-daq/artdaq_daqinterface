@@ -49,28 +49,6 @@ def get_config_info_base(self):
         raise Exception("Error: the exportConfiguration function with the argument \"%s\" returned False" % \
                         self.config_for_run)
 
-    # JCF, Nov-22-2017
-
-    # Disabled the common code logic for the time being; plan is to
-    # reinstate it when there's time to modify the protoDUNE FHiCL
-    # configurations to adhere to it
-
-    if False:
-        if os.path.exists("common_code"):
-            raise Exception("Error: the requested configuration \"%s\" contains a subdirectory called \"common_code\" (see directory %s); this should not be the case, as \"common_code\" needs to be a separate configuration" % (self.config_for_run, os.getcwd()))
-
-        common_code_configs = getListOfAvailableRunConfigurations("common_code")
-
-        if len(common_code_configs) == 0:
-            raise Exception("Error: unable to find any common_code configurations in the database")
-
-        common_code_configs.sort()
-        common_code_config = common_code_configs[-1]
-
-        result = exportConfiguration( common_code_config )
-        if not result:
-            raise Exception("Error: the \"%s\" set of FHiCL documents doesn't appear to be retrievable from the database" % (common_code_config))
-
     os.chdir(basedir)
     
     return config_dir, [fhicl_dir for fhicl_dir, dummy, dummy in os.walk(config_dir)]
