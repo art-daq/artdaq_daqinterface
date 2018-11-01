@@ -1627,6 +1627,14 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                 if filename.endswith(".fcl"):
                     if filename not in filename_dictionary:
                         filename_dictionary[ filename ] = True
+
+                        # See Issue #20803. Idea is that, e.g., component01.fcl and component01_hw_cfg.fcl 
+                        # refer to the same thing
+
+                        if filename.endswith("_hw_cfg.fcl"):
+                            filename_dictionary[ filename.replace("_hw_cfg.fcl", ".fcl") ] = True 
+                        else:
+                            filename_dictionary[ filename.replace(".fcl", "_hw_cfg.fcl") ] = True 
                     else:
                         raise Exception(make_paragraph("Error: filename \"%s\" found more than once given the set of requested subconfigurations \"%s\" (see %s)" % \
                                                        (filename, " ".join(self.subconfigs_for_run), tmpdir_for_fhicl)))
