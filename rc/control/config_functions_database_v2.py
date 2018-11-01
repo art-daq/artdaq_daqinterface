@@ -57,6 +57,14 @@ def get_config_info_base(self):
         for dirname, dummy, dummy in os.walk( subconfigdir ):
             ffp.append( dirname )
 
+        # DAQInterface doesn't like duplicate files with the same basename
+        # in the collection of subconfigurations, and schema.fcl isn't used
+        # since DAQInterface just wants the FHiCL documents used to initialize
+        # artdaq processes...
+        for dirname, dummy, filenames in os.walk( subconfigdir ):
+            if "schema.fcl" in filenames:
+                os.unlink("%s/schema.fcl" % (dirname))
+
     os.chdir( basedir )
     return tmpdir, ffp
 
@@ -194,7 +202,7 @@ def listconfigs_base(self):
 def main():
 
     listconfigs_test = False
-    get_config_info_test = False
+    get_config_info_test = True
     put_config_info_test = False
 
     if listconfigs_test:
@@ -205,7 +213,8 @@ def main():
         print "Calling get_config_info_base"
 
         class MockDAQInterface:
-            config_for_run = "push_pull_testing"
+            subconfigs_for_run = [ "ToyComponent_EBwriting00019", "np04_WibsReal_Ssps_BeamTrig_CRT_00001" ]
+            debug_level = 2
 
         mydir, mydirs = get_config_info_base( MockDAQInterface() )
 
