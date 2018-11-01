@@ -32,26 +32,33 @@ def config_basedir(self):
 
 def get_config_info_base(self):
 
-    assert False, "JCF, Oct-30-2018: get_config_info for database use not yet developed on feature/use_subconfigurations branch"
-
     basedir = os.getcwd()
 
+    ffp = []
+
     uuidgen=Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
-    config_dir = config_basedir(self) + uuidgen
+    tmpdir = config_basedir(self) + uuidgen
 
-    Popen("mkdir -p %s" % config_dir, shell=True).wait()
-    os.chdir( config_dir )
+    Popen("mkdir -p %s" % tmpdir, shell=True).wait()
+    os.chdir( tmpdir )
 
-    with deepsuppression(self.debug_level < 2):
-        result = exportConfiguration( self.config_for_run )
+    for subconfig in self.subconfigs_for_run:
+        subconfigdir = "%s/%s" % (tmpdir, subconfig)
+        os.mkdir( subconfigdir )
+        os.chdir( subconfigdir )
+        
+        with deepsuppression(self.debug_level < 2):
+            result = exportConfiguration( subconfig )
 
-    if not result:
-        raise Exception("Error: the exportConfiguration function with the argument \"%s\" returned False" % \
-                        self.config_for_run)
+            if not result:
+                raise Exception("Error: the exportConfiguration function with the argument \"%s\" returned False" % \
+                                subconfig)
 
-    os.chdir(basedir)
-    
-    return config_dir, [fhicl_dir for fhicl_dir, dummy, dummy in os.walk(config_dir)]
+        for dirname, dummy, dummy in os.walk( subconfigdir ):
+            ffp.append( dirname )
+
+    os.chdir( basedir )
+    return tmpdir, ffp
 
 
 def put_config_info_base(self):
