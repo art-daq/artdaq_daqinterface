@@ -1645,13 +1645,15 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
             if "BoardReader" in self.procinfos[i_proc].name:  # For backwards compatibility (see Issue #20803)
                 matching_filenames.append( "%s_hw_cfg.fcl" % self.procinfos[i_proc].label )
 
+            found_fhicl = False
             for dirname, dummy, filenames in os.walk( tmpdir_for_fhicl ):
                 for filename in filenames:
                     if filename in matching_filenames:
                         fcl = "%s/%s" % (dirname, filename)
+                        found_fhicl = True
                         self.print_log("d", "Found FHiCL document for %s called %s" % (self.procinfos[i_proc].label, fcl), 2)
 
-            if not os.path.exists(fcl):
+            if not found_fhicl:
                 self.print_log("e", make_paragraph("Unable to find a FHiCL document for %s in configuration \"%s\"; either remove the request for %s in the setdaqcomps.sh command (boardreader) or boot file (other artdaq process types) and redo the transitions or choose a new configuration" % \
                                                       (self.procinfos[i_proc].label, " ".join(self.subconfigs_for_run),
                                                        self.procinfos[i_proc].label)))
