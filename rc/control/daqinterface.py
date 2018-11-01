@@ -1618,7 +1618,18 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
         for ffp_path in self.fhicl_file_path:
             self.print_log("d", "\tIncluding FHICL FILE PATH %s" % ffp_path,2)
 
-        rootfile_cntr = 0
+        rootfile_cntr = 0 
+
+        filename_dictionary = {}  # If we find a repeated *.fcl file, that's an error
+        
+        for dummy, dummy, filenames in os.walk( tmpdir_for_fhicl ):        
+            for filename in filenames:
+                if filename.endswith(".fcl"):
+                    if filename not in filename_dictionary:
+                        filename_dictionary[ filename ] = True
+                    else:
+                        raise Exception(make_paragraph("Error: filename \"%s\" found more than once given the set of requested subconfigurations \"%s\" (see %s)" % \
+                                                       (filename, " ".join(self.subconfigs_for_run), tmpdir_for_fhicl)))
 
         for i_proc in range(len(self.procinfos)):
 
