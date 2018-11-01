@@ -36,7 +36,9 @@ def get_config_info_base(self):
             tmp_subconfig_dir = "%s/%s" % (tmpdir, subconfig)
             shutil.copytree( subconfig_dir, tmp_subconfig_dir )
             assert os.path.exists( tmp_subconfig_dir )
-            ffp.append( tmp_subconfig_dir )
+
+            for dirname, dummy, dummy in os.walk( tmp_subconfig_dir ):
+                ffp.append( dirname )
         else:
             raise Exception(make_paragraph("Error: unable to find expected directory of FHiCL configuration files \"%s\"" % (subconfig_dir) ))
 
