@@ -54,10 +54,10 @@ EOF
     exit 1
 fi
 
-config=$( sed -r -n 's/^Config name: (\S+).*/\1/p' $recorddir/$runnum/metadata.txt )
+config=$( sed -r -n 's/^Config name: ([^#]+).*/\1/p' $recorddir/$runnum/metadata.txt )
 comps=$( awk '/^Component/ { printf("%s ", $NF); }' $recorddir/$runnum/metadata.txt )
 
-cmd="just_do_it.sh $recorddir/$runnum/boot.txt $seconds_to_run --config $config --comps \"$comps\""
+cmd="just_do_it.sh $recorddir/$runnum/boot.txt $seconds_to_run --config \"$config\" --comps \"$comps\""
 echo "Executing $cmd"
 eval $cmd
 
