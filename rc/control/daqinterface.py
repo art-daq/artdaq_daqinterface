@@ -1111,10 +1111,12 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
         stdoutlines = proc.stdout.readlines()
         stderrlines = proc.stderr.readlines()
 
-        # Arguably too strict...
         if len(stderrlines) > 0:
-            raise Exception("Error in %s: the command \"%s\" yields output to stderr:\n\"%s\"" % \
-                            (self.get_package_version.__name__, cmd, "".join(stderrlines)))
+            if len(stderrlines) == 1 and "type: unsetup: not found" in stderrlines[0]:
+                self.print_log("w", stderrlines[0])
+            else:
+                raise Exception("Error in %s: the command \"%s\" yields output to stderr:\n\"%s\"" % \
+                                (self.get_package_version.__name__, cmd, "".join(stderrlines)))
 
         if len(stdoutlines) == 0:
             raise Exception("Error in %s: the command \"%s\" yields no output to stdout" % \
@@ -1122,8 +1124,8 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
             
         version = stdoutlines[-1].strip()
 
-        if not re.search(r"v[0-9]_[0-9]{2}_[0-9]{2}(.*)", version):
-            raise Exception(make_paragraph("Error in %s: the version of the package \"%s\" this function has determined, \"%s\", is not the expected vX_YY_ZZoptionalextension format" % (self.get_package_version.__name__, package, version)))
+        if not re.search(r"v[0-9]+_[0-9]+_[0-9]+.*", version):
+            raise Exception(make_paragraph("Error in %s: the version of the package \"%s\" this function has determined, \"%s\", is not the expected v<int>_<int>_<int>optionalextension format" % (self.get_package_version.__name__, package, version)))
         
         return version
 
@@ -1736,6 +1738,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
         try:
             self.save_run_record()            
         except Exception:
+            self.print_log("w", traceback.format_exc())
             self.print_log("w", make_paragraph(
                     "WARNING: an exception was thrown when attempting to save the run record. While datataking may be able to proceed, this may also indicate a serious problem"))
 
