@@ -26,7 +26,7 @@ def get_config_info_base(self):
 
     ffp = []
 
-    if os.path.exists( "%s/common_code" % get_config_parentdir() ):
+    if os.path.exists( "%s/common_code" % get_config_parentdir() ) and "common_code" not in self.subconfigs_for_run:
         self.subconfigs_for_run.append( "common_code" ) # For backwards-compatibility with earlier versions of this function
 
     for subconfig in self.subconfigs_for_run:
