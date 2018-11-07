@@ -1,0 +1,47 @@
+BEGIN_PROLOG
+
+eventbuilder_art_standard: {
+
+services: {
+  scheduler: {
+    errorOnFailureToPut: false
+  }
+  NetMonTransportServiceInterface: {
+    service_provider: NetMonTransportService
+    #broadcast_sends: true
+	destinations: { }
+	routing_table_config: {
+	    use_routing_master: false
+	}
+  }
+
+  #SimpleMemoryCheck: { }
+}
+
+
+outputs: {
+  rootNetOutput: {
+    module_type: RootNetOutput
+  }
+}
+
+physics: {
+  analyzers: {
+
+  }
+
+  producers: {
+  }
+
+  my_output_modules: [ rootNetOutput ]
+}
+source: {
+  module_type: DemoInput
+  waiting_time: 2500000
+  resume_after_timeout: true
+}
+process_name: DAQ
+
+}
+
+END_PROLOG
