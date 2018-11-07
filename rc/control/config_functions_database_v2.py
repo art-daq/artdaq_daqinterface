@@ -34,44 +34,39 @@ def get_config_info_base(self):
 
     basedir = os.getcwd()
 
+    ffp = []
+
     uuidgen=Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
-    config_dir = config_basedir(self) + uuidgen
+    tmpdir = config_basedir(self) + uuidgen
 
-    Popen("mkdir -p %s" % config_dir, shell=True).wait()
-    os.chdir( config_dir )
+    Popen("mkdir -p %s" % tmpdir, shell=True).wait()
+    os.chdir( tmpdir )
 
-    with deepsuppression():
-        result = exportConfiguration( self.config_for_run )
+    for subconfig in self.subconfigs_for_run:
+        subconfigdir = "%s/%s" % (tmpdir, subconfig)
+        os.mkdir( subconfigdir )
+        os.chdir( subconfigdir )
+        
+        with deepsuppression(self.debug_level < 2):
+            result = exportConfiguration( subconfig )
 
-    if not result:
-        raise Exception("Error: the exportConfiguration function with the argument \"%s\" returned False" % \
-                        self.config_for_run)
+            if not result:
+                raise Exception("Error: the exportConfiguration function with the argument \"%s\" returned False" % \
+                                subconfig)
 
-    # JCF, Nov-22-2017
+        for dirname, dummy, dummy in os.walk( subconfigdir ):
+            ffp.append( dirname )
 
-    # Disabled the common code logic for the time being; plan is to
-    # reinstate it when there's time to modify the protoDUNE FHiCL
-    # configurations to adhere to it
+        # DAQInterface doesn't like duplicate files with the same basename
+        # in the collection of subconfigurations, and schema.fcl isn't used
+        # since DAQInterface just wants the FHiCL documents used to initialize
+        # artdaq processes...
+        for dirname, dummy, filenames in os.walk( subconfigdir ):
+            if "schema.fcl" in filenames:
+                os.unlink("%s/schema.fcl" % (dirname))
 
-    if False:
-        if os.path.exists("common_code"):
-            raise Exception("Error: the requested configuration \"%s\" contains a subdirectory called \"common_code\" (see directory %s); this should not be the case, as \"common_code\" needs to be a separate configuration" % (self.config_for_run, os.getcwd()))
-
-        common_code_configs = getListOfAvailableRunConfigurations("common_code")
-
-        if len(common_code_configs) == 0:
-            raise Exception("Error: unable to find any common_code configurations in the database")
-
-        common_code_configs.sort()
-        common_code_config = common_code_configs[-1]
-
-        result = exportConfiguration( common_code_config )
-        if not result:
-            raise Exception("Error: the \"%s\" set of FHiCL documents doesn't appear to be retrievable from the database" % (common_code_config))
-
-    os.chdir(basedir)
-    
-    return config_dir, [fhicl_dir for fhicl_dir, dummy, dummy in os.walk(config_dir)]
+    os.chdir( basedir )
+    return tmpdir, ffp
 
 
 def put_config_info_base(self):
@@ -94,6 +89,7 @@ def put_config_info_base(self):
     cmds.append( "chmod 777 " + runnum )
     cmds.append( "cat " + runnum + "/metadata.txt | awk -f $scriptdir/fhiclize_metadata_file.awk > " + runnum + "/metadata.fcl" )
     cmds.append( "cat " + runnum + "/boot.txt | awk -f $scriptdir/fhiclize_boot_file.awk > " + runnum + "/boot.fcl" )
+    cmds.append( "cat " + runnum + "/known_boardreaders_list.txt | sed -r 's/^\s*(\S+)\s+(\S+)\s+(\S+)/\\1: [\"\\2\", \"\\3\"]/' > " + runnum + "/known_boardreaders_list.fcl")
     cmds.append( "rm -f " + runnum + "/*.txt")
 
     if os.getenv("ARTDAQ_DATABASE_CONFDIR") is None:
@@ -109,12 +105,73 @@ def put_config_info_base(self):
     if status != 0:
         raise Exception("Problem during execution of the following:\n %s" % "\n".join(cmds))
 
+    with open( "%s/%s/DataflowConfiguration.fcl" % (tmpdir, runnum), "w" ) as dataflow_file:
+
+        with open( "%s/%s/boot.fcl" % (tmpdir, runnum) ) as boot_file:
+            for line in boot_file.readlines():
+                
+                ignore_line = False
+
+                for procname in ["EventBuilder", "DataLogger", "Dispatcher", "RoutingMaster"] :
+                    res = re.search(r"^\s*%s_" % (procname), line)
+                    if res:
+                        ignore_line = True
+                        break
+
+                if "debug_level" in line or line == "":
+                    ignore_line = True
+
+                if not ignore_line:
+                    dataflow_file.write("\n" + line)
+
+        proc_attrs = ["host", "port", "label", "rank"]
+        proc_types = ["BoardReader", "EventBuilder", "DataLogger", "Dispatcher", "RoutingMaster"]
+
+        proc_line = {}
+
+        with open("%s/ranks.txt" % (runrecord)) as ranksfile:
+            for line in ranksfile.readlines():
+                res = re.search(r"^\s*(\S+)\s+([0-9]+)\s+(\S+)\s+([0-9]+)\s*$", line)
+                if res:
+                    host, port, label, rank = res.group(1), res.group(2), res.group(3), res.group(4)
+                    
+                    for procinfo in self.procinfos:
+                        if label == procinfo.label:
+                            assert host == procinfo.host
+                            assert port == procinfo.port
+
+                            # "host" used for the check, but could just as well be "port", "label" or "rank"
+                            if "%s_host" % (procinfo.name) not in proc_line.keys():
+                                for proc_attr in proc_attrs:
+                                    proc_line["%s_%s" % (procinfo.name, proc_attr)] = "%s_%ss: [" % (procinfo.name, proc_attr)
+                            
+                            proc_line["%s_host" % (procinfo.name)] += "\"%s\"," % (procinfo.host)
+                            proc_line["%s_port" % (procinfo.name)] += "\"%s\"," % (procinfo.port)
+                            proc_line["%s_label" % (procinfo.name)] += "\"%s\"," % (procinfo.label)
+                            proc_line["%s_rank" % (procinfo.name)] += "\"%s\"," % (rank)
+
+        for proc_line_key, proc_line_value in proc_line.items():
+            proc_line_value = proc_line_value[:-1] # Strip the trailing comma
+            proc_line[ proc_line_key ] = proc_line_value + "]"
+            dataflow_file.write("\n" + proc_line[ proc_line_key ] )
+
+        with open( "%s/%s/metadata.fcl" % (tmpdir, runnum) ) as metadata_file:
+            for line in metadata_file.readlines():
+                if "Start_time" not in line and "Stop_time" not in line and not line == "":
+                    dataflow_file.write("\n" + line)
+
+    with open( "%s/%s/RunHistory.fcl" % (tmpdir, runnum), "w" ) as runhistory_file:
+        runhistory_file.write("\nrun_number: %s" % (runnum))
+        
 
     basedir=os.getcwd()
     os.chdir( tmpdir )
 
-    with deepsuppression():
-        archiveRunConfiguration( self.config_for_run, runnum )
+    with deepsuppression(self.debug_level < 2):
+        result = archiveRunConfiguration( self.config_for_run, runnum )
+
+    if not result:
+        raise Exception(make_paragraph("There was an error attempting to archive the FHiCL documents (temporarily saved in %s); this may be because of an issue with the schema file, %s/schema.fcl, such as an unlisted fragment generator" % (tmpdir, os.environ["ARTDAQ_DATABASE_CONFDIR"])))
 
     os.chdir( basedir )
 
@@ -122,7 +179,7 @@ def put_config_info_base(self):
     assert res, "Unable to find uuidgen-generated temporary directory, will perform no deletions"
 
     shutil.rmtree( tmpdir )
-    
+
     return
 
 def listdaqcomps_base(self):
@@ -132,15 +189,20 @@ def listconfigs_base(self):
     print
     print "Available configurations: "
 
+    config_cntr = 0
+
     with open("/tmp/listconfigs_" + os.environ["USER"] + ".txt", "w") as outf:
         for config in getListOfAvailableRunConfigurations():
-            outf.write(config + "\n")
-            print config
+            config_cntr += 1
+
+            if config_cntr <= self.max_configurations_to_list:
+                outf.write(config + "\n")
+                print config
 
 def main():
 
     listconfigs_test = False
-    get_config_info_test = False
+    get_config_info_test = True
     put_config_info_test = False
 
     if listconfigs_test:
@@ -151,7 +213,8 @@ def main():
         print "Calling get_config_info_base"
 
         class MockDAQInterface:
-            config_for_run = "push_pull_testing"
+            subconfigs_for_run = [ "ToyComponent_EBwriting00019", "np04_WibsReal_Ssps_BeamTrig_CRT_00001" ]
+            debug_level = 2
 
         mydir, mydirs = get_config_info_base( MockDAQInterface() )
 

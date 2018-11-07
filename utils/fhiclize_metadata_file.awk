@@ -49,19 +49,51 @@
 		if (i != length(eventbuilders)) {
 		    printf "\"%s\", ", eventbuilders[i]
 		} else {
-		    printf "\"%s\"]\n", eventbuilders[i]
+		    printf "\"%s\"", eventbuilders[i]
 		}
 	    }
+	    printf "]\n"
 	    eventbuilder_section_active = 0
 	}
     }
+
+    if (routingmaster_section_active) {
+	if ( $0 !~ /^\s*$/) {
+	    routingmasters[++routingmaster_cntr] = $1
+	    next
+	} else {
+	    printf "\nroutingmaster_logfiles: ["
+	    for (i = 1; i <= length(routingmasters); ++i) {
+		if (i != length(routingmasters)) {
+		    printf "\"%s\", ", routingmasters[i]
+		} else {
+		    printf "\"%s\"", routingmasters[i]
+		}
+	    }
+	    printf "]\n"
+	    routingmaster_section_active = 0
+	}
+    }
+
 
     if (aggregator_section_active) {
 
 	if ( $0 !~ /^\s*$/) {
 	    aggregators[++aggregator_cntr] = $1
 	    next
-	} 
+	} else {
+	    printf "\naggregator_logfiles: ["
+	    for (i = 1; i <= length(aggregators); ++i) {
+		if (i != length(aggregators)) {
+		    printf "\"%s\", ", aggregators[i]
+		} else {
+		    printf "\"%s\"", aggregators[i]
+		}
+	    }
+	    printf "]\n"
+	    aggregator_section_active = 0
+	}
+
 	# Printing of the aggregator logfiles array is handled at END{}
     }
 
@@ -84,8 +116,12 @@
 	    components[++component_cntr] = secondpart
 	    components_section_active = 1
 	    next
-	} else if (firstpart ~ /^\/.*\/ commit/) {
-	    next
+	} else if (firstpart ~ /commit\/version/) {
+	    gsub("[- ]", "_", firstpart)
+	    sub("commit\/version", "commit_or_version", firstpart)
+	    gsub("\"", " ", secondpart); # Strip the quotes surrounding the commit
+	    # comment, otherwise quotes added later
+	    # will render illegal FHiCL
 	} else if (firstpart ~ "pmt logfile") {
 	    printf "pmt_logfiles_wildcard: \"%s\"\n", secondpart
 	    next
@@ -94,6 +130,9 @@
 	    next
 	} else if (firstpart ~ "eventbuilder logfiles") {
 	    eventbuilder_section_active = 1
+	    next
+	} else if (firstpart ~ "routingmaster logfiles") {
+	    routingmaster_section_active = 1
 	    next
 	} else if (firstpart ~ "aggregator logfiles") {
 	    aggregator_section_active = 1
@@ -116,17 +155,19 @@
 
 END {
 
-    # This section exists because the last line is an aggregator logfile line
+    # This section exists because the last line may be an aggregator
+    # logfile line if we don't have time info in the metadata file
 
-    if ( length(aggregators) > 0 ) {
-      printf "\naggregator_logfiles: ["
-      for (i = 1; i <= length(aggregators); ++i) {
-   	if (i != length(aggregators)) {
-	    printf "\"%s\", ", aggregators[i]
-	} else {
-	    printf "\"%s\"]\n", aggregators[i]
+    if (aggregator_section_active) {
+	printf "\naggregator_logfiles: ["
+	for (i = 1; i <= length(aggregators); ++i) {
+	    if (i != length(aggregators)) {
+		printf "\"%s\", ", aggregators[i]
+	    } else {
+		printf "\"%s\"", aggregators[i]
+	    }
 	}
-     }
+	printf "]\n"
     }
-   aggregator_section_active = 0
+    
 }

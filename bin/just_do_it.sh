@@ -6,7 +6,7 @@ runs=1
 
 env_opts_var=`basename $0 | sed 's/\.sh$//' | tr 'a-z-' 'A-Z_'`_OPTS
 USAGE="\
-   usage: `basename $0` [options] <file to pass on boot transition> <daq running time in seconds (0 if you want to run until ctrl-C is hit)>
+   usage: `basename $0` [options] <file to pass on boot transition> <daq running time in seconds (0 if you want to run until Ctrl-c is hit)>
 examples: `basename $0` boot.txt 0
           `basename $0` --config demo_no_aggregators 20
 --help        This help message
@@ -16,6 +16,7 @@ examples: `basename $0` boot.txt 0
 --bootfile    File to pass on Boot transition (overrides first parameter)
 --runduration Number of seconds to run the daq (overrides second parameter)
 --runs        Number of start/stop transitions to run (Default: $runs)
+-v, --verbose show major commands being executed
 "
 
 # Process script arguments and options
@@ -34,6 +35,7 @@ while [ -n "${1-}" ];do
         case "$op" in
             \?*|h*)     eval $op1chr; do_help=1;;
             -help)      eval $op1arg; do_help=1;;
+            v*|-verbose) eval $op1chr; opt_verbose=1;;
             -config)    eval $reqarg; config=$1; shift;;
             -comps)     eval $reqarg; comp_mode=1 daqcomps=$1; shift;;
             -compfile)  eval $reqarg; comp_file=$1; shift;;  
@@ -78,16 +80,24 @@ fi
 
 . $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
-rm -f /tmp/listconfigs_${USER}.txt
-$scriptdir/listconfigs.sh 
-
-if [[ "$?" == "0" ]]; then
-    config=$( grep "^${config}[0-9]*$" /tmp/listconfigs_${USER}.txt  | sort -n | tail -1 )
-else
-    echo "There was a problem getting a list of configurations" >&2
-    exit 110
-fi
-
+vcmd() {
+    if [ -n "${opt_verbose-}" ];then
+        # the following attemps to format the command/options similar to when "set -x" is active
+        args=
+        for xx in "$@"; do
+            if echo "$xx" | /bin/egrep " |['\"]" >/dev/null;then
+                # need quoting
+                aa=`echo "$xx" | sed -e "s/'/'\\\\\''/g"`
+                args="${args:+$args }'$aa'"
+            else
+                args="${args:+$args }$xx"
+            fi
+        done
+        echo "+ $args"
+        unset args
+    fi
+    "$@"
+}
 
 starttime=$(date +%s)
 
@@ -103,9 +113,7 @@ fi
 highest_runnum=$( ls -1 $recorddir | sort -n | tail -1 )
 runnum=$(( highest_runnum + 1 ))
 
-# See below for definition of "clean_shutdown" function
-
-trap "clean_shutdown" SIGHUP SIGINT SIGTERM
+trap "echo Received request to end running" SIGHUP SIGINT SIGTERM
 
 daqutils_script=$scriptdir/daqutils.sh
 
@@ -145,9 +153,9 @@ function main() {
 	exit 50
     fi
 
-    $scriptdir/setdaqcomps.sh $daqcomps
+    vcmd $scriptdir/setdaqcomps.sh $daqcomps
 
-    $scriptdir/send_transition.sh boot $daqintconfig
+    vcmd $scriptdir/send_transition.sh boot $daqintconfig
 
     wait_until_no_longer booting
 
@@ -168,7 +176,7 @@ function main() {
     while (( $config_cntr < 1 )); do 
 
 	config_cntr=$(( config_cntr + 1 ))
-    $scriptdir/send_transition.sh config $config
+    vcmd $scriptdir/send_transition.sh config $config
 
     wait_until_no_longer configuring
 
@@ -186,7 +194,7 @@ function main() {
 	counter=0
 	while [ $counter -lt $runs ]; do
 		#read -n 1 -s -r -p "Press any key to start"
-		$scriptdir/send_transition.sh start
+		vcmd $scriptdir/send_transition.sh start
 
 		wait_until_no_longer starting
 
@@ -203,7 +211,7 @@ function main() {
 			echo "Will acquire data for $daq_time_in_seconds seconds"
 			sleep $daq_time_in_seconds
 		else
-			echo "Will acquire data until Ctrl-C is hit"
+			echo "Will acquire data until Ctrl-c is hit"
 			sleep 10000000000
 		fi
 
@@ -214,36 +222,12 @@ function main() {
 
 		if [[ "$state_true" == "1" ]]; then
 			#read -n 1 -s -r -p "Press any key to stop"
-			$scriptdir/send_transition.sh stop
+			vcmd $scriptdir/send_transition.sh stop
 			wait_until_no_longer stopping
 		fi
 
 		counter=$(($counter + 1))
 	done
-
-	clean_shutdown
-}
-
-# clean_shutdown() will be called either (A) after the DAQ has run for
-# the user-requested period of time, or (B) after ctrl-C has been hit
-# (in which case it's called by the external_termination() handler
-# function. It will issue a "stop" if it sees the DAQ is in the
-# "running" state; either way, it issues a "terminate"
-
-function clean_shutdown() {
-
-    echo "Entered clean_shutdown"
-
-    # Stop the DAQ, if necessary
-    
-    state_true="0"
-    check_for_state "running" state_true
-
-    if [[ "$state_true" == "1" ]]; then
-    #read -n 1 -s -r -p "Press any key to stop"
-	$scriptdir/send_transition.sh stop
-	wait_until_no_longer stopping
-    fi
 
     sleep 1
 
@@ -255,35 +239,17 @@ function clean_shutdown() {
 	exit 80
     fi
 
-    # $scriptdir/send_transition.sh shutdown
-    # wait_until_no_longer shutting
-
-    # sleep 1
-
-    # state_true="0"
-    # check_for_state "booted" state_true
-
-    # if [[ "$state_true" != "1" ]]; then
-    # 	echo "DAQ unexpectedly not in booted state; exiting "$( basename $0)
-    # 	exit 81
-    # fi
-
-    if true; then
-	
     #read -n 1 -s -r -p "Press any key to shutdown"
-	$scriptdir/send_transition.sh terminate
+    vcmd $scriptdir/send_transition.sh terminate
 
-	wait_until_no_longer terminating
+    wait_until_no_longer terminating
 
-	state_true="0"
-	check_for_state "stopped" state_true
+    state_true="0"
+    check_for_state "stopped" state_true
 
-	if [[ "$state_true" != "1" ]]; then
-	    echo "DAQ unexpectedly not in stopped state;  exiting "$( basename $0)
-	    exit 90
-	fi
-    else
-	echo "Skipping the terminate step"
+    if [[ "$state_true" != "1" ]]; then
+	echo "DAQ unexpectedly not in stopped state;  exiting "$( basename $0)
+	exit 90
     fi
 }
 
@@ -314,38 +280,6 @@ function check_run_records() {
     ls -ltr $recorddir/$runnum 
 }
 
-function check_event_count() {
-    
-    metadata_file=$recorddir/$runnum/metadata.txt
-
-    if [[ ! -e $metadata_file ]]; then
-	echo "Unable to find expected metadata file $metadata_file" >&2
-	return
-    fi
-
-    events_in_metadata=$( awk '/^\s*Total events/ { print $NF }' $metadata_file )
-
-    if [[ -z $events_in_metadata ]]; then
-	echo "Unable to find value for total events in $metadata_file" >&2
-	return
-    fi
-
-    events_in_rootfiles=$( $( dirname $0 )/rootfile_event_count.sh $runnum )
-
-    if ! [[ "$?" == "0" ]]; then 
-    	echo "Unable to determine the # of events from the expected *.root files" >&2
-    	return
-    fi
-
-    if [[ "$events_in_metadata" == "$events_in_rootfiles" ]]; then
-    	echo "Event count in saved metadata and event count in *.root files agree (${events_in_metadata})" 
-    else
-    	echo "Event count in saved metadata (${events_in_metadata}) and event count in *.root files (${events_in_rootfiles}) don't agree" >&2
-    fi
-
-}
-
-
 main $@
 
 #echo
@@ -354,8 +288,6 @@ echo
 check_run_records
 echo
 $( dirname $0 )/compare_run_record_and_rootfile.sh $runnum
-echo
-check_event_count
 echo
 
 endtime=$(date +%s)

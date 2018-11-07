@@ -28,7 +28,7 @@ for dir in $( ls -tr1 $recorddir | tail -$nruns  ); do
 	datestring=$( ls -l $metadata_file | awk '{print $6,$7,$8}' )
 
 	echo -n Run ${dir} "("${datestring}") : "
-	awk '/Config/ { config=$NF } \
+	awk '/Config/ { sub("Config name: *", ""); config=$0 } \
              /Component/ { components = components $NF " " } \
              END { printf("%-30s: %s\n", config, components); } ' \
 	    $metadata_file
