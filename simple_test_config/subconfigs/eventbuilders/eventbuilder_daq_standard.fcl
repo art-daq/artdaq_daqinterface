@@ -13,10 +13,9 @@ eventbuilder_daq_standard: {
 	request_address: "999.999.999.999"
 	expected_art_event_processing_time_us: 2000000
 
-#include "routingmaster_for_eventbuilders.fcl"
+#include "routing_for_eventbuilders.fcl"
 
 	sources: { }
-	destinations: { }
   }
   metrics: {
 	evbFile: {
