@@ -2,9 +2,6 @@ BEGIN_PROLOG
 
   component_pull_standard: {
   fragment_receiver: {
-	mpi_sync_interval: 50
-
-sleep_on_stop_us: 0
 
     # Generated Parameters: 
     generator: ToySimulator
@@ -24,8 +21,7 @@ end_of_run_quiet_timeout_ms: 1000 # Time, in milliseconds, that the entire syste
 data_buffer_depth_fragments: 1000
 data_buffer_depth_mb: 1000
 
-request_port: 3001
-request_address: "227.128.12.26" # Multicast request address
+request_address: "999.999.999.999" # Multicast request address
 
 request_window_offset: 0 # Request message contains tzero. Window will be from tzero - offset to tz-o + width
 request_window_width: 0 # These settings correspond to "two before, two after"
@@ -40,7 +36,6 @@ hardware_poll_interval_us: 0 # How often, in microseconds, checkHWStatus_() shou
 nADCcounts: 500000
 max_fragment_size_bytes: 1024000
 
-throttle_usecs: 0
 usecs_between_sends: 100000
 
 distribution_type: 3
@@ -50,28 +45,8 @@ timestamp_scale_factor: 1
 
 	destinations: {	}
 
-	routing_table_config: {
-           ## True if using the Routing Master
-           use_routing_master: true
-       
-           ## Port that table updates should arrive on
-           table_update_port: 35556  # default
-       
-           ## Address that table updates should arrive on
-           table_update_address: "227.128.12.28"  # default
-       
-           ## Port that acknowledgements should be sent to
-          table_acknowledge_port: 35557  # default
-       
-           ## Host that acknowledgements should be sent to
-           routing_master_hostname: "localhost"  # default
-       
-           ## Time to wait (in ms) for a routing table update if the table is exhausted
-           routing_timeout_ms: 2000  # default 1000
-       
-           ## Number of times to retry getting destination from routing table
-           routing_retry_count: 5  # default
-       	}
+#include "routing_for_boardreaders.fcl"
+
   }
 
   metrics: {

@@ -3,7 +3,7 @@
 
 services: {
   scheduler: {
-    errorOnFailureToPut: false
+    errorOnFailureToPut: false  # This parameter is necessary for correct function of artdaq. Do not modify.
   }
   NetMonTransportServiceInterface: {
     service_provider: NetMonTransportService
@@ -22,6 +22,9 @@ daq: {
     event_queue_wait_time: 5
     onmon_event_prescale: 1
     is_data_logger: true
+
+    # During shutdown, SMEM will wait for this amount of time while it
+    # is checking that the art threads are done reading buffers.
     expected_art_event_processing_time_us: 2000000
     restart_crashed_art_processes: false
 
@@ -49,7 +52,6 @@ source: {
 outputs: {
   rootNetOutput: {
     module_type: RootNetOutput
-    #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
   }
 
   normalOutput: {

@@ -244,9 +244,7 @@ def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
                         stdout=subprocess.PIPE).stdout.readlines()[0].strip()
 
     if not re.search(r"^[0-9]+$", nprocessors):
-        raise Exception(make_paragraph("A problem occurred when DAQInterface tried to execute \"%s\"; result was not an intege\
-r" % \
-                                       (cmd)))
+        raise Exception(make_paragraph("A problem occurred when DAQInterface tried to execute \"%s\"; result was not an integer" % (cmd)))
 
     pool = ThreadPool(int(nprocessors))
 

@@ -8,14 +8,13 @@ services: {
   }
   NetMonTransportServiceInterface: {
     service_provider: NetMonTransportService
-    #broadcast_sends: true
+
 	destinations: { }
 	routing_table_config: {
 	    use_routing_master: false
 	}
   }
 
-  #SimpleMemoryCheck: { }
 }
 
 
