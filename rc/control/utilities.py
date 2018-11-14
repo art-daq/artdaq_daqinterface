@@ -10,7 +10,7 @@ from time import sleep
 
 from multiprocessing.pool import ThreadPool
 
-bash_unsetup_command="type unsetup && for pp in `printenv | sed -ne \"/^SETUP_/{s/SETUP_//;s/=.*//;p}\"`; do test $pp = UPS && continue; prod=`echo $pp | tr \"A-Z\" \"a-z\"`; unsetup -j $prod; done || echo 0"
+bash_unsetup_command="upsname=$( which ups ); if [[ -n $upsname ]]; then unsetup() { . `$upsname unsetup \"$@\"` ; }; for pp in `printenv | sed -ne \"/^SETUP_/{s/SETUP_//;s/=.*//;p}\"`; do test $pp = UPS && continue; prod=`echo $pp | tr \"A-Z\" \"a-z\"`; unsetup -j $prod; done; echo \"After bash unsetup, products active (should be nothing but ups listed):\"; ups active; else echo \"ups does not appear to be set up; will not unsetup any products\"; fi"
 
 def expand_environment_variable_in_string(line):
 
@@ -222,9 +222,10 @@ def construct_checked_command(cmds):
     checked_cmds = []
 
     for cmd in cmds:
+        
         checked_cmds.append( cmd )
 
-        if not re.search(r"\s*&\s*$", cmd):
+        if not re.search(r"\s*&\s*$", cmd) and not bash_unsetup_command in cmd:
             check_cmd = "if [[ \"$?\" != \"0\" ]]; then echo %s: Nonzero return value from the following command: \"%s\" >> /tmp/daqinterface_checked_command_failures.log; exit 1; fi " % (date_and_time(), cmd)
             checked_cmds.append( check_cmd )
 
@@ -369,7 +370,8 @@ def main():
     paragraphed_string_test = False
     msgviewer_check_test = False
     execute_command_in_xterm_test = False
-    reformat_fhicl_document_test = True
+    reformat_fhicl_document_test = False
+    bash_unsetup_test = True
 
     if paragraphed_string_test:
         sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
@@ -420,6 +422,9 @@ def main():
         print "Output FHiCL string: "
         print outputstring
         print
+
+    if bash_unsetup_test:
+        Popen( bash_unsetup_command, shell=True)
 
 if __name__ == "__main__":
     main()
