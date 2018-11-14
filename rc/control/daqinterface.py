@@ -1606,6 +1606,8 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
         else:
             self.subconfigs_for_run = subconfigs_for_run
 
+        self.subconfigs_for_run.sort() 
+
         try:
             tmpdir_for_fhicl, self.fhicl_file_path = self.get_config_info()
             assert "/tmp" == tmpdir_for_fhicl[:4]
