@@ -1,0 +1,8 @@
+metrics: {
+  aggFile: {
+    fileName: "/tmp/aggregator/agg_%UID%_metrics.log"
+    level: 3
+    metricPluginType: "file"
+    uniquify: true
+  }
+}

@@ -1,42 +1,30 @@
-  daq: {
-  fragment_receiver: {
 
-	# CommandableFragmentGenerator Configuration: 
+daq: {
 
-    # Generated Parameters: 
-    generator: ToySimulator
-    fragment_type: TOY1
-    fragment_id: 1
-    board_id: 1
-    starting_fragment_id: 1
-    random_seed: 1
-    sleep_on_stop_us: 500000 
+   fragment_receiver: {
 
-    # Generator-Specific Configuration:
-    
-request_mode: "Ignored" # Possible values are: Ignored, Single, Buffer, Window
+      generator: "ToySimulator"
 
-nADCcounts: 2000
-max_fragment_size_bytes: 8192
+        distribution_type: 1
+        max_fragment_size_bytes: 8192
+        nADCcounts: 2000
+        random_seed: 1
 
-usecs_between_sends: 100000 # 100000 -> 10 Hz
+        fragment_type: "TOY1"
+        fragment_id: 1
+        board_id: 1
+        starting_fragment_id: 1
 
-distribution_type: 1
 
-timestamp_scale_factor: 1
+      request_mode: "Ignored"
+      sleep_on_stop_us: 500000
+      timestamp_scale_factor: 1
+      usecs_between_sends: 100000
 
-	destinations: {	}
+      destinations: {}
 
-#include "routing_for_boardreaders.fcl"
+      #include "routing_for_boardreaders.fcl"
+}
 
-  }
-
-  metrics: {
-	brFile: {
-	  metricPluginType: "file"
-	  level: 3
-	  fileName: "/tmp/boardreader/br_%UID%_metrics.log"
-	  uniquify: true
-	}
-  }
+   #include "metrics_for_boardreaders.fcl"
 }

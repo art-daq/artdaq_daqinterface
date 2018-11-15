@@ -1,45 +1,33 @@
-services: {
-  scheduler: {
-    errorOnFailureToPut: false
-  }
-  NetMonTransportServiceInterface: {
-    service_provider: NetMonTransportService
-  }
-}
 
 daq: {
-  aggregator: {
-    expected_fragments_per_event: 1
-    max_event_size_bytes: 16777216
-    print_event_store_stats: true
-    buffer_count: 20
-    event_queue_wait_time: 1
-    onmon_event_prescale: 1
-    is_dispatcher: true
-
-	routing_token_config: {
-		use_routing_master: false
-	}
-
-	auto_suppression_enabled: false
-	sources: { }
-  }
-
-  metrics: {
-    aggFile: {
-      metricPluginType: "file"
-      level: 3
-      fileName: "/tmp/aggregator/agg_%UID%_metrics.log"
-      uniquify: true
-    }
-  }
+   aggregator: {
+      auto_suppression_enabled: false
+      buffer_count: 20
+      event_queue_wait_time: 1
+      expected_fragments_per_event: 1
+      is_dispatcher: true
+      max_event_size_bytes: 1.6777216e7
+      onmon_event_prescale: 1
+      print_event_store_stats: true
+      routing_token_config: {
+         use_routing_master: false
+      }
+      sources: {}
 }
 
+  #include "metrics_for_aggregators.fcl" 
+}
+outputs: {}
+physics: {}
+process_name: "DAQDISP"
+services: {
+   NetMonTransportServiceInterface: {
+      service_provider: "NetMonTransportService"
+   }
+   scheduler: {
+      errorOnFailureToPut: false
+   }
+}
 source: {
-  module_type: NetMonInput
+   module_type: "NetMonInput"
 }
-outputs: {
-}
-physics: {
-}
-process_name: DAQDISP

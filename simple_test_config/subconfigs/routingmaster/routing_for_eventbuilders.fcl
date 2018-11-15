@@ -1,10 +1,5 @@
-    routing_token_config: {
-        ## True if using the Routing Master
-        use_routing_master: true
-
-        ## Port to send tokens on
-        routing_token_port: 35555  # default
-
-        ## Hostname or IP of RoutingMaster
-        routing_master_hostname: "localhost"  # default
-    }
+routing_token_config: {
+   routing_master_hostname: "localhost"
+   routing_token_port: 35555
+   use_routing_master: true
+}

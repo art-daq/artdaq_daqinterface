@@ -1,0 +1,25 @@
+BEGIN_PROLOG
+
+datalogger_daq_standard: {
+   aggregator: {
+      auto_suppression_enabled: false
+      buffer_count: 20
+      event_queue_wait_time: 5
+      expected_art_event_processing_time_us: 2e6
+      expected_fragments_per_event: 1
+      is_data_logger: true
+      max_event_size_bytes: 1.6777216e7
+      onmon_event_prescale: 1
+      print_event_store_stats: true
+      restart_crashed_art_processes: false
+      routing_token_config: {
+         use_routing_master: false
+      }
+      sources: {}
+}
+
+  #include "metrics_for_aggregators.fcl"
+}
+
+
+END_PROLOG

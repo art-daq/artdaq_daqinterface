@@ -1,0 +1,58 @@
+BEGIN_PROLOG
+
+datalogger_art_standard: {
+
+outputs: {
+   normalOutput: {
+      compressionLevel: 0
+      fastCloning: false
+      fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%#.root"
+      fileProperties: {
+         maxEvents: 1000
+         maxRuns: 1
+         maxSize: 8.192e6
+         maxSubRuns: 1
+      }
+      module_type: "RootDAQOut"
+   }
+   rootNetOutput: {
+      module_type: "RootNetOutput"
+   }
+}
+physics: {
+   analyzers: {}
+   my_mpi_output_modules: [
+      "rootNetOutput"
+   ]
+   my_output_modules: [
+      "normalOutput"
+   ]
+   p2: [
+      "BuildInfo"
+   ]
+   producers: {
+      BuildInfo: {
+         instance_name: "ArtdaqDemo"
+         module_type: "ArtdaqDemoBuildInfo"
+      }
+   }
+}
+process_name: "DAQDL"
+services: {
+   NetMonTransportServiceInterface: {
+      broadcast_sends: true
+      nonblocking_sends: true
+      service_provider: "NetMonTransportService"
+
+      destinations: {}
+}
+   scheduler: {
+      errorOnFailureToPut: false
+   }
+}
+source: {
+   module_type: "NetMonInput"
+}
+}
+
+END_PROLOG
