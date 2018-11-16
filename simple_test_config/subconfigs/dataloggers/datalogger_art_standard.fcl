@@ -4,16 +4,19 @@ datalogger_art_standard: {
 
 outputs: {
    normalOutput: {
+      module_type: "RootDAQOut"
+
       compressionLevel: 0
       fastCloning: false
-      fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%#.root"
+      fileName: "override this in the document which includes this file"
+
+      # See https://cdcvs.fnal.gov/redmine/projects/art/wiki/Output-file_handling for instructions on what these parameters are
       fileProperties: {
          maxEvents: 1000
          maxRuns: 1
          maxSize: 8.192e6
          maxSubRuns: 1
       }
-      module_type: "RootDAQOut"
    }
    rootNetOutput: {
       module_type: "RootNetOutput"
@@ -47,7 +50,7 @@ services: {
       destinations: {}
 }
    scheduler: {
-      errorOnFailureToPut: false
+      errorOnFailureToPut: false  # Don't change this
    }
 }
 source: {

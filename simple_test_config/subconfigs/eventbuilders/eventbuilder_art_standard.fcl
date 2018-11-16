@@ -7,12 +7,16 @@ eventbuilder_art_standard: {
       }
    }
    physics: {
-      analyzers: {}
+
+      # A common use case for an experiment is to run art filters on
+      # the events before sending them downstream
+
+      filters: {} 	    
+
       my_output_modules: [
          "rootNetOutput"
       ]
-      producers: {}
-}
+   }
    process_name: "DAQ"
    services: {
       NetMonTransportServiceInterface: {

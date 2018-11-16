@@ -2,20 +2,24 @@
 daq: {
 
    policy: {
+      
+      # policy denotes the routing master's algorithm to determine how to assign events to evenbuilders. Current choices are "NoOp", "RoundRobin", and "CapacityTest"; see the artdaq/Application/Routing directory in the artdaq package for details
       policy: "NoOp"
-      receiver_ranks: [
-         2,
-         3
-      ]
+      receiver_ranks: [ ]
    }
    routing_master_hostname: "localhost"
+
+   # routing_retry_count is the number of times to retry calculating destination before giving up (DROPPING DATA!)
    routing_retry_count: 5
+
+   # routing_timeout_ms is the time to wait in ms for a routing table update if the table is exhausted
    routing_timeout_ms: 1000
-   routing_token_port: 35555
-   sender_ranks: [
-      0,
-      1
-   ]
+
+   # Don't touch this; DAQInterface will set it
+   routing_token_port: 999
+   sender_ranks: [ ]
+
+   # table_ack_retry_count is the number of times the table will be resent while waiting for acknowledgements
    table_ack_retry_count: 5
 
    # Don't touch this; DAQInterface will set it
@@ -23,11 +27,13 @@ daq: {
 
    # Don't touch this; DAQInterface will set it
    table_update_address: "999.999.999.999"
+
+   # table_update_invterval_ms is the maximum amount of time between table updates
    table_update_interval_ms: 1000
 
    # Don't touch this; DAQInterface will set it
    table_update_port: 999
-   use_routing_master: true
+   use_routing_master: true  # Don't change this
 
    #include "metrics_for_routingmasters.fcl"
 }

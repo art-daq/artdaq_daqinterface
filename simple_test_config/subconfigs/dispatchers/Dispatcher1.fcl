@@ -1,14 +1,21 @@
 
 daq: {
    aggregator: {
+
+      # auto_suppression_enabled defines whether to suppress a source that gets too far ahead
       auto_suppression_enabled: false
+
+      # buffer_count is the allowed number of events in the Shared Memory (incomplete + pending art)
       buffer_count: 20
+
+      # event_queue_wait_time is the amount of time in seconds an event can exist in shared memory before being released to art
       event_queue_wait_time: 1
-      expected_fragments_per_event: 1
-      is_dispatcher: true
+      expected_fragments_per_event: 1   # Don't change this
+      is_dispatcher: true   # Don't change this
       max_event_size_bytes: 1.6777216e7
+
+      # Only send 1/onmon_event_prescale events to art for online monitoring
       onmon_event_prescale: 1
-      print_event_store_stats: true
       routing_token_config: {
          use_routing_master: false
       }
