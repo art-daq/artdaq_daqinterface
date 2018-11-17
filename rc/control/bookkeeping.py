@@ -115,9 +115,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                                "\n%s\nmax_event_size_bytes: %d" % (res.group(1), max_event_size),
                                                                self.procinfos[i_proc].fhicl_used)
 
-    if not self.advanced_memory_usage:
-        max_fragment_size_words = self.max_fragment_size_bytes / 8
-
     num_data_loggers = 0
     num_dispatchers = 0
 
@@ -189,11 +186,27 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                             "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
                             (prefix, i, self.transfer, nodetype[:-1], i, max_event_size / 8, \
                              host_map_string))
-                else:
-                    nodes.append( 
-                        "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
-                        (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_size_words, \
-                         host_map_string))
+                else:  # Not self.advanced_memory_usage
+
+                    max_fragment_size_words = self.max_fragment_size_bytes / 8
+                    res = re.search( r"\n\s*max_event_size_bytes\s*:\s*([0-9\.e]+)", self.procinfos[i_proc].fhicl_used)
+                    if res:
+                        max_event_size = int(float(res.group(1)))
+
+                    else:
+                        max_event_size = self.max_fragment_size_bytes * self.num_boardreaders()
+
+                    if "BoardReader" in self.procinfos[i_proc].name or \
+                       ("EventBuilder" in self.procinfos[i_proc].name and nodetype == "sources"):
+                        nodes.append( 
+                            "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
+                            (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_size_words, \
+                             host_map_string))
+                    else:
+                        nodes.append( 
+                            "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
+                            (prefix, i, self.transfer, nodetype[:-1], i, max_event_size / 8, \
+                             host_map_string))
             else:
 
                 if nodetype == "destinations":
