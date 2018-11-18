@@ -63,10 +63,11 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         if not passes_requirement:
             raise Exception(make_paragraph("Version of artdaq set up by setup script \"%s\" is v%s_%s_%s%s; need a version at least as recent as v%s_%s_%s" % (self.daq_setup_script, majorver, minorver, minorerver, extension, min_majorver, min_minorver, min_minorerver)))
 
+    max_event_size = 0
+
     if self.advanced_memory_usage:
 
         memory_scale_factor = 1.1
-        max_event_size = 0
         max_fragment_sizes = []
 
         for procinfo in self.procinfos:
@@ -136,7 +137,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     proc_hosts_string = ", ".join( proc_hosts )
 
-    def create_sources_or_destinations_string(i_proc, nodetype, first, last, this_node_index = -1):
+    def create_sources_or_destinations_string(i_proc, nodetype, first, last, this_node_index, max_event_size = -1):
 
         if nodetype == "sources":
             prefix = "s"
@@ -284,7 +285,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 self.procinfos[i_proc].fhicl_used = \
                     self.procinfos[i_proc].fhicl_used[:table_start] + \
                     "\n" + tablename + ": { \n" + \
-                    create_sources_or_destinations_string(i_proc, tablename, node_first, node_last, node_index) + \
+                    create_sources_or_destinations_string(i_proc, tablename, node_first, node_last, node_index, max_event_size) + \
                     "\n } \n" + \
                     self.procinfos[i_proc].fhicl_used[table_end:]
 
