@@ -7,7 +7,7 @@ daq: {
 
         distribution_type: 1
 
-        max_fragment_size_bytes: 8192 # max_fragment_size_bytes should be set taking into account the value of nADCcounts (the number of 2-byte ADC counts)
+        max_fragment_size_bytes: 8000 # max_fragment_size_bytes should be set taking into account the value of nADCcounts (the number of 2-byte ADC counts)
         nADCcounts: 2000
         random_seed: 1
      	usecs_between_sends: 100000
