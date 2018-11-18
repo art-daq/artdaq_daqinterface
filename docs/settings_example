@@ -28,4 +28,3 @@ aggregator timeout: 30
 # to handle the data from the 10 BRs.
 max_fragment_size_bytes: 91000000
  
-all_events_to_all_dispatchers: true

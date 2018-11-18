@@ -14,13 +14,6 @@ from rc.control.utilities import fhicl_writes_root_file
 
 def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
-    send_1_over_N = True
-
-    if self.all_events_to_all_dispatchers:
-        send_1_over_N = False
-    else:
-        raise Exception(make_paragraph("all_events_to_all_dispatchers is set to false in the settings file %s; this use is deprecated so it should either be set to true or removed entirely (default is true)" % (os.environ["DAQINTERFACE_SETTINGS"])))
-
     if os.path.exists(self.daq_dir + "/srcs/artdaq"):
         commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
                                            "b434f3b71dd5c87da68d6b13f040701ff610fee1", "July 15, 2018", True)
@@ -143,7 +136,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     proc_hosts_string = ", ".join( proc_hosts )
 
-    def create_sources_or_destinations_string(i_proc, nodetype, first, last, nth = -1, this_node_index = -1):
+    def create_sources_or_destinations_string(i_proc, nodetype, first, last, this_node_index = -1):
 
         if nodetype == "sources":
             prefix = "s"
@@ -155,81 +148,59 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         nodes = []
 
         for i in range(first, last):
-            if nth == -1:
-                if i == first or nodetype == "destinations":
-                    host_map_string = "host_map: [%s]" % (proc_hosts_string)
-                else:
-                    host_map_string = ""
-
-                if self.advanced_memory_usage:
-                    
-                    if "BoardReader" in self.procinfos[i_proc].name:
-
-                        list_of_one_fragment_size = [ proctuple[1] for proctuple in max_fragment_sizes if 
-                                                      proctuple[0] == self.procinfos[i_proc].label ]
-                        assert len(list_of_one_fragment_size) == 1
-
-                        max_fragment_size = list_of_one_fragment_size[0]
-
-                        nodes.append( 
-                            "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
-                            (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_size / 8, \
-                             host_map_string))
-                    elif "EventBuilder" in self.procinfos[i_proc].name and nodetype == "sources":
-                        nodes.append( 
-                            "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
-                            (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_sizes[i][1] / 8, \
-                             host_map_string))
-
-                    else:
-                        nodes.append( 
-                            "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
-                            (prefix, i, self.transfer, nodetype[:-1], i, max_event_size / 8, \
-                             host_map_string))
-                else:  # Not self.advanced_memory_usage
-
-                    max_fragment_size_words = self.max_fragment_size_bytes / 8
-                    res = re.search( r"\n\s*max_event_size_bytes\s*:\s*([0-9\.e]+)", self.procinfos[i_proc].fhicl_used)
-                    if res:
-                        max_event_size = int(float(res.group(1)))
-
-                    else:
-                        max_event_size = self.max_fragment_size_bytes * self.num_boardreaders()
-
-                    if "BoardReader" in self.procinfos[i_proc].name or \
-                       ("EventBuilder" in self.procinfos[i_proc].name and nodetype == "sources"):
-                        nodes.append( 
-                            "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
-                            (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_size_words, \
-                             host_map_string))
-                    else:
-                        nodes.append( 
-                            "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
-                            (prefix, i, self.transfer, nodetype[:-1], i, max_event_size / 8, \
-                             host_map_string))
+            if i == first or nodetype == "destinations":
+                host_map_string = "host_map: [%s]" % (proc_hosts_string)
             else:
+                host_map_string = ""
 
-                if nodetype == "destinations":
-                    assert (last - first) == nth, "Problem with the NthEvent logic in the program: first node is %d, last is %d, but nth is %d" % (first, last, nth)
+            if self.advanced_memory_usage:
 
-                    offset = (i - first) 
-                elif nodetype == "sources":
-                    offset = this_node_index
+                if "BoardReader" in self.procinfos[i_proc].name:
 
-                if i == first or nodetype == "destinations":
+                    list_of_one_fragment_size = [ proctuple[1] for proctuple in max_fragment_sizes if 
+                                                  proctuple[0] == self.procinfos[i_proc].label ]
+                    assert len(list_of_one_fragment_size) == 1
+
+                    max_fragment_size = list_of_one_fragment_size[0]
+
                     nodes.append( 
-                        "%s%d: { transferPluginType: NthEvent nth: %d offset: %d physical_transfer_plugin: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d } host_map: [%s]}" % \
-                        (prefix, i, nth, offset,self.transfer, nodetype[:-1], i, max_fragment_size_words, \
-                         proc_hosts_string))
+                        "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
+                        (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_size / 8, \
+                         host_map_string))
+                elif "EventBuilder" in self.procinfos[i_proc].name and nodetype == "sources":
+                    nodes.append( 
+                        "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
+                        (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_sizes[i][1] / 8, \
+                         host_map_string))
+
                 else:
                     nodes.append( 
-                        "%s%d: { transferPluginType: NthEvent nth: %d offset: %d physical_transfer_plugin: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d }}" % \
-                        (prefix, i, nth, offset,self.transfer, nodetype[:-1], i, max_fragment_size_words))
+                        "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
+                        (prefix, i, self.transfer, nodetype[:-1], i, max_event_size / 8, \
+                         host_map_string))
+            else:  # Not self.advanced_memory_usage
+
+                max_fragment_size_words = self.max_fragment_size_bytes / 8
+                res = re.search( r"\n\s*max_event_size_bytes\s*:\s*([0-9\.e]+)", self.procinfos[i_proc].fhicl_used)
+                if res:
+                    max_event_size = int(float(res.group(1)))
+
+                else:
+                    max_event_size = self.max_fragment_size_bytes * self.num_boardreaders()
+
+                if "BoardReader" in self.procinfos[i_proc].name or \
+                   ("EventBuilder" in self.procinfos[i_proc].name and nodetype == "sources"):
+                    nodes.append( 
+                        "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
+                        (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_size_words, \
+                         host_map_string))
+                else:
+                    nodes.append( 
+                        "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
+                        (prefix, i, self.transfer, nodetype[:-1], i, max_event_size / 8, \
+                         host_map_string))
 
         return "\n".join( nodes )
-
-    if send_1_over_N:
-        current_dispatcher_index = 0
 
     for i_proc in range(len(self.procinfos)):
 
@@ -309,20 +280,11 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             while table_start != -1 and table_end != -1:
                 
                 node_index = -1
-                nth = -1
-
-                if send_1_over_N:
-                    if is_data_logger and tablename == "destinations":
-                        nth = num_dispatchers
-                    elif is_dispatcher and tablename == "sources":
-                        nth = num_dispatchers
-                        node_index = current_dispatcher_index
-                        current_dispatcher_index += 1
 
                 self.procinfos[i_proc].fhicl_used = \
                     self.procinfos[i_proc].fhicl_used[:table_start] + \
                     "\n" + tablename + ": { \n" + \
-                    create_sources_or_destinations_string(i_proc, tablename, node_first, node_last, nth, node_index) + \
+                    create_sources_or_destinations_string(i_proc, tablename, node_first, node_last, node_index) + \
                     "\n } \n" + \
                     self.procinfos[i_proc].fhicl_used[table_end:]
 
