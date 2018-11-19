@@ -432,7 +432,6 @@ class DAQInterface(Component):
         self.data_directory_override = None
         self.max_configurations_to_list = 1000000
         self.disable_unique_rootfile_labels = False
-        self.all_events_to_all_dispatchers = True
 
         self.productsdir = None
 
@@ -486,15 +485,6 @@ class DAQInterface(Component):
                     raise Exception("Value for \"max_fragment_size_bytes\" in settings file \"%s\" should be a multiple of 8" % (os.environ["DAQINTERFACE_SETTINGS"]))
             elif "max_configurations_to_list" in line or "max configurations to list" in line:
                 self.max_configurations_to_list = int( line.split()[-1].strip() )
-            elif "all_events_to_all_dispatchers" in line or "all events to all dispatchers" in line:
-                token = line.split()[-1].strip()
-                
-                if "true" in token or "True" in token:
-                    self.all_events_to_all_dispatchers = True
-                elif "false" in token or "False" in token:
-                    self.all_events_to_all_dispatchers = False
-                else:
-                    raise Exception("all_events_to_all_dispatchers must be set to either [Tt]rue or [Ff]alse")
             elif "disable_unique_rootfile_labels" in line or "disable unique rootfile labels" in line:
                 token = line.split()[-1].strip()
                 if "true" in token or "True" in token:
@@ -1635,6 +1625,8 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
             self.subconfigs_for_run = self.run_params["config"]
         else:
             self.subconfigs_for_run = subconfigs_for_run
+
+        self.subconfigs_for_run.sort() 
 
         try:
             tmpdir_for_fhicl, self.fhicl_file_path = self.get_config_info()

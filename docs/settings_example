@@ -13,6 +13,10 @@
 # directory containing the xmlrpc_c package (needed for DAQInterface
 # to receive commands)
 
+# For more information on these variables and what they mean, see the
+# relevant section of the DAQInterface wiki,
+# https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/The_settings_file_reference
+
 log_directory: /tmp
 data_directory_override: /tmp
 record_directory: $HOME/run_records
@@ -23,9 +27,10 @@ boardreader timeout: 60
 eventbuilder timeout: 30
 aggregator timeout: 30
 
-# Currently (as of 2018-07-10) needs to be big enough for all simple_test_config/ examples.
-# The "biggest" example has 10 BR's -- so the xfer between the EB and DL needs to be able
-# to handle the data from the 10 BRs.
-max_fragment_size_bytes: 91000000
+# As of Nov-17-2018, the largest fragments are found in
+# mediumsystem_with_routing_master and subconfigs/component_pull, each
+# containing 500K 2-byte ADC counts
+
+max_fragment_size_bytes: 1024000
  
-all_events_to_all_dispatchers: true
+advanced_memory_usage: false  
