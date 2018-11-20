@@ -137,7 +137,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     proc_hosts_string = ", ".join( proc_hosts )
 
-    def create_sources_or_destinations_string(i_proc, nodetype, first, last, this_node_index, max_event_size = -1):
+    def create_sources_or_destinations_string(i_proc, nodetype, first, last, max_event_size = -1):
 
         if nodetype == "sources":
             prefix = "s"
@@ -280,12 +280,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             # and destination blocks in PROLOGs.
             while table_start != -1 and table_end != -1:
                 
-                node_index = -1
-
                 self.procinfos[i_proc].fhicl_used = \
                     self.procinfos[i_proc].fhicl_used[:table_start] + \
                     "\n" + tablename + ": { \n" + \
-                    create_sources_or_destinations_string(i_proc, tablename, node_first, node_last, node_index, max_event_size) + \
+                    create_sources_or_destinations_string(i_proc, tablename, node_first, node_last, max_event_size) + \
                     "\n } \n" + \
                     self.procinfos[i_proc].fhicl_used[table_end:]
 
