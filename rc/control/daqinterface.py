@@ -704,21 +704,17 @@ class DAQInterface(Component):
 
         outf = open(self.pmtconfigname, "w")
 
-        # List the process types in pmtConfig in order of
-        # upstream-to-downstream so we can keep track of the rank
-        # during bookkeeping
+        # The rank MPI assigns the artdaq process corresponds to the order it appears in the pmtConfig file below
 
-        for procname in ["BoardReader", "EventBuilder", "DataLogger", "Dispatcher", "RoutingMaster"]:
-            for procinfo in self.procinfos:
-                if procname in procinfo.name:
-                    outf.write(procname + "Main!")
+        for procinfo in sorted( self.procinfos, key=lambda procinfo: int(procinfo.rank) ) :
+            outf.write(procinfo.name + "Main!")
 
-                    if procinfo.host != "localhost":
-                        host_to_write = procinfo.host
-                    else:
-                        host_to_write = os.environ["HOSTNAME"]
+            if procinfo.host != "localhost":
+                host_to_write = procinfo.host
+            else:
+                host_to_write = os.environ["HOSTNAME"]
 
-                    outf.write(host_to_write + "!  id: " + procinfo.port + " commanderPluginType: xmlrpc application_name: " + str(procinfo.label) + " partition_number: " + str(self.partition_number) + "\n")
+            outf.write(host_to_write + "!  id: " + procinfo.port + " commanderPluginType: xmlrpc application_name: " + str(procinfo.label) + " partition_number: " + str(self.partition_number) + "\n")
 
         outf.close()
 
@@ -1402,8 +1398,6 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                                         boardreader_rank )
                 self.daq_comp_list[ compname ] = boardreader_host, boardreader_port, boardreader_subsystem
 
-            self.print_log("d", "%s at %s:%s, part of subsystem %s" % (compname, boardreader_host, boardreader_port, boardreader_subsystem), 2)
- 
             self.procinfos.append(self.Procinfo("BoardReader",
                                                 boardreader_rank,
                                                 boardreader_host,
@@ -1464,7 +1458,10 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                             (self.daq_setup_script, procinfo.host))
 
         if self.manage_processes:
-   
+            
+            for procinfo in self.procinfos:
+                self.print_log("d", "%s at %s:%s, part of subsystem %s, has rank %s" % (procinfo.label, procinfo.host, procinfo.port, procinfo.subsystem, procinfo.rank), 2)
+ 
             # Now, with the info on hand about the processes contained in
             # procinfos, actually launch them
 
