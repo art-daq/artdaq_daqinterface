@@ -59,7 +59,7 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
                             "unable to locate configuration file \"" +
                             daqinterface_config_filename + "\""))
 
-    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": None}
+    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set"}
     subsystemDict = {"id": None, "source": None, "destination": None}
 
     num_expected_processes = 0
@@ -210,9 +210,11 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
 
                 num_actual_processes += 1
                 
+                if memberDict["subsystem"] == "not set":
+                    memberDict["subsystem"] = "1"
+
                 if memberDict["port"] == "not set":
                     
-                    # Not necessarily the same as artdaq's idea of rank...
                     rank = len(self.daq_comp_list) + num_actual_processes - 1
                            
                     memberDict["port"] = str( int(os.environ["ARTDAQ_BASE_PORT"]) + \
@@ -221,12 +223,15 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
                                               rank )
 
                 self.procinfos.append(self.Procinfo(memberDict["name"],
+                                                    rank,
                                                     memberDict["host"],
                                                     memberDict["port"],
-                                                    memberDict["label"]))
+                                                    memberDict["label"],
+                                                    memberDict["subsystem"]
+                                                    ))
 
                 for varname in memberDict.keys():
-                    if varname != "port":
+                    if varname != "port" and varname != "subsystem":
                         memberDict[varname] = None
                     else:
                         memberDict[varname] = "not set"

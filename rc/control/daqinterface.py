@@ -94,13 +94,12 @@ class DAQInterface(Component):
     # host and port
 
     class Procinfo(object):
-        def __init__(self, name, host, port, label=None, subsystem=None, fhicl=None, fhicl_file_path = []):
+        def __init__(self, name, rank, host, port, label=None, subsystem=1, fhicl=None, fhicl_file_path = []):
             self.name = name
+            self.rank = rank
             self.port = port
             self.host = host
             self.label = label
-            if subsystem == None:
-                subsystem = 1
             self.subsystem = subsystem
             self.fhicl = fhicl     # Name of the input FHiCL document
             self.ffp = fhicl_file_path
@@ -1309,7 +1308,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
     def setdaqcomps(self, daq_comp_list):
         self.daq_comp_list = daq_comp_list
         self.print_log("i", "%s called with %s" % (self.setdaqcomps.__name__, 
-                                                   " ".join( [ label for label in self.daq_comp_list.keys() ] )))
+                                                   " ".join( [ compattr for compattr in self.daq_comp_list.keys() ] )))
 
     def revert_failed_transition(self, failed_action):
         self.revert_state_change(self.name, self.state(self.name))
@@ -1387,9 +1386,9 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
             revert_failed_boot("when checking for the list of components meant to be provided by the \"setdaqcomps\" call")
             return
 
-        for i_boardreader, compname in enumerate(self.daq_comp_list):
+        for boardreader_rank, compname in enumerate(self.daq_comp_list):
 
-            boardreader_host, boardreader_port = self.daq_comp_list[ compname ]
+            boardreader_host, boardreader_port, boardreader_subsystem = self.daq_comp_list[ compname ]
 
             # Make certain the formula below for calculating the port
             # # matches with the formula used to calculate the ports
@@ -1400,14 +1399,15 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
                 boardreader_port = str( int(os.environ["ARTDAQ_BASE_PORT"]) + \
                                         100 + \
                                         self.partition_number*int(os.environ["ARTDAQ_PORTS_PER_PARTITION"]) + \
-                                        i_boardreader )
-                self.daq_comp_list[ compname ] = boardreader_host, boardreader_port
+                                        boardreader_rank )
+                self.daq_comp_list[ compname ] = boardreader_host, boardreader_port, boardreader_subsystem
 
-            self.print_log("d", "%s at %s:%s" % (compname, boardreader_host, boardreader_port), 2)
+            self.print_log("d", "%s at %s:%s, part of subsystem %s" % (compname, boardreader_host, boardreader_port, boardreader_subsystem), 2)
  
             self.procinfos.append(self.Procinfo("BoardReader",
+                                                boardreader_rank,
                                                 boardreader_host,
-                                                boardreader_port, compname))
+                                                boardreader_port, compname, boardreader_subsystem))
 
             try:
                 for priority, regexp in enumerate(self.boardreader_priorities):
