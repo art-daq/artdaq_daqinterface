@@ -683,14 +683,6 @@ class DAQInterface(Component):
             raise Exception("\"pmt.rb -p %s\" was already running on %s" %
                             (self.pmt_port, self.pmt_host))
 
-        self.print_log("d", "DAQInterface: will launch " + \
-                str(self.num_boardreaders()) + \
-                " BoardReaderMain processes, " + \
-                str(self.num_eventbuilders()) + \
-                " EventBuilderMain processes, and " + \
-                str(self.num_aggregators()) + \
-                " AggregatorMain processes", 2)
-
         self.print_log("d",  "Assuming daq package is in " + \
                        self.daq_dir, 2)
 
@@ -1459,6 +1451,10 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
         if self.manage_processes:
             
+            for subsystem in self.subsystems:
+                self.print_log("d", "Subsystem %s, source subsystem %s, destination subsystem %s" % 
+                               (subsystem.id, subsystem.source, subsystem.destination), 2)
+
             for procinfo in self.procinfos:
                 self.print_log("d", "%s at %s:%s, part of subsystem %s, has rank %s" % (procinfo.label, procinfo.host, procinfo.port, procinfo.subsystem, procinfo.rank), 2)
  

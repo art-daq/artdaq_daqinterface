@@ -60,7 +60,7 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
                             daqinterface_config_filename + "\""))
 
     memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set"}
-    subsystemDict = {"id": None, "source": None, "destination": None}
+    subsystemDict = {"id": None, "source": "not set", "destination": "not set"}
 
     num_expected_processes = 0
     num_actual_processes = 0
@@ -162,19 +162,6 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
 
             subsystemDict[res.group(2)] = res.group(3)
 
-            filled = True
-
-            for key, value in subsystemDict.items():
-                if value is None:
-                    filled = False
-
-            if filled:
-                self.subsystems.append(self.Subsystem(subsystemDict["id"],
-                                                    subsystemDict["source"],
-                                                    subsystemDict["destination"]))
-
-                for varname in subsystemDict.keys():
-                    subsystemDict[varname] = None
 
         if "EventBuilder" in line or \
                 "DataLogger" in line or "Dispatcher" in line or \
@@ -196,17 +183,33 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
         if re.search(r"^\s*#", line) or re.search(r"^\s*$", line) or \
            i_line == len(lines) - 1:
 
-            filled = True
+            filled_subsystem_info = True
+
+            for key, value in subsystemDict.items():
+                if value is None:
+                    filled_subsystem_info = False
+
+            filled_process_info = True
 
             for key, value in memberDict.items():
                 if value is None and not key == "fhicl":
-                    filled = False
+                    filled_process_info = False
+
+
+            if filled_subsystem_info:
+                
+                self.subsystems.append(self.Subsystem(subsystemDict["id"],
+                                                      subsystemDict["source"],
+                                                      subsystemDict["destination"]))
+                subsystemDict["id"] = None
+                subsystemDict["source"] = "not set"
+                subsystemDict["destination"] = "not set"
 
             # If it has been filled, then initialize a Procinfo
             # object, append it to procinfos, and reset the
             # dictionary values to null strings
 
-            if filled:
+            if filled_process_info:
 
                 num_actual_processes += 1
                 
@@ -235,6 +238,14 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
                         memberDict[varname] = None
                     else:
                         memberDict[varname] = "not set"
+
+    # If the user hasn't defined anything subsystem-related in the
+    # boot file, then that means we can think of all the artdaq
+    # processes as belonging to subsystem #1, where the subsystem
+    # doesn't have any source subsystems or any destination subsystems
+
+    if len(self.subsystems) == 0:
+        self.subsystems.append(self.Subsystem("1", "not set", "not set"))
 
     # Unless I'm mistaken, we don't yet have an official default for
     # the pmt port given a partition #
