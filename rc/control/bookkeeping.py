@@ -187,7 +187,13 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     max_event_size = self.max_fragment_size_bytes * self.num_boardreaders()
 
                 buffer_size_words = max_event_size / 8
-            
+        
+        subsystem_connections = []
+
+        for subsystem in self.subsystems:
+            if subsystem.destination != "not set":
+                subsystem_connections.append( (subsystem.id, subsystem.destination) )
+
         procinfos_for_string = []
 
         for procinfo_to_check in self.procinfos:
@@ -213,10 +219,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     if "DataLogger" in procinfo_to_check.name:
                         add = True
             else:   # the two processes are in separate subsystems
-
-                if (nodetype == "destinations" and "EventBuilder" in procinfo.name and procinfo.subsystem == "1" and "EventBuilder" in procinfo_to_check.name and procinfo_to_check.subsystem == "2") or \
-                   (nodetype == "sources" and "EventBuilder" in procinfo.name and procinfo.subsystem == "2" and "EventBuilder" in procinfo_to_check.name and procinfo_to_check.subsystem == "1"):
-                    add = True
+                if "EventBuilder" in procinfo.name and "EventBuilder" in procinfo_to_check.name:
+                    if (nodetype == "destinations" and (procinfo.subsystem, procinfo_to_check.subsystem) in subsystem_connections) or \
+                    (nodetype == "sources" and (procinfo_to_check.subsystem, procinfo.subsystem) in subsystem_connections):
+                        add = True
 
             if add:
                 procinfos_for_string.append( procinfo_to_check )

@@ -68,6 +68,9 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
     lines = inf.readlines()
     for i_line, line in enumerate(lines):
 
+        if re.search(r"^\s*#", line):
+            continue
+
         line = expand_environment_variable_in_string( line )
 
         res = re.search(r"^\s*PMT host\s*:\s*(\S+)", line)
