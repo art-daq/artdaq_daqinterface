@@ -329,10 +329,12 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                        "expected_fragments_per_event: %d" % (expected_fragments_per_event), 
                                                        self.procinfos[i_proc].fhicl_used)
         if self.request_address is None:
-            self.request_address = "227.128.%d.129" % (self.partition_number)
+            request_address = "227.128.%d.%d" % (self.partition_number, 128 + int(self.procinfos[i_proc].subsystem))
+        else:
+            request_address = self.request_address
 
         self.procinfos[i_proc].fhicl_used = re.sub("request_address\s*:\s*[\"0-9\.]+", 
-                                                   "request_address: \"%s\"" % (self.request_address.strip("\"")), 
+                                                   "request_address: \"%s\"" % (request_address.strip("\"")), 
                                                    self.procinfos[i_proc].fhicl_used)
 
         if not self.request_port is None:
@@ -345,26 +347,30 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                    self.procinfos[i_proc].fhicl_used)
 
         if self.table_update_address is None:
-            self.table_update_address = "227.129.%d.129" % (self.partition_number)
+            table_update_address = "227.129.%d.%d" % (self.partition_number, 128 + int(self.procinfos[i_proc].subsystem))
+        else:
+            table_update_address = self.table_update_address
 
         self.procinfos[i_proc].fhicl_used = re.sub("table_update_address\s*:\s*[\"0-9\.]+", 
-                                                   "table_update_address: \"%s\"" % (self.table_update_address.strip("\"")), 
+                                                   "table_update_address: \"%s\"" % (table_update_address.strip("\"")), 
                                                    self.procinfos[i_proc].fhicl_used)
         
         if self.routing_base_port is None:
-            self.routing_base_port = int(os.environ["ARTDAQ_BASE_PORT"]) + 10 + \
-                                     int(os.environ["ARTDAQ_PORTS_PER_PARTITION"])*self.partition_number
+            routing_base_port = int(os.environ["ARTDAQ_BASE_PORT"]) + 10 + \
+                                int(os.environ["ARTDAQ_PORTS_PER_PARTITION"])*self.partition_number + int(self.procinfos[i_proc].subsystem)
+        else:
+            routing_base_port = int(self.routing_base_port)
 
         self.procinfos[i_proc].fhicl_used = re.sub("routing_token_port\s*:\s*[0-9]+", 
-                                                   "routing_token_port: %d" % (int(self.routing_base_port)), 
+                                                   "routing_token_port: %d" % (routing_base_port), 
                                                    self.procinfos[i_proc].fhicl_used)
 
         self.procinfos[i_proc].fhicl_used = re.sub("table_update_port\s*:\s*[0-9]+", 
-                                                   "table_update_port: %d" % (int(self.routing_base_port) + 10), 
+                                                   "table_update_port: %d" % (routing_base_port + 10), 
                                                    self.procinfos[i_proc].fhicl_used)
 
         self.procinfos[i_proc].fhicl_used = re.sub("table_acknowledge_port\s*:\s*[0-9]+", 
-                                                   "table_acknowledge_port: %d" % (int(self.routing_base_port) + 20), 
+                                                   "table_acknowledge_port: %d" % (routing_base_port + 20), 
                                                    self.procinfos[i_proc].fhicl_used)
 
         routingmaster_hostnames = [procinfo.host for procinfo in self.procinfos if procinfo.name == "RoutingMaster"]
