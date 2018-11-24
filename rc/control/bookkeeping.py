@@ -125,6 +125,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     proc_hosts = []
 
     for procinfo in self.procinfos:
+
         if procinfo.name == "RoutingMaster":
             continue
         
@@ -302,14 +303,15 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
             expected_fragments_per_event += generated_fragments_per_event
 
-    for procinfo in self.procinfos:
+    for i_proc in range(len(self.procinfos)):
         
-        if "RoutingMaster" in procinfo.name:
+        if "RoutingMaster" in self.procinfos[i_proc].name:
 
             sender_ranks = "sender_ranks: [%s]" % ( ",".join( 
-                [ str(otherproc.rank) for otherproc in self.procinfos if otherproc.subsystem == "1" and "BoardReader" in otherproc.name ] ))
+                [ str(otherproc.rank) for otherproc in self.procinfos if otherproc.subsystem == self.procinfos[i_proc].subsystem and "BoardReader" in otherproc.name ] ))
             receiver_ranks = "receiver_ranks: [%s]" % ( ",".join( 
-                [ str(otherproc.rank) for otherproc in self.procinfos if otherproc.subsystem == "1" and "EventBuilder" in otherproc.name ] ))
+                [ str(otherproc.rank) for otherproc in self.procinfos if otherproc.subsystem == self.procinfos[i_proc].subsystem and "EventBuilder" in otherproc.name ] ))
+
             self.procinfos[i_proc].fhicl_used = re.sub("sender_ranks\s*:\s*\[.*\]",
                                                        sender_ranks,
                                                        self.procinfos[i_proc].fhicl_used)
@@ -373,7 +375,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                    "table_acknowledge_port: %d" % (routing_base_port + 20), 
                                                    self.procinfos[i_proc].fhicl_used)
 
-        routingmaster_hostnames = [procinfo.host for procinfo in self.procinfos if procinfo.name == "RoutingMaster"]
+        routingmaster_hostnames = [procinfo.host for procinfo in self.procinfos if procinfo.name == "RoutingMaster" and procinfo.subsystem == self.procinfos[i_proc].subsystem ]
         assert len(routingmaster_hostnames) == 0 or len(routingmaster_hostnames) == 1
     
         if len(routingmaster_hostnames) == 1:

@@ -989,8 +989,8 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
         num_requested_routingmasters = len( [ procinfo.name for procinfo in self.procinfos 
                                               if procinfo.name == "RoutingMaster" ]  )
-        if num_requested_routingmasters > 1:
-            raise Exception(make_paragraph("%d RoutingMaster processes defined in the boot file provided; you can't have more than one" % (num_requested_routingmasters)))
+        if num_requested_routingmasters > len(self.subsystems):
+            raise Exception(make_paragraph("%d RoutingMaster processes defined in the boot file provided; you can't have more than the number of subsystems (%d)" % (num_requested_routingmasters, len(self.subsystems))))
 
 
     # JCF, Dec-1-2016

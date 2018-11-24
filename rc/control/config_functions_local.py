@@ -215,14 +215,12 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
             if filled_process_info:
 
                 num_actual_processes += 1
-                
+                rank = len(self.daq_comp_list) + num_actual_processes - 1                
+
                 if memberDict["subsystem"] == "not set":
                     memberDict["subsystem"] = "1"
 
                 if memberDict["port"] == "not set":
-                    
-                    rank = len(self.daq_comp_list) + num_actual_processes - 1
-                           
                     memberDict["port"] = str( int(os.environ["ARTDAQ_BASE_PORT"]) + \
                                               100 + \
                                               self.partition_number*int(os.environ["ARTDAQ_PORTS_PER_PARTITION"]) + \
