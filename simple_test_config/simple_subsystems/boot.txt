@@ -10,6 +10,7 @@ Subsystem id: 1
 Subsystem destination: 2
 
 Subsystem id: 2
+Subsystem source: 1
 
 EventBuilder host: localhost
 EventBuilder label: EventBuilder1

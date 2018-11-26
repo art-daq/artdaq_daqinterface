@@ -8,6 +8,7 @@ import re
 
 from rc.control.utilities import table_range
 from rc.control.utilities import enclosing_table_range
+from rc.control.utilities import enclosing_table_name
 from rc.control.utilities import commit_check_throws_if_failure
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import fhicl_writes_root_file
@@ -145,7 +146,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     # the max event size will need to be provided; this value is used
     # to calculate the size of the buffers in the transfer plugins
 
-    def create_sources_or_destinations_string(procinfo, nodetype, max_event_size = 0):
+    def create_sources_or_destinations_string(procinfo, nodetype, max_event_size = 0, inter_subsystem_transfer = False):
 
         if nodetype == "sources":
             prefix = "s"
@@ -189,18 +190,20 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
                 buffer_size_words = max_event_size / 8
         
-        subsystem_connections = []
-
-        for subsystem in self.subsystems:
-            if subsystem.destination != "not set":
-                subsystem_connections.append( (subsystem.id, subsystem.destination) )
+        for ss in self.subsystems:
+            if self.subsystems[ss].destination != "not set":
+                dest = self.subsystems[ss].destination
+                if self.subsystems[dest] == None or (self.subsystems[dest].source != "not set" and self.subsystems[dest].source != ss):
+                    raise Exception(make_paragraph("Inconsistent subsystem configuration detected! Subsystem %d has destination %d, but subsystem %d has source %d!" % (ss, dest, dest, self.subsystems[dest].source)))
+                self.subsystems[dest].source = ss
+                    
 
         procinfos_for_string = []
 
         for procinfo_to_check in self.procinfos:
             add = False   # As in, "add this process we're checking to the sources or destinations table"
 
-            if procinfo_to_check.subsystem == procinfo.subsystem:
+            if procinfo_to_check.subsystem == procinfo.subsystem and not inter_subsystem_transfer:
                 if "BoardReader" in procinfo.name:
                     assert nodetype == "destinations"
                     if "EventBuilder" in procinfo_to_check.name:
@@ -219,10 +222,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     assert nodetype == "sources"
                     if "DataLogger" in procinfo_to_check.name:
                         add = True
-            else:   # the two processes are in separate subsystems
+            if procinfo_to_check.subsystem != procinfo.subsystem and (inter_subsystem_transfer or nodetype == "sources"):   # the two processes are in separate subsystems
                 if "EventBuilder" in procinfo.name and "EventBuilder" in procinfo_to_check.name:
-                    if (nodetype == "destinations" and (procinfo.subsystem, procinfo_to_check.subsystem) in subsystem_connections) or \
-                    (nodetype == "sources" and (procinfo_to_check.subsystem, procinfo.subsystem) in subsystem_connections):
+                    if (nodetype == "destinations" and self.subsystems[procinfo.subsystem].destination == procinfo_to_check.subsystem) or \
+                    (nodetype == "sources" and self.subsystems[procinfo_to_check.subsystem].destination == procinfo.subsystem):
                         add = True
 
             if add:
@@ -261,6 +264,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             (table_start, table_end) =  table_range(self.procinfos[i_proc].fhicl_used, \
                                         tablename)
 
+            inter_subsystem_transfer = False
+            if enclosing_table_name(self.procinfos[i_proc].fhicl_used, tablename) == "binaryNetOutput":
+                inter_subsystem_transfer = True
+
             # 13-Apr-2018, KAB: modified this statement from an "if" test to
             # a "while" loop so that it will modify all of the source and
             # destination blocks in a file. This was motivated by changes to
@@ -272,15 +279,19 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 self.procinfos[i_proc].fhicl_used = \
                     self.procinfos[i_proc].fhicl_used[:table_start] + \
                     "\n" + tablename + ": { \n" + \
-                    create_sources_or_destinations_string(self.procinfos[i_proc], tablename, max_event_size) + \
+                    create_sources_or_destinations_string(self.procinfos[i_proc], tablename, max_event_size, inter_subsystem_transfer) + \
                     "\n } \n" + \
                     self.procinfos[i_proc].fhicl_used[table_end:]
 
+                searchstart = table_end
                 (table_start, table_end) = \
                     table_range(self.procinfos[i_proc].fhicl_used, \
-                                    tablename, table_end)
+                                    tablename, searchstart)
+                inter_subsystem_transfer = False
+                if enclosing_table_name(self.procinfos[i_proc].fhicl_used, tablename, searchstart) == "binaryNetOutput":
+                    inter_subsystem_transfer = True
 
-    expected_fragments_per_event = 0
+    subsystem_fragment_count = {0: 0}
 
     for procinfo in self.procinfos:
 
@@ -301,7 +312,20 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             if res:
                 generated_fragments_per_event = int(res.group(1))
 
-            expected_fragments_per_event += generated_fragments_per_event
+            subsystem_fragment_count[procinfo.subsystem] = subsystem_fragment_count.get(procinfo.subsystem, 0) + generated_fragments_per_event
+
+    def get_subsystem_fragment_count(ss):
+        count = subsystem_fragment_count.get(ss, 0)
+
+        if self.subsystems[ss].source != "not set":
+            count += get_subsystem_fragment_count(self.subsystems[ss].source)
+
+        return count
+
+    expected_fragments_per_event = {0: 0}
+    for subsystem in self.subsystems:
+        expected_fragments_per_event[subsystem] = get_subsystem_fragment_count(subsystem)
+            
 
     for i_proc in range(len(self.procinfos)):
         
@@ -328,7 +352,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                        self.procinfos[i_proc].fhicl_used)
         else:
             self.procinfos[i_proc].fhicl_used = re.sub("expected_fragments_per_event\s*:\s*[0-9]+", 
-                                                       "expected_fragments_per_event: %d" % (expected_fragments_per_event), 
+                                                       "expected_fragments_per_event: %d" % (expected_fragments_per_event[self.procinfos[i_proc].subsystem]), 
                                                        self.procinfos[i_proc].fhicl_used)
         if self.request_address is None:
             request_address = "227.128.%d.%d" % (self.partition_number, 128 + int(self.procinfos[i_proc].subsystem))

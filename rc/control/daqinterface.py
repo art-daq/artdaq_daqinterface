@@ -200,8 +200,7 @@ class DAQInterface(Component):
     # artdaq subsytem.
 
     class Subsystem(object):
-        def __init__(self, id, source = None, destination = None):
-            self.id = id
+        def __init__(self, source = None, destination = None):
             self.source = source
             self.destination = destination
 
@@ -257,12 +256,12 @@ class DAQInterface(Component):
         self.procinfos = []
 
 
-        # "subsystems" is an array of Subsystem structures (defined above),
+        # "subsystems" is an dictionary of Subsystem structures (defined above),
         # where Subsystem contains all the information DAQInterface needs
-        # to know about artdaq subsystems: id, source subsystem, destination subsystem.
+        # to know about artdaq subsystems: id (dictionary key), source subsystem, destination subsystem.
         # Subsystems are an optional feature that allow users to build complex configurations
         # with multiple request domains and levels of filtering.
-        self.subsystems = []
+        self.subsystems = {}
 
     # Constructor for DAQInterface begins here
 
@@ -1451,9 +1450,9 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
 
         if self.manage_processes:
             
-            for subsystem in self.subsystems:
+            for ss in self.subsystems:
                 self.print_log("d", "Subsystem %s, source subsystem %s, destination subsystem %s" % 
-                               (subsystem.id, subsystem.source, subsystem.destination), 2)
+                               (ss, self.subsystems[ss].source, self.subsystems[ss].destination), 2)
 
             for procinfo in self.procinfos:
                 self.print_log("d", "%s at %s:%s, part of subsystem %s, has rank %s" % (procinfo.label, procinfo.host, procinfo.port, procinfo.subsystem, procinfo.rank), 2)

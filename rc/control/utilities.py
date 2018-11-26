@@ -158,6 +158,29 @@ def enclosing_table_range(fhiclstring, searchstring, startingloc=0):
 
     return (open_brace_loc + 1, open_brace_loc + close_brace_loc + 1)
 
+# 26-Nov-2018, ELF: This function finds the name of the enclosing table
+# for the specified string. This is used when determining which
+# destinations block is currently being filled during bookkeeping.
+def enclosing_table_name(fhiclstring, searchstring, startingloc=0):
+
+    loc = string.find(fhiclstring, searchstring, startingloc)
+    if loc == -1:
+        return "notfound"
+
+    open_brace_loc = string.rindex(fhiclstring, "{", 0, loc)
+
+    while string.rfind(fhiclstring, '}', open_brace_loc, loc) != -1:
+        loc = open_brace_loc - 1
+        open_brace_loc = string.rindex(fhiclstring, "{", 0, loc)
+
+    colon_loc = string.rindex(fhiclstring, ":", 0, open_brace_loc)
+
+    while fhiclstring[colon_loc - 1] == " ":
+        colon_loc -= 1
+
+    name = re.sub('.*\s', "", fhiclstring[:colon_loc])
+
+    return name
 
 def commit_check_throws_if_failure(packagedir, commit_hash, date, request_after):
 
