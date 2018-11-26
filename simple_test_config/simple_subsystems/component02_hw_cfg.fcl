@@ -63,28 +63,7 @@
 	  distribution_type: 2
 	  timestamp_scale_factor: 1
 
-        destinations: { 
-		d3: {
-			max_fragment_size_words: 4.9544232e7
-			destination_rank: 3
-			transferPluginType: "Autodetect"
-		}
-		d4: {
-			max_fragment_size_words: 4.9544232e7
-			destination_rank: 4
-			transferPluginType: "Autodetect"
-		}}
-		host_map: [            
-			{ host: "ironwork.fnal.gov" rank: 0 },
-			{ host: "ironwork.fnal.gov" rank: 1 },
-			{ host: "ironwork.fnal.gov" rank: 2 },
-			{ host: "ironwork.fnal.gov" rank: 3 },
-			{ host: "ironwork.fnal.gov" rank: 4 },
-			{ host: "ironwork.fnal.gov" rank: 5 },
-			{ host: "ironwork.fnal.gov" rank: 6 },
-			{ host: "ironwork.fnal.gov" rank: 7 },
-			{ host: "ironwork.fnal.gov" rank: 8 }
-		]
+        destinations: { }
 
 	routing_table_config: {
 	    use_routing_master: false

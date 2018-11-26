@@ -6,30 +6,13 @@ services: {
   NetMonTransportServiceInterface: {
     service_provider: NetMonTransportService
     #broadcast_sends: true
-	destinations: {
-		d6: {
-		  max_fragment_size_words: 4.9544232e7
-		  destination_rank: 6
-		  transferPluginType: "Autodetect"
-		 }
-	}	
-		host_map: [            
-			{ host: "ironwork.fnal.gov" rank: 0 },
-			{ host: "ironwork.fnal.gov" rank: 1 },
-			{ host: "ironwork.fnal.gov" rank: 2 },
-			{ host: "ironwork.fnal.gov" rank: 3 },
-			{ host: "ironwork.fnal.gov" rank: 4 },
-			{ host: "ironwork.fnal.gov" rank: 5 },
-			{ host: "ironwork.fnal.gov" rank: 6 },
-			{ host: "ironwork.fnal.gov" rank: 7 },
-			{ host: "ironwork.fnal.gov" rank: 8 }
-		]
+	destinations: {	}	
   }
 }
 
 daq: {
   event_builder: {
-	expected_fragments_per_event: 2  # Will be set by DAQInterface
+	expected_fragments_per_event: 0  # Will be set by DAQInterface
 	max_fragment_size_bytes: 16777216
 	use_art: true
 	print_event_store_stats: true
@@ -42,29 +25,7 @@ daq: {
 	use_routing_master: false
 	}
 
-	sources: { 
-			s0: {
-				max_fragment_size_words: 4.9544232e7
-				source_rank: 0
-				transferPluginType: "Autodetect"
-			}
-			s2: {
-				max_fragment_size_words: 4.9544232e7
-				source_rank: 2
-				transferPluginType: "Autodetect"
-			}}
-		host_map: [            
-			{ host: "ironwork.fnal.gov" rank: 0 },
-			{ host: "ironwork.fnal.gov" rank: 1 },
-			{ host: "ironwork.fnal.gov" rank: 2 },
-			{ host: "ironwork.fnal.gov" rank: 3 },
-			{ host: "ironwork.fnal.gov" rank: 4 },
-			{ host: "ironwork.fnal.gov" rank: 5 },
-			{ host: "ironwork.fnal.gov" rank: 6 },
-			{ host: "ironwork.fnal.gov" rank: 7 },
-			{ host: "ironwork.fnal.gov" rank: 8 }
-		]
-  }
+	sources: { }
   metrics: {
 	evbFile: {
 	  metricPluginType: "file"
@@ -83,24 +44,7 @@ outputs: {
   binaryNetOutput: {
     module_type: BinaryNetOutput
     #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
-	destinations: {
-		d5: {
-			max_fragment_size_words: 4.9544232e7
-			destination_rank: 5
-			transferPluginType: "Autodetect"
-		}	
-	}
-	host_map: [            
-		{ host: "ironwork.fnal.gov" rank: 0 },
-		{ host: "ironwork.fnal.gov" rank: 1 },
-		{ host: "ironwork.fnal.gov" rank: 2 },
-		{ host: "ironwork.fnal.gov" rank: 3 },
-		{ host: "ironwork.fnal.gov" rank: 4 },
-		{ host: "ironwork.fnal.gov" rank: 5 },
-		{ host: "ironwork.fnal.gov" rank: 6 },
-		{ host: "ironwork.fnal.gov" rank: 7 },
-		{ host: "ironwork.fnal.gov" rank: 8 }
-	]
+	destinations: {	}
 
 	routing_table_config: {
 	    use_routing_master: false
