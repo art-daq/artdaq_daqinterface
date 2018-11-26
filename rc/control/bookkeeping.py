@@ -265,6 +265,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                         tablename)
 
             inter_subsystem_transfer = False
+            # TODO: Generate "binaryNetOutput" block if missing and needed!
             if enclosing_table_name(self.procinfos[i_proc].fhicl_used, tablename) == "binaryNetOutput":
                 inter_subsystem_transfer = True
 
