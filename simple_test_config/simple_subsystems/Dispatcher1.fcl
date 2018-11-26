@@ -1,0 +1,69 @@
+services: {
+  scheduler: {
+    errorOnFailureToPut: false
+  }
+  NetMonTransportServiceInterface: {
+    service_provider: NetMonTransportService
+  }
+}
+
+daq: {
+  aggregator: {
+    expected_events_per_bunch: 1
+	max_fragment_size_bytes: 16777216
+    print_event_store_stats: true
+    buffer_count: 20
+    event_queue_depth: 2
+    event_queue_wait_time: 1
+    onmon_event_prescale: 1
+    is_dispatcher: true
+    overwrite_mode: true
+
+	routing_token_config: {
+		use_routing_master: false
+	}
+
+    auto_suppression_enabled: false
+
+	sources: { 
+			s7: {
+				max_fragment_size_words: 4.9544232e7
+				source_rank: 7
+				transferPluginType: "Autodetect"
+			}}
+		host_map: [            
+			{ host: "ironwork.fnal.gov" rank: 0 },
+			{ host: "ironwork.fnal.gov" rank: 1 },
+			{ host: "ironwork.fnal.gov" rank: 2 },
+			{ host: "ironwork.fnal.gov" rank: 3 },
+			{ host: "ironwork.fnal.gov" rank: 4 },
+			{ host: "ironwork.fnal.gov" rank: 5 },
+			{ host: "ironwork.fnal.gov" rank: 6 },
+			{ host: "ironwork.fnal.gov" rank: 7 },
+			{ host: "ironwork.fnal.gov" rank: 8 }
+		]
+  }
+
+  metrics: {
+    aggFile: {
+      metricPluginType: "file"
+      level: 3
+      fileName: "/tmp/aggregator/agg_%UID%_metrics.log"
+      uniquify: true
+    }
+  }
+
+}
+
+source: {
+  module_type: NetMonInput
+}
+
+outputs: {
+
+}
+
+physics: {
+
+}
+process_name: DAQDP
