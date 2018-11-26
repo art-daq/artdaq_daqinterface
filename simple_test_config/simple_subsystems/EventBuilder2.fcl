@@ -26,6 +26,8 @@ daq: {
 	}
 
 	sources: { }
+  }
+
   metrics: {
 	evbFile: {
 	  metricPluginType: "file"
