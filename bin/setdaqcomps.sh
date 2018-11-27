@@ -36,6 +36,10 @@ for comp in $components; do
 	port=$( echo $comp_line | awk '{print $3}' )
 	subsystem=$( echo $comp_line | awk '{print $4}' )
 
+	#defaults
+	port=${port:-"-1"}
+	subsystem=${subsystem:-"1"}
+
 	xmlrpc_arg=${xmlrpc_arg}${comp}":array/(s/"${host}","${port}","${subsystem}")"
 	test $comp_cntr != $num_components && xmlrpc_arg=${xmlrpc_arg}","
     else

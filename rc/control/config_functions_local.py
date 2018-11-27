@@ -269,12 +269,19 @@ def listdaqcomps_base(self):
         return 
 
     lines = inf.readlines()
+    count = len(lines)
+
+    for line in lines:
+        if re.search(r"^\s*#", line):
+            count = count - 1
 
     print
-    print "# of components found in listdaqcomps call: %d" % (len(lines))
+    print "# of components found in listdaqcomps call: %d" % (count)
 
     lines.sort()
     for line in lines:
+        if re.search(r"^\s*#", line):
+            continue
         component = line.split()[0].strip()
         host = line.split()[1].strip()
         
