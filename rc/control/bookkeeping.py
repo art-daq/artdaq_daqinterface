@@ -70,16 +70,22 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         if not passes_requirement:
             raise Exception(make_paragraph("Version of artdaq set up by setup script \"%s\" is v%s_%s_%s%s; need a version at least as recent as v%s_%s_%s" % (self.daq_setup_script, majorver, minorver, minorerver, extension, min_majorver, min_minorver, min_minorerver)))
 
-    # If advanced_memory_usage is set to true in the settings file,
-    # figure out the max event size, and make sure
-    # max_event_size_bytes in artdaq process FHiCL documents is set
-    # accordingly
+    for ss in self.subsystems:
+        if self.subsystems[ss].destination != "not set":
+            dest = self.subsystems[ss].destination
+            if self.subsystems[dest] == None or (self.subsystems[dest].source != "not set" and self.subsystems[dest].source != ss):
+                raise Exception(make_paragraph("Inconsistent subsystem configuration detected! Subsystem %d has destination %d, but subsystem %d has source %d!" % (ss, dest, dest, self.subsystems[dest].source)))
+            self.subsystems[dest].source = ss
 
-    max_event_size = 0
+    # Start calculating values (fragment counts, memory sizes, etc.)
+    # which will need to appear in the FHiCL
+
+    # If advanced_memory_usage is set to true in the settings file,
+    # read in the max fragment size meant to be provided by each
+    # boardreader FHiCL
 
     if self.advanced_memory_usage:
 
-        memory_scale_factor = 1.1
         max_fragment_sizes = []
 
         for procinfo in self.procinfos:
@@ -89,8 +95,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             if "BoardReader" in procinfo.name:
                 if len(res) > 0:
                     max_fragment_size = int(float(res[-1]))
-                    max_event_size += max_fragment_size
-
                     max_fragment_sizes.append( (procinfo.label, max_fragment_size) ) 
                 else:
                     raise Exception(make_paragraph("Unable to find the max_fragment_size_bytes variable in the FHiCL document for %s; this is needed since \"advanced_memory_usage\" is set to true in the settings file, %s" % (procinfo.label, os.environ["DAQINTERFACE_SETTINGS"])))
@@ -98,18 +102,98 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 if len(res) > 0:
                     raise Exception(make_paragraph("max_fragment_size_bytes is found in the FHiCL document for %s; this parameter must not appear in FHiCL documents for non-BoardReader artdaq processes" % (procinfo.label)))
 
-        max_event_size = int(float(max_event_size * memory_scale_factor))
+    # Now loop over the boardreaders again to determine
+    # subsystem-level things, such as the number of fragments per
+    # event produced by each subsystem's boardreader set, and the
+    # amount of space those fragments take up
 
-        if max_event_size % 8 != 0:
-            max_event_size += (8 - max_event_size % 8)
+    fragments_per_boardreader = {}
+    subsystem_fragment_count = { }
+    subsystem_fragment_space = { }
 
-        assert max_event_size % 8 == 0, "Max event size not divisible by 8"
-        
+    for procinfo in self.procinfos:
+        if "BoardReader" in procinfo.name:
+
+            generated_fragments_per_event = 1
+
+            # JCF, Oct-12-2018: "sends_no_fragments: true" is
+            # logically the same as "generated_fragments_per_event:
+            # 0", but I'm keeping it for reasons of backwards
+            # compatibility
+
+            if re.search(r"\n\s*sends_no_fragments\s*:\s*[Tt]rue", procinfo.fhicl_used):
+                generated_fragments_per_event = 0
+
+            res = re.search(r"\n\s*generated_fragments_per_event\s*:\s*([0-9]+)", procinfo.fhicl_used)
+
+            if res:
+                generated_fragments_per_event = int(res.group(1))
+
+            fragments_per_boardreader[ procinfo.label ] = generated_fragments_per_event
+            subsystem_fragment_count[ procinfo.subsystem ] = subsystem_fragment_count.get(procinfo.subsystem, 0) + generated_fragments_per_event
+
+            if self.advanced_memory_usage:
+                list_of_one_fragment_size = [ proctuple[1] for proctuple in max_fragment_sizes if 
+                                              proctuple[0] == procinfo.label ]
+                assert len(list_of_one_fragment_size) == 1
+                fragment_space = list_of_one_fragment_size[0]
+            else:
+                fragment_space = self.max_fragment_size_bytes
+                
+            subsystem_fragment_space[ procinfo.subsystem ] = subsystem_fragment_space.get(procinfo.subsystem, 0) + generated_fragments_per_event*fragment_space
+
+    # Now using the per-subsystem info we've gathered, use recursion
+    # to determine the *true* number of fragments per event and the
+    # size they take up, since this quantity isn't just a function of
+    # the boardreaders in the subystem but also of any connected
+    # subsystems upstream whose eventbuilders send fragments down to
+    # the subsystem in question
+
+    def calculate_expected_fragments_per_event(ss, subsystem_fragment_count):
+        count = subsystem_fragment_count.get(ss)
+
+        if self.subsystems[ss].source != "not set":
+            count += calculate_expected_fragments_per_event(self.subsystems[ss].source, subsystem_fragment_count)
+
+        return count
+
+    def calculate_max_event_size(ss, subsystem_fragment_space):
+        size = subsystem_fragment_space.get(ss)
+
+        if self.advanced_memory_usage:
+            memory_scale_factor = 1.1
+            size = int(float(size * memory_scale_factor))
+            
+            if size % 8 != 0:
+                size += (8 - size % 8)
+                assert size % 8 == 0, "Max event size not divisible by 8"
+
+        if self.subsystems[ss].source != "not set":
+            size += calculate_max_event_size(self.subsystems[ss].source, subsystem_fragment_space)
+
+        return size
+
+    expected_fragments_per_event = {}  
+    for ss in self.subsystems:
+        expected_fragments_per_event[ss] = calculate_expected_fragments_per_event(ss, subsystem_fragment_count)
+
+
+    max_event_sizes = {}
+    for ss in self.subsystems:
+        max_event_sizes[ss] = calculate_max_event_size(ss, subsystem_fragment_space)
+
+    # If we have advanced memory usage switched on, then make sure the
+    # max_event_size_bytes gets set to the value calculated here in
+    # bookkeeping, whether this involves adding the
+    # max_event_size_bytes parameter or clobbering the existing one
+
+    if self.advanced_memory_usage:
         for i_proc in range(len(self.procinfos)):
             if "BoardReader" not in self.procinfos[i_proc].name and "RoutingMaster" not in self.procinfos[i_proc].name:
                 if re.search(r"\n[^#]*max_event_size_bytes\s*:\s*[0-9\.e]+", self.procinfos[i_proc].fhicl_used):
                     self.procinfos[i_proc].fhicl_used = re.sub("max_event_size_bytes\s*:\s*[0-9\.e]+",
-                                                               "max_event_size_bytes: %d" % (max_event_size),
+                                                               "max_event_size_bytes: %d" % \
+                                                               (max_event_sizes[self.procinfos[i_proc].subsystem]),
                                                                self.procinfos[i_proc].fhicl_used)
                 else:
 
@@ -118,7 +202,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     assert res, make_paragraph("artdaq's FHiCL requirements have changed since this code was written (DAQInterface expects a parameter called 'buffer_count' in %s, but this doesn't appear to exist -> DAQInterface code needs to be changed to accommodate this)" % (self.procinfos[i_proc].label))
                     
                     self.procinfos[i_proc].fhicl_used = re.sub(r"\n(\s*buffer_count\s*:\s*[0-9]+)",
-                                                               "\n%s\nmax_event_size_bytes: %d" % (res.group(1), max_event_size),
+                                                               "\n%s\nmax_event_size_bytes: %d" % (res.group(1), max_event_sizes[self.procinfos[i_proc].subsystem]),
                                                                self.procinfos[i_proc].fhicl_used)
 
     # Construct the host map string needed in the sources and destinations tables in artdaq process FHiCL
@@ -146,14 +230,14 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     # the max event size will need to be provided; this value is used
     # to calculate the size of the buffers in the transfer plugins
 
-    def create_sources_or_destinations_string(procinfo, nodetype, max_event_size = 0, inter_subsystem_transfer = False):
+    def create_sources_or_destinations_string(procinfo, nodetype, max_event_size, inter_subsystem_transfer = False):
 
         if nodetype == "sources":
             prefix = "s"
         elif nodetype == "destinations":
             prefix = "d"
         else:
-            assert False
+            assert False, "nodetype passed to %s has to be either sources or destinations" % (create_sources_or_destinations_string.__name__)
 
         buffer_size_words = -1
 
@@ -171,33 +255,26 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 buffer_size_words = max_event_size / 8
             else:
                 pass  # For the EventBuilder, there's a different
-                      # buffer size from each source, namely the max
-                      # fragment size coming from its corresponding
-                      # BoardReader. We can't use just a single variable. 
+                      # buffer size from each source, namely either
+                      # the max fragment size coming from its
+                      # corresponding BoardReader or, if the source is
+                      # an EventBuilder from a parent subsystem, the
+                      # relevant set of BoardReaders for the parent
+                      # subsystem. We can't use just a single
+                      # variable.
 
         else: # Not self.advanced_memory_usage
-            if "BoardReader" in procinfo.name or \
-               ("EventBuilder" in procinfo.name and nodetype == "sources"):
+            if "BoardReader" in procinfo.name:
                 buffer_size_words = self.max_fragment_size_bytes / 8
-            else:
-                assert max_event_size == 0
-
+            elif "EventBuilder" not in procinfo.name or nodetype != "sources":
                 res = re.search( r"\n\s*max_event_size_bytes\s*:\s*([0-9\.e]+)", procinfo.fhicl_used)
                 if res:
                     max_event_size = int(float(res.group(1)))
-                else:
-                    max_event_size = self.max_fragment_size_bytes * self.num_boardreaders()
 
                 buffer_size_words = max_event_size / 8
-        
-        for ss in self.subsystems:
-            if self.subsystems[ss].destination != "not set":
-                dest = self.subsystems[ss].destination
-                if self.subsystems[dest] == None or (self.subsystems[dest].source != "not set" and self.subsystems[dest].source != ss):
-                    raise Exception(make_paragraph("Inconsistent subsystem configuration detected! Subsystem %d has destination %d, but subsystem %d has source %d!" % (ss, dest, dest, self.subsystems[dest].source)))
-                self.subsystems[dest].source = ss
-                    
-
+            else:
+                pass # Same comment for the advanced memory usage case above applies here
+                            
         procinfos_for_string = []
 
         for procinfo_to_check in self.procinfos:
@@ -238,14 +315,19 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             if i_procinfo_for_string != 0 and nodetype == "sources":
                 hms = ""
 
-            if self.advanced_memory_usage and nodetype == "sources" and "EventBuilder" in procinfo.name:
-                
-                list_of_one_fragment_size = [ proctuple[1] for proctuple in max_fragment_sizes if 
-                                              proctuple[0] == procinfo_for_string.label ]
-                assert len(list_of_one_fragment_size) == 1
-
-                buffer_size_words = list_of_one_fragment_size[0] / 8
-
+            if nodetype == "sources" and "EventBuilder" in procinfo.name:
+                if procinfo_for_string.name == "BoardReader":
+                    if self.advanced_memory_usage:
+                        list_of_one_fragment_size = [ proctuple[1] for proctuple in max_fragment_sizes if 
+                                                      proctuple[0] == procinfo_for_string.label ]
+                        assert len(list_of_one_fragment_size) == 1
+                        buffer_size_words = list_of_one_fragment_size[0] / 8
+                    else:
+                        buffer_size_words = self.max_fragment_size_bytes / 8
+                elif procinfo_for_string.name == "EventBuilder":
+                    buffer_size_words = max_event_sizes[ procinfo_for_string.subsystem ] / 8
+                else:
+                    assert False, "A process type of %s shouldn't be considered for an EventBuilder's sources table" % (procinfo_for_string.name)
                 
             assert buffer_size_words != -1
                 
@@ -254,8 +336,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                           buffer_size_words, hms) )
 
         return "\n".join( nodes )   # End function create_sources_or_destinations_string()
-
-
 
     for i_proc in range(len(self.procinfos)):
 
@@ -280,7 +360,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 self.procinfos[i_proc].fhicl_used = \
                     self.procinfos[i_proc].fhicl_used[:table_start] + \
                     "\n" + tablename + ": { \n" + \
-                    create_sources_or_destinations_string(self.procinfos[i_proc], tablename, max_event_size, inter_subsystem_transfer) + \
+                    create_sources_or_destinations_string(self.procinfos[i_proc], tablename, max_event_sizes[ self.procinfos[i_proc].subsystem ], inter_subsystem_transfer) + \
                     "\n } \n" + \
                     self.procinfos[i_proc].fhicl_used[table_end:]
 
@@ -292,41 +372,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 if enclosing_table_name(self.procinfos[i_proc].fhicl_used, tablename, searchstart) == "binaryNetOutput":
                     inter_subsystem_transfer = True
 
-    subsystem_fragment_count = {0: 0}
-
-    for procinfo in self.procinfos:
-
-        if "BoardReader" in procinfo.name:
-
-            generated_fragments_per_event = 1
-
-            # JCF, Oct-12-2018: "sends_no_fragments: true" is
-            # logically the same as "generated_fragments_per_event:
-            # 0", but I'm keeping it for reasons of backwards
-            # compatibility
-
-            if re.search(r"\n\s*sends_no_fragments\s*:\s*[Tt]rue", procinfo.fhicl_used):
-                generated_fragments_per_event = 0
-
-            res = re.search(r"\n\s*generated_fragments_per_event\s*:\s*([0-9]+)", procinfo.fhicl_used)
-
-            if res:
-                generated_fragments_per_event = int(res.group(1))
-
-            subsystem_fragment_count[procinfo.subsystem] = subsystem_fragment_count.get(procinfo.subsystem, 0) + generated_fragments_per_event
-
-    def get_subsystem_fragment_count(ss):
-        count = subsystem_fragment_count.get(ss, 0)
-
-        if self.subsystems[ss].source != "not set":
-            count += get_subsystem_fragment_count(self.subsystems[ss].source)
-
-        return count
-
-    expected_fragments_per_event = {0: 0}
-    for subsystem in self.subsystems:
-        expected_fragments_per_event[subsystem] = get_subsystem_fragment_count(subsystem)
-            
 
     for i_proc in range(len(self.procinfos)):
         

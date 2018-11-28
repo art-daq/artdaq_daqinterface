@@ -244,7 +244,7 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
     # doesn't have any source subsystems or any destination subsystems
 
     if len(self.subsystems) == 0:
-        self.subsystems[1] = self.Subsystem("not set", "not set")
+        self.subsystems["1"] = self.Subsystem("not set", "not set")
 
     # Unless I'm mistaken, we don't yet have an official default for
     # the pmt port given a partition #
