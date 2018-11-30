@@ -70,6 +70,28 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         if not passes_requirement:
             raise Exception(make_paragraph("Version of artdaq set up by setup script \"%s\" is v%s_%s_%s%s; need a version at least as recent as v%s_%s_%s" % (self.daq_setup_script, majorver, minorver, minorerver, extension, min_majorver, min_minorver, min_minorerver)))
 
+    fragments_per_boardreader = {}
+
+    for procinfo in self.procinfos:
+        if "BoardReader" in procinfo.name:
+
+            generated_fragments_per_event = 1
+
+            # JCF, Oct-12-2018: "sends_no_fragments: true" is
+            # logically the same as "generated_fragments_per_event:
+            # 0", but I'm keeping it for reasons of backwards
+            # compatibility
+
+            if re.search(r"\n\s*sends_no_fragments\s*:\s*[Tt]rue", procinfo.fhicl_used):
+                generated_fragments_per_event = 0
+
+            res = re.search(r"\n\s*generated_fragments_per_event\s*:\s*([0-9]+)", procinfo.fhicl_used)
+
+            if res:
+                generated_fragments_per_event = int(res.group(1))
+
+            fragments_per_boardreader[ procinfo.label ] = generated_fragments_per_event
+
     if self.advanced_memory_usage:
 
         memory_scale_factor = 1.1
@@ -90,7 +112,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
                     assert max_fragment_size % 8 == 0, "Max fragment size not divisible by 8"
                     
-                    max_event_size += max_fragment_size
+                    max_event_size += max_fragment_size * fragments_per_boardreader[ procinfo.label ]
 
                     max_fragment_sizes.append( (procinfo.label, max_fragment_size) ) 
                 else:
@@ -318,18 +340,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     table_range(self.procinfos[i_proc].fhicl_used, \
                                     tablename, table_end)
 
-    expected_fragments_per_event = 0
-
-    for procinfo in self.procinfos:
-
-        if "BoardReader" in procinfo.name:
-
-            res = re.search(r"[^#]\s*sends_no_fragments:\s*[Tt]rue", procinfo.fhicl_used)
-
-            if not res:
-                expected_fragments_per_event += 1
-            else:
-                continue           
 
     for procinfo in self.procinfos:
         
@@ -359,7 +369,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                        self.procinfos[i_proc].fhicl_used)
         else:
             self.procinfos[i_proc].fhicl_used = re.sub("expected_fragments_per_event\s*:\s*[0-9]+", 
-                                                       "expected_fragments_per_event: %d" % (expected_fragments_per_event), 
+                                                       "expected_fragments_per_event: %d" % (sum( fragments_per_boardreader.values())), 
                                                        self.procinfos[i_proc].fhicl_used)
         if not self.request_address is None:
             self.procinfos[i_proc].fhicl_used = re.sub("request_address\s*:\s*[\"0-9\.]+", 
