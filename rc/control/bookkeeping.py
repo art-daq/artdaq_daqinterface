@@ -100,12 +100,11 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         for procinfo in self.procinfos:
 
-            res = re.findall(r"\n[^#]*max_fragment_size_bytes\s*:\s*([0-9]+)", procinfo.fhicl_used)
+            res = re.findall(r"\n[^#]*max_fragment_size_bytes\s*:\s*([0-9\.e]+)", procinfo.fhicl_used)
 
             if "BoardReader" in procinfo.name:
                 if len(res) > 0:
-                    max_fragment_size = int(res[-1])
-                    max_fragment_size = int(round(max_fragment_size*memory_scale_factor))
+                    max_fragment_size = int(float(res[-1]))
 
                     if max_fragment_size % 8 != 0:
                         max_fragment_size += (8 - max_fragment_size % 8)
@@ -121,6 +120,11 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 if len(res) > 0:
                     raise Exception(make_paragraph("max_fragment_size_bytes is found in the FHiCL document for %s; this parameter must not appear in FHiCL documents for non-BoardReader artdaq processes" % (procinfo.label)))
         
+        max_event_size = int(float(max_event_size*memory_scale_factor))
+        if max_event_size % 8 != 0:
+            max_event_size += (8 - max_event_size % 8)
+            assert max_event_size % 8 == 0, "Max event size not divisible by 8"
+
         for i_proc in range(len(self.procinfos)):
             if "BoardReader" not in self.procinfos[i_proc].name and "RoutingMaster" not in self.procinfos[i_proc].name:
                 if re.search(r"\n[^#]*max_event_size_bytes\s*:\s*[0-9]+", self.procinfos[i_proc].fhicl_used):
