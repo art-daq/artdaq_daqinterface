@@ -33,6 +33,7 @@ from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v3_bas
 
 from rc.control.manage_processes_pmt import launch_procs_base
 from rc.control.manage_processes_pmt import kill_procs_base
+from rc.control.manage_processes_pmt import softlink_process_manager_logfiles_base
 
 from rc.control.online_monitoring import launch_art_procs_base
 from rc.control.online_monitoring import kill_art_procs_base
@@ -358,6 +359,7 @@ class DAQInterface(Component):
     do_disable = do_disable_base
     launch_procs = launch_procs_base
     kill_procs = kill_procs_base
+    softlink_process_manager_logfiles = softlink_process_manager_logfiles_base
 
     # The actual transition functions called by Run Control; note
     # these just set booleans which are tested in the runner()
@@ -848,40 +850,7 @@ class DAQInterface(Component):
 
     def softlink_logfiles(self):
         
-        linked_pmt_logfile = False
-
-        greptoken = "pmt.rb -p " + self.pmt_port
-        pids = get_pids(greptoken, self.pmt_host)
-
-        for pmt_pid in pids:
-
-            get_pmt_logfile_cmd = "ls -tr %s/pmt/pmt-%s.* | tail -1" % \
-                                  (self.log_directory, pmt_pid)
-
-            if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
-                get_pmt_logfile_cmd = "ssh -f %s '%s'" % (self.pmt_host, get_pmt_logfile_cmd)
-
-            ls_output = Popen(get_pmt_logfile_cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()
-
-            if len(ls_output) == 1:
-                pmt_logfile = ls_output[0].strip()            
-
-                link_pmt_logfile_cmd = "ln -s %s %s/pmt/run%d-pmt.log" % \
-                                       (pmt_logfile, self.log_directory, self.run_number)
-
-                if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
-                    link_pmt_logfile_cmd = "ssh %s '%s'" % (self.pmt_host, link_pmt_logfile_cmd)
-
-                status = Popen(link_pmt_logfile_cmd, shell=True).wait()
-
-                if status == 0:
-                    linked_pmt_logfile = True
-                    break
-                else:
-                    break
-
-        if not linked_pmt_logfile:
-            self.print_log("w", "WARNING: failure in attempt to softlink to pmt logfile")
+        self.softlink_process_manager_logfiles()
 
         assert hasattr(self, "eventbuilder_log_filenames")
         assert hasattr(self, "aggregator_log_filenames")

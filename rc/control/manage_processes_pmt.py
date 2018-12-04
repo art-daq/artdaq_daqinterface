@@ -200,3 +200,40 @@ def kill_procs_base(self):
     self.kill_art_procs()
 
     return
+
+def softlink_process_manager_logfiles_base(self):
+
+    linked_pmt_logfile = False
+
+    greptoken = "pmt.rb -p " + self.pmt_port
+    pids = get_pids(greptoken, self.pmt_host)
+
+    for pmt_pid in pids:
+
+        get_pmt_logfile_cmd = "ls -tr %s/pmt/pmt-%s.* | tail -1" % \
+                              (self.log_directory, pmt_pid)
+
+        if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
+            get_pmt_logfile_cmd = "ssh -f %s '%s'" % (self.pmt_host, get_pmt_logfile_cmd)
+
+        ls_output = Popen(get_pmt_logfile_cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()
+
+        if len(ls_output) == 1:
+            pmt_logfile = ls_output[0].strip()            
+
+            link_pmt_logfile_cmd = "ln -s %s %s/pmt/run%d-pmt.log" % \
+                                   (pmt_logfile, self.log_directory, self.run_number)
+
+            if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
+                link_pmt_logfile_cmd = "ssh %s '%s'" % (self.pmt_host, link_pmt_logfile_cmd)
+
+            status = Popen(link_pmt_logfile_cmd, shell=True).wait()
+
+            if status == 0:
+                linked_pmt_logfile = True
+                break
+            else:
+                break
+
+    if not linked_pmt_logfile:
+        self.print_log("w", "WARNING: failure in attempt to softlink to pmt logfile")
