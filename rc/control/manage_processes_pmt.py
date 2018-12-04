@@ -6,6 +6,7 @@ import subprocess
 from subprocess import Popen
 import socket
 from time import sleep
+import re
 
 from rc.control.utilities import get_pids
 from rc.control.utilities import bash_unsetup_command
@@ -237,3 +238,32 @@ def softlink_process_manager_logfiles_base(self):
 
     if not linked_pmt_logfile:
         self.print_log("w", "WARNING: failure in attempt to softlink to pmt logfile")
+
+def find_process_manager_variable_base(self, line):
+
+    res = re.search(r"^\s*PMT host\s*:\s*(\S+)", line)
+    if res:
+        self.pmt_host = res.group(1)
+        return True
+
+    res = re.search(r"^\s*PMT port\s*:\s*(\S+)", line)
+    if res:
+        self.pmt_port = res.group(1)
+        return True
+
+    return False
+
+def set_process_manager_default_variables_base(self):
+    if not hasattr(self, "pmt_port") or self.pmt_port is None:
+        self.pmt_port = str( int(self.rpc_port) + 1 )
+
+    undefined_vars = []
+    if not hasattr(self, "pmt_host") or self.pmt_host is None:
+        undefined_vars.append("PMT host")
+
+    if len(undefined_vars) > 0:
+        raise Exception("Error: the following parameters needed by DAQInterface are undefined: %s" % \
+                        ( ",".join( undefined_vars ) ))
+
+                        
+

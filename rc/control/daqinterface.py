@@ -34,6 +34,8 @@ from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v3_bas
 from rc.control.manage_processes_pmt import launch_procs_base
 from rc.control.manage_processes_pmt import kill_procs_base
 from rc.control.manage_processes_pmt import softlink_process_manager_logfiles_base
+from rc.control.manage_processes_pmt import find_process_manager_variable_base
+from rc.control.manage_processes_pmt import set_process_manager_default_variables_base
 
 from rc.control.online_monitoring import launch_art_procs_base
 from rc.control.online_monitoring import kill_art_procs_base
@@ -360,6 +362,8 @@ class DAQInterface(Component):
     launch_procs = launch_procs_base
     kill_procs = kill_procs_base
     softlink_process_manager_logfiles = softlink_process_manager_logfiles_base
+    find_process_manager_variable = find_process_manager_variable_base
+    set_process_manager_default_variables = set_process_manager_default_variables_base
 
     # The actual transition functions called by Run Control; note
     # these just set booleans which are tested in the runner()
@@ -789,11 +793,7 @@ class DAQInterface(Component):
 
         undefined_var = ""
 
-        if self.pmt_host is None:
-            undefined_var = "PMT host"
-        if self.pmt_port is None:
-            undefined_var = "PMT port"
-        elif self.daq_setup_script is None:
+        if self.daq_setup_script is None:
             undefined_var = "DAQ setup script"
         elif self.debug_level is None:
             undefined_var = "debug level"
