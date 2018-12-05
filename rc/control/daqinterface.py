@@ -36,6 +36,7 @@ from rc.control.manage_processes_pmt import kill_procs_base
 from rc.control.manage_processes_pmt import softlink_process_manager_logfiles_base
 from rc.control.manage_processes_pmt import find_process_manager_variable_base
 from rc.control.manage_processes_pmt import set_process_manager_default_variables_base
+from rc.control.manage_processes_pmt import get_process_manager_log_filenames_base
 
 from rc.control.online_monitoring import launch_art_procs_base
 from rc.control.online_monitoring import kill_art_procs_base
@@ -364,6 +365,7 @@ class DAQInterface(Component):
     softlink_process_manager_logfiles = softlink_process_manager_logfiles_base
     find_process_manager_variable = find_process_manager_variable_base
     set_process_manager_default_variables = set_process_manager_default_variables_base
+    get_process_manager_log_filenames = get_process_manager_log_filenames_base
 
     # The actual transition functions called by Run Control; note
     # these just set booleans which are tested in the runner()
@@ -1366,16 +1368,7 @@ class DAQInterface(Component):
 
             try:
 
-                cmd = "ls -tr1 %s/pmt | tail -1" % (self.log_directory)
-
-                if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
-                    cmd = "ssh %s '%s'" % (self.pmt_host, cmd)
-
-                log_filename_current = Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
-
-                self.log_filename_wildcard = \
-                    log_filename_current.split(".")[0] + ".*" + ".log"
-
+                self.process_manager_log_filenames = self.get_process_manager_log_filenames()
                 self.boardreader_log_filenames = self.get_logfilenames("BoardReader")
                 self.eventbuilder_log_filenames = self.get_logfilenames("EventBuilder")
                 self.datalogger_log_filenames = self.get_logfilenames("DataLogger")
@@ -1582,9 +1575,7 @@ class DAQInterface(Component):
         self.complete_state_change(self.name, "configuring")
 
         if self.manage_processes:
-            self.print_log("i", "To see logfile(s), on %s run \"ls -ltr %s/pmt/%s\"" % \
-                    (self.pmt_host, self.log_directory,
-                     self.log_filename_wildcard))
+            self.print_log("i", "\nProcess manager logfiles (if applicable):\n%s" % (", ".join(self.process_manager_log_filenames)))
 
         self.print_log("i", "\n%s: CONFIG transition complete" % (date_and_time()))
 
@@ -1723,9 +1714,7 @@ class DAQInterface(Component):
         self.print_log("i", "\n%s: TERMINATE transition complete" % (date_and_time()))
 
         if self.manage_processes:
-            self.print_log("i", "To see logfile(s), on %s run \"ls -ltr %s/pmt/%s\"" % \
-                    (self.pmt_host, self.log_directory,
-                     self.log_filename_wildcard))
+            self.print_log("i", "Process manager logfiles (if applicable): %s" % (",".join(self.process_manager_log_filenames)))
 
     def do_recover(self):
         print

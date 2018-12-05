@@ -122,14 +122,12 @@ def save_run_record_base(self):
     outf.write("\n")
 
     if self.manage_processes:
-        outf.write("\npmt logfile(s): %s:%s/pmt/%s" %
-                   (pmt_host_to_record, self.log_directory,
-                    self.log_filename_wildcard))
 
-        logtuples = [("boardreader", self.boardreader_log_filenames),
-                     ("eventbuilder", self.eventbuilder_log_filenames),
-                     ("routingmaster", self.routingmaster_log_filenames),
-                     ("aggregator", self.aggregator_log_filenames)]
+        logtuples = [ ("process manager", self.process_manager_log_filenames),
+                      ("boardreader", self.boardreader_log_filenames),
+                      ("eventbuilder", self.eventbuilder_log_filenames),
+                      ("routingmaster", self.routingmaster_log_filenames),
+                      ("aggregator", self.aggregator_log_filenames)]
 
         for logtuple in logtuples:
 
