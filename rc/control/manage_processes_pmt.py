@@ -265,6 +265,10 @@ def set_process_manager_default_variables_base(self):
         raise Exception("Error: the following parameters needed by DAQInterface are undefined: %s" % \
                         ( ",".join( undefined_vars ) ))
 
+def reset_process_manager_variables_base(self):
+    self.pmt_host = None
+    self.pmt_port = None
+
 def get_process_manager_log_filenames_base(self):
 
     cmd = "ls -tr1 %s/pmt | tail -1" % (self.log_directory)
@@ -279,6 +283,14 @@ def get_process_manager_log_filenames_base(self):
         host = os.environ["HOSTNAME"]
     return [ "%s:%s/pmt/%s" % (host, self.log_directory, log_filename_current) ]
 
+def process_manager_cleanup_base(self):
+
+    if hasattr(self, "pmtconfigname") and os.path.exists(self.pmtconfigname):
+        cmd = "rm -f %s" % (self.pmtconfigname)
+
+        if hasattr(self, "pmt_host"):
+            if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
+                cmd = "ssh -f " + self.pmt_host + " '" + cmd + "'"
 
                         
 

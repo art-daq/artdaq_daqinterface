@@ -114,11 +114,6 @@ def save_run_record_base(self):
     for pkg in sorted(self.package_info_dict.keys()):
         outf.write("%s commit/version: %s\n" % (pkg, self.package_info_dict[ pkg ] ))
 
-    if self.pmt_host == "localhost":
-        pmt_host_to_record = os.environ["HOSTNAME"]
-    else:
-        pmt_host_to_record = self.pmt_host
-
     outf.write("\n")
 
     if self.manage_processes:

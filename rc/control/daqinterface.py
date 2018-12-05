@@ -36,7 +36,9 @@ from rc.control.manage_processes_pmt import kill_procs_base
 from rc.control.manage_processes_pmt import softlink_process_manager_logfiles_base
 from rc.control.manage_processes_pmt import find_process_manager_variable_base
 from rc.control.manage_processes_pmt import set_process_manager_default_variables_base
+from rc.control.manage_processes_pmt import reset_process_manager_variables_base
 from rc.control.manage_processes_pmt import get_process_manager_log_filenames_base
+from rc.control.manage_processes_pmt import process_manager_cleanup_base
 
 from rc.control.online_monitoring import launch_art_procs_base
 from rc.control.online_monitoring import kill_art_procs_base
@@ -250,7 +252,8 @@ class DAQInterface(Component):
         self.heartbeat_failure = False
         self.manage_processes = True
         self.disable_recovery = False
-        self.pmt_port = None
+
+        self.reset_process_manager_variables()
 
         # "procinfos" will be an array of Procinfo structures (defined
         # above), where Procinfo contains all the info DAQInterface
@@ -365,7 +368,9 @@ class DAQInterface(Component):
     softlink_process_manager_logfiles = softlink_process_manager_logfiles_base
     find_process_manager_variable = find_process_manager_variable_base
     set_process_manager_default_variables = set_process_manager_default_variables_base
+    reset_process_manager_variables = reset_process_manager_variables_base
     get_process_manager_log_filenames = get_process_manager_log_filenames_base
+    process_manager_cleanup = process_manager_cleanup_base
 
     # The actual transition functions called by Run Control; note
     # these just set booleans which are tested in the runner()
@@ -1668,15 +1673,9 @@ class DAQInterface(Component):
         if hasattr(self, "tmp_run_record") and os.path.exists(self.tmp_run_record):
             shutil.rmtree(self.tmp_run_record)
 
-        if hasattr(self, "pmtconfigname") and os.path.exists(self.pmtconfigname):
-            cmd = "rm -f %s" % (self.pmtconfigname)
-
-            if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
-                cmd = "ssh -f " + self.pmt_host + " '" + cmd + "'"
-
-            Popen(cmd, shell=True).wait()
-
         if self.manage_processes:
+
+            self.process_manager_cleanup()
 
             for procinfo in self.procinfos:
 
@@ -1696,8 +1695,6 @@ class DAQInterface(Component):
                 else:
                     self.print_log("i", "%s at %s:%s, returned string is:\n%s\n" % \
                                    (procinfo.name, procinfo.host, procinfo.port, procinfo.lastreturned), 1)
-
-        if self.manage_processes:
 
             try:
                 self.kill_procs()
