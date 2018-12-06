@@ -28,9 +28,16 @@ daq: {
     request_port: 3001
     request_address: "227.128.12.26"
 	
-	routing_token_config: {
-	use_routing_master: false
-	}
+    routing_token_config: {
+        ## True if using the Routing Master
+        use_routing_master: true
+
+        ## Port to send tokens on
+        routing_token_port: 35555  # default
+
+        ## Hostname or IP of RoutingMaster
+        routing_master_hostname: "localhost"  # default
+   }
 
 	sources: { }
   }

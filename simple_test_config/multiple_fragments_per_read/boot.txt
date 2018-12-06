@@ -1,5 +1,5 @@
 
-DAQ setup script: <yourArtdaqInstallationDir>/setupARTDAQDEMO
+DAQ setup script: /home/eflumerf/Desktop/artdaq-mrb-base/setupARTDAQDEMO
 
 PMT host: localhost
 
@@ -20,3 +20,6 @@ DataLogger label: DataLogger1
 
 Dispatcher host: localhost
 Dispatcher label: Dispatcher1
+
+RoutingMaster host: localhost
+RoutingMaster label: RoutingMaster1
