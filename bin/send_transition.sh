@@ -7,6 +7,11 @@ cmd=$1
 xmlrpc_arg=
 translated_cmd=
 
+. $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
+daqinterface_preamble
+
+. $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh  # provides recorddir
+
 . $ARTDAQ_DAQINTERFACE_DIR/bin/package_setup.sh xmlrpc_c
 
 xmlrpc_retval=$?
@@ -15,9 +20,6 @@ if [[ "$xmlrpc_retval" != "0" ]]; then
     echo "Problem attempting to setup xmlrpc_c package" >&2
     exit 40
 fi
-
-. $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
-daqinterface_preamble
 
 case $cmd in
     "boot")
@@ -43,8 +45,6 @@ case $cmd in
     "start")
 	test $# == 1 || test $# == 2 || badargs=true 
 	translated_cmd="starting"
-
-	. $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh  # provides recorddir
 
 	runnum=0
         highest_runnum=$( ls -1 $recorddir | sort -n | tail -1 )

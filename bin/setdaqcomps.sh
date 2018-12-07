@@ -2,6 +2,9 @@
 
 components=$@
 
+. $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
+daqinterface_preamble
+
 scriptdir="$(dirname "$0")"
 . $scriptdir/package_setup.sh xmlrpc_c
 
@@ -19,8 +22,6 @@ if [[ ! -e $components_file ]]; then
     exit 10
 fi
 
-. $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
-daqinterface_preamble
 
 num_components=$( echo $components | wc -w)
 comp_cntr=0
