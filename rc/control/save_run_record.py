@@ -86,18 +86,23 @@ def save_run_record_base(self):
 
     outf.write("DAQInterface directory: %s\n" % ( os.getcwd() ))
 
-    # Now save the commit hashes we determined during
-    # initialization
+    # Now save the commit hashes / versions of the packages listed in
+    # $DAQINTERFACE_SETTINGS, along with the commit hash for
+    # DAQInterface(if using DAQInterface from the repo) or version (if
+    # using DAQInterface as a ups product)
 
-    if "ARTDAQ_DAQINTERFACE_VERSION" in os.environ.keys():
-        outf.write("DAQInterface commit: %s\n" % ( os.environ["ARTDAQ_DAQINTERFACE_VERSION"] ) )
-    else:
-        outf.write("DAQInterface commit: %s\n" % ( get_commit_hash(os.environ["ARTDAQ_DAQINTERFACE_DIR"]) ) )
+    assert "ARTDAQ_DAQINTERFACE_DIR" in os.environ and os.path.exists(os.environ["ARTDAQ_DAQINTERFACE_DIR"])
 
+    try:
+        outf.write("DAQInterface commit/version: %s \"%s\"\n" % ( get_commit_hash(os.environ["ARTDAQ_DAQINTERFACE_DIR"]), get_commit_comment( os.environ["ARTDAQ_DAQINTERFACE_DIR"] )))
+    except Exception:
+        # Not an exception in a bad sense as the throw just means we're using DAQInterface as a ups product
+        outf.write("DAQInterface commit/version: %s\n" % ( self.get_package_version("artdaq_daqinterface") ))
 
     self.package_info_dict = {}
 
     for pkgname in self.package_hashes_to_save:
+        
         pkg_full_path = "%s/srcs/%s" % (self.daq_dir, pkgname.replace("-", "_"))
 
         if os.path.exists( pkg_full_path ):

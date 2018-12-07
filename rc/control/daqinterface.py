@@ -905,8 +905,13 @@ class DAQInterface(Component):
 
     def get_package_version(self, package):    
 
-        cmd = "%s ; . %s; ups active | sed -r -n '/^%s\\s+/s/^%s\\s+(\\S+).*/\\1/p'" % \
-              (bash_unsetup_command, self.daq_setup_script, package, package)
+        if package != "artdaq_daqinterface":
+            cmd = "%s ; . %s; ups active | sed -r -n '/^%s\\s+/s/^%s\\s+(\\S+).*/\\1/p'" % \
+                  (bash_unsetup_command, self.daq_setup_script, package, package)
+        else:
+            cmd = "ups active | sed -r -n '/^%s\\s+/s/^%s\\s+(\\S+).*/\\1/p'" % \
+                  (package, package)
+            
         proc =  Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         stdoutlines = proc.stdout.readlines()
