@@ -5,9 +5,9 @@ daq: {
       destinations: {}
       end_of_run_quiet_timeout_ms: 1000
       fragment_ids: [
-         2,
          3,
-         4
+         4,
+         5
       ]
             board_id: 2
       generated_fragments_per_event: 3
@@ -16,7 +16,7 @@ daq: {
          {
             board_id: 2
             distribution_type: 0
-            fragment_id: 2
+            fragment_id: 3
             fragment_type: "TOY2"
             generator: "ToySimulator"
             hardware_poll_interval_us: 0
@@ -32,7 +32,7 @@ daq: {
          {
             board_id: 2
             distribution_type: 1
-            fragment_id: 3
+            fragment_id: 4
             fragment_type: "TOY2"
             generator: "ToySimulator"
             hardware_poll_interval_us: 0
@@ -48,7 +48,7 @@ daq: {
          {
             board_id: 2
             distribution_type: 2
-            fragment_id: 4
+            fragment_id: 5
             fragment_type: "TOY2"
             generator: "ToySimulator"
             hardware_poll_interval_us: 0
