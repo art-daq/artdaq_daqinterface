@@ -5,6 +5,8 @@ import re
 import subprocess
 from subprocess import Popen
 import traceback
+from rc.control.deepsuppression import deepsuppression
+
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_commit_hash
 from rc.control.utilities import get_commit_comment
@@ -93,11 +95,12 @@ def save_run_record_base(self):
 
     assert "ARTDAQ_DAQINTERFACE_DIR" in os.environ and os.path.exists(os.environ["ARTDAQ_DAQINTERFACE_DIR"])
 
-    try:
-        outf.write("DAQInterface commit/version: %s \"%s\"\n" % ( get_commit_hash(os.environ["ARTDAQ_DAQINTERFACE_DIR"]), get_commit_comment( os.environ["ARTDAQ_DAQINTERFACE_DIR"] )))
-    except Exception:
-        # Not an exception in a bad sense as the throw just means we're using DAQInterface as a ups product
-        outf.write("DAQInterface commit/version: %s\n" % ( self.get_package_version("artdaq_daqinterface") ))
+    with deepsuppression(self.debug_level < 3):
+        try:
+            outf.write("DAQInterface commit/version: %s \"%s\"\n" % ( get_commit_hash(os.environ["ARTDAQ_DAQINTERFACE_DIR"]), get_commit_comment( os.environ["ARTDAQ_DAQINTERFACE_DIR"] )))
+        except Exception:
+            # Not an exception in a bad sense as the throw just means we're using DAQInterface as a ups product
+            outf.write("DAQInterface commit/version: %s\n" % ( self.get_package_version("artdaq_daqinterface") ))
 
     self.package_info_dict = {}
 
