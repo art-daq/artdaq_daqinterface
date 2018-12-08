@@ -33,6 +33,7 @@ from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v3_bas
 
 from rc.control.manage_processes_pmt import launch_procs_base
 from rc.control.manage_processes_pmt import kill_procs_base
+from rc.control.manage_processes_pmt import check_proc_heartbeats_base
 from rc.control.manage_processes_pmt import softlink_process_manager_logfiles_base
 from rc.control.manage_processes_pmt import find_process_manager_variable_base
 from rc.control.manage_processes_pmt import set_process_manager_default_variables_base
@@ -365,6 +366,7 @@ class DAQInterface(Component):
     do_disable = do_disable_base
     launch_procs = launch_procs_base
     kill_procs = kill_procs_base
+    check_proc_heartbeats = check_proc_heartbeats_base
     softlink_process_manager_logfiles = softlink_process_manager_logfiles_base
     find_process_manager_variable = find_process_manager_variable_base
     set_process_manager_default_variables = set_process_manager_default_variables_base
@@ -685,60 +687,6 @@ class DAQInterface(Component):
 
         return (version, qualifiers)
     
-
-
-
-    # check_proc_heartbeats() will check that the expected artdaq
-    # processes are up and running
-
-    def check_proc_heartbeats(self, requireSuccess=True):
-
-        is_all_ok = True
-
-        for procinfo in self.procinfos:
-
-            if "BoardReader" in procinfo.name:
-                proctype = "BoardReaderMain"
-            elif "EventBuilder" in procinfo.name:
-                proctype = "EventBuilderMain"
-            elif "RoutingMaster" in procinfo.name:
-                proctype = "RoutingMasterMain"
-            elif "Aggregator" in procinfo.name:
-                proctype = "AggregatorMain"
-            elif "DataLogger" in procinfo.name:
-                proctype = "DataLoggerMain"
-            elif "Dispatcher" in procinfo.name:
-                proctype = "DispatcherMain"
-            else:
-                assert False
-
-            greptoken = proctype + " -c .*" + procinfo.port + ".*"
-
-            pids = get_pids(greptoken, procinfo.host)
-
-            num_procs_found = len(pids)
-
-            if num_procs_found != 1:
-                is_all_ok = False
-
-                if requireSuccess:
-                    errmsg = "Expected process " + procinfo.name + \
-                        " at " + procinfo.host + ":" + \
-                        procinfo.port + " not found"
-
-#                    self.print_log(
-#                        make_paragraph("Error in DAQInterface::check_proc_heartbeats(): "
-#                                            "please check messageviewer and/or the logfiles for error messages"))
-                    self.print_log("e", errmsg)
-
-        if not is_all_ok and requireSuccess:
-            self.heartbeat_failure = True
-            self.alert_and_recover("At least one artdaq process died unexpectedly; please check messageviewer"
-                                   " and/or the logfiles for error messages")
-            return
-
-        return is_all_ok
-
     # JCF, 5/29/15
 
     # check_proc_exceptions() takes advantage of an artdaq feature

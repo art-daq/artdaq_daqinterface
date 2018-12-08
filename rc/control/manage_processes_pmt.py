@@ -292,5 +292,56 @@ def process_manager_cleanup_base(self):
             if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
                 cmd = "ssh -f " + self.pmt_host + " '" + cmd + "'"
 
+# check_proc_heartbeats_base() will check that the expected artdaq
+# processes are up and running
+
+def check_proc_heartbeats_base(self, requireSuccess=True):
+
+    is_all_ok = True
+
+    for procinfo in self.procinfos:
+
+        if "BoardReader" in procinfo.name:
+            proctype = "BoardReaderMain"
+        elif "EventBuilder" in procinfo.name:
+            proctype = "EventBuilderMain"
+        elif "RoutingMaster" in procinfo.name:
+            proctype = "RoutingMasterMain"
+        elif "Aggregator" in procinfo.name:
+            proctype = "AggregatorMain"
+        elif "DataLogger" in procinfo.name:
+            proctype = "DataLoggerMain"
+        elif "Dispatcher" in procinfo.name:
+            proctype = "DispatcherMain"
+        else:
+            assert False
+
+        greptoken = proctype + " -c .*" + procinfo.port + ".*"
+
+        pids = get_pids(greptoken, procinfo.host)
+
+        num_procs_found = len(pids)
+
+        if num_procs_found != 1:
+            is_all_ok = False
+
+            if requireSuccess:
+                errmsg = "Expected process " + procinfo.name + \
+                    " at " + procinfo.host + ":" + \
+                    procinfo.port + " not found"
+
+                self.print_log("e", errmsg)
+
+    if not is_all_ok and requireSuccess:
+        self.heartbeat_failure = True
+        self.alert_and_recover("At least one artdaq process died unexpectedly; please check messageviewer"
+                               " and/or the logfiles for error messages")
+        return
+
+    return is_all_ok
+
+
+
+
                         
 
