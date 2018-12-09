@@ -40,6 +40,7 @@ from rc.control.manage_processes_pmt import set_process_manager_default_variable
 from rc.control.manage_processes_pmt import reset_process_manager_variables_base
 from rc.control.manage_processes_pmt import get_process_manager_log_filenames_base
 from rc.control.manage_processes_pmt import process_manager_cleanup_base
+from rc.control.manage_processes_pmt import get_pid_for_process
 
 from rc.control.online_monitoring import launch_art_procs_base
 from rc.control.online_monitoring import kill_art_procs_base
@@ -1683,11 +1684,9 @@ class DAQInterface(Component):
 
         def attempted_stop(self, procinfo):
 
-            greptoken = procinfo.name + "Main -c id: " + procinfo.port
+            pid = get_pid_for_process(procinfo)
 
-            pid = get_pids(greptoken, procinfo.host)
-
-            if len(pid) == 0:
+            if pid is None:
                 if self.debug_level >= 2 or not self.heartbeat_failure:
                     self.print_log("d", 
                         "Didn't find PID for %s at %s:%s" % (procinfo.name, procinfo.host, procinfo.port), 2)

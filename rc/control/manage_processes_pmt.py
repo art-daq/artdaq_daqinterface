@@ -292,6 +292,18 @@ def process_manager_cleanup_base(self):
             if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
                 cmd = "ssh -f " + self.pmt_host + " '" + cmd + "'"
 
+def get_pid_for_process(procinfo):
+    greptoken = procinfo.name + "Main -c id: " + procinfo.port
+
+    pids = get_pids(greptoken, procinfo.host)
+
+    if len(pids) == 1:    
+        return pids[0]
+    elif len(pids) == 0:
+        return None
+    else:
+        assert False
+
 # check_proc_heartbeats_base() will check that the expected artdaq
 # processes are up and running
 
@@ -316,13 +328,7 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
         else:
             assert False
 
-        greptoken = proctype + " -c .*" + procinfo.port + ".*"
-
-        pids = get_pids(greptoken, procinfo.host)
-
-        num_procs_found = len(pids)
-
-        if num_procs_found != 1:
+        if get_pid_for_process(procinfo) is None:
             is_all_ok = False
 
             if requireSuccess:
@@ -341,6 +347,7 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
     return is_all_ok
 
 
+    
 
 
                         
