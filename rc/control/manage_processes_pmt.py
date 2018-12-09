@@ -12,6 +12,7 @@ from rc.control.utilities import get_pids
 from rc.control.utilities import bash_unsetup_command
 from rc.control.utilities import date_and_time
 from rc.control.utilities import construct_checked_command
+from rc.control.utilities import obtain_messagefacility_fhicl
 from rc.control.deepsuppression import deepsuppression
 
 # JCF, 8/11/14
@@ -81,40 +82,7 @@ def launch_procs_base(self):
 
     if self.have_artdaq_mfextensions():
 
-        write_new_file = True
-
-        if "DAQINTERFACE_MESSAGEFACILITY_FHICL" in os.environ.keys():
-            messagefacility_fhicl_filename = os.environ["DAQINTERFACE_MESSAGEFACILITY_FHICL"]
-        else:
-            messagefacility_fhicl_filename = os.getcwd() + "/MessageFacility.fcl" 
-
-        # JCF, 10-25-2018
-
-        # The FHiCL controlling messagefacility messages below is
-        # embedded by artdaq within other FHiCL code (see
-        # artdaq/DAQdata/configureMessageFacility.cc in artdaq
-        # v2_03_03 for details).
-
-        default_contents = """ 
-
-# This file was automatically generated as %s at %s on host %s, and is
-# the default file DAQInterface uses to determine how to modify the
-# standard MessageFacility configuration found in artdaq-core
-# v3_02_01's configureMessageFacility.cc file. You can edit the
-# contents below to change the behavior of how/where MessageFacility
-# messages are sent, though keep in mind that this FHiCL will be
-# nested inside a table. Or you can use a different file by setting
-# the environment variable DAQINTERFACE_MESSAGEFACILITY_FHICL to the
-# name of the other file.
-
-udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" } 
-
-""" % (messagefacility_fhicl_filename, date_and_time(), os.environ["HOSTNAME"], socket.gethostname())
-        
-
-        if not os.path.exists( messagefacility_fhicl_filename ):
-            with open(messagefacility_fhicl_filename, "w") as outf_mf:
-                outf_mf.write( default_contents )
+        messagefacility_fhicl_filename = obtain_messagefacility_fhicl()
 
         cmd = "pmt.rb -p " + self.pmt_port + " -d " + self.pmtconfigname + \
             " --logpath " + self.log_directory + \

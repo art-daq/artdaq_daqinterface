@@ -16,7 +16,6 @@ import glob
 import stat
 from threading import Thread
 import shutil
-import socket
 
 from rc.io.timeoutclient import TimeoutServerProxy
 from rc.control.component import Component 

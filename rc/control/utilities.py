@@ -2,6 +2,7 @@
 import os
 import re
 import string
+import socket
 
 import subprocess
 from subprocess import Popen
@@ -387,6 +388,43 @@ def fhicl_writes_root_file(fhicl_string):
         return True
     else:
         return False
+
+def obtain_messagefacility_fhicl():
+
+    if "DAQINTERFACE_MESSAGEFACILITY_FHICL" in os.environ.keys():
+        messagefacility_fhicl_filename = os.environ["DAQINTERFACE_MESSAGEFACILITY_FHICL"]
+    else:
+        messagefacility_fhicl_filename = os.getcwd() + "/MessageFacility.fcl" 
+
+    # JCF, 10-25-2018
+
+    # The FHiCL controlling messagefacility messages below is
+    # embedded by artdaq within other FHiCL code (see
+    # artdaq/DAQdata/configureMessageFacility.cc in artdaq
+    # v2_03_03 for details).
+
+    default_contents = """ 
+
+# This file was automatically generated as %s at %s on host %s, and is
+# the default file DAQInterface uses to determine how to modify the
+# standard MessageFacility configuration found in artdaq-core
+# v3_02_01's configureMessageFacility.cc file. You can edit the
+# contents below to change the behavior of how/where MessageFacility
+# messages are sent, though keep in mind that this FHiCL will be
+# nested inside a table. Or you can use a different file by setting
+# the environment variable DAQINTERFACE_MESSAGEFACILITY_FHICL to the
+# name of the other file.
+
+udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" } 
+
+""" % (messagefacility_fhicl_filename, date_and_time(), os.environ["HOSTNAME"], socket.gethostname())
+        
+    if not os.path.exists( messagefacility_fhicl_filename ):
+        with open(messagefacility_fhicl_filename, "w") as outf_mf:
+            outf_mf.write( default_contents )
+
+    return messagefacility_fhicl_filename
+
 
 def main():
 
