@@ -21,6 +21,11 @@ sourced_daq_setup_script=false
 
 awk '/commit\/version/ ' $recorddir/$runnum/metadata.txt | while read line; do
     package=$( echo $line | awk '{print $1}' )
+    
+    if [[ $package =~ DAQInterface ]]; then
+	continue
+    fi
+
     package_underscored=$( echo $package | sed -r 's/-/_/g' )
     
     hash_or_version=$( echo $line | awk '{print $3}' )
