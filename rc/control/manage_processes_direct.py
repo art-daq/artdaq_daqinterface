@@ -185,8 +185,8 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
         for procinfo in procinfos_to_remove:
             self.procinfos.remove( procinfo )
 
-        print "New procinfos list is %d elements long: " % (len(self.procinfos))
-        print self.procinfos
+        print
+        self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
         return
 
     return is_all_ok
