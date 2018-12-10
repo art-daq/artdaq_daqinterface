@@ -30,17 +30,6 @@ from rc.control.all_functions_noop import do_enable_base
 from rc.control.all_functions_noop import do_disable_base
 from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v3_base
 
-from rc.control.manage_processes_pmt import launch_procs_base
-from rc.control.manage_processes_pmt import kill_procs_base
-from rc.control.manage_processes_pmt import check_proc_heartbeats_base
-from rc.control.manage_processes_pmt import softlink_process_manager_logfiles_base
-from rc.control.manage_processes_pmt import find_process_manager_variable_base
-from rc.control.manage_processes_pmt import set_process_manager_default_variables_base
-from rc.control.manage_processes_pmt import reset_process_manager_variables_base
-from rc.control.manage_processes_pmt import get_process_manager_log_filenames_base
-from rc.control.manage_processes_pmt import process_manager_cleanup_base
-from rc.control.manage_processes_pmt import get_pid_for_process
-
 from rc.control.online_monitoring import launch_art_procs_base
 from rc.control.online_monitoring import kill_art_procs_base
 
@@ -53,6 +42,37 @@ from rc.control.utilities import construct_checked_command
 from rc.control.utilities import reformat_fhicl_documents
 from rc.control.utilities import fhicl_writes_root_file
 from rc.control.utilities import bash_unsetup_command
+
+if not "DAQINTERFACE_PROCESS_MANAGEMENT_METHOD" in os.environ:
+    print
+    raise Exception(make_paragraph("The DAQINTERFACE_PROCESS_MANAGEMENT_METHOD environment variable must be defined; legal values include \"pmt\" and \"direct\""))
+
+elif os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "pmt":
+    from rc.control.manage_processes_pmt import launch_procs_base
+    from rc.control.manage_processes_pmt import kill_procs_base
+    from rc.control.manage_processes_pmt import check_proc_heartbeats_base
+    from rc.control.manage_processes_pmt import softlink_process_manager_logfiles_base
+    from rc.control.manage_processes_pmt import find_process_manager_variable_base
+    from rc.control.manage_processes_pmt import set_process_manager_default_variables_base
+    from rc.control.manage_processes_pmt import reset_process_manager_variables_base
+    from rc.control.manage_processes_pmt import get_process_manager_log_filenames_base
+    from rc.control.manage_processes_pmt import process_manager_cleanup_base
+    from rc.control.manage_processes_pmt import get_pid_for_process
+elif os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "direct":
+    from rc.control.manage_processes_direct import launch_procs_base
+    from rc.control.manage_processes_direct import kill_procs_base
+    from rc.control.manage_processes_direct import check_proc_heartbeats_base
+    from rc.control.manage_processes_direct import softlink_process_manager_logfiles_base
+    from rc.control.manage_processes_direct import find_process_manager_variable_base
+    from rc.control.manage_processes_direct import set_process_manager_default_variables_base
+    from rc.control.manage_processes_direct import reset_process_manager_variables_base
+    from rc.control.manage_processes_direct import get_process_manager_log_filenames_base
+    from rc.control.manage_processes_direct import process_manager_cleanup_base
+    from rc.control.manage_processes_direct import get_pid_for_process
+else:
+    print
+    raise Exception(make_paragraph("DAQInterface can't interpret the current value of the DAQINTERFACE_PROCESS_MANAGEMENT_METHOD environment variable (\"%s\"); legal values include \"pmt\" and \"direct\"" % os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"]))
+
 
 if not "DAQINTERFACE_FHICL_DIRECTORY" in os.environ:
     print

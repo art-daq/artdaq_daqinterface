@@ -134,53 +134,19 @@ def softlink_process_manager_logfiles_base(self):
     return
 
 def find_process_manager_variable_base(self, line):
-    assert False
-
-    res = re.search(r"^\s*PMT host\s*:\s*(\S+)", line)
-    if res:
-        self.pmt_host = res.group(1)
-        return True
-
-    res = re.search(r"^\s*PMT port\s*:\s*(\S+)", line)
-    if res:
-        self.pmt_port = res.group(1)
-        return True
-
     return False
 
 def set_process_manager_default_variables_base(self):
-    assert False
-    
-    if not hasattr(self, "pmt_port") or self.pmt_port is None:
-        self.pmt_port = str( int(self.rpc_port) + 1 )
-
-    undefined_vars = []
-    if not hasattr(self, "pmt_host") or self.pmt_host is None:
-        undefined_vars.append("PMT host")
-
-    if len(undefined_vars) > 0:
-        raise Exception("Error: the following parameters needed by DAQInterface are undefined: %s" % \
-                        ( ",".join( undefined_vars ) ))
+    pass # There ARE no persistent variables specific to direct process management
 
 def reset_process_manager_variables_base(self):
-    assert False
-
-    self.pmt_host = None
-    self.pmt_port = None
+    pass
 
 def get_process_manager_log_filenames_base(self):
     return []
 
 def process_manager_cleanup_base(self):
-    assert False
-
-    if hasattr(self, "pmtconfigname") and os.path.exists(self.pmtconfigname):
-        cmd = "rm -f %s" % (self.pmtconfigname)
-
-        if hasattr(self, "pmt_host"):
-            if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
-                cmd = "ssh -f " + self.pmt_host + " '" + cmd + "'"
-
+    pass
 
 def get_pid_for_process(procinfo):
     greptoken = bootfile_name_to_execname(procinfo.name) + " -c .*" + procinfo.port + ".*"
