@@ -344,6 +344,8 @@ class DAQInterface(Component):
 
         self.exception = False
 
+        self.check_proc_exceptions_number_of_status_failures = 0
+
         self.__do_boot = False
         self.__do_shutdown = False
         self.__do_config = False
@@ -731,13 +733,17 @@ class DAQInterface(Component):
             return
 
         is_all_ok = True
-
+        
         for procinfo in self.procinfos:
 
             try:
                 procinfo.lastreturned = procinfo.server.daq.status()
             except Exception:
-                self.exception = True
+                self.check_proc_exceptions_number_of_status_failures += 1
+                
+                if self.check_proc_exceptions_number_of_status_failures >= 2:
+                    self.exception = True
+
                 exceptstring = make_paragraph("Exception caught in DAQInterface attempt to query status of artdaq process %s at %s:%s; most likely reason is process no longer exists" % \
                     (procinfo.name, procinfo.host, procinfo.port))              
                 self.print_log("e", exceptstring)
@@ -753,7 +759,6 @@ class DAQInterface(Component):
             self.alert_and_recover("One or more artdaq processes"
                                    " discovered to be in \"Error\" state")
             return
-
 
 
     def check_daqinterface_config_info(self):
@@ -943,6 +948,8 @@ class DAQInterface(Component):
         def process_command(self, procinfo_index, command):
 
             if self.exception:
+                self.print_log("d", "self.exception set to true at some point, won't send %s command to %s" % \
+                               (command, self.procinfos[procinfo_index].label), 2)
                 return
 
             try:
@@ -967,7 +974,7 @@ class DAQInterface(Component):
                     self.procinfos[procinfo_index].lastreturned = \
                         self.procinfos[procinfo_index].server.daq.shutdown()
                 else:
-                    raise Exception("Unknown command")
+                    assert False, "Unknown command"
 
                 if "with ParameterSet" in self.procinfos[procinfo_index].lastreturned:
                     self.procinfos[procinfo_index].lastreturned = self.procinfos[procinfo_index].lastreturned[0:200] + \
@@ -982,7 +989,7 @@ class DAQInterface(Component):
                     output_message = "Timeout sending %s transition to artdaq process %s at %s:%s \n" % (command, pi.name, pi.host, pi.port)
                 else:
                     self.print_log("e", traceback.format_exc())
-                    
+
                     output_message = "Exception caught sending %s transition to artdaq process %s at %s:%s \n" % (command, pi.name, pi.host, pi.port)
 
                 self.print_log("e", output_message)
@@ -1024,8 +1031,7 @@ class DAQInterface(Component):
                     thread.join()
 
         if self.exception:
-            raise Exception("An exception was thrown "
-                            "during the %s transition" % (command))
+            raise Exception("An exception was thrown during the %s transition" % (command))
 
         sleep(1)
 

@@ -158,9 +158,8 @@ def get_pid_for_process(procinfo):
     elif len(pids) == 0:
         return None
     else:
-        self.print_log("e", "Unexpected error grepping for \"%s\" on %s" % (greptoken, procinfo.host))
         print pids
-        assert False
+        assert False, "Unexpected error grepping for \"%s\" on %s" % (greptoken, procinfo.host)
 
 
 # check_proc_heartbeats_base() will check that the expected artdaq
