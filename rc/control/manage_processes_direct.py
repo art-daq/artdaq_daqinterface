@@ -64,6 +64,24 @@ def launch_procs_base(self):
                                                     os.environ["DAQINTERFACE_PARTITION_NUMBER"]))
     
     for host in launch_commands_to_run_on_host:
+        
+        # Before we try launching the processes, let's make sure there
+        # aren't any pre-existing processes listening on the same
+        # ports
+
+        grepped_lines = []
+        preexisting_pids = get_pids("\|".join([ "%s.*id:\s\+%s" % 
+                                                (bootfile_name_to_execname(procinfo.name), procinfo.port) for \
+                                                procinfo in self.procinfos if procinfo.host == host ]),
+                                    host,
+                                    grepped_lines)
+        if len(preexisting_pids) > 0:
+            self.print_log("e", make_paragraph("On host %s, found artdaq process(es) already existing which use the ports DAQInterface was going to use; this may be the result of an improper cleanup from a prior run: " % (host)))
+            self.print_log("e", "\n" + "\n".join(grepped_lines))
+            self.print_log("i", "...note that the process(es) may get automatically cleaned up during DAQInterface recovery\n")
+            raise Exception("DAQInterface found previously-existing artdaq processes using desired ports; see error message above for details")
+        
+
         launchcmd = construct_checked_command( launch_commands_to_run_on_host[ host ] )
         launchcmd += "; "
         launchcmd += " ".join(launch_commands_to_run_on_host_background[ host ])  # Each command already terminated by ampersand
