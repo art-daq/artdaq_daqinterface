@@ -16,6 +16,7 @@ from rc.control.utilities import bash_unsetup_command
 from rc.control.utilities import date_and_time
 from rc.control.utilities import construct_checked_command
 from rc.control.utilities import obtain_messagefacility_fhicl
+from rc.control.utilities import make_paragraph
 from rc.control.deepsuppression import deepsuppression
 
 
@@ -76,8 +77,8 @@ def launch_procs_base(self):
             status = Popen(launchcmd, shell=True).wait()
 
         if status != 0:   
-            raise Exception("Status error raised by running the following commands on %s: \"\n%s\n\n\". If logfiles exist, please check them for more information. Also try running the commands interactively in a new terminal after logging into %s" %
-                            (host, "\n".join(launch_commands_to_run_on_host[ host ]), host))
+            raise Exception("Status error raised by running the following command on %s: \"\n%s\n\". If logfiles exist, please check them for more information. Also try running the commands interactively in a new terminal after logging into %s" %
+                            (host, launchcmd, host))
 
     return
 
@@ -151,7 +152,8 @@ def process_manager_cleanup_base(self):
 def get_pid_for_process(procinfo):
     greptoken = bootfile_name_to_execname(procinfo.name) + " -c .*" + procinfo.port + ".*"
 
-    pids = get_pids(greptoken, procinfo.host)
+    grepped_lines = []
+    pids = get_pids(greptoken, procinfo.host, grepped_lines)
 
     if len(pids) == 1:    
         return pids[0]
@@ -159,7 +161,29 @@ def get_pid_for_process(procinfo):
         return None
     else:
         print pids
+        print grepped_lines
+
         assert False, "Unexpected error grepping for \"%s\" on %s" % (greptoken, procinfo.host)
+
+def get_related_pids_for_process(procinfo):
+    related_pids = []
+
+    netstat_cmd = "netstat -alpn | grep %s" % (procinfo.port)
+
+    if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
+        netstat_cmd = "ssh -f %s '%s'" % (procinfo.host, netstat_cmd)
+
+    proc = Popen(netstat_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    for procline in proc.stdout.readlines():
+        res = re.search(r"([0-9]+)/(.*)", procline.split()[-1])
+        if res:
+            pid = res.group(1)
+            pname = res.group(2)
+            if "python" not in pname:  # Don't want DAQInterface to kill itself off...
+                related_pids.append( res.group(1) )
+    return set(related_pids)
+
 
 
 # check_proc_heartbeats_base() will check that the expected artdaq
@@ -177,9 +201,46 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
             is_all_ok = False
 
             if requireSuccess:
-                self.print_log("e", "Appear to have lost process with label %s on host %s" % (procinfo.label, procinfo.host))
+                self.print_log("e", "%s: Appear to have lost process with label %s on host %s" % (date_and_time(), procinfo.label, procinfo.host))
                 procinfos_to_remove.append( procinfo )
 
+                # Will need to perform some cleanup (clogged ports, zombie art processes, etc.)
+                ssh_mopup_ok = True  
+                related_process_mopup_ok = True
+
+                # Need to deal with the lingering ssh command if the lost process is on a remote host
+                if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
+                    
+                    # Mopup the ssh call on this side
+                    ssh_grepstring = "ssh.*%s.*%s -c.*%s" % (procinfo.host, bootfile_name_to_execname(procinfo.name),
+                                                            procinfo.label) 
+                    pids = get_pids(ssh_grepstring)
+
+                    if len(pids) == 1:
+                        Popen("kill %s" % (pids[0]), shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE).wait()
+                        pids = get_pids(ssh_grepstring)
+                        if len(pids) == 1:
+                            ssh_mopup_ok = False
+                    else:
+                        ssh_mopup_ok = False
+
+                # And take out the process(es) associated with the artdaq process via its listening port (e.g., the art processes)
+
+                Popen("ssh -f %s 'kill %s'" % (procinfo.host, " ".join(get_related_pids_for_process(procinfo))), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
+
+                unkilled_related_pids = get_related_pids_for_process(procinfo)
+                if len(unkilled_related_pids) == 0:
+                    related_process_mopup_ok = True
+                else:
+                    self.print_log("w", make_paragraph("Warning: unable to normally kill process(es) associated with now-deceased artdaq process %s; on %s the following pid(s) remain: %s. Will now resort to kill -9 on these processes." % (procinfo.label, procinfo.host, " ".join(unkilled_related_pids))))
+                    Popen("ssh -f %s 'kill -9 %s'" % (procinfo.host, " ".join(unkilled_related_pids)), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
+                    related_process_mopup_ok = False
+
+                if not ssh_mopup_ok:
+                    self.print_log("w", make_paragraph("There was a problem killing the ssh process to %s related to the deceased artdaq process %s at %s:%s; there *may* be issues with the next run using that host and port as a result" % (procinfo.host, procinfo.label, procinfo.host, procinfo.port)))
+                if not related_process_mopup_ok:
+                    self.print_log("w", make_paragraph("At least some of the processes on %s related to deceased artdaq process %s at %s:%s (e.g. art processes) had to be forcibly killed; there *may* be issues with the next run using that host and port as a result" % (procinfo.host, procinfo.label, procinfo.host, procinfo.port)))
+                        
     if not is_all_ok and requireSuccess:
         for procinfo in procinfos_to_remove:
             self.procinfos.remove( procinfo )

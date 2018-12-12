@@ -1192,9 +1192,11 @@ class DAQInterface(Component):
         sourcing_ok = True
 
         if self.manage_processes:
-            with deepsuppression(self.debug_level < 3):
-                for procinfo in self.procinfos:
-                    if procinfo.host not in already_sourced.keys():
+            for procinfo in self.procinfos:
+                if procinfo.host not in already_sourced.keys():
+                    self.print_log("d", "%s: Testing source of %s on %s..." % (date_and_time(), self.daq_setup_script, 
+                                                                               procinfo.host), 2)
+                    with deepsuppression(self.debug_level < 3):
                         cmd = "%s ; . %s" % (bash_unsetup_command, self.daq_setup_script)
 
                         if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:

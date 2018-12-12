@@ -77,7 +77,14 @@ def make_paragraph(userstring, chars_per_line=75):
 # table returned by "ps aux". It returns a (possibly empty) list
 # of the process IDs found
 
-def get_pids(greptoken, host="localhost"):
+# JCF, Dec-12-2018
+
+# Have "grepresults" serve as a pass-by-reference in which, if the caller
+# thinks not just the pid list but the actual lines grep'd for may be
+# of interest - e.g., for diagnostics or debugging - they can save
+# this result
+
+def get_pids(greptoken, host="localhost", grepresults = None):
 
     cmd = 'ps aux | grep "%s" | grep -v grep' % (greptoken)
 
@@ -87,6 +94,10 @@ def get_pids(greptoken, host="localhost"):
     proc = Popen(cmd, shell=True, stdout=subprocess.PIPE)
 
     lines = proc.stdout.readlines()
+
+    if grepresults is not None:
+        for line in lines:
+            grepresults.append( line ) # Clunkier than a straight assignment, but needed for pass-by-reference
 
     pids = [line.split()[1] for line in lines]
 
