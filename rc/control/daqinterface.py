@@ -519,7 +519,13 @@ class DAQInterface(Component):
             elif "boardreader_priorities" in line or "boardreader priorities" in line:
                 self.boardreader_priorities = [regexp.strip() for regexp in line.split()[2:] if ":" not in regexp]
             elif "max_fragment_size_bytes" in line or "max fragment size bytes" in line:
-                self.max_fragment_size_bytes = int( line.split()[-1].strip())
+                max_fragment_size_bytes_token = line.split()[-1].strip()
+
+                if max_fragment_size_bytes_token[0:2] != "0x":
+                    self.max_fragment_size_bytes = int( max_fragment_size_bytes_token )
+                else:
+                    self.max_fragment_size_bytes = int( max_fragment_size_bytes_token[2:], 16)
+
                 if self.max_fragment_size_bytes % 8 != 0:
                     raise Exception("Value for \"max_fragment_size_bytes\" in settings file \"%s\" should be a multiple of 8" % (os.environ["DAQINTERFACE_SETTINGS"]))
             elif "max_configurations_to_list" in line or "max configurations to list" in line:

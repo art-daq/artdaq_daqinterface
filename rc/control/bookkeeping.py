@@ -90,11 +90,17 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         for procinfo in self.procinfos:
 
-            res = re.findall(r"\n[^#]*max_fragment_size_bytes\s*:\s*([0-9\.e]+)", procinfo.fhicl_used)
+            res = re.findall(r"\n[^#]*max_fragment_size_bytes\s*:\s*([0-9\.exabcdefABCDEF]+)", procinfo.fhicl_used)
             
             if "BoardReader" in procinfo.name:
                 if len(res) > 0:
-                    max_fragment_size = int(float(res[-1]))
+                    max_fragment_size_token = res[-1]
+
+                    if max_fragment_size_token[0:2] != "0x":
+                        max_fragment_size = int(float(max_fragment_size_token))
+                    else:
+                        max_fragment_size = int(max_fragment_size_token[2:], 16)
+
                     max_fragment_sizes.append( (procinfo.label, max_fragment_size) ) 
                 else:
                     raise Exception(make_paragraph("Unable to find the max_fragment_size_bytes variable in the FHiCL document for %s; this is needed since \"advanced_memory_usage\" is set to true in the settings file, %s" % (procinfo.label, os.environ["DAQINTERFACE_SETTINGS"])))
