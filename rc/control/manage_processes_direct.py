@@ -116,6 +116,8 @@ def kill_procs_base(self):
             self.print_log("d", "Killing %s process on %s, pid == %s" % (procinfo.label, procinfo.host, pid), 2)
             Popen(cmd, shell=True, stdout=subprocess.PIPE,
                   stderr=subprocess.STDOUT)
+        else:
+            self.print_log("d", "No process for %s found; will not issue a kill command" % (procinfo.label), 2)
 
     # Check that they were actually killed
 
@@ -178,10 +180,11 @@ def get_pid_for_process(procinfo):
     elif len(pids) == 0:
         return None
     else:
-        print pids
-        print grepped_lines
+        for grepped_line in grepped_lines:
+            print grepped_line
 
-        assert False, "Unexpected error grepping for \"%s\" on %s" % (greptoken, procinfo.host)
+        self.print_log("w", "Appear to have duplicate processes for %s on %s, pids: %s" % (procinfo.label, procinfo.host, " ".join( pids )))
+        #assert False, "Unexpected error grepping for \"%s\" on %s" % (greptoken, procinfo.host)
 
 def get_related_pids_for_process(procinfo):
     related_pids = []
