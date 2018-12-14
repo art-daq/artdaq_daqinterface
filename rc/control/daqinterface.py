@@ -1323,10 +1323,16 @@ class DAQInterface(Component):
                                                   (version, qualifiers)))
 
                     cmds = []
+                    port_to_replace = 30000
+                    msgviewer_fhicl = "/tmp/msgviewer_partition%d.fcl" % (self.partition_number)
                     cmds.append(bash_unsetup_command)
                     cmds.append(". %s" % (self.daq_setup_script))
                     cmds.append("which msgviewer")
-                    cmds.append("msgviewer -c $ARTDAQ_MFEXTENSIONS_DIR/fcl/msgviewer.fcl 2>&1 > /dev/null &" )
+                    cmds.append("cp $ARTDAQ_MFEXTENSIONS_DIR/fcl/msgviewer.fcl %s" % (msgviewer_fhicl))
+                    cmds.append("res=$( grep -l \"port: %d\" %s )" % (port_to_replace, msgviewer_fhicl))
+                    cmds.append("if [[ -n $res ]]; then true ; else false ; fi")
+                    cmds.append("sed -r -i 's/port: [^\s]+/port: %d/' %s" % (10005 + self.partition_number*1000, msgviewer_fhicl))
+                    cmds.append("msgviewer -c %s 2>&1 > /dev/null &" % (msgviewer_fhicl))
 
                     msgviewercmd = construct_checked_command( cmds )
 
@@ -1682,7 +1688,6 @@ class DAQInterface(Component):
                 else:
                     self.print_log("i", "%s at %s:%s, returned string is:\n%s\n" % \
                                    (procinfo.name, procinfo.host, procinfo.port, procinfo.lastreturned), 1)
-
             try:
                 self.kill_procs()
             except Exception:

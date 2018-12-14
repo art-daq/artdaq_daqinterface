@@ -429,7 +429,7 @@ def obtain_messagefacility_fhicl():
 # the environment variable DAQINTERFACE_MESSAGEFACILITY_FHICL to the
 # name of the other file.
 
-udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" } 
+udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THIS_WITH_AN_INTEGER_VALUE host : "%s" } 
 
 """ % (messagefacility_fhicl_filename, date_and_time(), os.environ["HOSTNAME"], socket.gethostname())
         
@@ -437,7 +437,18 @@ udp : { type : "UDP" threshold : "DEBUG"  port : 30000 host : "%s" }
         with open(messagefacility_fhicl_filename, "w") as outf_mf:
             outf_mf.write( default_contents )
 
-    return messagefacility_fhicl_filename
+    processed_messagefacility_fhicl_filename="/tmp/messagefacility_partition%s.fcl" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"])
+    
+    with open(messagefacility_fhicl_filename) as inf_mf:
+        with open(processed_messagefacility_fhicl_filename, "w") as outf_mf:
+            for line in inf_mf.readlines():
+                res = re.search(r"^\s*udp", line)
+                if not res:
+                    outf_mf.write(line)
+                else:
+                    outf_mf.write( re.sub("port\s*:\s*[0-9]+", "port: %d" % (10005 + int(os.environ["DAQINTERFACE_PARTITION_NUMBER"])*1000), line) )
+
+    return processed_messagefacility_fhicl_filename
 
 
 def main():
