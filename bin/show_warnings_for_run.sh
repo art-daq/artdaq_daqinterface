@@ -31,21 +31,35 @@ if [[ -z $run_stop_time ]]; then
 fi
 
 disclaimer="Be aware that warnings/errors are shown for ALL runs which appear in run ${runnum}'s logfile. Run $runnum start time is $run_start_time, stop time is $run_stop_time"
-echo
-echo $disclaimer
-echo
 
 output=$( show_logfile_for_run.sh $runnum )
 
 if [[ "$?" == "0" ]]; then
-    sed -r -n '{/MSG-e/{N;p};/MSG-w/{N;/Use of services.user parameter set is deprecated/d;/Fast cloning deactivated/d;p}}' $output
-
     echo
     echo $disclaimer
     echo
 
+    for file in $output ; do
+
+	host=$( echo $file | awk 'BEGIN{FS=":"}{print $1}' )
+	filename=$( echo $file | awk 'BEGIN{FS=":"}{print $2}' )
+	
+	sedcmd="sed -r -n '{/MSG-e/{N;p};/MSG-w/{N;/Use of services.user parameter set is deprecated/d;/Fast cloning deactivated/d;p}}' $filename"
+
+	if [[ "$host" == "localhost" || "$host" == "$HOSTNAME" ]]; then
+	    if [[ -e $filename ]]; then 
+		( eval $sedcmd  )
+	    else 
+		echo "Unable to find logfile $filename on ${host}!"  
+	    fi
+	fi
+    done
+    echo
+    echo $disclaimer
+    echo
 else
     echo $output
     exit 1
 fi
+
 
