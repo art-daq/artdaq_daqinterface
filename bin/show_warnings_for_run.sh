@@ -44,7 +44,7 @@ if [[ "$?" == "0" ]]; then
 	host=$( echo $file | awk 'BEGIN{FS=":"}{print $1}' )
 	filename=$( echo $file | awk 'BEGIN{FS=":"}{print $2}' )
 	
-	sedcmd="sed -r -n '{/MSG-e/{N;p};/MSG-w/{N;/Use of services.user parameter set is deprecated/d;/Fast cloning deactivated/d;p}}' $filename"
+	sedcmd="sed -r -n '{/MSG-e/{N;p};/MSG-w/{N;/Use of services.user parameter set is deprecated/d;/Fast cloning deactivated/d;/Attempted to send metric when/d;p}}' $filename"
 
 	if [[ "$host" == "localhost" || "$host" == "$HOSTNAME" ]]; then
 	    if [[ -e $filename ]]; then 
