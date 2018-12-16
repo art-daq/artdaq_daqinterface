@@ -183,7 +183,7 @@ def get_pid_for_process(procinfo):
         for grepped_line in grepped_lines:
             print grepped_line
 
-        self.print_log("w", "Appear to have duplicate processes for %s on %s, pids: %s" % (procinfo.label, procinfo.host, " ".join( pids )))
+        "Appear to have duplicate processes for %s on %s, pids: %s" % (procinfo.label, procinfo.host, " ".join( pids ))
         #assert False, "Unexpected error grepping for \"%s\" on %s" % (greptoken, procinfo.host)
 
 def get_related_pids_for_process(procinfo):

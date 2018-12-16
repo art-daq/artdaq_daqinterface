@@ -18,7 +18,13 @@ fi
 components_file=$DAQINTERFACE_KNOWN_BOARDREADERS_LIST
 
 if [[ ! -e $components_file ]]; then
-    echo "Unable to find file containing allowed components, \"$components_file\"" >&2
+    
+    cat>&2<<EOF
+
+    Unable to find file containing allowed components, "$components_file"
+
+EOF
+
     exit 10
 fi
 
@@ -44,7 +50,14 @@ for comp in $components; do
 	xmlrpc_arg=${xmlrpc_arg}${comp}":array/(s/"${host}","${port}","${subsystem}")"
 	test $comp_cntr != $num_components && xmlrpc_arg=${xmlrpc_arg}","
     else
-	echo "Unable to find listing for component \"$comp\" in $components_file" >&2
+	
+	cat>&2<<EOF
+
+	Unable to find listing for component "$comp" in
+	$components_file; will not send component list to DAQInterface
+
+EOF
+
 	exit 20
     fi
 done

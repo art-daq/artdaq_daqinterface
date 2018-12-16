@@ -383,8 +383,15 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         
         if "RoutingMaster" in self.procinfos[i_proc].name:
 
+            nonsending_boardreaders = []
+            for procinfo in self.procinfos:
+                if "BoardReader" in procinfo.name:
+                    if re.search(r"\n\s*sends_no_fragments\s*:\s*[Tt]rue", procinfo.fhicl_used) or \
+                       re.search(r"\n\s*generated_fragments_per_event\s*:\s*0", procinfo.fhicl_used):
+                        nonsending_boardreaders.append( procinfo.label )
+
             sender_ranks = "sender_ranks: [%s]" % ( ",".join( 
-                [ str(otherproc.rank) for otherproc in self.procinfos if otherproc.subsystem == self.procinfos[i_proc].subsystem and "BoardReader" in otherproc.name ] ))
+                [ str(otherproc.rank) for otherproc in self.procinfos if otherproc.subsystem == self.procinfos[i_proc].subsystem and "BoardReader" in otherproc.name and otherproc.label not in nonsending_boardreaders ] ))
             receiver_ranks = "receiver_ranks: [%s]" % ( ",".join( 
                 [ str(otherproc.rank) for otherproc in self.procinfos if otherproc.subsystem == self.procinfos[i_proc].subsystem and "EventBuilder" in otherproc.name ] ))
 
