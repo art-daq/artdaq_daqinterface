@@ -36,12 +36,28 @@ def bootfile_name_to_execname(bootfile_name):
         assert False
 
     return execname
+
+# JCF, Dec-18-18
     
+# For the purposes of more helpful error reporting if DAQInterface
+# determines that launch_procs_base ultimately failed, have
+# launch_procs_base return a dictionary whose keys are the hosts on
+# which it ran commands, and whose values are the list of commands run
+# on those hosts
 
 def launch_procs_base(self):
 
     if self.have_artdaq_mfextensions():
         messagefacility_fhicl_filename = obtain_messagefacility_fhicl()
+
+        for host in set([procinfo.host for procinfo in self.procinfos]):
+            if host != "localhost" and host != os.environ["HOSTNAME"]:
+                cmd = "scp -p %s %s:%s" % (messagefacility_fhicl_filename, host, messagefacility_fhicl_filename)
+                status = Popen(cmd, shell=True).wait()
+
+                if status != 0:
+                    raise Exception("Status error raised in %s executing \"%s\"" % (launch_procs_base.__name__, cmd))
+
 
     launch_commands_to_run_on_host = {}
     launch_commands_to_run_on_host_background = {}  # Need to run artdaq processes in the background so they're persistent outside of this function's Popen calls
@@ -59,9 +75,9 @@ def launch_procs_base(self):
 
             launch_commands_to_run_on_host_background[ procinfo.host ] = []
 
-        launch_commands_to_run_on_host_background[ procinfo.host ].append( " %s -c \"id: %s commanderPluginType: xmlrpc rank: %s application_name: %s partition_number: %s\" & " % \
-                                                   (bootfile_name_to_execname(procinfo.name), procinfo.port, procinfo.rank, procinfo.label, 
-                                                    os.environ["DAQINTERFACE_PARTITION_NUMBER"]))
+        launch_commands_to_run_on_host_background[ procinfo.host ].append( "%s -c \"id: %s commanderPluginType: xmlrpc rank: %s application_name: %s partition_number: %s\" & " % \
+                                                                           (bootfile_name_to_execname(procinfo.name), procinfo.port, procinfo.rank, procinfo.label, 
+                                                                            os.environ["DAQINTERFACE_PARTITION_NUMBER"]))
     
     for host in launch_commands_to_run_on_host:
         
@@ -89,16 +105,26 @@ def launch_procs_base(self):
         if host != os.environ["HOSTNAME"] and host != "localhost":
             launchcmd = "ssh -f " + host + " '" + launchcmd + "'"
 
-        self.print_log("d", "PROCESS LAUNCH COMMANDS TO EXECUTE ON %s: %s%s\n" % (host, "\n".join( launch_commands_to_run_on_host[ host ] ), "\n".join( launch_commands_to_run_on_host_background[ host ])), 2)
+        unchecked_launchcmd = "\n".join( launch_commands_to_run_on_host[ host ] ) + "\n" + \
+                              "\n".join( launch_commands_to_run_on_host_background[ host ])
+        self.print_log("d", "PROCESS LAUNCH COMMANDS TO EXECUTE ON %s:\n%s\n" % (host, unchecked_launchcmd), 2)
         
         with deepsuppression(self.debug_level < 4):
             status = Popen(launchcmd, shell=True).wait()
 
         if status != 0:   
-            raise Exception("Status error raised by running the following command on %s: \"\n%s\n\". If logfiles exist, please check them for more information. Also try running the commands interactively in a new terminal after logging into %s" %
-                            (host, launchcmd, host))
+            self.print_log("e", "Status error raised in attempting to launch processes on %s" % (host))
+            self.print_log("i", make_paragraph("To investigate, first try running again with the \"debug level\" in the boot file set to 4. Otherwise, you can recreate what DAQInterface did by performing a clean login to %s, source-ing the DAQInterface environment and executing the following:" % (host)))
+            self.print_log("i", "\n" + unchecked_launchcmd + "\n")
+            raise Exception("Status error raised attempting to launch processes on %s; scroll up for more detail" % (host))
 
-    return
+    all_commands_to_run_on_host = launch_commands_to_run_on_host
+
+    for host in all_commands_to_run_on_host:
+        for cmd in launch_commands_to_run_on_host_background[ host ]:
+            all_commands_to_run_on_host[ host ].append( cmd )
+
+    return all_commands_to_run_on_host
 
 
 def kill_procs_base(self):
@@ -183,8 +209,7 @@ def get_pid_for_process(procinfo):
         for grepped_line in grepped_lines:
             print grepped_line
 
-        "Appear to have duplicate processes for %s on %s, pids: %s" % (procinfo.label, procinfo.host, " ".join( pids ))
-        #assert False, "Unexpected error grepping for \"%s\" on %s" % (greptoken, procinfo.host)
+        print "Appear to have duplicate processes for %s on %s, pids: %s" % (procinfo.label, procinfo.host, " ".join( pids ))
 
 def get_related_pids_for_process(procinfo):
     related_pids = []
@@ -215,10 +240,13 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
     is_all_ok = True
 
     procinfos_to_remove = []
+    found_processes = []
 
     for procinfo in self.procinfos:
 
-        if get_pid_for_process(procinfo) is None:
+        if get_pid_for_process(procinfo) is not None:
+            found_processes.append( procinfo )
+        else:
             is_all_ok = False
 
             if requireSuccess:
@@ -270,7 +298,10 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
         self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
         return
 
-    return is_all_ok
+    if is_all_ok:
+        assert len(found_processes) == len(self.procinfos)
+
+    return found_processes
 
 
 def main():

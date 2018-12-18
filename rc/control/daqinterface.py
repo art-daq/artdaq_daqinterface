@@ -1993,11 +1993,6 @@ def main():  # no-coverage
         print
         return
 
-    if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] != "pmt":
-        print make_paragraph("JCF, Dec-18-2018: right now the environment variable \"DAQINTERFACE_PROCESS_MANAGEMENT_METHOD\" needs to be set to \"pmt\" as I'm reworking the code to make error messages during boot problems more informative. If you wishe to us \"direct\" instead of \"pmt\", roll back to commit 992794646b06ac1704040cae30e520de230fda22")
-        print
-        return
-
     if not os.path.exists( os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"] ):
         print make_paragraph("The file referred to by the DAQINTERFACE_KNOWN_BOARDREADERS_LIST environment variable, \"%s\", does not appear to exist" % (os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"]))
         print
