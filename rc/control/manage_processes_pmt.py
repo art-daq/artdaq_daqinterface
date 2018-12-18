@@ -92,6 +92,15 @@ def launch_procs_base(self):
 
         messagefacility_fhicl_filename = obtain_messagefacility_fhicl()
 
+        for host in set([procinfo.host for procinfo in self.procinfos]):
+            if host != "localhost" and host != os.environ["HOSTNAME"]:
+                cmd = "scp -p %s %s:%s" % (messagefacility_fhicl_filename, host, messagefacility_fhicl_filename)
+                status = Popen(cmd, shell=True).wait()
+
+                if status != 0:
+                    raise Exception("Status error raised in %s executing \"%s\"" % (launch_procs_base.__name__, cmd))
+
+
         cmd = "pmt.rb -p " + self.pmt_port + " -d " + self.pmtconfigname + \
             " --logpath " + self.log_directory + \
             " --logfhicl " + messagefacility_fhicl_filename + " --display $DISPLAY & "
