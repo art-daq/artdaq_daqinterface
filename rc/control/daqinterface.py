@@ -1243,7 +1243,11 @@ class DAQInterface(Component):
             # procinfos, actually launch them
 
             try:
-                self.launch_procs()
+                launch_procs_actions = self.launch_procs()
+
+                assert type( launch_procs_actions ) is dict, \
+                    make_paragraph("The launch_procs function needs to return a dictionary whose keys are the names of the hosts on which it ran commands, and whose values are those commands")
+                
 
                 if self.debug_level >= 1:
                     self.print_log("i", "Finished call to launch_procs(); will now confirm that artdaq processes are up...")
@@ -1267,17 +1271,29 @@ class DAQInterface(Component):
                 # "False" here means "don't consider it an error if all
                 # processes aren't found"
 
-                if self.check_proc_heartbeats(False):
+                found_processes = self.check_proc_heartbeats(False)
 
-                    if self.debug_level > 0:
-                        self.print_log("i", "All processes appear to be up")
+                assert type(found_processes) is list, \
+                    make_paragraph("check_proc_heartbeats needs to return a list of procinfos corresponding to the processes it found alive")
+                if len(found_processes) == len(self.procinfos):
+
+                    self.print_log("i", "All processes appear to be up")
 
                     break
                 else:
                     sleep(2)
                     if num_launch_procs_checks >= max_num_launch_procs_checks:
-                        self.print_log("e", make_paragraph("artdaq processes failed to launch; logfiles may contain info as to what happened. For troubleshooting, you can also try logging into this host via a new terminal, and interactively executing the following commands: "))
-                        self.print_log("e", "\n".join(self.launch_cmds))
+                        missing_processes = [procinfo for procinfo in self.procinfos if procinfo not in found_processes]
+
+                        print
+                        self.print_log("e", "The following desired artdaq processes failed to launch:\n%s" % \
+                                       (", ".join(["%s at %s:%s" % (procinfo.label, procinfo.host, procinfo.port) for procinfo in missing_processes])))
+                        self.print_log("e", "In order to investigate what happened, you can recreate what DAQInterface did:")
+                        
+                        for host in launch_procs_actions:
+                            self.print_log("i", "\nLog in to a clean %s, source the DAQInterface environment, and execute the following:\n%s" % \
+                                           (host, "\n".join(launch_procs_actions[ host ])))
+
                         self.alert_and_recover("Scroll above the output from the \"RECOVER\" transition for more info")
                         return
 
@@ -1974,6 +1990,11 @@ def main():  # no-coverage
 
     if "DAQINTERFACE_KNOWN_BOARDREADERS_LIST" not in os.environ.keys():
         print make_paragraph("Need to have the DAQINTERFACE_KNOWN_BOARDREADERS_LIST environment variable set to refer to the list of boardreader types DAQInterface can use")
+        print
+        return
+
+    if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] != "pmt":
+        print make_paragraph("JCF, Dec-18-2018: right now the environment variable \"DAQINTERFACE_PROCESS_MANAGEMENT_METHOD\" needs to be set to \"pmt\" as I'm reworking the code to make error messages during boot problems more informative. If you wishe to us \"direct\" instead of \"pmt\", roll back to commit 992794646b06ac1704040cae30e520de230fda22")
         print
         return
 

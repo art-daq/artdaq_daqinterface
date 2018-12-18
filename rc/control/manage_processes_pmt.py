@@ -19,6 +19,14 @@ from rc.control.deepsuppression import deepsuppression
 
 # launch_procs_base() will create the artdaq processes
 
+# JCF, Dec-18-2018
+
+# For the purposes of more helpful error reporting if DAQInterface
+# determines that launch_procs_base ultimately failed, have
+# launch_procs_base return a dictionary whose keys are the hosts on
+# which it ran commands, and whose values are the list of commands run
+# on those hosts
+
 def launch_procs_base(self):
 
     greptoken = "pmt.rb -p " + self.pmt_port
@@ -108,7 +116,9 @@ def launch_procs_base(self):
     if status != 0:   
         raise Exception("Status error raised; commands were \"\n%s\n\n\". If logfiles exist, please check them for more information. Also try running the commands interactively in a new terminal (after source-ing the DAQInterface environment) for more info." %
                         ("\n".join(self.launch_cmds)))
-        return
+    return { self.pmt_host : self.launch_cmds }
+
+    
 
 
 def kill_procs_base(self):
@@ -278,6 +288,7 @@ def get_pid_for_process(procinfo):
 def check_proc_heartbeats_base(self, requireSuccess=True):
 
     is_all_ok = True
+    found_processes = []
 
     for procinfo in self.procinfos:
 
@@ -296,23 +307,23 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
         else:
             assert False
 
-        if get_pid_for_process(procinfo) is None:
+        if get_pid_for_process(procinfo) is not None:
+            found_processes.append(procinfo)
+        else:
             is_all_ok = False
 
-            if requireSuccess:
-                errmsg = "Expected process " + procinfo.name + \
-                    " at " + procinfo.host + ":" + \
-                    procinfo.port + " not found"
-
-                self.print_log("e", errmsg)
+    if not is_all_ok:
+        missing_processes = [procinfo for procinfo in self.procinfos if procinfo not in found_processes]
 
     if not is_all_ok and requireSuccess:
         self.heartbeat_failure = True
-        self.alert_and_recover("At least one artdaq process died unexpectedly; please check messageviewer"
-                               " and/or the logfiles for error messages")
-        return
+        self.alert_and_recover("Please check logfiles and messageviewer (if available), as the following artdaq processes appear to have died unexpectedly: %s" % 
+                               (",".join(["%s at %s:%s" % (procinfo.label, procinfo.host, procinfo.port) for procinfo in missing_processes])))
+        
+    if is_all_ok:
+        assert len(found_processes) == len(self.procinfos)
 
-    return is_all_ok
+    return found_processes
 
 
     
