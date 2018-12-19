@@ -15,7 +15,7 @@ bash_unsetup_command="upsname=$( which ups ); if [[ -n $upsname ]]; then unsetup
 
 def expand_environment_variable_in_string(line):
 
-    res = re.search(r"^(.*)(\$[A-Z][A-Z_0-9]*)(.*)", line)
+    res = re.search(r"^(.*)(\$[A-Za-z][A-Za-z_0-9]*)(.*)", line)
 
     if res:
         environ_var = res.group(2)
