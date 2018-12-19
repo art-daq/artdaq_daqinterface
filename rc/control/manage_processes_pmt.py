@@ -123,8 +123,8 @@ def launch_procs_base(self):
         status = Popen(launchcmd, shell=True).wait()
 
     if status != 0:   
-        raise Exception("Status error raised; commands were \"\n%s\n\n\". If logfiles exist, please check them for more information. Also try running the commands interactively in a new terminal (after source-ing the DAQInterface environment) for more info." %
-                        ("\n".join(self.launch_cmds)))
+        raise Exception("Status error raised; commands were \"\n%s\n\n\". For more information, you can check to see if a pmt (process management tool) logfile was produced during the failure in the directory %s/pmt on %s. Also try again with \"debug level\" set to 4 in the boot file, or even running the above commands interactively on %s after performing a clean login and source-ing the DAQInterface environment." %
+                        ("\n".join(self.launch_cmds), self.log_directory, self.pmt_host, self.pmt_host))
     return { self.pmt_host : self.launch_cmds }
 
     
@@ -326,8 +326,10 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
 
     if not is_all_ok and requireSuccess:
         self.heartbeat_failure = True
-        self.alert_and_recover("Please check logfiles and messageviewer (if available), as the following artdaq processes appear to have died unexpectedly: %s" % 
-                               (",".join(["%s at %s:%s" % (procinfo.label, procinfo.host, procinfo.port) for procinfo in missing_processes])))
+        pmtlogfiles = self.get_process_manager_log_filenames()
+        assert len(pmtlogfiles) == 1
+        self.alert_and_recover("Please check process management logfile %s and, if available, the MessageViewer window, as the following artdaq processes appear to have died unexpectedly: %s" % 
+                               (self.pmt_host, ",".join(["%s at %s:%s" % (procinfo.label, procinfo.host, procinfo.port) for procinfo in missing_processes])))
         
     if is_all_ok:
         assert len(found_processes) == len(self.procinfos)
