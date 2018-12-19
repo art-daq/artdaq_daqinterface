@@ -446,7 +446,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THI
                 if not res:
                     outf_mf.write(line)
                 else:
-                    outf_mf.write( re.sub("port\s*:\s*[0-9]+", "port: %d" % (10005 + int(os.environ["DAQINTERFACE_PARTITION_NUMBER"])*1000), line) )
+                    outf_mf.write( re.sub("port\s*:\s*\S+", "port: %d" % (10005 + int(os.environ["DAQINTERFACE_PARTITION_NUMBER"])*1000), line) )
 
     return processed_messagefacility_fhicl_filename
 
