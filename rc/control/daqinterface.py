@@ -1239,6 +1239,28 @@ class DAQInterface(Component):
             for procinfo in self.procinfos:
                 self.print_log("d", "%s at %s:%s, part of subsystem %s, has rank %s" % (procinfo.label, procinfo.host, procinfo.port, procinfo.subsystem, procinfo.rank), 2)
  
+            # Ensure the needed log directories are in place
+
+            logdir_commands_to_run_on_host = []
+
+            for logdir in ["pmt", "boardreader", "eventbuilder",
+                           "dispatcher", "datalogger", "routingmaster"]:
+                logdir_commands_to_run_on_host.append("mkdir -p -m 0777 " + "%s/%s" % (self.log_directory, logdir) )
+
+            for host in set([procinfo.host for procinfo in self.procinfos]):
+                logdircmd = construct_checked_command( logdir_commands_to_run_on_host )
+
+                if host != os.environ["HOSTNAME"] and host != "localhost":
+                    logdircmd = "ssh -f " + host + " '" + logdircmd + "'"
+
+                with deepsuppression(self.debug_level < 4):
+                    status = Popen(logdircmd, shell=True).wait()
+
+                if status != 0:   
+                    self.print_log("e", "\nStatus error raised when trying to run the following on host %s:\n%s\n" % \
+                                   (host, "\n".join(logdir_commands_to_run_on_host)))
+                    raise Exception("Problem running mkdir -p for the needed logfile directories on %s" % ( host ) )
+
             # Now, with the info on hand about the processes contained in
             # procinfos, actually launch them
 

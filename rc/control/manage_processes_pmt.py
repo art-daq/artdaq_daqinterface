@@ -72,12 +72,6 @@ def launch_procs_base(self):
                             self.pmtconfigname + " to " + self.pmt_host + ":/tmp")
 
     self.launch_cmds = []
-
-    for logdir in ["pmt", "boardreader", "eventbuilder",
-                   "dispatcher", "datalogger", "routingmaster"]:
-        if not os.path.exists( "%s/%s" % (self.log_directory, logdir)):
-            self.launch_cmds.append("mkdir -p -m 0777 " + "%s/%s" % (self.log_directory, logdir) )
-
     self.launch_cmds.append(". %s/setup" % self.productsdir)  
     self.launch_cmds.append( bash_unsetup_command )
     self.launch_cmds.append("source " + self.daq_setup_script )
