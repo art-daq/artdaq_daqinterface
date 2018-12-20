@@ -1774,8 +1774,13 @@ class DAQInterface(Component):
             try:
                 procstatus = procinfo.server.daq.status()
             except Exception:
-                self.print_log("e", make_paragraph("Unable to determine state of artdaq process %s at %s:%s; will not be able to complete its stop-and-shutdown" % \
-                                   (procinfo.name, procinfo.host, procinfo.port)))
+                msg = "Unable to determine state of artdaq process %s at %s:%s; will not be able to complete its stop-and-shutdown" % \
+                                   (procinfo.name, procinfo.host, procinfo.port)
+                if self.state(self.name) != "stopped" and self.state(self.name) != "booting" and self.state(self.name) != "terminating":
+                    self.print_log("e", make_paragraph(msg))
+                else:
+                    self.print_log("d", make_paragraph(msg), 2)
+    
                 return
 
             if procstatus == "Running":

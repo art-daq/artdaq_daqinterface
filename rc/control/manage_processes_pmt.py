@@ -282,14 +282,18 @@ def process_manager_cleanup_base(self):
 def get_pid_for_process(procinfo):
     greptoken = procinfo.name + "Main -c id: " + procinfo.port
 
-    pids = get_pids(greptoken, procinfo.host)
+    grepped_lines = []
+    pids = get_pids(greptoken, procinfo.host, grepped_lines)
 
     if len(pids) == 1:    
         return pids[0]
     elif len(pids) == 0:
         return None
     else:
-        assert False
+        for grepped_line in grepped_lines:
+            print grepped_line
+
+        print "Appear to have duplicate processes for %s on %s, pids: %s" % (procinfo.label, procinfo.host, " ".join( pids ))
 
 # check_proc_heartbeats_base() will check that the expected artdaq
 # processes are up and running
