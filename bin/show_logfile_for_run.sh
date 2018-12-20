@@ -18,9 +18,11 @@ if [[ ! -e $metadata_file ]]; then
     exit 1
 fi
 
+method=$( sed -r -n 's/^process management method: (\S+).*/\1/p' $metadata_file)
+
 files=$( sed -n '/^process manager logfile/,/^\s*$/p' $RUNRECORDS/$runnum/metadata.txt | sed '1d;$d' )
 
-if [[ -n $files ]]; then
+if [[ "$method" == "pmt" && -n $files ]]; then
 
     for file in $files; do
 
@@ -42,6 +44,9 @@ as being on this host but it doesn't appear to exist (any longer)
 EOF
 		    
 		fi
+	    else
+		echo "Ability to examine logfile on remote host (\"$logfile\") not yet implemented"
+		exit 0
 	    fi
 	else
 	    echo $file
@@ -51,12 +56,15 @@ EOF
     exit 0
 
 else
+
+
+    
     cat>&2<<EOF
 
     Unable to find the process manager logfile for run $runnum; this
-    may be because the DAQINTERFACE_PROCESS_MANAGEMENT_METHOD
-    environment variable was set to a choice other than "pmt" during
-    that run
+    is because according to the metadata file "$metadata_file" the 
+    DAQINTERFACE_PROCESS_MANAGEMENT_METHOD environment
+    variable was set to "$method" instead of "pmt" during that run
 
 EOF
 
