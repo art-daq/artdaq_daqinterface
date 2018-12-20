@@ -1,5 +1,18 @@
 #!/bin/env bash
 
+if [[ "$#" == "0" ]]; then
+
+    cat>&2<<EOF
+
+        No arguments were supplied to this script: you need to provide
+        a list of integers corresponding to the partitions of the
+        DAQInterface instances you want killed. To see what
+        DAQInterface instances are up, execute "listdaqinterfaces.sh"
+
+EOF
+    exit 1
+fi
+
 . $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
 
 scriptdir="$(dirname "$0")"

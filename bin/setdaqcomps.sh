@@ -1,5 +1,18 @@
 #!/bin/env bash
 
+if [[ "$#" == "0" ]]; then
+
+    cat>&2<<EOF
+
+        No arguments were supplied to this script: you need to provide
+        a list of boardreaders. For allowed boardreader names, execute 
+        "listdaqcomps.sh"
+
+EOF
+    exit 1
+fi
+
+
 components=$@
 
 . $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
