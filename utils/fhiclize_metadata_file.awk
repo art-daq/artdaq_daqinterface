@@ -144,6 +144,9 @@
 	} else if (firstpart ~ "pmt logfile") {
 	    printf "pmt_logfiles_wildcard: \"%s\"\n", secondpart
 	    next
+	} else if (firstpart ~ "process management method") {
+	    printf "process_management_method: \"%s\"\n", secondpart
+	    next
 	} else if (firstpart ~ "process manager logfiles") {
             process_manager_section_active = 1
 	    next

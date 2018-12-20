@@ -122,7 +122,7 @@ def save_run_record_base(self):
     for pkg in sorted(self.package_info_dict.keys()):
         outf.write("%s commit/version: %s\n" % (pkg, self.package_info_dict[ pkg ] ))
 
-    outf.write("\n")
+    outf.write("\nprocess management method: %s\n" % (os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"]))
 
     if self.manage_processes:
 

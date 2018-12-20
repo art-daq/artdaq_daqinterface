@@ -1223,7 +1223,7 @@ class DAQInterface(Component):
                             break
 
         if not sourcing_ok:
-            self.print_log("e", "Status error raised in attempt to source script %s on host %s." % \
+            self.print_log("e", "Status error raised in attempt to source script %s on host \"%s\"." % \
                            (self.daq_setup_script, procinfo.host))
             self.print_log("e", "STDOUT: \n%s" % (out_stdout))
             self.print_log("e", "STDERR: \n%s" % (out_stderr))
