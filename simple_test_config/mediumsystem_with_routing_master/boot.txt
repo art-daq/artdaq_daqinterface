@@ -1,5 +1,5 @@
 
-DAQ setup script: <yourArtdaqInstallationDir>/setupARTDAQDEMO
+DAQ setup script: $yourArtdaqInstallationDir/setupARTDAQDEMO
 
 PMT host: localhost
 PMT port: 5400

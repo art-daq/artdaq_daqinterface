@@ -21,6 +21,25 @@
 	}
     }
 
+    if (process_manager_section_active) {
+	if ( $0 !~ /^\s*$/) {
+	    process_managers[++process_manager_cntr] = $1
+	    next
+	} else {
+	    printf "\nprocess_manager_logfiles: ["
+	    for (i = 1; i <= length(process_managers); ++i) {
+		if (i != length(process_managers)) {
+		    printf "\"%s\", ", process_managers[i]
+		} else {
+		    printf "\"%s\"", process_managers[i]
+		}
+	    }
+	    printf "]\n"
+	    process_manager_section_active = 0
+	}
+    }
+
+
     if (boardreader_section_active) {
 	if ( $0 !~ /^\s*$/) {
 	    boardreaders[++boardreader_cntr] = $1
@@ -124,6 +143,12 @@
 	    # will render illegal FHiCL
 	} else if (firstpart ~ "pmt logfile") {
 	    printf "pmt_logfiles_wildcard: \"%s\"\n", secondpart
+	    next
+	} else if (firstpart ~ "process management method") {
+	    printf "process_management_method: \"%s\"\n", secondpart
+	    next
+	} else if (firstpart ~ "process manager logfiles") {
+            process_manager_section_active = 1
 	    next
 	} else if (firstpart ~ "boardreader logfiles") {
 	    boardreader_section_active = 1

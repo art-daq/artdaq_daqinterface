@@ -7,6 +7,11 @@ cmd=$1
 xmlrpc_arg=
 translated_cmd=
 
+. $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
+daqinterface_preamble
+
+. $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh  # provides recorddir
+
 . $ARTDAQ_DAQINTERFACE_DIR/bin/package_setup.sh xmlrpc_c
 
 xmlrpc_retval=$?
@@ -16,9 +21,6 @@ if [[ "$xmlrpc_retval" != "0" ]]; then
     exit 40
 fi
 
-. $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
-daqinterface_preamble
-
 case $cmd in
     "boot")
 	test $# -gt 1 || badargs=true 
@@ -27,15 +29,22 @@ case $cmd in
 	xmlrpc_arg="daqinterface_config:s/"${daqinterface_config_file}
 	;;
     "config")
-	test $# == 2 || badargs=true 
+	test $# -gt 1 || badargs=true 
 	translated_cmd="configuring"
-	xmlrpc_arg="config:s/"$2
+
+	xmlrpc_arg="config:array/("
+	shift
+	for subconfig in $@ ; do
+	    if [[ "$subconfig" != "${@: -1}" ]] ; then   # "${@: -1}" is the last argument
+		xmlrpc_arg="${xmlrpc_arg}s/${subconfig},"
+	    else
+		xmlrpc_arg="${xmlrpc_arg}s/${subconfig})"
+	    fi
+	done
 	;;
     "start")
 	test $# == 1 || test $# == 2 || badargs=true 
 	translated_cmd="starting"
-
-	. $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh  # provides recorddir
 
 	runnum=0
         highest_runnum=$( ls -1 $recorddir | sort -n | tail -1 )

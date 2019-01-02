@@ -41,14 +41,6 @@
 	  fileName: "/tmp/RoutingMaster/rm_%UID%_metrics.log"
 	  uniquify: true
 	}
-	 ganglia: {
-	   metricPluginType: "ganglia"
-	   level: 3
-	   reporting_interval: 15.0
-	 
-	   configFile: "/etc/ganglia/gmond.conf"
-	   group: "ARTDAQ"
-	 }
 	# msgfac: {
 	#    level: %{mf_level}
 	#    metricPluginType: "msgFacility"

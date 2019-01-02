@@ -1,12 +1,18 @@
 #!/bin/env bash
 
-if [[ "$#" != 2 ]]; then
-    echo "Usage: "$( basename $0 )" <existing run number> <seconds to run>"
+if [[ "$#" != 2 && "$#" != 3 ]]; then
+    echo "Usage: "$( basename $0 )" <existing run number> <seconds to run> [optional argument \"--nostrict\"]"
     exit 0
 fi
 
 runnum=$1
 seconds_to_run=$2
+
+nostrict=false
+
+if [[ -n $3 && $3 =~ nostrict ]]; then
+    nostrict=true
+fi
 
 if ! [[ "$runnum" =~ ^[0-9]+$ ]] ; then 
     echo "Run number argument \"$runnum\" does not appear to be an integer; exiting..." >&2
@@ -28,6 +34,16 @@ exit 1
 fi
 
 . $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
+
+if $nostrict ; then
+    
+    cat<<EOF
+
+The "--nostrict" option has been requested; will ignore code
+differences between run $runnum and the run about to be performed
+
+EOF
+fi
 
 if [[ -d $recorddir ]]; then
     echo "Will look in record directory \"$recorddir\" for run $runnum"
@@ -54,10 +70,31 @@ EOF
     exit 1
 fi
 
-config=$( sed -r -n 's/^Config name: (\S+).*/\1/p' $recorddir/$runnum/metadata.txt )
+if ! $nostrict ; then
+    res=$( check_code_changes_since_run.sh $runnum )
+    
+    if [[ -n $res ]]; then
+	
+	check_code_changes_since_run.sh $runnum
+	
+	cat<<EOF 
+
+Since the code in the installation area which was used for run $runnum
+appears to have changed (details above), this attempt to repeat run
+$runnum will not proceed. To override this refusal because the change
+in code is irrelevant to your reasons for repeating run $runnum,
+re-run the command with the --nostrict option added at the end. 
+
+EOF
+
+	exit 1
+    fi
+fi
+
+config=$( sed -r -n 's/^Config name: ([^#]+).*/\1/p' $recorddir/$runnum/metadata.txt )
 comps=$( awk '/^Component/ { printf("%s ", $NF); }' $recorddir/$runnum/metadata.txt )
 
-cmd="just_do_it.sh $recorddir/$runnum/boot.txt $seconds_to_run --config $config --comps \"$comps\""
+cmd="just_do_it.sh $recorddir/$runnum/boot.txt $seconds_to_run --config \"$config\" --comps \"$comps\""
 echo "Executing $cmd"
 eval $cmd
 

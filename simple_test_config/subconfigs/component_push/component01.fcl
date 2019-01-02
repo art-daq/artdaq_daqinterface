@@ -1,0 +1,30 @@
+
+daq: {
+
+   fragment_receiver: {
+
+      generator: "ToySimulator"
+
+        distribution_type: 1
+
+        max_fragment_size_bytes: 8000 # max_fragment_size_bytes should be set taking into account the value of nADCcounts (the number of 2-byte ADC counts)
+        nADCcounts: 2000
+        random_seed: 1
+     	usecs_between_sends: 100000
+	timestamp_scale_factor: 1
+
+        fragment_type: "TOY1"
+        fragment_id: 1
+        board_id: 1
+        starting_fragment_id: 1
+
+      # sleep_on_stop_us gives the stopping thread the chance to gather the required lock
+      sleep_on_stop_us: 500000
+
+      destinations: {}
+
+      #include "routing_for_boardreaders.fcl"
+}
+
+   #include "metrics_for_boardreaders.fcl"
+}
