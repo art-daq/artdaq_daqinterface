@@ -49,7 +49,7 @@ for comp in $components; do
 
     comp_cntr=$((comp_cntr + 1))
 
-    comp_line=$( grep $comp $components_file )
+    comp_line=$( grep -E "^$comp " $components_file )
 
     if [[ -n $comp_line ]]; then
 	host=$( echo $comp_line | awk '{print $2}' )
