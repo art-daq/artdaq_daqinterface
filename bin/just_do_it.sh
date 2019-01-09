@@ -155,6 +155,11 @@ function main() {
 
     vcmd $scriptdir/setdaqcomps.sh $daqcomps
 
+    if [[ "$?" != "0" ]]; then
+	echo "A problem occurred when calling setdaqcomps.sh; exiting..."
+	exit 300
+    fi
+
     vcmd $scriptdir/send_transition.sh boot $daqintconfig
 
     wait_until_no_longer booting
