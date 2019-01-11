@@ -264,7 +264,7 @@ def construct_checked_command(cmds):
         checked_cmds.append( cmd )
 
         if not re.search(r"\s*&\s*$", cmd) and not bash_unsetup_command in cmd:
-            check_cmd = "if [[ \"$?\" != \"0\" ]]; then echo %s: Nonzero return value from the following command: \"%s\" >> /tmp/daqinterface_checked_command_failures.log; exit 1; fi " % (date_and_time(), cmd)
+            check_cmd = "if [[ \"$?\" != \"0\" ]]; then echo %s: Nonzero return value from the following command: \"%s\" >> /tmp/daqinterface_checked_command_failures_%s.log; exit 1; fi " % (date_and_time(), cmd, os.environ["USER"])
             checked_cmds.append( check_cmd )
 
     total_cmd = " ; ".join( checked_cmds )
@@ -437,7 +437,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THI
         with open(messagefacility_fhicl_filename, "w") as outf_mf:
             outf_mf.write( default_contents )
 
-    processed_messagefacility_fhicl_filename="/tmp/messagefacility_partition%s.fcl" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"])
+    processed_messagefacility_fhicl_filename="/tmp/messagefacility_partition%s_%s.fcl" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"], os.environ["USER"])
     
     with open(messagefacility_fhicl_filename) as inf_mf:
         with open(processed_messagefacility_fhicl_filename, "w") as outf_mf:

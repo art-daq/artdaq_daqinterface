@@ -201,9 +201,13 @@ def get_pid_for_process(procinfo):
     grepped_lines = []
     pids = get_pids(greptoken, procinfo.host, grepped_lines)
 
-    if len(pids) == 1:    
-        return pids[0]
-    elif len(pids) == 0:
+    ssh_pids = get_pids("ssh .*" + greptoken, procinfo.host)
+            
+    cleaned_pids = [ pid for pid in pids if pid not in ssh_pids ]
+
+    if len(cleaned_pids) == 1:    
+        return cleaned_pids[0]
+    elif len(cleaned_pids) == 0:
         return None
     else:
         for grepped_line in grepped_lines:

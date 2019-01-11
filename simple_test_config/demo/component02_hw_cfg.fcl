@@ -1,6 +1,6 @@
   daq: {
   fragment_receiver: {
-	mpi_sync_interval: 50
+	max_fragment_size_bytes: 128000
 
 	# CommandableFragmentGenerator Configuration: 
 	fragment_ids: []
