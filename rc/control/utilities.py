@@ -437,7 +437,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THI
         with open(messagefacility_fhicl_filename, "w") as outf_mf:
             outf_mf.write( default_contents )
 
-    processed_messagefacility_fhicl_filename="/tmp/messagefacility_partition%s.fcl" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"])
+    processed_messagefacility_fhicl_filename="/tmp/messagefacility_partition%s_%s.fcl" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"], os.environ["USER"])
     
     with open(messagefacility_fhicl_filename) as inf_mf:
         with open(processed_messagefacility_fhicl_filename, "w") as outf_mf:

@@ -1362,7 +1362,7 @@ class DAQInterface(Component):
 
                     cmds = []
                     port_to_replace = 30000
-                    msgviewer_fhicl = "/tmp/msgviewer_partition%d.fcl" % (self.partition_number)
+                    msgviewer_fhicl = "/tmp/msgviewer_partition%d_%s.fcl" % (self.partition_number, os.environ["USER"])
                     cmds.append(bash_unsetup_command)
                     cmds.append(". %s" % (self.daq_setup_script))
                     cmds.append("which msgviewer")
@@ -1375,13 +1375,12 @@ class DAQInterface(Component):
                     msgviewercmd = construct_checked_command( cmds )
 
                     with deepsuppression(self.debug_level < 3):
-
                         status = Popen(msgviewercmd, shell=True).wait()
 
-                        if status != 0:
-                            self.alert_and_recover("Status error raised in msgviewer call within Popen; tried the following commands: \"%s\"" %
-                                            " ; ".join(cmds) )
-                            return
+                    if status != 0:
+                        self.alert_and_recover("Status error raised in msgviewer call within Popen; tried the following commands: \n\n\"%s\"" %
+                                            " ;\n".join(cmds) )
+                        return
                 else:
                     self.print_log("i", make_paragraph("artdaq_mfextensions does not appear to be available; "
                                          "unable to launch the messageviewer window. This will not affect"
