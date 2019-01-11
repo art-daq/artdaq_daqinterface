@@ -72,14 +72,25 @@ fi
 for file_location in $( file_locations ); do
 
     rootfile_dir=$( echo $file_location | sed -r -n 's/.*:(.*)/\1/p' )
+    rootfile=$(ls -tr1 ${rootfile_dir}/*$(printf "%06d" $runnum)*_*.root 2>/dev/null| tail -1 )
 
-    rootfile=$(ls -tr1 ${rootfile_dir}/*$(printf "%06d" $runnum)*_*.root | tail -1 )
-    break
+    if [[ -n $rootfile ]]; then
+	break
+    fi
 done
 
 
 if [[ -z $rootfile ]]; then
-    echo "Unable to find root file for run #${runnum} in directory \"${rootfiledir}\"" >&2
+
+    cat>&2<<EOF
+
+    Unable to find a root file for run #${runnum} in directory
+    "${rootfile_dir}"; note that this script needs to be run on one
+    of the hosts to which rootfiles were written in this run #${runnum}
+
+EOF
+
+
     exit 20
 fi 
 
