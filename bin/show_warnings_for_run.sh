@@ -57,6 +57,7 @@ if [[ "$?" == "0" ]]; then
 
     for file in $output ; do
 
+	echo
 	echo "Examining file \"$file\""
 
 	host=$( echo $file | awk 'BEGIN{FS=":"}{print $1}' )
@@ -67,9 +68,9 @@ if [[ "$?" == "0" ]]; then
 	if [[ "$host" == "localhost" || "$host" == "$HOSTNAME" ]]; then
 	    if [[ -e $filename ]]; then 
 		( eval $sedcmd  )
-	    else 
-		echo "Unable to find logfile $filename on ${host}!"  
 	    fi
+	else
+	    ssh $host $sedcmd
 	fi
     done
     echo
