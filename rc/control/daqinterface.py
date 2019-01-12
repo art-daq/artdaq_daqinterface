@@ -632,11 +632,11 @@ class DAQInterface(Component):
 
                 if redeemed:
                     successmsg = "After " + str(retry_counter) + " checks, process " + \
-                        procinfo.name + " at " + procinfo.host + ":" + procinfo.port + " returned \"Success\""
+                        procinfo.label + " at " + procinfo.host + ":" + procinfo.port + " returned \"Success\""
                     self.print_log("i",  successmsg )
                     continue  # We're fine, continue on to the next process check
 
-                errmsg = "Unexpected status message from process " + procinfo.name + " at " + procinfo.host + \
+                errmsg = "Unexpected status message from process " + procinfo.label + " at " + procinfo.host + \
                     ":" + procinfo.port + ": \"" + \
                     procinfo.lastreturned + "\""
                 self.print_log("w", make_paragraph(errmsg))
@@ -751,13 +751,13 @@ class DAQInterface(Component):
                     self.exception = True
 
                 exceptstring = make_paragraph("Exception caught in DAQInterface attempt to query status of artdaq process %s at %s:%s; most likely reason is process no longer exists" % \
-                    (procinfo.name, procinfo.host, procinfo.port))              
+                    (procinfo.label, procinfo.host, procinfo.port))              
                 self.print_log("e", exceptstring)
 
             if procinfo.lastreturned == "Error":
                 is_all_ok = False
                 errmsg = "\"Error\" state returned by process %s at %s:%s; please check messageviewer and/or the logfiles for error messages" % \
-                    (procinfo.name, procinfo.host, procinfo.port)
+                    (procinfo.label, procinfo.host, procinfo.port)
 
                 self.print_log("e", make_paragraph(errmsg))
 
@@ -995,11 +995,11 @@ class DAQInterface(Component):
                 pi = self.procinfos[procinfo_index]
 
                 if "timeout: timed out" in traceback.format_exc():
-                    output_message = "Timeout sending %s transition to artdaq process %s at %s:%s \n" % (command, pi.name, pi.host, pi.port)
+                    output_message = "Timeout sending %s transition to artdaq process %s at %s:%s \n" % (command, pi.label, pi.host, pi.port)
                 else:
                     self.print_log("e", traceback.format_exc())
 
-                    output_message = "Exception caught sending %s transition to artdaq process %s at %s:%s \n" % (command, pi.name, pi.host, pi.port)
+                    output_message = "Exception caught sending %s transition to artdaq process %s at %s:%s \n" % (command, pi.label, pi.host, pi.port)
 
                 self.print_log("e", output_message)
             
@@ -1047,7 +1047,7 @@ class DAQInterface(Component):
         if self.debug_level >= 1:
             for procinfo in self.procinfos:
                 self.print_log("i", "%s at %s:%s, returned string is:\n%s\n" % \
-                    (procinfo.name, procinfo.host, procinfo.port, procinfo.lastreturned))
+                    (procinfo.label, procinfo.host, procinfo.port, procinfo.lastreturned))
 
 
         target_states = {"Init":"Ready", "Start":"Running", "Pause":"Paused", "Resume":"Running",
@@ -1722,14 +1722,14 @@ class DAQInterface(Component):
                     self.print_log("e", traceback.format_exc())
 
                     self.print_log("e", "%s at %s:%s, returned string is:\n%s\n" % \
-                                       (procinfo.name, procinfo.host, procinfo.port, procinfo.lastreturned))
+                                       (procinfo.label, procinfo.host, procinfo.port, procinfo.lastreturned))
 
                     self.alert_and_recover("An exception was thrown "
                                            "during the terminate transition")
                     return
                 else:
                     self.print_log("i", "%s at %s:%s, returned string is:\n%s\n" % \
-                                   (procinfo.name, procinfo.host, procinfo.port, procinfo.lastreturned), 1)
+                                   (procinfo.label, procinfo.host, procinfo.port, procinfo.lastreturned), 1)
             try:
                 self.kill_procs()
             except Exception:
@@ -1769,7 +1769,7 @@ class DAQInterface(Component):
             if pid is None:
                 if self.debug_level >= 2 or not self.heartbeat_failure:
                     self.print_log("d", 
-                        "Didn't find PID for %s at %s:%s" % (procinfo.name, procinfo.host, procinfo.port), 2)
+                        "Didn't find PID for %s at %s:%s" % (procinfo.label, procinfo.host, procinfo.port), 2)
                 return
 
             def send_recover_command(command):
@@ -1783,16 +1783,16 @@ class DAQInterface(Component):
                         assert False
 
                     self.print_log("d", "Called %s on %s at %s:%s without an exception; returned string was \"%s\"" % \
-                                       (command, procinfo.name, procinfo.host, procinfo.port, lastreturned), 2)
+                                       (command, procinfo.label, procinfo.host, procinfo.port, lastreturned), 2)
                 except Exception:
                     raise
 
                 if lastreturned == "Success":
                     self.print_log("d", "Successful %s sent to %s at %s:%s" % \
-                                       (command, procinfo.name, procinfo.host, procinfo.port), 2)
+                                       (command, procinfo.label, procinfo.host, procinfo.port), 2)
                 else:
                     raise Exception( make_paragraph( \
-                            "Attempted %s sent to artdaq process %s " % (command, procinfo.name) + \
+                                                     "Attempted %s sent to artdaq process %s " % (command, procinfo.label) + \
                                 "at %s:%s during recovery procedure" % (procinfo.host, procinfo.port) + \
                                 " returned \"%s\"" % \
                                 (lastreturned)))
@@ -1801,7 +1801,7 @@ class DAQInterface(Component):
                 procstatus = procinfo.server.daq.status()
             except Exception:
                 msg = "Unable to determine state of artdaq process %s at %s:%s; will not be able to complete its stop-and-shutdown" % \
-                                   (procinfo.name, procinfo.host, procinfo.port)
+                                   (procinfo.label, procinfo.host, procinfo.port)
                 if self.state(self.name) != "stopped" and self.state(self.name) != "booting" and self.state(self.name) != "terminating":
                     self.print_log("e", make_paragraph(msg))
                 else:
@@ -1817,7 +1817,7 @@ class DAQInterface(Component):
                     if "ProtocolError" not in traceback.format_exc():
                         self.print_log("e", traceback.format_exc())
                     self.print_log("e",  make_paragraph( 
-                            "Exception caught during stop transition sent to artdaq process %s " % (procinfo.name) +
+                            "Exception caught during stop transition sent to artdaq process %s " % (procinfo.label) +
                             "at %s:%s during recovery procedure;" % (procinfo.host, procinfo.port) +
                             " it's possible the process no longer existed\n"))
                         
@@ -1827,7 +1827,7 @@ class DAQInterface(Component):
                     procstatus = procinfo.server.daq.status()
                 except Exception:
                     self.print_log("e", "Unable to determine state of artdaq process %s at %s:%s; will not be able to complete its stop-and-shutdown" % \
-                                       (procinfo.name, procinfo.host, procinfo.port))
+                                       (procinfo.label, procinfo.host, procinfo.port))
                     return
 
             if procstatus == "Ready":
@@ -1838,7 +1838,7 @@ class DAQInterface(Component):
                     if "ProtocolError" not in traceback.format_exc():
                         self.print_log("e", traceback.format_exc())
                     self.print_log("e",  make_paragraph( 
-                            "Exception caught during shutdown transition sent to artdaq process %s " % (procinfo.name) +
+                            "Exception caught during shutdown transition sent to artdaq process %s " % (procinfo.label) +
                             "at %s:%s during recovery procedure;" % (procinfo.host, procinfo.port) +
                             " it's possible the process no longer existed\n"))
                     return
@@ -1867,7 +1867,10 @@ class DAQInterface(Component):
                 sleep(sleep_on_heartbeat_failure)  
 
 
+            print
             for name in ["BoardReader", "EventBuilder", "Aggregator", "DataLogger", "Dispatcher", "RoutingMaster"]:
+
+                self.print_log("i", "%s: Attempting to cleanly wind down the %ss if they still exist" % (date_and_time(), name))
 
                 threads = []
                 priorities_used = {}
@@ -1887,6 +1890,8 @@ class DAQInterface(Component):
                         thread.join()
 
         if self.manage_processes:
+            print
+            self.print_log("i", "%s: Attempting to kill off the artdaq processes from this run if they still exist" % (date_and_time()))
             try:
                 self.kill_procs()
             except Exception:

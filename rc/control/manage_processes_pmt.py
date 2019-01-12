@@ -175,7 +175,7 @@ def kill_procs_base(self):
 
             if len(pids) > 0:
                 self.print_log("w", "Appeared to be unable to kill %s at %s:%s during cleanup" % \
-                                   (procinfo.name, procinfo.host, procinfo.port))
+                                   (procinfo.label, procinfo.host, procinfo.port))
 
     self.procinfos = []
 
