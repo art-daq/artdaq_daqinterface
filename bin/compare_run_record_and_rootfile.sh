@@ -86,7 +86,7 @@ if [[ -z $rootfile ]]; then
 
     Unable to find a root file for run #${runnum} in directory
     "${rootfile_dir}"; note that this script needs to be run on one
-    of the hosts to which rootfiles were written in this run #${runnum}
+    of the hosts to which rootfiles were written
 
 EOF
 

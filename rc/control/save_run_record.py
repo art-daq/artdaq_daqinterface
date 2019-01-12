@@ -43,7 +43,7 @@ def save_run_record_base(self):
     config_saved_name = "boot.txt"
     
     with open("%s/%s" % (outdir, config_saved_name), "w") as outf:
-        with open( self.daqinterface_config_file ) as inf:
+        with open( self.boot_filename ) as inf:
             for line in inf.readlines():
                 outf.write( expand_environment_variable_in_string( line ) )
 

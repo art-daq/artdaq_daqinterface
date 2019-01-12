@@ -87,7 +87,7 @@ else:
     from rc.control.config_functions_local import put_config_info_base
     from rc.control.config_functions_local import listconfigs_base
 
-from rc.control.config_functions_local import get_daqinterface_config_info_base
+from rc.control.config_functions_local import get_boot_info_base
 from rc.control.config_functions_local import listdaqcomps_base
 
 
@@ -373,7 +373,7 @@ class DAQInterface(Component):
 
     get_config_info = get_config_info_base
     put_config_info = put_config_info_base
-    get_daqinterface_config_info = get_daqinterface_config_info_base
+    get_boot_info = get_boot_info_base
     listdaqcomps = listdaqcomps_base
     listconfigs = listconfigs_base
     save_run_record = save_run_record_base
@@ -767,7 +767,7 @@ class DAQInterface(Component):
             return
 
 
-    def check_daqinterface_config_info(self):
+    def check_boot_info(self):
 
         # Check that the boot file actually contained the
         # definitions we wanted
@@ -797,6 +797,9 @@ class DAQInterface(Component):
                                               if procinfo.name == "RoutingMaster" ]  )
         if num_requested_routingmasters > len(self.subsystems):
             raise Exception(make_paragraph("%d RoutingMaster processes defined in the boot file provided; you can't have more than the number of subsystems (%d)" % (num_requested_routingmasters, len(self.subsystems))))
+
+        if len(set([procinfo.label for procinfo in self.procinfos])) < len(self.procinfos):
+            raise Exception(make_paragraph("At least one of your desired artdaq processes has a duplicate label; please check the boot file to ensure that each process gets a unique label"))
 
 
     # JCF, Dec-1-2016
@@ -1121,7 +1124,7 @@ class DAQInterface(Component):
     # functions which get called in the runner() function when a
     # transition is requested
 
-    def do_boot(self, daqinterface_config = None):
+    def do_boot(self, boot_filename = None):
 
         def revert_failed_boot(failed_action):
             self.reset_variables()            
@@ -1139,14 +1142,16 @@ class DAQInterface(Component):
         self.reset_variables()
         os.chdir(self.daqinterface_base_dir)
 
-        if not daqinterface_config:
-            daqinterface_config = self.run_params["daqinterface_config"]
+        if not boot_filename:
+            boot_filename = self.run_params["boot_filename"]
+
+        self.boot_filename = boot_filename
 
         try:
-            self.daqinterface_config_file = self.get_daqinterface_config_info( daqinterface_config )
-            self.check_daqinterface_config_info()
+            self.get_boot_info( self.boot_filename )
+            self.check_boot_info()
         except Exception:
-            revert_failed_boot("when trying to read the DAQInterface boot file \"%s\"" % (daqinterface_config ))
+            revert_failed_boot("when trying to read the DAQInterface boot file \"%s\"" % (self.boot_filename ))
             return
 
         if not hasattr(self, "daq_comp_list") or not self.daq_comp_list or self.daq_comp_list == {}:
@@ -1582,7 +1587,7 @@ class DAQInterface(Component):
                 return
 
             try:
-                self.launch_art_procs(self.daqinterface_config_file)
+                self.launch_art_procs(self.boot_filename)
             except Exception:
                 self.print_log("w", traceback.format_exc())
                 self.print_log("w", make_paragraph("WARNING: an exception was caught when trying to launch the online monitoring processes; online monitoring won't work though this will not affect actual datataking"))
