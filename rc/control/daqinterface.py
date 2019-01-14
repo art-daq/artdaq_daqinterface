@@ -1661,7 +1661,8 @@ class DAQInterface(Component):
                 self.alert_and_recover("An exception was thrown when attempting to send the \"start\" transition to the artdaq processes; see traceback above for more info")
                 return
 
-            self.softlink_logfiles()
+            self.print_log("w", make_paragraph("Skipping the creation of helpfully-named softlinks to the logfiles until this process can be made more efficient"))
+            #self.softlink_logfiles()
 
         self.start_datataking()
 

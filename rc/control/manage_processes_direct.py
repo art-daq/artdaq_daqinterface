@@ -132,49 +132,44 @@ def launch_procs_base(self):
 
 def kill_procs_base(self):
 
-    for procinfo in self.procinfos:
-
-        pid = get_pid_for_process(procinfo)
-
-        if pid is not None:
-            cmd = "kill " + pid
-
-            if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
-                cmd = "ssh -f " + procinfo.host + " '" + cmd + "'"
-
-            self.print_log("d", "Killing %s process on %s, pid == %s" % (procinfo.label, procinfo.host, pid), 2)
-            Popen(cmd, shell=True, stdout=subprocess.PIPE,
-                  stderr=subprocess.STDOUT)
-        else:
-            self.print_log("d", "No process for %s found; will not issue a kill command" % (procinfo.label), 2)
-
-    # Check that they were actually killed
-
-    sleep(1)
-
-    for procinfo in self.procinfos:
-        pid = get_pid_for_process(procinfo)
-
-        if pid is not None:
-            self.print_log("w", "Appeared to be unable to kill %s on %s during cleanup" % \
-                               (procinfo.label, procinfo.host))
-
     for host in set([procinfo.host for procinfo in self.procinfos]):
+
+        artdaq_pids, labels_of_found_processes = get_pids_and_labels_on_host(host, self.procinfos)
+        if len(artdaq_pids) > 0:
+            self.print_log("i", "%s: Found the following processes on %s, will attempt to kill them: %s" % \
+                           (date_and_time(), host, " ".join( labels_of_found_processes ) ), 0)
+
+            cmd = "kill %s" % (" ".join(artdaq_pids))
+            if host != "localhost" and host != os.environ["HOSTNAME"]:
+                cmd = "ssh -f " + host + " '" + cmd + "'"
+
+            Popen(cmd, shell=True, stdout=subprocess.PIPE,
+                  stderr=subprocess.STDOUT).wait()
+            self.print_log("d", "%s: Finished (attempted) kill of the following processes on %s: %s" % \
+                           (date_and_time(), host, " ".join( labels_of_found_processes ) ), 2)
+
         art_pids = get_pids("art -c .*partition_%s" % os.environ["DAQINTERFACE_PARTITION_NUMBER"], host)
 
         if len(art_pids) > 0:
             cmd = "kill -9 %s" % (" ".join( art_pids ) )   # JCF, Dec-8-2018: the "-9" is apparently needed...
             if host != "localhost" and host != os.environ["HOSTNAME"]:
                 cmd = "ssh -f " + host + " '" + cmd + "'"
-            self.print_log("d", "Executing \"%s\" on %s" % (cmd, host), 2)
+            self.print_log("d", "%s: About to kill the artdaq-associated art processes on %s" % (date_and_time(), host), 2)
             Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).wait()
+            self.print_log("d", "%s: Finished kill of the artdaq-associated art processes on %s" % (date_and_time(), host), 2)
 
-        art_pids = get_pids("art -c .*partition_%s" % os.environ["DAQINTERFACE_PARTITION_NUMBER"], host)
-        if len(art_pids) > 0:
-            self.print_log("w", "Unable to kill at least one of the artdaq-related art processes on %s (pid(s) %s still exist)" % (host, " ".join(art_pids)))
+    sleep(1)
 
+    for host in set([procinfo.host for procinfo in self.procinfos]):
 
+        artdaq_pids, labels_of_found_processes = get_pids_and_labels_on_host(host, self.procinfos)    
 
+        if len(artdaq_pids) > 0:
+            self.print_log("w", make_paragraph("Despite receiving a termination signal, the following artdaq processes on %s were not killed, so they'll be issued a SIGKILL: %s" % (host, " ".join(labels_of_found_processes))))
+            cmd = "kill -9 %s" % (" ".join(artdaq_pids))
+            if host != "localhost" and host != os.environ["HOSTNAME"]:
+                cmd = "ssh -f " + host + " '" + cmd + "'"
+                Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).wait()
 
     self.procinfos = []
 
@@ -227,6 +222,10 @@ def get_pids_and_labels_on_host(host, procinfos):
         greptokens.append( "[0-9]:[0-9][0-9]\s\+" + bootfile_name_to_execname(procinfo.name) + " -c .*" + procinfo.port + ".*" ) 
 
     greptoken = "\|".join(greptokens)
+    #print "Will try a grep with %s on %s" % (greptoken, host)
+
+    greptoken = "[0-9]:[0-9][0-9]\s\+\(%s\).*application_name.*partition_number" % \
+                ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])))
 
     grepped_lines = []
     pids = get_pids(greptoken, host, grepped_lines)
