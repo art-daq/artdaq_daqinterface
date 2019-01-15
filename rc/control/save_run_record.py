@@ -129,8 +129,9 @@ def save_run_record_base(self):
         logtuples = [ ("process manager", self.process_manager_log_filenames),
                       ("boardreader", self.boardreader_log_filenames),
                       ("eventbuilder", self.eventbuilder_log_filenames),
-                      ("routingmaster", self.routingmaster_log_filenames),
-                      ("aggregator", self.aggregator_log_filenames)]
+                      ("datalogger", self.datalogger_log_filenames),
+                      ("dispatcher", self.dispatcher_log_filenames),
+                      ("routingmaster", self.routingmaster_log_filenames)]
 
         for logtuple in logtuples:
 

@@ -801,41 +801,61 @@ class DAQInterface(Component):
         if len(set([procinfo.label for procinfo in self.procinfos])) < len(self.procinfos):
             raise Exception(make_paragraph("At least one of your desired artdaq processes has a duplicate label; please check the boot file to ensure that each process gets a unique label"))
 
+    def get_artdaq_log_filenames(self):
 
-    # JCF, Dec-1-2016
+        self.boardreader_log_filenames = []
+        self.eventbuilder_log_filenames = []
+        self.datalogger_log_filenames = []
+        self.dispatcher_log_filenames = []
+        self.aggregator_log_filenames = []
+        self.routingmaster_log_filenames = []
 
-    # Define the local function "get_logfilenames()" which will enable
-    # to get the artdaq-process-specific logfiles 
+        for host in set([procinfo.host for procinfo in self.procinfos]):
 
-    def get_logfilenames(self, procname):
+            if host != "localhost":
+                full_hostname = host
+            else:
+                full_hostname = os.environ["HOSTNAME"]
+            
+            res = re.search(r"^([^.]+)", full_hostname)
+            assert res
+            short_hostname = res.group(1)
 
-        logfilenames = []
+            procinfos_for_host = [procinfo for procinfo in self.procinfos if procinfo.host == host]
+            cmds = []
+            proctypes = []
 
-        for procinfo in self.procinfos:
-            if procinfo.name == procname:
+            for procinfo in procinfos_for_host:
 
-                if procinfo.host != "localhost":
-                    full_hostname = procinfo.host
-                else:
-                    full_hostname = os.environ["HOSTNAME"]
-
-                res = re.search(r"^([^.]+)", full_hostname)
-                assert res
-                short_hostname = res.group(1)
-
-                cmd = "ls -tr1 %s/%s-%s-%s/%s-%s-%s*.log | tail -1" % (self.log_directory,
+                cmds.append( "ls -tr1 %s/%s-%s-%s/%s-%s-%s*.log | tail -1" % (self.log_directory,
                                                                        procinfo.label, short_hostname, procinfo.port,
-                                                                       procinfo.label, short_hostname, procinfo.port)
+                                                                       procinfo.label, short_hostname, procinfo.port) )
+                proctypes.append( procinfo.name )
 
-                if procinfo.host != os.environ["HOSTNAME"] and procinfo.host != "localhost":
-                    cmd = "ssh -f " + procinfo.host + " '" + cmd + "'"
+            cmd = "; ".join( cmds )
 
-                proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                proclines = proc.stdout.readlines()
+            if host != os.environ["HOSTNAME"] and host != "localhost":
+                cmd = "ssh -f " + host + " '" + cmd + "'"
+
+            proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            proclines = proc.stdout.readlines()
                 
-                logfilenames.append("%s:%s" % (full_hostname, proclines[0].strip()))
-
-        return logfilenames
+            if len(proclines) != len(proctypes):
+                self.print_log("w", "Problem associating logfiles with the artdaq processes!")
+                
+            for i_p in range(len(proclines)):
+                if "BoardReader" in proctypes[i_p]:
+                    self.boardreader_log_filenames.append("%s:%s" % (full_hostname, proclines[0].strip()))
+                elif "EventBuilder" in proctypes[i_p]:
+                    self.eventbuilder_log_filenames.append("%s:%s" % (full_hostname, proclines[0].strip()))
+                elif "DataLogger" in proctypes[i_p]:
+                    self.datalogger_log_filenames.append("%s:%s" % (full_hostname, proclines[0].strip()))
+                elif "Dispatcher" in proctypes[i_p]:
+                    self.dispatcher_log_filenames.append("%s:%s" % (full_hostname, proclines[0].strip()))
+                elif "RoutingMaster" in proctypes[i_p]:
+                    self.routingmaster_log_filenames.append("%s:%s" % (full_hostname, proclines[0].strip()))
+                else:
+                    assert False, "Unknown process type found in procinfos list"
 
     def softlink_logfiles(self):
         
@@ -1405,16 +1425,13 @@ class DAQInterface(Component):
             # logfile found in the log directory. There's a tiny chance
             # someone else's logfile could sneak in during the few seconds
             # taken during startup, but it's unlikely...
+            
+            self.print_log("i", "Determining logfiles associated with the artdaq processes...")
 
             try:
 
                 self.process_manager_log_filenames = self.get_process_manager_log_filenames()
-                self.boardreader_log_filenames = self.get_logfilenames("BoardReader")
-                self.eventbuilder_log_filenames = self.get_logfilenames("EventBuilder")
-                self.datalogger_log_filenames = self.get_logfilenames("DataLogger")
-                self.dispatcher_log_filenames = self.get_logfilenames("Dispatcher")
-                self.aggregator_log_filenames = self.get_logfilenames("Aggregator") + self.datalogger_log_filenames + self.dispatcher_log_filenames
-                self.routingmaster_log_filenames = self.get_logfilenames("RoutingMaster")
+                self.get_artdaq_log_filenames()
 
             except Exception:
                 self.print_log("e", traceback.format_exc())
