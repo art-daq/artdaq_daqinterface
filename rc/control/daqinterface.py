@@ -839,21 +839,21 @@ class DAQInterface(Component):
 
             proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             proclines = proc.stdout.readlines()
-                
+
             if len(proclines) != len(proctypes):
                 self.print_log("w", "Problem associating logfiles with the artdaq processes!")
                 
             for i_p in range(len(proclines)):
                 if "BoardReader" in proctypes[i_p]:
-                    self.boardreader_log_filenames.append("%s:%s" % (full_hostname, proclines[0].strip()))
+                    self.boardreader_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip()))
                 elif "EventBuilder" in proctypes[i_p]:
-                    self.eventbuilder_log_filenames.append("%s:%s" % (full_hostname, proclines[0].strip()))
+                    self.eventbuilder_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip()))
                 elif "DataLogger" in proctypes[i_p]:
-                    self.datalogger_log_filenames.append("%s:%s" % (full_hostname, proclines[0].strip()))
+                    self.datalogger_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip()))
                 elif "Dispatcher" in proctypes[i_p]:
-                    self.dispatcher_log_filenames.append("%s:%s" % (full_hostname, proclines[0].strip()))
+                    self.dispatcher_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip()))
                 elif "RoutingMaster" in proctypes[i_p]:
-                    self.routingmaster_log_filenames.append("%s:%s" % (full_hostname, proclines[0].strip()))
+                    self.routingmaster_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip()))
                 else:
                     assert False, "Unknown process type found in procinfos list"
 
