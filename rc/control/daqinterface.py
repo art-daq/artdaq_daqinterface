@@ -1219,6 +1219,9 @@ class DAQInterface(Component):
         # setup script was sourced on all hosts which artdaq processes
         # ran on in case the setup script contained trace commands...
 
+        self.print_log("i", "\n%s: Checking that the setup file %s sources correctly on all nodes..." % \
+                       (date_and_time(), self.daq_setup_script))
+
         already_sourced = {}
         sourcing_ok = True
 
@@ -1426,7 +1429,7 @@ class DAQInterface(Component):
             # someone else's logfile could sneak in during the few seconds
             # taken during startup, but it's unlikely...
             
-            self.print_log("i", "Determining logfiles associated with the artdaq processes...")
+            self.print_log("i", "\n%s: Determining logfiles associated with the artdaq processes..." % (date_and_time()))
 
             try:
 
@@ -1471,6 +1474,8 @@ class DAQInterface(Component):
                        self.daq_comp_list, 1)
         for ffp_path in self.fhicl_file_path:
             self.print_log("d", "\tIncluding FHICL FILE PATH %s" % ffp_path,2)
+
+        self.print_log("i", "\n%s: Obtaining FHiCL documents..." % (date_and_time()))
 
         rootfile_cntr = 0 
 
@@ -1545,12 +1550,16 @@ class DAQInterface(Component):
         assert "/tmp" == tmpdir_for_fhicl[:4] and len(tmpdir_for_fhicl) > 4
         shutil.rmtree( tmpdir_for_fhicl )
 
+        self.print_log("i", "%s: Bookkeeping the FHiCL documents..." % (date_and_time()))
+
         try:
             self.bookkeeping_for_fhicl_documents()
         except Exception:
             self.print_log("e", traceback.format_exc())
             self.alert_and_recover("An exception was thrown when performing bookkeeping on the process FHiCL documents; see traceback above for more info")
             return
+
+        self.print_log("i", "%s: Reformatting the FHiCL documents..." % (date_and_time()))
 
         if not os.path.exists(os.environ["DAQINTERFACE_SETUP_FHICLCPP"]):
             self.print_log("w", make_paragraph("File \"%s\", needed for formatting FHiCL configurations, does not appear to exist; will attempt to auto-generate one..." % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"])))
@@ -1586,6 +1595,8 @@ class DAQInterface(Component):
         
         if os.path.exists(self.tmp_run_record):
             shutil.rmtree(self.tmp_run_record)
+
+        self.print_log("i", "%s: Saving the run record..." % (date_and_time()))
 
         try:
             self.save_run_record()            
@@ -1625,6 +1636,8 @@ class DAQInterface(Component):
                     labeled_fhicl_documents.append( (filestub,
                                                      'contents: "\n%s\n"\n' % (contents)) )
 
+            self.print_log("i", "%s: Ensuring FHiCL documents will be archived in the output *.root files..." % \
+                           (date_and_time()))
             self.archive_documents(labeled_fhicl_documents)
 
             self.print_log("d", "Done adding archive entries to config", 2)
