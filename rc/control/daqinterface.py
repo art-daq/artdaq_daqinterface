@@ -105,7 +105,7 @@ class DAQInterface(Component):
     # However, it also contains a less-than function which allows it
     # to be sorted s.t. processes you'd want shutdown first appear
     # before processes you'd want shutdown last (in order:
-    # boardreader, eventbuilder, aggregator)
+    # boardreader, eventbuilder, datalogger, dispatcher, routingmaster)
 
     # JCF, Nov-17-2015
 
@@ -164,7 +164,7 @@ class DAQInterface(Component):
             if self.name != other.name:
 
                 processes_upstream_to_downstream = \
-                    ["BoardReader", "EventBuilder", "Aggregator", "DataLogger", "Dispatcher", "RoutingMaster"]
+                    ["BoardReader", "EventBuilder", "DataLogger", "Dispatcher", "RoutingMaster"]
 
                 if processes_upstream_to_downstream.index(self.name) < \
                         processes_upstream_to_downstream.index(other.name):
@@ -462,7 +462,8 @@ class DAQInterface(Component):
 
         self.boardreader_timeout = 30
         self.eventbuilder_timeout = 30
-        self.aggregator_timeout = 30
+        self.datalogger_timeout = 30
+        self.dispatcher_timeout = 30
         self.routingmaster_timeout = 30
 
         self.use_messageviewer = True
@@ -514,8 +515,10 @@ class DAQInterface(Component):
                 self.boardreader_timeout = int( line.split()[-1].strip() )
             elif "eventbuilder_timeout" in line or "eventbuilder timeout" in line:
                 self.eventbuilder_timeout = int( line.split()[-1].strip() )
-            elif "aggregator_timeout" in line or "aggregator timeout" in line:
-                self.aggregator_timeout = int( line.split()[-1].strip() )
+            elif "datalogger_timeout" in line or "datalogger timeout" in line:
+                self.datalogger_timeout = int( line.split()[-1].strip() )
+            elif "dispatcher_timeout" in line or "dispatcher timeout" in line:
+                self.dispatcher_timeout = int( line.split()[-1].strip() )
             elif "boardreader_priorities" in line or "boardreader priorities" in line:
                 self.boardreader_priorities = [regexp.strip() for regexp in line.split()[2:] if ":" not in regexp]
             elif "max_fragment_size_bytes" in line or "max fragment size bytes" in line:
@@ -664,14 +667,6 @@ class DAQInterface(Component):
                 num_eventbuilders += 1
         return num_eventbuilders
 
-    def num_aggregators(self):
-        num_aggregators = 0
-        for procinfo in self.procinfos:
-            if "Aggregator" in procinfo.name or "DataLogger" in procinfo.name \
-                    or "Dispatcher" in procinfo.name:
-                num_aggregators += 1
-        return num_aggregators
-
     def num_dataloggers(self):
         num_dataloggers = 0
         for procinfo in self.procinfos:
@@ -807,7 +802,6 @@ class DAQInterface(Component):
         self.eventbuilder_log_filenames = []
         self.datalogger_log_filenames = []
         self.dispatcher_log_filenames = []
-        self.aggregator_log_filenames = []
         self.routingmaster_log_filenames = []
 
         for host in set([procinfo.host for procinfo in self.procinfos]):
@@ -861,13 +855,10 @@ class DAQInterface(Component):
         
         self.softlink_process_manager_logfiles()
 
-        assert hasattr(self, "eventbuilder_log_filenames")
-        assert hasattr(self, "aggregator_log_filenames")
-        assert hasattr(self, "routingmaster_log_filenames")
-
         for loglist in [ self.boardreader_log_filenames,
                          self.eventbuilder_log_filenames, 
-                         self.aggregator_log_filenames,
+                         self.datalogger_log_filenames,
+                         self.dispatcher_log_filenames,
                          self.routingmaster_log_filenames ]:
             
             for fulllogname in loglist:
@@ -1033,7 +1024,7 @@ class DAQInterface(Component):
         # next we send stop to all the eventbuilders, and finally we
         # send stop to all the aggregators
 
-        proctypes_in_order = ["RoutingMaster", "Dispatcher", "DataLogger", "Aggregator", "EventBuilder","BoardReader"]
+        proctypes_in_order = ["RoutingMaster", "Dispatcher", "DataLogger", "EventBuilder","BoardReader"]
 
         if command == "Stop" or command == "Pause" or command == "Shutdown":
             proctypes_in_order.reverse()
@@ -1355,9 +1346,10 @@ class DAQInterface(Component):
                     timeout = self.eventbuilder_timeout
                 elif "RoutingMaster" in procinfo.name:
                     timeout = self.routingmaster_timeout
-                elif "Aggregator" in procinfo.name or "DataLogger" in procinfo.name \
-                        or "Dispatcher" in procinfo.name:
-                    timeout = self.aggregator_timeout
+                elif "DataLogger" in procinfo.name:
+                    timeout = self.datalogger_timeout
+                elif "Dispatcher" in procinfo.name:
+                    timeout = self.dispatcher_timeout
 
                 try:
                     procinfo.server = TimeoutServerProxy(
@@ -1899,7 +1891,7 @@ class DAQInterface(Component):
 
 
             print
-            for name in ["BoardReader", "EventBuilder", "Aggregator", "DataLogger", "Dispatcher", "RoutingMaster"]:
+            for name in ["BoardReader", "EventBuilder", "DataLogger", "Dispatcher", "RoutingMaster"]:
 
                 self.print_log("i", "%s: Attempting to cleanly wind down the %ss if they still exist" % (date_and_time(), name))
 

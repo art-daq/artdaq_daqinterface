@@ -94,26 +94,40 @@
 	}
     }
 
-
-    if (aggregator_section_active) {
-
+    if (datalogger_section_active) {
 	if ( $0 !~ /^\s*$/) {
-	    aggregators[++aggregator_cntr] = $1
+	    dataloggers[++datalogger_cntr] = $1
 	    next
 	} else {
-	    printf "\naggregator_logfiles: ["
-	    for (i = 1; i <= length(aggregators); ++i) {
-		if (i != length(aggregators)) {
-		    printf "\"%s\", ", aggregators[i]
+	    printf "\ndatalogger_logfiles: ["
+	    for (i = 1; i <= length(dataloggers); ++i) {
+		if (i != length(dataloggers)) {
+		    printf "\"%s\", ", dataloggers[i]
 		} else {
-		    printf "\"%s\"", aggregators[i]
+		    printf "\"%s\"", dataloggers[i]
 		}
 	    }
 	    printf "]\n"
-	    aggregator_section_active = 0
+	    datalogger_section_active = 0
 	}
+    }
 
-	# Printing of the aggregator logfiles array is handled at END{}
+    if (dispatcher_section_active) {
+	if ( $0 !~ /^\s*$/) {
+	    dispatchers[++dispatcher_cntr] = $1
+	    next
+	} else {
+	    printf "\ndispatcher_logfiles: ["
+	    for (i = 1; i <= length(dispatchers); ++i) {
+		if (i != length(dispatchers)) {
+		    printf "\"%s\", ", dispatchers[i]
+		} else {
+		    printf "\"%s\"", dispatchers[i]
+		}
+	    }
+	    printf "]\n"
+	    dispatcher_section_active = 0
+	}
     }
 
     # Get the key / value pair; if there isn't one, then just continue
@@ -159,8 +173,11 @@
 	} else if (firstpart ~ "routingmaster logfiles") {
 	    routingmaster_section_active = 1
 	    next
-	} else if (firstpart ~ "aggregator logfiles") {
-	    aggregator_section_active = 1
+	} else if (firstpart ~ "datalogger logfiles") {
+	    datalogger_section_active = 1
+	    next
+	} else if (firstpart ~ "dispatcher logfiles") {
+	    dispatcher_section_active = 1
 	    next
 	} else {
 	    gsub("[- ]+", "_", firstpart)
@@ -180,16 +197,16 @@
 
 END {
 
-    # This section exists because the last line may be an aggregator
+    # This section exists because the last line may be a dispatcher
     # logfile line if we don't have time info in the metadata file
 
-    if (aggregator_section_active) {
-	printf "\naggregator_logfiles: ["
-	for (i = 1; i <= length(aggregators); ++i) {
-	    if (i != length(aggregators)) {
-		printf "\"%s\", ", aggregators[i]
+    if (dispatcher_section_active) {
+	printf "\ndispatcher_logfiles: ["
+	for (i = 1; i <= length(dispatchers); ++i) {
+	    if (i != length(dispatchers)) {
+		printf "\"%s\", ", dispatchers[i]
 	    } else {
-		printf "\"%s\"", aggregators[i]
+		printf "\"%s\"", dispatchers[i]
 	    }
 	}
 	printf "]\n"

@@ -305,8 +305,6 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
             proctype = "EventBuilderMain"
         elif "RoutingMaster" in procinfo.name:
             proctype = "RoutingMasterMain"
-        elif "Aggregator" in procinfo.name:
-            proctype = "AggregatorMain"
         elif "DataLogger" in procinfo.name:
             proctype = "DataLoggerMain"
         elif "Dispatcher" in procinfo.name:
