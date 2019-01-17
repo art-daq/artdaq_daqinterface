@@ -1219,6 +1219,7 @@ class DAQInterface(Component):
 
         if self.manage_processes:
 
+            starttime = time()
             self.print_log("i", "\nOn all nodes, checking that the setup file %s doesn't return a nonzero value when sourced..." % \
                            (self.daq_setup_script), 1, False)
 
@@ -1253,8 +1254,9 @@ class DAQInterface(Component):
                 self.print_log("e", "STDERR: \n%s" % (out_stderr))
                 raise Exception("Status error raised in attempt to source script %s on host %s." % \
                                 (self.daq_setup_script, procinfo.host))
-
-            self.print_log("i", "done.")
+            
+            endtime = time()
+            self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
 
         if self.manage_processes:
             
@@ -1426,6 +1428,7 @@ class DAQInterface(Component):
             # someone else's logfile could sneak in during the few seconds
             # taken during startup, but it's unlikely...
             
+            starttime=time()
             self.print_log("i", "\nDetermining logfiles associated with the artdaq processes...", 1, False)
 
             try:
@@ -1437,7 +1440,8 @@ class DAQInterface(Component):
                 self.print_log("e", traceback.format_exc())
                 self.alert_and_recover("Problem obtaining logfile name(s)")
                 return
-            self.print_log("i", "done.")
+            endtime = time()
+            self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
 
         self.complete_state_change(self.name, "booting")
 
@@ -1462,6 +1466,7 @@ class DAQInterface(Component):
         self.print_log("d", "Config name: %s" % ( " ".join(self.subconfigs_for_run) ), 1)
         self.print_log("d", "Selected DAQ comps: %s" % self.daq_comp_list, 2)
 
+        starttime=time()
         self.print_log("i", "\nObtaining FHiCL documents...", 1, False)
 
         try:
@@ -1542,7 +1547,8 @@ class DAQInterface(Component):
                 if self.procinfos[i_proc].fhicl_used != fhicl_before_sub:
                     rootfile_cntr += 1
 
-        self.print_log("i", "done.")
+        endtime=time()
+        self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
 
         for procinfo in self.procinfos:
             assert not procinfo.fhicl is None and not procinfo.fhicl_used is None
@@ -1550,6 +1556,7 @@ class DAQInterface(Component):
         assert "/tmp" == tmpdir_for_fhicl[:4] and len(tmpdir_for_fhicl) > 4
         shutil.rmtree( tmpdir_for_fhicl )
 
+        starttime=time()
         self.print_log("i", "Bookkeeping the FHiCL documents...", 1, False)
 
         try:
@@ -1558,8 +1565,10 @@ class DAQInterface(Component):
             self.print_log("e", traceback.format_exc())
             self.alert_and_recover("An exception was thrown when performing bookkeeping on the process FHiCL documents; see traceback above for more info")
             return
-        self.print_log("i", "done.")
+        endtime=time()
+        self.print_log("i", "done (%.1f seconds)." % (endtime-starttime))
 
+        starttime=time()
         self.print_log("i", "Reformatting the FHiCL documents...", 1, False)
 
         if not os.path.exists(os.environ["DAQINTERFACE_SETUP_FHICLCPP"]):
@@ -1589,7 +1598,9 @@ class DAQInterface(Component):
 
         for i_proc, reformatted_fhicl_document in enumerate(reformatted_fhicl_documents):
             self.procinfos[i_proc].fhicl_used = reformatted_fhicl_document
-        self.print_log("i", "done.")
+        
+        endtime=time()
+        self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
 
         self.tmp_run_record = "/tmp/run_record_attempted_%s/%s" % \
             (os.environ["USER"],
@@ -1598,6 +1609,7 @@ class DAQInterface(Component):
         if os.path.exists(self.tmp_run_record):
             shutil.rmtree(self.tmp_run_record)
 
+        starttime = time()
         self.print_log("i", "Saving the run record...", 1, False)
 
         try:
@@ -1606,7 +1618,9 @@ class DAQInterface(Component):
             self.print_log("w", traceback.format_exc())
             self.print_log("w", make_paragraph(
                     "WARNING: an exception was thrown when attempting to save the run record. While datataking may be able to proceed, this may also indicate a serious problem"))
-        self.print_log("i", "done.")
+
+        endtime = time()
+        self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
 
         if self.manage_processes:
 
@@ -1623,6 +1637,7 @@ class DAQInterface(Component):
                 self.print_log("w", traceback.format_exc())
                 self.print_log("w", make_paragraph("WARNING: an exception was caught when trying to launch the online monitoring processes; online monitoring won't work though this will not affect actual datataking"))
 
+            starttime=time()
             self.print_log("i", "Ensuring FHiCL documents will be archived in the output *.root files...", 1, False)
 
             labeled_fhicl_documents = []
@@ -1641,7 +1656,8 @@ class DAQInterface(Component):
 
             self.archive_documents(labeled_fhicl_documents)
 
-            self.print_log("i", "done.")
+            endtime = time()
+            self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
 
         self.complete_state_change(self.name, "configuring")
 
