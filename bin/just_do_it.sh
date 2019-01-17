@@ -113,7 +113,22 @@ fi
 highest_runnum=$( ls -1 $recorddir | sort -n | tail -1 )
 runnum=$(( highest_runnum + 1 ))
 
-trap "echo Received request to end running" SIGHUP SIGINT SIGTERM
+end_running_requested=false
+
+function end_running() {
+
+cat<<EOF
+
+Received request to end running; if you're in the middle of a
+transition the transition will complete before wind-down begins.
+
+EOF
+
+end_running_requested=true
+
+}
+
+trap "end_running" SIGHUP SIGINT SIGTERM
 
 daqutils_script=$scriptdir/daqutils.sh
 
@@ -173,6 +188,12 @@ function main() {
     fi
 
     sleep 2
+
+    if $end_running_requested ; then
+	vcmd $scriptdir/send_transition.sh terminate
+	exit 0
+    fi
+
     #read -n 1 -s -r -p "Press any key to configure"
     # Initialize the DAQ
 
@@ -191,6 +212,11 @@ function main() {
     if [[ "$state_true" != "1" ]]; then
 	echo "DAQ failed to enter ready state; exiting $0"
 	exit 60
+    fi
+
+    if $end_running_requested ; then
+	vcmd $scriptdir/send_transition.sh terminate
+	exit 0
     fi
 
     done
