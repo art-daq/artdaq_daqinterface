@@ -243,7 +243,7 @@ class DAQInterface(Component):
             else:
                 return False # equal
 
-    def print_log(self, severity, printstr, debuglevel=-999):
+    def print_log(self, severity, printstr, debuglevel=-999, newline=True):
 
         dummy, month, day, time, timezone, year = date_and_time().split()
         formatted_day = "%s-%s-%s" % (day, month, year)
@@ -252,7 +252,11 @@ class DAQInterface(Component):
             if self.fake_messagefacility:
                 print "%%MSG-%s DAQInterface %s %s %s" % \
                     (severity, formatted_day, time, timezone)
-            print printstr
+            if not newline and not self.fake_messagefacility:
+                sys.stdout.write(printstr)
+                sys.stdout.flush()
+            else:
+                print printstr
             if self.fake_messagefacility:
                 print "%MSG"
 
@@ -1210,13 +1214,14 @@ class DAQInterface(Component):
         # setup script was sourced on all hosts which artdaq processes
         # ran on in case the setup script contained trace commands...
 
-        self.print_log("i", "\n%s: Checking that the setup file %s sources correctly on all nodes..." % \
-                       (date_and_time(), self.daq_setup_script))
-
         already_sourced = {}
         sourcing_ok = True
 
         if self.manage_processes:
+
+            self.print_log("i", "\nOn all nodes, checking that the setup file %s doesn't return a nonzero value when sourced..." % \
+                           (self.daq_setup_script), 1, False)
+
             for procinfo in self.procinfos:
                 if procinfo.host not in already_sourced.keys():
                     self.print_log("d", "%s: Testing source of %s on %s..." % (date_and_time(), self.daq_setup_script, 
@@ -1241,13 +1246,15 @@ class DAQInterface(Component):
                             sourcing_ok = False
                             break
 
-        if not sourcing_ok:
-            self.print_log("e", "Status error raised in attempt to source script %s on host \"%s\"." % \
-                           (self.daq_setup_script, procinfo.host))
-            self.print_log("e", "STDOUT: \n%s" % (out_stdout))
-            self.print_log("e", "STDERR: \n%s" % (out_stderr))
-            raise Exception("Status error raised in attempt to source script %s on host %s." % \
-                            (self.daq_setup_script, procinfo.host))
+            if not sourcing_ok:
+                self.print_log("e", "Status error raised in attempt to source script %s on host \"%s\"." % \
+                               (self.daq_setup_script, procinfo.host))
+                self.print_log("e", "STDOUT: \n%s" % (out_stdout))
+                self.print_log("e", "STDERR: \n%s" % (out_stderr))
+                raise Exception("Status error raised in attempt to source script %s on host %s." % \
+                                (self.daq_setup_script, procinfo.host))
+
+            self.print_log("i", "done.")
 
         if self.manage_processes:
             
@@ -1283,16 +1290,14 @@ class DAQInterface(Component):
             # Now, with the info on hand about the processes contained in
             # procinfos, actually launch them
 
+            self.print_log("i", "Launching the artdaq processes")
+
             try:
                 launch_procs_actions = self.launch_procs()
 
                 assert type( launch_procs_actions ) is dict, \
                     make_paragraph("The launch_procs function needs to return a dictionary whose keys are the names of the hosts on which it ran commands, and whose values are those commands")
                 
-
-                if self.debug_level >= 1:
-                    self.print_log("i", "Finished call to launch_procs(); will now confirm that artdaq processes are up...")
-
             except Exception:
                 self.print_log("e", traceback.format_exc())
 
@@ -1421,7 +1426,7 @@ class DAQInterface(Component):
             # someone else's logfile could sneak in during the few seconds
             # taken during startup, but it's unlikely...
             
-            self.print_log("i", "\n%s: Determining logfiles associated with the artdaq processes..." % (date_and_time()))
+            self.print_log("i", "\nDetermining logfiles associated with the artdaq processes...", 1, False)
 
             try:
 
@@ -1432,6 +1437,7 @@ class DAQInterface(Component):
                 self.print_log("e", traceback.format_exc())
                 self.alert_and_recover("Problem obtaining logfile name(s)")
                 return
+            self.print_log("i", "done.")
 
         self.complete_state_change(self.name, "booting")
 
@@ -1453,6 +1459,11 @@ class DAQInterface(Component):
 
         self.subconfigs_for_run.sort() 
 
+        self.print_log("d", "Config name: %s" % ( " ".join(self.subconfigs_for_run) ), 1)
+        self.print_log("d", "Selected DAQ comps: %s" % self.daq_comp_list, 2)
+
+        self.print_log("i", "\nObtaining FHiCL documents...", 1, False)
+
         try:
             tmpdir_for_fhicl, self.fhicl_file_path = self.get_config_info()
             assert "/tmp" == tmpdir_for_fhicl[:4]
@@ -1461,13 +1472,8 @@ class DAQInterface(Component):
             self.revert_failed_transition("calling get_config_info()")
             return
 
-        self.print_log("d", "Config name: %s" % ( " ".join(self.subconfigs_for_run) ), 1)
-        self.print_log("d", "Selected DAQ comps: %s" %
-                       self.daq_comp_list, 1)
         for ffp_path in self.fhicl_file_path:
             self.print_log("d", "\tIncluding FHICL FILE PATH %s" % ffp_path,2)
-
-        self.print_log("i", "\n%s: Obtaining FHiCL documents..." % (date_and_time()))
 
         rootfile_cntr = 0 
 
@@ -1536,13 +1542,15 @@ class DAQInterface(Component):
                 if self.procinfos[i_proc].fhicl_used != fhicl_before_sub:
                     rootfile_cntr += 1
 
+        self.print_log("i", "done.")
+
         for procinfo in self.procinfos:
             assert not procinfo.fhicl is None and not procinfo.fhicl_used is None
 
         assert "/tmp" == tmpdir_for_fhicl[:4] and len(tmpdir_for_fhicl) > 4
         shutil.rmtree( tmpdir_for_fhicl )
 
-        self.print_log("i", "%s: Bookkeeping the FHiCL documents..." % (date_and_time()))
+        self.print_log("i", "Bookkeeping the FHiCL documents...", 1, False)
 
         try:
             self.bookkeeping_for_fhicl_documents()
@@ -1550,8 +1558,9 @@ class DAQInterface(Component):
             self.print_log("e", traceback.format_exc())
             self.alert_and_recover("An exception was thrown when performing bookkeeping on the process FHiCL documents; see traceback above for more info")
             return
+        self.print_log("i", "done.")
 
-        self.print_log("i", "%s: Reformatting the FHiCL documents..." % (date_and_time()))
+        self.print_log("i", "Reformatting the FHiCL documents...", 1, False)
 
         if not os.path.exists(os.environ["DAQINTERFACE_SETUP_FHICLCPP"]):
             self.print_log("w", make_paragraph("File \"%s\", needed for formatting FHiCL configurations, does not appear to exist; will attempt to auto-generate one..." % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"])))
@@ -1580,6 +1589,7 @@ class DAQInterface(Component):
 
         for i_proc, reformatted_fhicl_document in enumerate(reformatted_fhicl_documents):
             self.procinfos[i_proc].fhicl_used = reformatted_fhicl_document
+        self.print_log("i", "done.")
 
         self.tmp_run_record = "/tmp/run_record_attempted_%s/%s" % \
             (os.environ["USER"],
@@ -1588,7 +1598,7 @@ class DAQInterface(Component):
         if os.path.exists(self.tmp_run_record):
             shutil.rmtree(self.tmp_run_record)
 
-        self.print_log("i", "%s: Saving the run record..." % (date_and_time()))
+        self.print_log("i", "Saving the run record...", 1, False)
 
         try:
             self.save_run_record()            
@@ -1596,6 +1606,7 @@ class DAQInterface(Component):
             self.print_log("w", traceback.format_exc())
             self.print_log("w", make_paragraph(
                     "WARNING: an exception was thrown when attempting to save the run record. While datataking may be able to proceed, this may also indicate a serious problem"))
+        self.print_log("i", "done.")
 
         if self.manage_processes:
 
@@ -1612,7 +1623,7 @@ class DAQInterface(Component):
                 self.print_log("w", traceback.format_exc())
                 self.print_log("w", make_paragraph("WARNING: an exception was caught when trying to launch the online monitoring processes; online monitoring won't work though this will not affect actual datataking"))
 
-            self.print_log("d", "Adding archive entries to config for diskwriting processes...", 2)
+            self.print_log("i", "Ensuring FHiCL documents will be archived in the output *.root files...", 1, False)
 
             labeled_fhicl_documents = []
 
@@ -1628,11 +1639,9 @@ class DAQInterface(Component):
                     labeled_fhicl_documents.append( (filestub,
                                                      'contents: "\n%s\n"\n' % (contents)) )
 
-            self.print_log("i", "%s: Ensuring FHiCL documents will be archived in the output *.root files..." % \
-                           (date_and_time()))
             self.archive_documents(labeled_fhicl_documents)
 
-            self.print_log("d", "Done adding archive entries to config", 2)
+            self.print_log("i", "done.")
 
         self.complete_state_change(self.name, "configuring")
 
@@ -1682,10 +1691,7 @@ class DAQInterface(Component):
                 self.print_log("e", traceback.format_exc())
                 self.alert_and_recover("An exception was thrown when attempting to send the \"start\" transition to the artdaq processes; see traceback above for more info")
                 return
-
-            self.print_log("w", make_paragraph("Skipping the creation of helpfully-named softlinks to the logfiles until this process can be made more efficient"))
-            #self.softlink_logfiles()
-
+            
         self.start_datataking()
 
         self.save_metadata_value("Start time", \

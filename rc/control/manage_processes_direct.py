@@ -82,7 +82,7 @@ def launch_procs_base(self):
     print
     for host in launch_commands_to_run_on_host:
 
-        self.print_log("i", "%s: Trying to launch processes on %s..." % (date_and_time(), host))
+        self.print_log("d", "Trying to launch processes on %s" % (host), 2)
 
         # Before we try launching the processes, let's make sure there
         # aren't any pre-existing processes listening on the same
