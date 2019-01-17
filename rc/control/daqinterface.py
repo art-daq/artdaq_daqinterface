@@ -16,6 +16,7 @@ import glob
 import stat
 from threading import Thread
 import shutil
+import random
 
 from rc.io.timeoutclient import TimeoutServerProxy
 from rc.control.component import Component 
@@ -1214,46 +1215,46 @@ class DAQInterface(Component):
         # setup script was sourced on all hosts which artdaq processes
         # ran on in case the setup script contained trace commands...
 
-        already_sourced = {}
-        sourcing_ok = True
+        # JCF, Jan-17-2018
+
+        # It turns out that sourcing the setup script on hosts for
+        # runs which use lots of nodes takes an onerously long
+        # time. What we'll do now is source the script on just ONE
+        # node, to make sure it's not broken. Note that this means you
+        # may need to perform a second run after adding TRACE
+        # functionality to your setup script; while a cost, the
+        # benefit here seems to outweight the cost.
 
         if self.manage_processes:
 
+            hosts = [procinfo.host for procinfo in self.procinfos]
+            random_host = random.choice( hosts )
+
             starttime = time()
-            self.print_log("i", "\nOn all nodes, checking that the setup file %s doesn't return a nonzero value when sourced..." % \
-                           (self.daq_setup_script), 1, False)
+            self.print_log("i", "\nOn randomly selected node (%s), checking that the setup file %s doesn't return a nonzero value when sourced..." % \
+                           (random_host, self.daq_setup_script), 1, False)
 
-            for procinfo in self.procinfos:
-                if procinfo.host not in already_sourced.keys():
-                    self.print_log("d", "%s: Testing source of %s on %s..." % (date_and_time(), self.daq_setup_script, 
-                                                                               procinfo.host), 2)
-                    with deepsuppression(self.debug_level < 3):
-                        cmd = "%s ; . %s" % (bash_unsetup_command, self.daq_setup_script)
+            with deepsuppression(self.debug_level < 3):
+                cmd = "%s ; . %s" % (bash_unsetup_command, self.daq_setup_script)
 
-                        if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
-                            cmd = "ssh %s '%s'" % (procinfo.host, cmd)
+                if random_host != "localhost" and random_host != os.environ["HOSTNAME"]:
+                    cmd = "ssh %s '%s'" % (random_host, cmd)
 
-                        out = Popen(cmd, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+                out = Popen(cmd, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
 
-                        out_comm = out.communicate()
+                out_comm = out.communicate()
 
-                        out_stdout = out_comm[0]
-                        out_stderr = out_comm[1]
-                        status = out.returncode
+                out_stdout = out_comm[0]
+                out_stderr = out_comm[1]
+                status = out.returncode
 
-                        if status == 0:
-                            already_sourced[procinfo.host] = "Dummy value since we only care about the key"
-                        else:
-                            sourcing_ok = False
-                            break
-
-            if not sourcing_ok:
-                self.print_log("e", "Status error raised in attempt to source script %s on host \"%s\"." % \
-                               (self.daq_setup_script, procinfo.host))
+            if status != 0:
+                self.print_log("e", "\nStatus error raised in attempt to source script %s on host \"%s\"." % \
+                               (self.daq_setup_script, random_host))
                 self.print_log("e", "STDOUT: \n%s" % (out_stdout))
                 self.print_log("e", "STDERR: \n%s" % (out_stderr))
                 raise Exception("Status error raised in attempt to source script %s on host %s." % \
-                                (self.daq_setup_script, procinfo.host))
+                                (self.daq_setup_script, random_host))
             
             endtime = time()
             self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
