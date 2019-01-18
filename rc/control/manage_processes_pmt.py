@@ -64,6 +64,9 @@ def launch_procs_base(self):
     outf.close()
 
     if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
+        raise Exception("\"PMT host\" currently needs to be set to \"localhost\" or \"%s\" in the boot file" % (os.environ["HOSTNAME"]))
+
+    if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
         status = Popen("scp -p " + self.pmtconfigname + " " +
                        self.pmt_host + ":/tmp", shell=True).wait()
 

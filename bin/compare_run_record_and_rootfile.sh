@@ -79,14 +79,15 @@ for file_location in $( file_locations ); do
     fi
 done
 
+scriptname=$( basename "$0" )
 
 if [[ -z $rootfile ]]; then
 
     cat>&2<<EOF
 
     Unable to find a root file for run #${runnum} in directory
-    "${rootfile_dir}"; note that this script needs to be run on one
-    of the hosts to which rootfiles were written
+    "${rootfile_dir}"; note that this script ($scriptname) needs to be
+    run on one of the hosts to which rootfiles were written
 
 EOF
 
