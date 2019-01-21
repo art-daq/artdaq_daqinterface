@@ -1249,12 +1249,12 @@ class DAQInterface(Component):
                 status = out.returncode
 
             if status != 0:
-                self.print_log("e", "\nStatus error raised in attempt to source script %s on host \"%s\"." % \
-                               (self.daq_setup_script, random_host))
+                self.print_log("e", "\nNonzero value (%d) returned in attempt to source script %s on host \"%s\"." % \
+                               (status, self.daq_setup_script, random_host))
                 self.print_log("e", "STDOUT: \n%s" % (out_stdout))
                 self.print_log("e", "STDERR: \n%s" % (out_stderr))
-                raise Exception("Status error raised in attempt to source script %s on host %s." % \
-                                (self.daq_setup_script, random_host))
+                raise Exception("Nonzero value (%d) returned in attempt to source script %s on host %s." % \
+                                (status, self.daq_setup_script, random_host))
             
             endtime = time()
             self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
@@ -1283,11 +1283,14 @@ class DAQInterface(Component):
                     logdircmd = "ssh -f " + host + " '" + logdircmd + "'"
 
                 with deepsuppression(self.debug_level < 4):
-                    status = Popen(logdircmd, shell=True).wait()
+                    proc = Popen(logdircmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    status = proc.wait()
 
                 if status != 0:   
-                    self.print_log("e", "\nStatus error raised when trying to run the following on host %s:\n%s\n" % \
-                                   (host, "\n".join(logdir_commands_to_run_on_host)))
+                    self.print_log("e", "\nNonzero return value (%d) resulted when trying to run the following on host %s:\n%s\n" % \
+                                   (status, host, "\n".join(logdir_commands_to_run_on_host)))
+                    self.print_log("e", "STDOUT output: \n%s" % ("\n".join(proc.stdout.readlines())))
+                    self.print_log("e", "STDERR output: \n%s" % ("\n".join(proc.stderr.readlines())))
                     raise Exception("Problem running mkdir -p for the needed logfile directories on %s" % ( host ) )
 
             # Now, with the info on hand about the processes contained in
