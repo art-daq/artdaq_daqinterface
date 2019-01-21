@@ -319,6 +319,7 @@ class DAQInterface(Component):
 
         self.in_recovery = False
         self.heartbeat_failure = False
+        self.called_launch_procs = False
 
         self.debug_level = 10000
         self.request_address = None
@@ -1297,6 +1298,7 @@ class DAQInterface(Component):
             # procinfos, actually launch them
 
             self.print_log("i", "Launching the artdaq processes")
+            self.called_launch_procs = True
 
             try:
                 launch_procs_actions = self.launch_procs()
@@ -1803,13 +1805,18 @@ class DAQInterface(Component):
 
         self.in_recovery = True
 
-        if self.disable_recovery:
+        if not self.called_launch_procs:
+            self.print_log("i", "DAQInterface does not appear to have gotten to the point of launching the artdaq processes")
+
+        if self.disable_recovery or not self.called_launch_procs:
             self.print_log("i", "Skipping cleanup of artdaq processes, this recover step is effectively a no-op")
 
             self.in_recovery = False
             self.complete_state_change(self.name, "recovering")
             self.print_log("i", "\n%s: RECOVER transition complete" % (date_and_time()))
             return
+
+        self.called_launch_procs = False
 
         def attempted_stop(self, procinfo):
 
