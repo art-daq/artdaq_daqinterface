@@ -1313,19 +1313,20 @@ class DAQInterface(Component):
                 return
 
             num_launch_procs_checks = 0
-            max_num_launch_procs_checks = 5
+            max_num_launch_procs_checks = 10
 
             while True:
 
                 num_launch_procs_checks += 1
 
                 self.print_log("i", "Checking that processes are up (check %d of a max of %d)..." % \
-                               (num_launch_procs_checks, max_num_launch_procs_checks))
+                               (num_launch_procs_checks, max_num_launch_procs_checks), 1, False)
 
                 # "False" here means "don't consider it an error if all
                 # processes aren't found"
 
                 found_processes = self.check_proc_heartbeats(False)
+                self.print_log("i", "found %d of %d processes." % (len(found_processes), len(self.procinfos)))
 
                 assert type(found_processes) is list, \
                     make_paragraph("check_proc_heartbeats needs to return a list of procinfos corresponding to the processes it found alive")
