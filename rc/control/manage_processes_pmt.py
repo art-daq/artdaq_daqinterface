@@ -151,7 +151,7 @@ def kill_procs_base(self):
             cmd = "kill %s; sleep 2; kill -9 %s" % (pmt_pid, pmt_pid)
 
             if self.pmt_host != "localhost":
-                cmd = "ssh -f " + self.pmt_host + " '" + cmd + "'"
+                cmd = "ssh -x " + self.pmt_host + " '" + cmd + "'"
 
             proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -165,7 +165,7 @@ def kill_procs_base(self):
             cmd = "kill -9 " + pids[0]
 
             if procinfo.host != "localhost":
-                cmd = "ssh -f " + procinfo.host + " '" + cmd + "'"
+                cmd = "ssh -x " + procinfo.host + " '" + cmd + "'"
 
             Popen(cmd, shell=True, stdout=subprocess.PIPE,
                   stderr=subprocess.STDOUT)
@@ -274,7 +274,7 @@ def process_manager_cleanup_base(self):
 
         if hasattr(self, "pmt_host"):
             if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
-                cmd = "ssh -f " + self.pmt_host + " '" + cmd + "'"
+                cmd = "ssh -x " + self.pmt_host + " '" + cmd + "'"
 
 def get_pid_for_process(procinfo):
     greptoken = procinfo.name + "Main -c id: " + procinfo.port

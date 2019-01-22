@@ -141,7 +141,7 @@ def kill_procs_base(self):
 
             cmd = "kill %s" % (" ".join(artdaq_pids))
             if host != "localhost" and host != os.environ["HOSTNAME"]:
-                cmd = "ssh -f " + host + " '" + cmd + "'"
+                cmd = "ssh -x " + host + " '" + cmd + "'"
 
             Popen(cmd, shell=True, stdout=subprocess.PIPE,
                   stderr=subprocess.STDOUT).wait()
@@ -153,7 +153,7 @@ def kill_procs_base(self):
         if len(art_pids) > 0:
             cmd = "kill -9 %s" % (" ".join( art_pids ) )   # JCF, Dec-8-2018: the "-9" is apparently needed...
             if host != "localhost" and host != os.environ["HOSTNAME"]:
-                cmd = "ssh -f " + host + " '" + cmd + "'"
+                cmd = "ssh -x " + host + " '" + cmd + "'"
             self.print_log("d", "%s: About to kill the artdaq-associated art processes on %s" % (date_and_time(), host), 2)
             Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).wait()
             self.print_log("d", "%s: Finished kill of the artdaq-associated art processes on %s" % (date_and_time(), host), 2)
@@ -168,7 +168,7 @@ def kill_procs_base(self):
             self.print_log("w", make_paragraph("Despite receiving a termination signal, the following artdaq processes on %s were not killed, so they'll be issued a SIGKILL: %s" % (host, " ".join(labels_of_found_processes))))
             cmd = "kill -9 %s" % (" ".join(artdaq_pids))
             if host != "localhost" and host != os.environ["HOSTNAME"]:
-                cmd = "ssh -f " + host + " '" + cmd + "'"
+                cmd = "ssh -x " + host + " '" + cmd + "'"
                 Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).wait()
 
     self.procinfos = []
@@ -246,7 +246,7 @@ def get_related_pids_for_process(procinfo):
     netstat_cmd = "netstat -alpn | grep %s" % (procinfo.port)
 
     if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
-        netstat_cmd = "ssh -f %s '%s'" % (procinfo.host, netstat_cmd)
+        netstat_cmd = "ssh -x %s '%s'" % (procinfo.host, netstat_cmd)
 
     proc = Popen(netstat_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -307,14 +307,14 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
 
                     # And take out the process(es) associated with the artdaq process via its listening port (e.g., the art processes)
 
-                    Popen("ssh -f %s 'kill %s'" % (procinfo.host, " ".join(get_related_pids_for_process(procinfo))), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
+                    Popen("ssh -x %s 'kill %s'" % (procinfo.host, " ".join(get_related_pids_for_process(procinfo))), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
 
                     unkilled_related_pids = get_related_pids_for_process(procinfo)
                     if len(unkilled_related_pids) == 0:
                         related_process_mopup_ok = True
                     else:
                         self.print_log("w", make_paragraph("Warning: unable to normally kill process(es) associated with now-deceased artdaq process %s; on %s the following pid(s) remain: %s. Will now resort to kill -9 on these processes." % (procinfo.label, procinfo.host, " ".join(unkilled_related_pids))))
-                        Popen("ssh -f %s 'kill -9 %s'" % (procinfo.host, " ".join(unkilled_related_pids)), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
+                        Popen("ssh -x %s 'kill -9 %s'" % (procinfo.host, " ".join(unkilled_related_pids)), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
                         related_process_mopup_ok = False
 
                     if not ssh_mopup_ok:
