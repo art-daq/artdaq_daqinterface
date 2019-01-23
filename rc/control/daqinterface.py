@@ -59,7 +59,6 @@ elif os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "pmt":
     from rc.control.manage_processes_pmt import get_process_manager_log_filenames_base
     from rc.control.manage_processes_pmt import process_manager_cleanup_base
     from rc.control.manage_processes_pmt import get_pid_for_process
-    from rc.control.manage_processes_pmt import process_launch_diagnostics_base
 elif os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "direct":
     from rc.control.manage_processes_direct import launch_procs_base
     from rc.control.manage_processes_direct import kill_procs_base
@@ -71,7 +70,6 @@ elif os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "direct":
     from rc.control.manage_processes_direct import get_process_manager_log_filenames_base
     from rc.control.manage_processes_direct import process_manager_cleanup_base
     from rc.control.manage_processes_direct import get_pid_for_process
-    from rc.control.manage_processes_direct import process_launch_diagnostics_base
 else:
     print
     raise Exception(make_paragraph("DAQInterface can't interpret the current value of the DAQINTERFACE_PROCESS_MANAGEMENT_METHOD environment variable (\"%s\"); legal values include \"pmt\" and \"direct\"" % os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"]))
@@ -403,7 +401,6 @@ class DAQInterface(Component):
     reset_process_manager_variables = reset_process_manager_variables_base
     get_process_manager_log_filenames = get_process_manager_log_filenames_base
     process_manager_cleanup = process_manager_cleanup_base
-    process_launch_diagnostics = process_launch_diagnostics_base
 
     # The actual transition functions called by Run Control; note
     # these just set booleans which are tested in the runner()
@@ -1316,7 +1313,7 @@ class DAQInterface(Component):
                 return
 
             num_launch_procs_checks = 0
-            max_num_launch_procs_checks = 5
+            max_num_launch_procs_checks = 10
 
             while True:
 
@@ -1346,11 +1343,9 @@ class DAQInterface(Component):
                         print
                         self.print_log("e", "The following desired artdaq processes failed to launch:\n%s" % \
                                        (", ".join(["%s at %s:%s" % (procinfo.label, procinfo.host, procinfo.port) for procinfo in missing_processes])))
-                        self.process_launch_diagnostics(missing_processes)
                         self.print_log("e", make_paragraph("In order to investigate what happened, first try re-running with \"debug level\" in your boot file set to 4. If that doesn't help, you can directly recreate what DAQInterface did by doing the following:"))
                         
-                        for host in set([procinfo.host for procinfo in self.procinfos if procinfo in missing_processes]):
-
+                        for host in launch_procs_actions:
                             self.print_log("i", "\nPerform a clean login to %s, source the DAQInterface environment, and execute the following:\n%s" % \
                                            (host, "\n".join(launch_procs_actions[ host ])))
 
