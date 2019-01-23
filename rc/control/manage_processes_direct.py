@@ -63,23 +63,27 @@ def launch_procs_base(self):
     launch_commands_to_run_on_host_background = {}  # Need to run artdaq processes in the background so they're persistent outside of this function's Popen calls
     self.stdout_from_launch_commands_run_on_host = {}
     self.stderr_from_launch_commands_run_on_host = {}
+            
+    self.launch_attempt_file = "/tmp/launch_attempt_%s_partition%s" % (os.environ["USER"], os.environ["DAQINTERFACE_PARTITION_NUMBER"])
 
     for procinfo in self.procinfos:
 
         if not procinfo.host in launch_commands_to_run_on_host:
             launch_commands_to_run_on_host[ procinfo.host ] = []
-            launch_commands_to_run_on_host[ procinfo.host ].append(". %s/setup" % self.productsdir)  
+            launch_commands_to_run_on_host[ procinfo.host ].append("set +C")  
+            launch_commands_to_run_on_host[ procinfo.host ].append("echo > %s" % (self.launch_attempt_file))
+            launch_commands_to_run_on_host[ procinfo.host ].append(". %s/setup >> %s 2>&1 " % (self.productsdir, self.launch_attempt_file))
             launch_commands_to_run_on_host[ procinfo.host ].append( bash_unsetup_command )
-            launch_commands_to_run_on_host[ procinfo.host ].append("source %s" % (self.daq_setup_script ))
+            launch_commands_to_run_on_host[ procinfo.host ].append("source %s >> %s 2>&1 " % (self.daq_setup_script, self.launch_attempt_file ))
             launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_ROOT=%s" % (self.log_directory))
             launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))
-            launch_commands_to_run_on_host[ procinfo.host ].append("which boardreader") # Assume if this works, eventbuilder, etc. are also there
+            launch_commands_to_run_on_host[ procinfo.host ].append("which boardreader >> %s 2>&1 " % (self.launch_attempt_file)) # Assume if this works, eventbuilder, etc. are also there
 
             launch_commands_to_run_on_host_background[ procinfo.host ] = []
 
-        launch_commands_to_run_on_host_background[ procinfo.host ].append( "%s -c \"id: %s commanderPluginType: xmlrpc rank: %s application_name: %s partition_number: %s\" & " % \
+        launch_commands_to_run_on_host_background[ procinfo.host ].append( "%s -c \"id: %s commanderPluginType: xmlrpc rank: %s application_name: %s partition_number: %s\" >> %s 2>&1 & " % \
                                                                            (bootfile_name_to_execname(procinfo.name), procinfo.port, procinfo.rank, procinfo.label, 
-                                                                            os.environ["DAQINTERFACE_PARTITION_NUMBER"]))
+                                                                            os.environ["DAQINTERFACE_PARTITION_NUMBER"], self.launch_attempt_file))
 
     print
     for host in launch_commands_to_run_on_host:
@@ -115,17 +119,11 @@ def launch_procs_base(self):
         self.print_log("d", "PROCESS LAUNCH COMMANDS TO EXECUTE ON %s:\n%s\n" % (host, unchecked_launchcmd), 2)
         
         with deepsuppression(self.debug_level < 4):
-            proc = Popen(launchcmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            status = proc.wait()
-
-        self.stdout_from_launch_commands_run_on_host[ host ] = "\n".join(proc.stdout.readlines())
-        self.stderr_from_launch_commands_run_on_host[ host ] = "\n".join(proc.stderr.readlines())
+            status = Popen(launchcmd, shell=True).wait()
 
         if status != 0:   
-            self.print_log("e", "Status error raised in attempting to launch processes on %s" % (host))
-            self.print_log("e", "STDOUT: \n======================================================================\n%s\n======================================================================" % (self.stdout_from_launch_commands_run_on_host[ host ]))
-            self.print_log("e", "STDERR: \n======================================================================\n%s\n======================================================================" % (self.stderr_from_launch_commands_run_on_host[ host ]))
-            self.print_log("i", make_paragraph("To investigate, first try running again with the \"debug level\" in the boot file set to 4. Otherwise, you can recreate what DAQInterface did by performing a clean login to %s, source-ing the DAQInterface environment and executing the following:" % (host)))
+            self.print_log("e", "Status error raised in attempting to launch processes on %s, to investigate, see %s:%s for output" % (host, host, self.launch_attempt_file))
+            self.print_log("i", make_paragraph("You can also try running again with the \"debug level\" in the boot file set to 4. Otherwise, you can recreate what DAQInterface did by performing a clean login to %s, source-ing the DAQInterface environment and executing the following (excluding the redirection of output into the %s file):" % (host, self.launch_attempt_file)))
             self.print_log("i", "\n" + unchecked_launchcmd + "\n")
             raise Exception("Status error raised attempting to launch processes on %s; scroll up for more detail" % (host))
 
@@ -139,9 +137,7 @@ def launch_procs_base(self):
 
 def process_launch_diagnostics_base(self, procinfos_of_failed_processes):
     for host in set([procinfo.host for procinfo in procinfos_of_failed_processes]):
-        self.print_log("e", "\nOutput of attempted process launch on %s:" % (host))
-        self.print_log("e", "STDOUT: \n======================================================================\n%s\n======================================================================" % (self.stdout_from_launch_commands_run_on_host[ host ]))
-        self.print_log("e", "STDERR: \n======================================================================\n%s\n======================================================================" % (self.stderr_from_launch_commands_run_on_host[ host ]))
+        self.print_log("e", "\nOutput of unsuccessful attempted process launch on %s can be found in file %s:%s" % (host, host, self.launch_attempt_file))
 
 
 

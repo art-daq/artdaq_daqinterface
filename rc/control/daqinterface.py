@@ -1347,7 +1347,7 @@ class DAQInterface(Component):
                         self.print_log("e", "The following desired artdaq processes failed to launch:\n%s" % \
                                        (", ".join(["%s at %s:%s" % (procinfo.label, procinfo.host, procinfo.port) for procinfo in missing_processes])))
                         self.process_launch_diagnostics(missing_processes)
-                        self.print_log("e", make_paragraph("In order to investigate what happened, first try re-running with \"debug level\" in your boot file set to 4. If that doesn't help, you can directly recreate what DAQInterface did by doing the following:"))
+                        self.print_log("e", make_paragraph("In order to investigate what happened, you can try re-running with \"debug level\" in your boot file set to 4. If that doesn't help, you can directly recreate what DAQInterface did by doing the following:"))
                         
                         for host in set([procinfo.host for procinfo in self.procinfos if procinfo in missing_processes]):
 
