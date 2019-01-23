@@ -335,8 +335,9 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
 
     return found_processes
 
+def process_launch_diagnostics_base(self, procinfos_of_failed_processes):
+    pass
 
-    
 
 
                         
