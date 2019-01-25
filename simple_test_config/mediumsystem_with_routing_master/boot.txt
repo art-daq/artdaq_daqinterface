@@ -31,6 +31,6 @@ Dispatcher host: localhost
 Dispatcher port: 5269
 Dispatcher label: Dispatcher1
 
-RoutingMaster host: localhost
+RoutingMaster host: icarus-vst01-daq
 RoutingMaster port: 5275
 RoutingMaster label: RoutingMaster1
