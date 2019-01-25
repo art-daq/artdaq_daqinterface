@@ -27,7 +27,7 @@ daq: {
 	send_requests: true
 	request_port: 3001
 	request_address: "227.128.12.26"
-	multicast_interface_ip: "icarus-gateway01-dcs"
+	multicast_interface_ip: "icarus-vst01-daq"
 	expected_art_event_processing_time_us: 2000000
 
     routing_token_config: {
