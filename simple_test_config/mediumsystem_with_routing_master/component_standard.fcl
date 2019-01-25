@@ -57,6 +57,9 @@ hardware_poll_interval_us: 0 # How often, in microseconds, checkHWStatus_() shou
            ## Address that table updates should arrive on
            table_update_address: "227.128.12.28"  # default
        
+           ## Network interface that multicast table updates should arrive on
+           table_update_multicast_interface: "icarus-vst01-daq"
+       
            ## Port that acknowledgements should be sent to
           table_acknowledge_port: 35557  # default
        
