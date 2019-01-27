@@ -162,9 +162,12 @@ def kill_procs_base(self):
         art_pids = get_pids("art -c .*partition_%s" % os.environ["DAQINTERFACE_PARTITION_NUMBER"], host)
 
         if len(art_pids) > 0:
+
             cmd = "kill -9 %s" % (" ".join( art_pids ) )   # JCF, Dec-8-2018: the "-9" is apparently needed...
+
             if host != "localhost" and host != os.environ["HOSTNAME"]:
                 cmd = "ssh -x " + host + " '" + cmd + "'"
+
             self.print_log("d", "%s: About to kill the artdaq-associated art processes on %s" % (date_and_time(), host), 2)
             Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).wait()
             self.print_log("d", "%s: Finished kill of the artdaq-associated art processes on %s" % (date_and_time(), host), 2)
@@ -204,7 +207,10 @@ def get_process_manager_log_filenames_base(self):
 def process_manager_cleanup_base(self):
     pass
 
-def get_pid_for_process(procinfo):
+def get_pid_for_process_base(self, procinfo):
+
+    assert procinfo in self.procinfos
+
     greptoken = bootfile_name_to_execname(procinfo.name) + " -c .*" + procinfo.port + ".*"
 
     grepped_lines = []
@@ -223,6 +229,87 @@ def get_pid_for_process(procinfo):
             print grepped_line
 
         print "Appear to have duplicate processes for %s on %s, pids: %s" % (procinfo.label, procinfo.host, " ".join( pids ))
+
+    return None
+
+def mopup_process_base(self, procinfo):
+
+    if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
+        on_other_node = True
+    else: 
+        on_other_node = False
+
+    pid = get_pid_for_process_base(self, procinfo)
+
+    if pid is not None:
+        cmd = "kill %s" % (pid)
+        
+        if on_other_node:
+            cmd = "ssh -x %s '%s'" % (procinfo.host, cmd)
+
+        status = Popen(cmd, shell=True).wait()
+        sleep(1)
+
+        if get_pid_for_process_base(self, procinfo) is not None:
+            cmd = "kill -9 %s > /dev/null 2>&1" % (pid)
+            
+            if on_other_node:
+                cmd = "ssh -x %s '%s'" % (procinfo.host, cmd)
+            
+            self.print_log("w", "A standard kill of the artdaq process %s on %s didn't work; resorting to a kill -9" % \
+                           (procinfo.label, procinfo.host))
+            Popen(cmd, shell=True).wait()
+
+    # Will need to perform some additional cleanup (clogged ports, zombie art processes, etc.)
+
+    ssh_mopup_ok = True  
+    related_process_mopup_ok = True
+
+    # Need to deal with the lingering ssh command if the lost process is on a remote host
+    if on_other_node:
+
+        # Mopup the ssh call on this side
+        ssh_grepstring = "ssh.*%s.*%s -c.*%s" % (procinfo.host, bootfile_name_to_execname(procinfo.name),
+                                                procinfo.label) 
+        pids = get_pids(ssh_grepstring)
+
+        if len(pids) == 1:
+            Popen("kill %s > /dev/null 2>&1" % (pids[0]), shell=True).wait()
+            pids = get_pids(ssh_grepstring)
+            if len(pids) == 1:
+                ssh_mopup_ok = False
+        elif len(pids) > 1:
+            ssh_mopup_ok = False
+
+    # And take out the process(es) associated with the artdaq process via its listening port (e.g., the art processes)
+    
+    cmd = "kill %s > /dev/null 2>&1" % (" ".join(get_related_pids_for_process(procinfo)))
+    
+    if on_other_node:
+        cmd = "ssh -x %s '%s'" % (procinfo.host, cmd)
+
+    Popen(cmd, shell=True).wait()
+
+    unkilled_related_pids = get_related_pids_for_process(procinfo)
+    if len(unkilled_related_pids) == 0:
+        related_process_mopup_ok = True
+    else:
+        related_process_mopup_ok = False
+        self.print_log("w", make_paragraph("Warning: unable to normally kill process(es) associated with now-deceased artdaq process %s; on %s the following pid(s) remain: %s. Will now resort to kill -9 on these processes." % (procinfo.label, procinfo.host, " ".join(unkilled_related_pids))))
+        cmd = "kill -9 %s > /dev/null 2>&1 " % (" ".join(unkilled_related_pids))
+
+        if on_other_node:
+            cmd = "ssh -x %s '%s'" % (procinfo.host, cmd)
+        
+        Popen(cmd, shell=True).wait()
+
+    if not ssh_mopup_ok:
+        self.print_log("w", make_paragraph("There was a problem killing the ssh process to %s related to the deceased artdaq process %s at %s:%s; there *may* be issues with the next run using that host and port as a result" % (procinfo.host, procinfo.label, procinfo.host, procinfo.port)))
+
+    if not related_process_mopup_ok:
+        self.print_log("w", make_paragraph("At least some of the processes on %s related to deceased artdaq process %s at %s:%s (e.g. art processes) had to be forcibly killed; there *may* be issues with the next run using that host and port as a result" % (procinfo.host, procinfo.label, procinfo.host, procinfo.port)))
+
+    
 
 # If you change what this function returns, you should rename it for obvious reasons
 def get_pids_and_labels_on_host(host, procinfos):
@@ -296,43 +383,8 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
                     self.print_log("e", "%s: Appear to have lost process with label %s on host %s" % (date_and_time(), procinfo.label, procinfo.host))
                     procinfos_to_remove.append( procinfo )
 
-                    # Will need to perform some cleanup (clogged ports, zombie art processes, etc.)
-                    ssh_mopup_ok = True  
-                    related_process_mopup_ok = True
-
-                    # Need to deal with the lingering ssh command if the lost process is on a remote host
-                    if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
-
-                        # Mopup the ssh call on this side
-                        ssh_grepstring = "ssh.*%s.*%s -c.*%s" % (procinfo.host, bootfile_name_to_execname(procinfo.name),
-                                                                procinfo.label) 
-                        pids = get_pids(ssh_grepstring)
-
-                        if len(pids) == 1:
-                            Popen("kill %s" % (pids[0]), shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE).wait()
-                            pids = get_pids(ssh_grepstring)
-                            if len(pids) == 1:
-                                ssh_mopup_ok = False
-                        else:
-                            ssh_mopup_ok = False
-
-                    # And take out the process(es) associated with the artdaq process via its listening port (e.g., the art processes)
-
-                    Popen("ssh -x %s 'kill %s'" % (procinfo.host, " ".join(get_related_pids_for_process(procinfo))), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
-
-                    unkilled_related_pids = get_related_pids_for_process(procinfo)
-                    if len(unkilled_related_pids) == 0:
-                        related_process_mopup_ok = True
-                    else:
-                        self.print_log("w", make_paragraph("Warning: unable to normally kill process(es) associated with now-deceased artdaq process %s; on %s the following pid(s) remain: %s. Will now resort to kill -9 on these processes." % (procinfo.label, procinfo.host, " ".join(unkilled_related_pids))))
-                        Popen("ssh -x %s 'kill -9 %s'" % (procinfo.host, " ".join(unkilled_related_pids)), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
-                        related_process_mopup_ok = False
-
-                    if not ssh_mopup_ok:
-                        self.print_log("w", make_paragraph("There was a problem killing the ssh process to %s related to the deceased artdaq process %s at %s:%s; there *may* be issues with the next run using that host and port as a result" % (procinfo.host, procinfo.label, procinfo.host, procinfo.port)))
-                    if not related_process_mopup_ok:
-                        self.print_log("w", make_paragraph("At least some of the processes on %s related to deceased artdaq process %s at %s:%s (e.g. art processes) had to be forcibly killed; there *may* be issues with the next run using that host and port as a result" % (procinfo.host, procinfo.label, procinfo.host, procinfo.port)))
-                        
+                    mopup_process_base(self, procinfo)
+    
     if not is_all_ok and requireSuccess:
         for procinfo in procinfos_to_remove:
             self.procinfos.remove( procinfo )
