@@ -1613,8 +1613,7 @@ class DAQInterface(Component):
             else:
                 raise Exception(make_paragraph("Error: was unable to find or create a file \"%s\"" % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"])))
         with deepsuppression(self.debug_level < 2):
-            reformatted_fhicl_documents = reformat_fhicl_documents(os.environ["DAQINTERFACE_SETUP_FHICLCPP"],
-                                                                   [ procinfo.fhicl_used for procinfo in self.procinfos ] )
+            reformatted_fhicl_documents = reformat_fhicl_documents(os.environ["DAQINTERFACE_SETUP_FHICLCPP"], self.procinfos)
 
         for i_proc, reformatted_fhicl_document in enumerate(reformatted_fhicl_documents):
             self.procinfos[i_proc].fhicl_used = reformatted_fhicl_document
