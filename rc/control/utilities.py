@@ -297,15 +297,15 @@ def reformat_fhicl_documents(setup_fhiclcpp, procinfos):
     cmds.append("if [[ -z $( command -v fhicl-dump ) ]]; then %s; source %s; fi" % \
                 (bash_unsetup_command, setup_fhiclcpp))
     cmds.append("cd %s" % (reformat_indir))
-    cmds.append("find ./ -name \*.fcl -print | xargs -I {} -n 1 -P %s fhicl-dump -l 0 -c {} -o %s/{}" % \
-                (nprocessors, reformat_outdir))
-    proc = Popen("\n".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    xargs_cmd = "find ./ -name \*.fcl -print | xargs -I {} -n 1 -P %s fhicl-dump -l 0 -c {} -o %s/{}" % \
+                (nprocessors, reformat_outdir)
+    cmds.append("echo About to execute '%s'" % (xargs_cmd))
+    cmds.append(xargs_cmd)
     
-    status = proc.wait()
+    status = Popen("\n".join(cmds), shell=True).wait()
 
     if status != 0:
-        print "STDOUT: \n%s\n" % ("\n".join(proc.stdout.readlines()))
-        print "STDERR: \n%s\n" % ("\n".join(proc.stderr.readlines()))
         raise Exception("There was a problem reformatting the FHiCL documents; to troubleshoot you can set the debug level to 2 or higher in the boot file and try again")
 
     reformatted_fhicl_strings = []
