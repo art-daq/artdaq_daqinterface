@@ -297,7 +297,7 @@ def reformat_fhicl_documents(setup_fhiclcpp, procinfos):
     cmds.append("if [[ -z $( command -v fhicl-dump ) ]]; then %s; source %s; fi" % \
                 (bash_unsetup_command, setup_fhiclcpp))
     cmds.append("cd %s" % (reformat_indir))
-    cmds.append("find ./ *.fcl -print | xargs -I {} -n 1 -P %s fhicl-dump -l 0 -c {} -o %s/{}" % \
+    cmds.append("find ./ -name \*.fcl -print | xargs -I {} -n 1 -P %s fhicl-dump -l 0 -c {} -o %s/{}" % \
                 (nprocessors, reformat_outdir))
     proc = Popen("\n".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
