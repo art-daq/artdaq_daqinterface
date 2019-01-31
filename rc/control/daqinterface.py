@@ -345,6 +345,12 @@ class DAQInterface(Component):
 
         self.fhicl_file_path = []
 
+        # JCF, Jan-31-2019
+
+        # Labels of processes which, if they die or enter an Error state, will result in the run ending. 
+
+        self.critical_processes_list = []  
+
         # JCF, Nov-7-2015
 
         # Now that we're going with a multithreaded (simultaneous)
@@ -377,6 +383,18 @@ class DAQInterface(Component):
                     "DAQInterface will exit. Look at the messages above, make any necessary "
                     "changes, and restart.") + "\n")
             sys.exit(1)
+
+        if "DAQINTERFACE_CRITICAL_PROCESSES_LIST" in os.environ:
+            self.critical_processes_list = []
+            if not os.path.exists(os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"]):
+                raise Exception("Environment variable DAQINTERFACE_CRITICAL_PROCESSES_LIST is set to \"%s\" but the file doesn't appear to exist" % (os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"]))
+
+            with open(os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"]) as inf:
+                for line in inf.readlines():
+                    if not re.search(r"^\s*$", line) and not re.search(r"^\s*#", line):
+                        self.critical_processes_list.append(line.split()[0])
+                    else:
+                        continue
 
         self.print_log("i", "DAQInterface in partition %s launched and now in \"%s\" state, listening on port %d" % 
                                            (self.partition_number, self.state(self.name), self.rpc_port))
@@ -770,12 +788,18 @@ class DAQInterface(Component):
                 errmsg = "%s: \"Error\" state found to have been returned by process %s at %s:%s; please check MessageViewer if up and/or the process logfile, %s" % \
                          (date_and_time(), procinfo.label, procinfo.host, procinfo.port, logfilename_in_list_form[0] )
 
+                print
                 self.print_log("e", make_paragraph(errmsg))
-                self.print_log("i", "Will remove %s from the list of processes" % (procinfo.label))
+                self.print_log("i", "\nWill remove %s from the list of processes" % (procinfo.label))
                 print
                 self.mopup_process(procinfo)
                 self.procinfos.remove( procinfo )
                 print
+
+                if procinfo.label in self.critical_processes_list:
+                    self.print_log("e", make_paragraph("Process \"%s\" which returned Error state is in the critical process list (%s); will now end the run and go to the Stopped state" % (procinfo.label, os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"] )))
+                    raise Exception("\nCritical process \"%s\" was found in the Error state" % (procinfo.label))
+
                 self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
 
 
