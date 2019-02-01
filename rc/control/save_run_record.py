@@ -5,9 +5,12 @@ import re
 import subprocess
 from subprocess import Popen
 import traceback
+from rc.control.deepsuppression import deepsuppression
+
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_commit_hash
 from rc.control.utilities import get_commit_comment
+from rc.control.utilities import expand_environment_variable_in_string
 
 def save_run_record_base(self):
 
@@ -35,14 +38,16 @@ def save_run_record_base(self):
         outf.close()
 
     # For good measure, let's also save the DAQInterface configuration file
+    # JCF, Oct-25-2018: but save it with environment variables expanded (see Issue #21225)
 
     config_saved_name = "boot.txt"
+    
+    with open("%s/%s" % (outdir, config_saved_name), "w") as outf:
+        with open( self.boot_filename ) as inf:
+            for line in inf.readlines():
+                outf.write( expand_environment_variable_in_string( line ) )
 
-    Popen("cp -p " + self.daqinterface_config_file + " " + outdir +
-          "/" + config_saved_name,
-          shell=True, stdout=subprocess.PIPE).wait()
-
-    if not os.path.exists(outdir + "/" + config_saved_name):
+    if not os.path.exists("%s/%s" % (outdir, config_saved_name)):
         self.alert_and_recover("Problem creating file %s/%s" %
                                (outdir, config_saved_name))
 
@@ -75,7 +80,7 @@ def save_run_record_base(self):
 
     outf = open(outdir + "/metadata.txt", "w")
 
-    outf.write("Config name: %s\n" % self.config_for_run)
+    outf.write("Config name: %s\n" % (" ".join(self.subconfigs_for_run)))
 
     for i_comp, component in \
             enumerate(sorted(self.daq_comp_list)):
@@ -83,18 +88,24 @@ def save_run_record_base(self):
 
     outf.write("DAQInterface directory: %s\n" % ( os.getcwd() ))
 
-    # Now save the commit hashes we determined during
-    # initialization
+    # Now save the commit hashes / versions of the packages listed in
+    # $DAQINTERFACE_SETTINGS, along with the commit hash for
+    # DAQInterface(if using DAQInterface from the repo) or version (if
+    # using DAQInterface as a ups product)
 
-    if "ARTDAQ_DAQINTERFACE_VERSION" in os.environ.keys():
-        outf.write("DAQInterface commit: %s\n" % ( os.environ["ARTDAQ_DAQINTERFACE_VERSION"] ) )
-    else:
-        outf.write("DAQInterface commit: %s\n" % ( get_commit_hash(os.environ["ARTDAQ_DAQINTERFACE_DIR"]) ) )
+    assert "ARTDAQ_DAQINTERFACE_DIR" in os.environ and os.path.exists(os.environ["ARTDAQ_DAQINTERFACE_DIR"])
 
+    with deepsuppression(self.debug_level < 3):
+        try:
+            outf.write("DAQInterface commit/version: %s \"%s\"\n" % ( get_commit_hash(os.environ["ARTDAQ_DAQINTERFACE_DIR"]), get_commit_comment( os.environ["ARTDAQ_DAQINTERFACE_DIR"] )))
+        except Exception:
+            # Not an exception in a bad sense as the throw just means we're using DAQInterface as a ups product
+            outf.write("DAQInterface commit/version: %s\n" % ( self.get_package_version("artdaq_daqinterface") ))
 
     self.package_info_dict = {}
 
     for pkgname in self.package_hashes_to_save:
+        
         pkg_full_path = "%s/srcs/%s" % (self.daq_dir, pkgname.replace("-", "_"))
 
         if os.path.exists( pkg_full_path ):
@@ -111,22 +122,16 @@ def save_run_record_base(self):
     for pkg in sorted(self.package_info_dict.keys()):
         outf.write("%s commit/version: %s\n" % (pkg, self.package_info_dict[ pkg ] ))
 
-    if self.pmt_host == "localhost":
-        pmt_host_to_record = os.environ["HOSTNAME"]
-    else:
-        pmt_host_to_record = self.pmt_host
-
-    outf.write("\n")
+    outf.write("\nprocess management method: %s\n" % (os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"]))
 
     if self.manage_processes:
-        outf.write("\npmt logfile(s): %s:%s/pmt/%s" %
-                   (pmt_host_to_record, self.log_directory,
-                    self.log_filename_wildcard))
 
-        logtuples = [("boardreader", self.boardreader_log_filenames),
-                     ("eventbuilder", self.eventbuilder_log_filenames),
-                     ("routingmaster", self.routingmaster_log_filenames),
-                     ("aggregator", self.aggregator_log_filenames)]
+        logtuples = [ ("process manager", self.process_manager_log_filenames),
+                      ("boardreader", self.boardreader_log_filenames),
+                      ("eventbuilder", self.eventbuilder_log_filenames),
+                      ("datalogger", self.datalogger_log_filenames),
+                      ("dispatcher", self.dispatcher_log_filenames),
+                      ("routingmaster", self.routingmaster_log_filenames)]
 
         for logtuple in logtuples:
 
@@ -139,35 +144,17 @@ def save_run_record_base(self):
     outf.write("\n")
     outf.close()
 
-    ranksfile = "%s/ranks.txt" % (outdir)
+    ranksfilename = "%s/ranks.txt" % (outdir)
 
-    with open(ranksfile, "w") as outfile:
-        outfile.write("        host   port         label  rank\n")
-        outfile.write("\n")
+    with open(ranksfilename, "w") as ranksfile:
+        ranksfile.write("        host   port         label  rank\n")
+        ranksfile.write("\n")
 
-        rank = 0
-
-        with open(self.pmtconfigname) as infile:
-            for line in infile.readlines():
-                res = re.search(r"^[A-Za-z]+!([^!]+)", line)
-                assert res
-                host = res.group(1)
-
-                res = re.search(r"\s*id\s*:\s*([0-9]+)", line)
-                assert res
-                port = res.group(1)
-
-                res = re.search(r"\s*application_name\s*:\s*([^\s]+)", line)
-                assert res
-                label = res.group(1)
-
-                outfile.write("%s\t%s\t%s\t%d\n" % (host, port, label, rank))
-                rank += 1
-
-        outfile.close()
-
-
-
+        for procinfo in self.procinfos:
+            host = procinfo.host
+            if host == "localhost":
+                host = os.environ["HOSTNAME"]
+            ranksfile.write("%s\t%s\t%s\t%d\n" % (host, procinfo.port, procinfo.label, procinfo.rank))            
     if self.debug_level >= 2:
         print "Saved run configuration records in %s" % \
             (outdir)

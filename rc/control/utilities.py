@@ -2,26 +2,32 @@
 import os
 import re
 import string
+import socket
+import shutil
 
 import subprocess
 from subprocess import Popen
 
 from time import sleep
+from time import time
 
 from multiprocessing.pool import ThreadPool
 
-bash_unsetup_command="type unsetup && for pp in `printenv | sed -ne \"/^SETUP_/{s/SETUP_//;s/=.*//;p}\"`; do test $pp = UPS && continue; prod=`echo $pp | tr \"A-Z\" \"a-z\"`; unsetup -j $prod; done || echo 0"
+bash_unsetup_command="upsname=$( which ups ); if [[ -n $upsname ]]; then unsetup() { . `$upsname unsetup \"$@\"` ; }; for pp in `printenv | sed -ne \"/^SETUP_/{s/SETUP_//;s/=.*//;p}\"`; do test $pp = UPS && continue; prod=`echo $pp | tr \"A-Z\" \"a-z\"`; unsetup -j $prod; done; echo \"After bash unsetup, products active (should be nothing but ups listed):\"; ups active; else echo \"ups does not appear to be set up; will not unsetup any products\"; fi"
 
 def expand_environment_variable_in_string(line):
 
-    res = re.search(r"^(.*)(\$[A-Z][A-Z_0-9]*)(.*)", line)
+    res = re.search(r"^(.*)(\$[{A-Za-z][A-Za-z}_0-9]*)(.*)", line)
 
     if res:
         environ_var = res.group(2)
         environ_var = environ_var.strip("${}")
 
         if environ_var in os.environ.keys():
-            line = res.group(1) + os.environ[ environ_var ] + res.group(3)
+            if line[-1] == '\n':
+                line = res.group(1) + os.environ[ environ_var ] + res.group(3) + '\n'
+            else:
+                line = res.group(1) + os.environ[ environ_var ] + res.group(3)
         else:
             raise Exception("Expanding line \"%s\", unable to find definition for environment variable \"%s\"" % \
                                 (line.strip(), environ_var))
@@ -73,16 +79,27 @@ def make_paragraph(userstring, chars_per_line=75):
 # table returned by "ps aux". It returns a (possibly empty) list
 # of the process IDs found
 
-def get_pids(greptoken, host="localhost"):
+# JCF, Dec-12-2018
+
+# Have "grepresults" serve as a pass-by-reference in which, if the caller
+# thinks not just the pid list but the actual lines grep'd for may be
+# of interest - e.g., for diagnostics or debugging - they can save
+# this result
+
+def get_pids(greptoken, host="localhost", grepresults = None):
 
     cmd = 'ps aux | grep "%s" | grep -v grep' % (greptoken)
 
     if host != "localhost":
-        cmd = "ssh -f " + host + " '" + cmd + "'"
+        cmd = "ssh -x " + host + " '" + cmd + "'"
 
     proc = Popen(cmd, shell=True, stdout=subprocess.PIPE)
 
     lines = proc.stdout.readlines()
+
+    if grepresults is not None:
+        for line in lines:
+            grepresults.append( line ) # Clunkier than a straight assignment, but needed for pass-by-reference
 
     pids = [line.split()[1] for line in lines]
 
@@ -158,6 +175,29 @@ def enclosing_table_range(fhiclstring, searchstring, startingloc=0):
 
     return (open_brace_loc + 1, open_brace_loc + close_brace_loc + 1)
 
+# 26-Nov-2018, ELF: This function finds the name of the enclosing table
+# for the specified string. This is used when determining which
+# destinations block is currently being filled during bookkeeping.
+def enclosing_table_name(fhiclstring, searchstring, startingloc=0):
+
+    loc = string.find(fhiclstring, searchstring, startingloc)
+    if loc == -1:
+        return "notfound"
+
+    open_brace_loc = string.rindex(fhiclstring, "{", 0, loc)
+
+    while string.rfind(fhiclstring, '}', open_brace_loc, loc) != -1:
+        loc = open_brace_loc - 1
+        open_brace_loc = string.rindex(fhiclstring, "{", 0, loc)
+
+    colon_loc = string.rindex(fhiclstring, ":", 0, open_brace_loc)
+
+    while fhiclstring[colon_loc - 1] == " ":
+        colon_loc -= 1
+
+    name = re.sub('.*\s', "", fhiclstring[:colon_loc])
+
+    return name
 
 def commit_check_throws_if_failure(packagedir, commit_hash, date, request_after):
 
@@ -215,25 +255,25 @@ def execute_command_in_xterm(home, cmd):
     Popen(fullcmd, shell=True).wait()
 
 def date_and_time():
-    return Popen("date", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    return Popen("LC_ALL=\"en_US.UTF-8\" date", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
 
 def construct_checked_command(cmds):
 
     checked_cmds = []
 
     for cmd in cmds:
+        
         checked_cmds.append( cmd )
 
-        if not re.search(r"\s*&\s*$", cmd):
-            check_cmd = "if [[ \"$?\" != \"0\" ]]; then echo %s: Nonzero return value from the following command: \"%s\" >> /tmp/daqinterface_checked_command_failures.log; exit 1; fi " % (date_and_time(), cmd)
+        if not re.search(r"\s*&\s*$", cmd) and not bash_unsetup_command in cmd:
+            check_cmd = "if [[ \"$?\" != \"0\" ]]; then echo %s: Nonzero return value from the following command: \"%s\" >> /tmp/daqinterface_checked_command_failures_%s.log; exit 1; fi " % (date_and_time(), cmd, os.environ["USER"])
             checked_cmds.append( check_cmd )
 
     total_cmd = " ; ".join( checked_cmds )
 
     return total_cmd
 
-
-def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
+def reformat_fhicl_documents(setup_fhiclcpp, procinfos):
 
     if not os.path.exists( setup_fhiclcpp ):
         raise Exception(make_paragraph("Expected fhiclcpp setup script %s doesn't appear to exist" % (setup_fhiclcpp)))
@@ -244,71 +284,39 @@ def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
                         stdout=subprocess.PIPE).stdout.readlines()[0].strip()
 
     if not re.search(r"^[0-9]+$", nprocessors):
-        raise Exception(make_paragraph("A problem occurred when DAQInterface tried to execute \"%s\"; result was not an intege\
-r" % \
-                                       (cmd)))
+        raise Exception(make_paragraph("A problem occurred when DAQInterface tried to execute \"%s\"; result was not an integer" % (cmd)))
 
-    pool = ThreadPool(int(nprocessors))
+    reformat_indir = Popen("mktemp -d", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    reformat_outdir = Popen("mktemp -d", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
 
-    preformat_filenames=[ Popen("mktemp", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() for i in range(len(input_fhicl_strings))]
-    postformat_filenames=[ Popen("mktemp", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() for i in range(len(input_fhicl_strings))]
+    for procinfo in procinfos:
+        with open("%s/%s.fcl" % (reformat_indir, procinfo.label), "w") as preformat_fhicl_file:
+            preformat_fhicl_file.write( procinfo.fhicl_used )
 
-    for preformat_filename, input_fhicl_string in zip(preformat_filenames, input_fhicl_strings):
-        with open(preformat_filename, "w") as preformat_file:
-            preformat_file.write(input_fhicl_string)
+    cmds = []
+    cmds.append("if [[ -z $( command -v fhicl-dump ) ]]; then %s; source %s; fi" % \
+                (bash_unsetup_command, setup_fhiclcpp))
+    cmds.append("cd %s" % (reformat_indir))
 
-    def reformat_subset_of_documents(indices):
+    xargs_cmd = "find ./ -name \*.fcl -print | xargs -I {} -n 1 -P %s fhicl-dump -l 0 -c {} -o %s/{}" % \
+                (nprocessors, reformat_outdir)
+    cmds.append("echo About to execute '%s'" % (xargs_cmd))
+    cmds.append(xargs_cmd)
+    
+    status = Popen("\n".join(cmds), shell=True).wait()
 
-        cmds = []
-        cmds.append("if [[ -z $( command -v fhicl-dump ) ]]; then %s; source %s; fi" % \
-                    (bash_unsetup_command, setup_fhiclcpp))
-        cmds.append("which fhicl-dump")
-        for index in indices:
-            cmds.append("fhicl-dump -l 0 -c %s -o %s" % \
-                        (preformat_filenames[index], postformat_filenames[index]))
+    if status != 0:
+        raise Exception("There was a problem reformatting the FHiCL documents; to troubleshoot you can set the debug level to 2 or higher in the boot file and try again")
 
-        fullcmd = construct_checked_command( cmds )
+    reformatted_fhicl_strings = []
+    for label in [procinfo.label for procinfo in procinfos]:
+        with open("%s/%s.fcl" % (reformat_outdir, label)) as reformatted_fhicl_file:
+            reformatted_fhicl_strings.append( reformatted_fhicl_file.read() )
 
-        status = Popen(fullcmd, shell = True).wait()
+    shutil.rmtree( reformat_indir )
+    shutil.rmtree( reformat_outdir )
 
-        exception_message = ""
-        formatted_fhicl_strings = []
-
-        if status != 0:
-            exception_message = make_paragraph("Failure in attempt of %s to reformat a FHiCL document; nonzero status returned. This may indicate either a problem with the setup file %s or a problem with the FHiCL code itself" % (reformat_subset_of_documents.__name__, setup_fhiclcpp))
-
-        for index in indices:
-            if os.path.exists( postformat_filenames[index] ):
-                formatted_fhicl_strings.append( open( postformat_filenames[index] ).read() )
-                os.unlink( postformat_filenames[index] )
-            else:
-                exception_message = make_paragraph("Failure in %s: problem creating postformat file in fhicl-dump call" % (reformat_subset_of_documents.__name__))
-
-        if exception_message != "":
-            raise Exception( exception_message )
-
-        for index in indices:
-            os.unlink( preformat_filenames[index] )
-
-        return formatted_fhicl_strings   # End of reformat_subset_of_documents()
-
-        
-    document_set_size = 8
-    num_total_documents = len(input_fhicl_strings)
-
-    if num_total_documents > document_set_size:
-        document_sets = [ range(i, i+document_set_size) for i in range(0, num_total_documents, document_set_size) if i+document_set_size < num_total_documents]
-        remainder_set = range( document_sets[-1][-1] + 1, num_total_documents)
-
-        if len(remainder_set) > 0:
-            document_sets.append( remainder_set )
-    else:
-        document_sets = [ range(num_total_documents) ]
-
-    postformat_fhicl_document_lists = pool.map(reformat_subset_of_documents, document_sets)
-
-    return [ postformat_fhicl_document for postformat_fhicl_document_list in postformat_fhicl_document_lists \
-                  for postformat_fhicl_document in postformat_fhicl_document_list ]
+    return reformatted_fhicl_strings
 
 # JCF, 12/2/14
 
@@ -366,12 +374,61 @@ def fhicl_writes_root_file(fhicl_string):
     else:
         return False
 
+def obtain_messagefacility_fhicl():
+
+    if "DAQINTERFACE_MESSAGEFACILITY_FHICL" in os.environ.keys():
+        messagefacility_fhicl_filename = os.environ["DAQINTERFACE_MESSAGEFACILITY_FHICL"]
+    else:
+        messagefacility_fhicl_filename = os.getcwd() + "/MessageFacility.fcl" 
+
+    # JCF, 10-25-2018
+
+    # The FHiCL controlling messagefacility messages below is
+    # embedded by artdaq within other FHiCL code (see
+    # artdaq/DAQdata/configureMessageFacility.cc in artdaq
+    # v2_03_03 for details).
+
+    default_contents = """ 
+
+# This file was automatically generated as %s at %s on host %s, and is
+# the default file DAQInterface uses to determine how to modify the
+# standard MessageFacility configuration found in artdaq-core
+# v3_02_01's configureMessageFacility.cc file. You can edit the
+# contents below to change the behavior of how/where MessageFacility
+# messages are sent, though keep in mind that this FHiCL will be
+# nested inside a table. Or you can use a different file by setting
+# the environment variable DAQINTERFACE_MESSAGEFACILITY_FHICL to the
+# name of the other file.
+
+udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THIS_WITH_AN_INTEGER_VALUE host : "%s" } 
+
+""" % (messagefacility_fhicl_filename, date_and_time(), os.environ["HOSTNAME"], socket.gethostname())
+        
+    if not os.path.exists( messagefacility_fhicl_filename ):
+        with open(messagefacility_fhicl_filename, "w") as outf_mf:
+            outf_mf.write( default_contents )
+
+    processed_messagefacility_fhicl_filename="/tmp/messagefacility_partition%s_%s.fcl" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"], os.environ["USER"])
+    
+    with open(messagefacility_fhicl_filename) as inf_mf:
+        with open(processed_messagefacility_fhicl_filename, "w") as outf_mf:
+            for line in inf_mf.readlines():
+                res = re.search(r"^\s*udp", line)
+                if not res:
+                    outf_mf.write(line)
+                else:
+                    outf_mf.write( re.sub("port\s*:\s*\S+", "port: %d" % (10005 + int(os.environ["DAQINTERFACE_PARTITION_NUMBER"])*1000), line) )
+
+    return processed_messagefacility_fhicl_filename
+
+
 def main():
 
     paragraphed_string_test = False
     msgviewer_check_test = False
     execute_command_in_xterm_test = False
-    reformat_fhicl_document_test = True
+    reformat_fhicl_document_test = False
+    bash_unsetup_test = True
 
     if paragraphed_string_test:
         sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
@@ -422,6 +479,9 @@ def main():
         print "Output FHiCL string: "
         print outputstring
         print
+
+    if bash_unsetup_test:
+        Popen( bash_unsetup_command, shell=True)
 
 if __name__ == "__main__":
     main()

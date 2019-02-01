@@ -1,4 +1,0 @@
-#!/bin/bash
-
-echo CONFIGHARDWARE NOT IMPLEMENTED
-

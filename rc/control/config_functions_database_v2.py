@@ -34,44 +34,39 @@ def get_config_info_base(self):
 
     basedir = os.getcwd()
 
+    ffp = []
+
     uuidgen=Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
-    config_dir = config_basedir(self) + uuidgen
+    tmpdir = config_basedir(self) + uuidgen
 
-    Popen("mkdir -p %s" % config_dir, shell=True).wait()
-    os.chdir( config_dir )
+    Popen("mkdir -p %s" % tmpdir, shell=True).wait()
+    os.chdir( tmpdir )
 
-    with deepsuppression():
-        result = exportConfiguration( self.config_for_run )
+    for subconfig in self.subconfigs_for_run:
+        subconfigdir = "%s/%s" % (tmpdir, subconfig)
+        os.mkdir( subconfigdir )
+        os.chdir( subconfigdir )
+        
+        with deepsuppression(self.debug_level < 2):
+            result = exportConfiguration( subconfig )
 
-    if not result:
-        raise Exception("Error: the exportConfiguration function with the argument \"%s\" returned False" % \
-                        self.config_for_run)
+            if not result:
+                raise Exception("Error: the exportConfiguration function with the argument \"%s\" returned False" % \
+                                subconfig)
 
-    # JCF, Nov-22-2017
+        for dirname, dummy, dummy in os.walk( subconfigdir ):
+            ffp.append( dirname )
 
-    # Disabled the common code logic for the time being; plan is to
-    # reinstate it when there's time to modify the protoDUNE FHiCL
-    # configurations to adhere to it
+        # DAQInterface doesn't like duplicate files with the same basename
+        # in the collection of subconfigurations, and schema.fcl isn't used
+        # since DAQInterface just wants the FHiCL documents used to initialize
+        # artdaq processes...
+        for dirname, dummy, filenames in os.walk( subconfigdir ):
+            if "schema.fcl" in filenames:
+                os.unlink("%s/schema.fcl" % (dirname))
 
-    if False:
-        if os.path.exists("common_code"):
-            raise Exception("Error: the requested configuration \"%s\" contains a subdirectory called \"common_code\" (see directory %s); this should not be the case, as \"common_code\" needs to be a separate configuration" % (self.config_for_run, os.getcwd()))
-
-        common_code_configs = getListOfAvailableRunConfigurations("common_code")
-
-        if len(common_code_configs) == 0:
-            raise Exception("Error: unable to find any common_code configurations in the database")
-
-        common_code_configs.sort()
-        common_code_config = common_code_configs[-1]
-
-        result = exportConfiguration( common_code_config )
-        if not result:
-            raise Exception("Error: the \"%s\" set of FHiCL documents doesn't appear to be retrievable from the database" % (common_code_config))
-
-    os.chdir(basedir)
-    
-    return config_dir, [fhicl_dir for fhicl_dir, dummy, dummy in os.walk(config_dir)]
+    os.chdir( basedir )
+    return tmpdir, ffp
 
 
 def put_config_info_base(self):
@@ -172,7 +167,7 @@ def put_config_info_base(self):
     basedir=os.getcwd()
     os.chdir( tmpdir )
 
-    with deepsuppression():
+    with deepsuppression(self.debug_level < 2):
         result = archiveRunConfiguration( self.config_for_run, runnum )
 
     if not result:
@@ -207,7 +202,7 @@ def listconfigs_base(self):
 def main():
 
     listconfigs_test = False
-    get_config_info_test = False
+    get_config_info_test = True
     put_config_info_test = False
 
     if listconfigs_test:
@@ -218,7 +213,8 @@ def main():
         print "Calling get_config_info_base"
 
         class MockDAQInterface:
-            config_for_run = "push_pull_testing"
+            subconfigs_for_run = [ "ToyComponent_EBwriting00019", "np04_WibsReal_Ssps_BeamTrig_CRT_00001" ]
+            debug_level = 2
 
         mydir, mydirs = get_config_info_base( MockDAQInterface() )
 
