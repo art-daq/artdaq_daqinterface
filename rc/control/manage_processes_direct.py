@@ -46,7 +46,7 @@ def bootfile_name_to_execname(bootfile_name):
 # on those hosts
 
 def launch_procs_base(self):
-                    
+
     if self.have_artdaq_mfextensions():
         messagefacility_fhicl_filename = obtain_messagefacility_fhicl()
 
@@ -78,12 +78,15 @@ def launch_procs_base(self):
             launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_ROOT=%s" % (self.log_directory))
             launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))
             launch_commands_to_run_on_host[ procinfo.host ].append("which boardreader >> %s 2>&1 " % (self.launch_attempt_file)) # Assume if this works, eventbuilder, etc. are also there
+            #launch_commands_to_run_on_host[ procinfo.host ].append("setup valgrind v3_13_0")
 
             launch_commands_to_run_on_host_background[ procinfo.host ] = []
 
-        launch_commands_to_run_on_host_background[ procinfo.host ].append( "%s -c \"id: %s commanderPluginType: xmlrpc rank: %s application_name: %s partition_number: %s\" >> %s 2>&1 & " % \
+        processcmd = "%s -c \"id: %s commanderPluginType: xmlrpc rank: %s application_name: %s partition_number: %s\" >> %s 2>&1 & " % \
                                                                            (bootfile_name_to_execname(procinfo.name), procinfo.port, procinfo.rank, procinfo.label, 
-                                                                            os.environ["DAQINTERFACE_PARTITION_NUMBER"], self.launch_attempt_file))
+                                                                            os.environ["DAQINTERFACE_PARTITION_NUMBER"], self.launch_attempt_file)
+        #processcmd = "valgrind --tool=callgrind %s" % (processcmd)
+        launch_commands_to_run_on_host_background[ procinfo.host ].append( processcmd )
 
     print
     for host in launch_commands_to_run_on_host:
@@ -320,10 +323,13 @@ def get_pids_and_labels_on_host(host, procinfos):
         greptokens.append( "[0-9]:[0-9][0-9]\s\+" + bootfile_name_to_execname(procinfo.name) + " -c .*" + procinfo.port + ".*" ) 
 
     greptoken = "\|".join(greptokens)
-    #print "Will try a grep with %s on %s" % (greptoken, host)
-
+    
     greptoken = "[0-9]:[0-9][0-9]\s\+\(%s\).*application_name.*partition_number" % \
                 ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])))
+
+    #greptoken = "[0-9]:[0-9][0-9]\s\+valgrind.*\(%s\).*application_name.*partition_number" % \
+    #            ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])))
+
 
     grepped_lines = []
     pids = get_pids(greptoken, host, grepped_lines)
