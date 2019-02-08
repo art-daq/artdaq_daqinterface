@@ -5,7 +5,8 @@ services: {
   }
   NetMonTransportServiceInterface: {
     service_provider: NetMonTransportService
-    #broadcast_sends: true
+    broadcast_sends: true
+    nonblocking_sends: true
 	destinations: {	}
 
 	routing_table_config: {
