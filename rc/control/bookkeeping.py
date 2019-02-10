@@ -281,7 +281,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             else:
                 pass # Same comment for the advanced memory usage case above applies here
 
-        procinfo_subystem_has_dataloggers = True
+        procinfo_subsystem_has_dataloggers = True
         if len([pi for pi in self.procinfos if pi.subsystem == procinfo.subsystem and pi.name == "DataLogger"]) == 0:
             procinfo_subsystem_has_dataloggers = False
                 
