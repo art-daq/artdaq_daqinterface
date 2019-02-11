@@ -49,15 +49,15 @@ def get_config_info_base(self):
 def put_config_info_base(self):
     pass
 
-def get_daqinterface_config_info_base(self, daqinterface_config_filename):
+def get_boot_info_base(self, boot_filename):
 
-    inf = open(daqinterface_config_filename)
+    inf = open(boot_filename)
 
     if not inf:
         raise Exception(self.make_paragraph(
                             "Exception in DAQInterface: " +
                             "unable to locate configuration file \"" +
-                            daqinterface_config_filename + "\""))
+                            boot_filename + "\""))
 
     memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set"}
     subsystemDict = {"id": None, "source": "not set", "destination": "not set"}
@@ -86,7 +86,7 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
         res = re.search(r"^\s*tcp_base_port\s*:\s*(\S+)",
                         line)
         if res:
-            raise Exception(make_paragraph("Jun-29-2018: the variable \"tcp_base_port\" was found in the boot file %s; this use is deprecated as tcp port values are now set internally in artdaq since artdaq commit d338b810c589a177ff1a34d82fa82a459cc1704b" % (daqinterface_config_filename)))
+            raise Exception(make_paragraph("Jun-29-2018: the variable \"tcp_base_port\" was found in the boot file %s; this use is deprecated as tcp port values are now set internally in artdaq since artdaq commit d338b810c589a177ff1a34d82fa82a459cc1704b" % (boot_filename)))
 
         res = re.search(r"^\s*request_port\s*:\s*(\S+)",
                         line)
@@ -115,7 +115,7 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
         res = re.search(r"^\s*partition_number\s*:\s*(\S+)",
                         line)
         if res:
-            raise Exception(make_paragraph("Jun-24-2018: the variable \"partition_number\" was found in the boot file %s; this use is deprecated as \"partition_number\" is now set by the DAQINTERFACE_PARTITION_NUMBER environment variable" % (daqinterface_config_filename)))
+            raise Exception(make_paragraph("Jun-24-2018: the variable \"partition_number\" was found in the boot file %s; this use is deprecated as \"partition_number\" is now set by the DAQINTERFACE_PARTITION_NUMBER environment variable" % (boot_filename)))
 
         res = re.search(r"^\s*debug level\s*:\s*(\S+)",
                         line)
@@ -153,7 +153,7 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
 
             if not res:
                 raise Exception("Exception in DAQInterface: "
-                                "problem parsing " + daqinterface_config_filename +
+                                "problem parsing " + boot_filename +
                                 " at line \"" + line + "\"")
 
             subsystemDict[res.group(2)] = res.group(3)
@@ -244,8 +244,6 @@ def get_daqinterface_config_info_base(self, daqinterface_config_filename):
     if num_expected_processes != num_actual_processes:
         raise Exception(make_paragraph("An inconsistency exists in the boot file; a host was defined in the file for %d artdaq processes, but there's only a complete set of info in the file for %d processes. This may be the result of using a boot file designed for an artdaq version prior to the addition of a label requirement (see https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/The_boot_file_reference for more)" % (num_expected_processes, num_actual_processes)))
 
-
-    return daqinterface_config_filename
 
 def listdaqcomps_base(self):
 

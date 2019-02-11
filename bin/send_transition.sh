@@ -25,8 +25,8 @@ case $cmd in
     "boot")
 	test $# -gt 1 || badargs=true 
 	translated_cmd="booting"
-	daqinterface_config_file=$2
-	xmlrpc_arg="daqinterface_config:s/"${daqinterface_config_file}
+	boot_filename=$2
+	xmlrpc_arg="boot_filename:s/"${boot_filename}
 	;;
     "config")
 	test $# -gt 1 || badargs=true 

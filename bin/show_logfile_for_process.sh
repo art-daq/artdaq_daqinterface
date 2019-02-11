@@ -19,13 +19,13 @@ if [[ ! -e $metadata_file ]]; then
     exit 1
 fi
 
-for procname in boardreader eventbuilder routingmaster aggregator; do
+for procname in boardreader eventbuilder routingmaster datalogger dispatcher; do
 
     logfiles=$( sed -r -n '/'$procname' logfiles:/,/^$/p' $metadata_file | sed '1d;$d')
 
     for logfile in $logfiles; do
 
-	if [[ -n $( echo $logfile | sed -r -n '/'$proclabel'/p') ]]; then
+	if [[ -n $( echo $logfile | sed -r -n '/'$proclabel'-/p') ]]; then
 
 	    host=$( echo $logfile | awk 'BEGIN{FS=":"}{print $1}' )
 	    filename=$( echo $logfile | awk 'BEGIN{FS=":"}{print $2}' )
@@ -47,7 +47,7 @@ EOF
 		    
 		    fi
 		else
-		    echo "Ability to examine logfile on remote host (\"$logfile\") not yet implemented"
+		    ssh -f $host "if [[ -e $filename ]]; then cat $filename ; else echo \"File $filename doesn't appear to exist (any longer)\" ; fi"
 		    exit 0
 		fi
 	    else

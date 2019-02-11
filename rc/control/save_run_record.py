@@ -43,7 +43,7 @@ def save_run_record_base(self):
     config_saved_name = "boot.txt"
     
     with open("%s/%s" % (outdir, config_saved_name), "w") as outf:
-        with open( self.daqinterface_config_file ) as inf:
+        with open( self.boot_filename ) as inf:
             for line in inf.readlines():
                 outf.write( expand_environment_variable_in_string( line ) )
 
@@ -129,8 +129,9 @@ def save_run_record_base(self):
         logtuples = [ ("process manager", self.process_manager_log_filenames),
                       ("boardreader", self.boardreader_log_filenames),
                       ("eventbuilder", self.eventbuilder_log_filenames),
-                      ("routingmaster", self.routingmaster_log_filenames),
-                      ("aggregator", self.aggregator_log_filenames)]
+                      ("datalogger", self.datalogger_log_filenames),
+                      ("dispatcher", self.dispatcher_log_filenames),
+                      ("routingmaster", self.routingmaster_log_filenames)]
 
         for logtuple in logtuples:
 

@@ -20,7 +20,6 @@ daq: {
     buffer_count: 40
     onmon_event_prescale: 1
     is_data_logger: true
-	art_analyzer_count: 5
 
     auto_suppression_enabled: false
 

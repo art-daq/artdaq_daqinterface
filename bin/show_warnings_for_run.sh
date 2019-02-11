@@ -57,19 +57,20 @@ if [[ "$?" == "0" ]]; then
 
     for file in $output ; do
 
+	echo
 	echo "Examining file \"$file\""
 
 	host=$( echo $file | awk 'BEGIN{FS=":"}{print $1}' )
 	filename=$( echo $file | awk 'BEGIN{FS=":"}{print $2}' )
 	
-	sedcmd="sed -r -n '{/MSG-e/{N;p};/MSG-w/{N;/Use of services.user parameter set is deprecated/d;/Fast cloning deactivated/d;/Attempted to send metric when/d;/Cannot send init fragment because I haven.t yet received one/d;p}}' $filename"
+	sedcmd="sed -r -n '{/MSG-e/{N;p};/MSG-w/{N;/Use of services.user parameter set is deprecated/d;/Fast cloning deactivated/d;/Attempted to send metric when/d;/Cannot send init fragment because I haven.t yet received one/d;/Stop Message received/d;/RCVBUF initial/d;p}}' $filename"
 
 	if [[ "$host" == "localhost" || "$host" == "$HOSTNAME" ]]; then
 	    if [[ -e $filename ]]; then 
 		( eval $sedcmd  )
-	    else 
-		echo "Unable to find logfile $filename on ${host}!"  
 	    fi
+	else
+	    ssh $host $sedcmd
 	fi
     done
     echo

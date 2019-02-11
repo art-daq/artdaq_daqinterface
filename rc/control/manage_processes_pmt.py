@@ -64,6 +64,9 @@ def launch_procs_base(self):
     outf.close()
 
     if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
+        raise Exception("\"PMT host\" currently needs to be set to \"localhost\" or \"%s\" in the boot file" % (os.environ["HOSTNAME"]))
+
+    if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
         status = Popen("scp -p " + self.pmtconfigname + " " +
                        self.pmt_host + ":/tmp", shell=True).wait()
 
@@ -148,7 +151,7 @@ def kill_procs_base(self):
             cmd = "kill %s; sleep 2; kill -9 %s" % (pmt_pid, pmt_pid)
 
             if self.pmt_host != "localhost":
-                cmd = "ssh -f " + self.pmt_host + " '" + cmd + "'"
+                cmd = "ssh -x " + self.pmt_host + " '" + cmd + "'"
 
             proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -162,7 +165,7 @@ def kill_procs_base(self):
             cmd = "kill -9 " + pids[0]
 
             if procinfo.host != "localhost":
-                cmd = "ssh -f " + procinfo.host + " '" + cmd + "'"
+                cmd = "ssh -x " + procinfo.host + " '" + cmd + "'"
 
             Popen(cmd, shell=True, stdout=subprocess.PIPE,
                   stderr=subprocess.STDOUT)
@@ -175,13 +178,16 @@ def kill_procs_base(self):
 
             if len(pids) > 0:
                 self.print_log("w", "Appeared to be unable to kill %s at %s:%s during cleanup" % \
-                                   (procinfo.name, procinfo.host, procinfo.port))
+                                   (procinfo.label, procinfo.host, procinfo.port))
 
     self.procinfos = []
 
     self.kill_art_procs()
 
     return
+
+def mopup_process_base(self, procinfo):
+    pass   # Any killing of individual processes would bring down everything else with it when pmt.rb is used
 
 def softlink_process_manager_logfiles_base(self):
 
@@ -271,9 +277,12 @@ def process_manager_cleanup_base(self):
 
         if hasattr(self, "pmt_host"):
             if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
-                cmd = "ssh -f " + self.pmt_host + " '" + cmd + "'"
+                cmd = "ssh -x " + self.pmt_host + " '" + cmd + "'"
 
-def get_pid_for_process(procinfo):
+def get_pid_for_process_base(self, procinfo):
+
+    assert procinfo in self.procinfos
+
     greptoken = procinfo.name + "Main -c id: " + procinfo.port
 
     grepped_lines = []
@@ -305,8 +314,6 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
             proctype = "EventBuilderMain"
         elif "RoutingMaster" in procinfo.name:
             proctype = "RoutingMasterMain"
-        elif "Aggregator" in procinfo.name:
-            proctype = "AggregatorMain"
         elif "DataLogger" in procinfo.name:
             proctype = "DataLoggerMain"
         elif "Dispatcher" in procinfo.name:
@@ -314,7 +321,7 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
         else:
             assert False
 
-        if get_pid_for_process(procinfo) is not None:
+        if get_pid_for_process_base(self, procinfo) is not None:
             found_processes.append(procinfo)
         else:
             is_all_ok = False
@@ -334,8 +341,9 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
 
     return found_processes
 
+def process_launch_diagnostics_base(self, procinfos_of_failed_processes):
+    pass
 
-    
 
 
                         

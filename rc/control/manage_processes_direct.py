@@ -61,26 +61,50 @@ def launch_procs_base(self):
 
     launch_commands_to_run_on_host = {}
     launch_commands_to_run_on_host_background = {}  # Need to run artdaq processes in the background so they're persistent outside of this function's Popen calls
+    launch_commands_on_host_to_show_user = {} # Don't want to clobber a pre-existing logfile or clutter the commands via "$?" checks
+            
+    self.launch_attempt_file = "/tmp/launch_attempt_%s_partition%s" % (os.environ["USER"], os.environ["DAQINTERFACE_PARTITION_NUMBER"])
 
     for procinfo in self.procinfos:
 
         if not procinfo.host in launch_commands_to_run_on_host:
+
             launch_commands_to_run_on_host[ procinfo.host ] = []
-            launch_commands_to_run_on_host[ procinfo.host ].append(". %s/setup" % self.productsdir)  
+            launch_commands_to_run_on_host_background[ procinfo.host ] = []
+            launch_commands_on_host_to_show_user[ procinfo.host ] = []
+
+            launch_commands_to_run_on_host[ procinfo.host ].append("set +C")  
+            launch_commands_to_run_on_host[ procinfo.host ].append("echo > %s" % (self.launch_attempt_file))
+            launch_commands_to_run_on_host[ procinfo.host ].append(". %s/setup >> %s 2>&1 " % (self.productsdir, self.launch_attempt_file))
             launch_commands_to_run_on_host[ procinfo.host ].append( bash_unsetup_command )
-            launch_commands_to_run_on_host[ procinfo.host ].append("source " + self.daq_setup_script )
+            launch_commands_to_run_on_host[ procinfo.host ].append("source %s >> %s 2>&1 " % (self.daq_setup_script, self.launch_attempt_file ))
             launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_ROOT=%s" % (self.log_directory))
             launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))
-            launch_commands_to_run_on_host[ procinfo.host ].append("which boardreader") # Assume if this works, eventbuilder, etc. are also there
+            launch_commands_to_run_on_host[ procinfo.host ].append("which boardreader >> %s 2>&1 " % (self.launch_attempt_file)) # Assume if this works, eventbuilder, etc. are also there
+            #launch_commands_to_run_on_host[ procinfo.host ].append("setup valgrind v3_13_0")
 
-            launch_commands_to_run_on_host_background[ procinfo.host ] = []
+            for command in launch_commands_to_run_on_host[ procinfo.host ]:
+                res = re.search(r"^([^>]*).*%s.*$" % (self.launch_attempt_file), command)
+                if not res:
+                    launch_commands_on_host_to_show_user[ procinfo.host ].append( command)
+                else:
+                    launch_commands_on_host_to_show_user[ procinfo.host].append( res.group(1) )
+                    
 
-        launch_commands_to_run_on_host_background[ procinfo.host ].append( "%s -c \"id: %s commanderPluginType: xmlrpc rank: %s application_name: %s partition_number: %s\" & " % \
-                                                                           (bootfile_name_to_execname(procinfo.name), procinfo.port, procinfo.rank, procinfo.label, 
-                                                                            os.environ["DAQINTERFACE_PARTITION_NUMBER"]))
-    
+        base_launch_cmd = "%s -c \"id: %s commanderPluginType: xmlrpc rank: %s application_name: %s partition_number: %s\"" % \
+                          (bootfile_name_to_execname(procinfo.name), procinfo.port, procinfo.rank, procinfo.label, 
+                           os.environ["DAQINTERFACE_PARTITION_NUMBER"])
+        #base_launch_cmd = "valgrind --tool=callgrind %s" % (base_launch_cmd)
+        launch_cmd = "%s >> %s 2>&1 & " % (base_launch_cmd, self.launch_attempt_file)
+
+        launch_commands_to_run_on_host_background[ procinfo.host ].append( launch_cmd )
+        launch_commands_on_host_to_show_user[ procinfo.host].append( "%s &" % (base_launch_cmd) )
+
+    print
     for host in launch_commands_to_run_on_host:
-        
+
+        self.print_log("d", "Trying to launch processes on %s" % (host), 2)
+
         # Before we try launching the processes, let's make sure there
         # aren't any pre-existing processes listening on the same
         # ports
@@ -95,7 +119,7 @@ def launch_procs_base(self):
             self.print_log("e", make_paragraph("On host %s, found artdaq process(es) already existing which use the ports DAQInterface was going to use; this may be the result of an improper cleanup from a prior run: " % (host)))
             self.print_log("e", "\n" + "\n".join(grepped_lines))
             self.print_log("i", "...note that the process(es) may get automatically cleaned up during DAQInterface recovery\n")
-            raise Exception("DAQInterface found previously-existing artdaq processes using desired ports; see error message above for details")
+            raise Exception(make_paragraph("DAQInterface found previously-existing artdaq processes using desired ports; see error message above for details"))
         
 
         launchcmd = construct_checked_command( launch_commands_to_run_on_host[ host ] )
@@ -105,73 +129,68 @@ def launch_procs_base(self):
         if host != os.environ["HOSTNAME"] and host != "localhost":
             launchcmd = "ssh -f " + host + " '" + launchcmd + "'"
 
-        unchecked_launchcmd = "\n".join( launch_commands_to_run_on_host[ host ] ) + "\n" + \
-                              "\n".join( launch_commands_to_run_on_host_background[ host ])
-        self.print_log("d", "PROCESS LAUNCH COMMANDS TO EXECUTE ON %s:\n%s\n" % (host, unchecked_launchcmd), 2)
+        self.print_log("d", "PROCESS LAUNCH COMMANDS TO EXECUTE ON %s:\n%s\n" % (host, "\n".join(launch_commands_on_host_to_show_user[host])), 2)
         
         with deepsuppression(self.debug_level < 4):
             status = Popen(launchcmd, shell=True).wait()
 
         if status != 0:   
-            self.print_log("e", "Status error raised in attempting to launch processes on %s" % (host))
-            self.print_log("i", make_paragraph("To investigate, first try running again with the \"debug level\" in the boot file set to 4. Otherwise, you can recreate what DAQInterface did by performing a clean login to %s, source-ing the DAQInterface environment and executing the following:" % (host)))
-            self.print_log("i", "\n" + unchecked_launchcmd + "\n")
+            self.print_log("e", "Status error raised in attempting to launch processes on %s, to investigate, see %s:%s for output" % (host, host, self.launch_attempt_file))
+            self.print_log("i", make_paragraph("You can also try running again with the \"debug level\" in the boot file set to 4. Otherwise, you can recreate what DAQInterface did by performing a clean login to %s, source-ing the DAQInterface environment and executing the following:" % (host)))
+            self.print_log("i", "\n" + "\n".join(launch_commands_on_host_to_show_user[host]) + "\n")
             raise Exception("Status error raised attempting to launch processes on %s; scroll up for more detail" % (host))
 
-    all_commands_to_run_on_host = launch_commands_to_run_on_host
+    return launch_commands_on_host_to_show_user
 
-    for host in all_commands_to_run_on_host:
-        for cmd in launch_commands_to_run_on_host_background[ host ]:
-            all_commands_to_run_on_host[ host ].append( cmd )
+def process_launch_diagnostics_base(self, procinfos_of_failed_processes):
+    for host in set([procinfo.host for procinfo in procinfos_of_failed_processes]):
+        self.print_log("e", "\nOutput of unsuccessful attempted process launch on %s can be found in file %s:%s" % (host, host, self.launch_attempt_file))
 
-    return all_commands_to_run_on_host
 
 
 def kill_procs_base(self):
 
-    for procinfo in self.procinfos:
+    for host in set([procinfo.host for procinfo in self.procinfos]):
 
-        pid = get_pid_for_process(procinfo)
+        artdaq_pids, labels_of_found_processes = get_pids_and_labels_on_host(host, self.procinfos)
+        if len(artdaq_pids) > 0:
+            self.print_log("i", "%s: Found the following processes on %s, will attempt to kill them: %s" % \
+                           (date_and_time(), host, " ".join( labels_of_found_processes ) ), 0)
 
-        if pid is not None:
-            cmd = "kill " + pid
+            cmd = "kill %s" % (" ".join(artdaq_pids))
+            if host != "localhost" and host != os.environ["HOSTNAME"]:
+                cmd = "ssh -x " + host + " '" + cmd + "'"
 
-            if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
-                cmd = "ssh -f " + procinfo.host + " '" + cmd + "'"
-
-            self.print_log("d", "Killing %s process on %s, pid == %s" % (procinfo.label, procinfo.host, pid), 2)
             Popen(cmd, shell=True, stdout=subprocess.PIPE,
-                  stderr=subprocess.STDOUT)
-        else:
-            self.print_log("d", "No process for %s found; will not issue a kill command" % (procinfo.label), 2)
+                  stderr=subprocess.STDOUT).wait()
+            self.print_log("d", "%s: Finished (attempted) kill of the following processes on %s: %s" % \
+                           (date_and_time(), host, " ".join( labels_of_found_processes ) ), 2)
 
-    # Check that they were actually killed
+        art_pids = get_pids("art -c .*partition_%s" % os.environ["DAQINTERFACE_PARTITION_NUMBER"], host)
+
+        if len(art_pids) > 0:
+
+            cmd = "kill -9 %s" % (" ".join( art_pids ) )   # JCF, Dec-8-2018: the "-9" is apparently needed...
+
+            if host != "localhost" and host != os.environ["HOSTNAME"]:
+                cmd = "ssh -x " + host + " '" + cmd + "'"
+
+            self.print_log("d", "%s: About to kill the artdaq-associated art processes on %s" % (date_and_time(), host), 2)
+            Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).wait()
+            self.print_log("d", "%s: Finished kill of the artdaq-associated art processes on %s" % (date_and_time(), host), 2)
 
     sleep(1)
 
-    for procinfo in self.procinfos:
-        pid = get_pid_for_process(procinfo)
-
-        if pid is not None:
-            self.print_log("w", "Appeared to be unable to kill %s on %s during cleanup" % \
-                               (procinfo.label, procinfo.host))
-
     for host in set([procinfo.host for procinfo in self.procinfos]):
-        art_pids = get_pids("art -c .*partition_%s" % os.environ["DAQINTERFACE_PARTITION_NUMBER"], host)
 
-        if len(art_pids) > 0:
-            cmd = "kill -9 %s" % (" ".join( art_pids ) )   # JCF, Dec-8-2018: the "-9" is apparently needed...
+        artdaq_pids, labels_of_found_processes = get_pids_and_labels_on_host(host, self.procinfos)    
+
+        if len(artdaq_pids) > 0:
+            self.print_log("w", make_paragraph("Despite receiving a termination signal, the following artdaq processes on %s were not killed, so they'll be issued a SIGKILL: %s" % (host, " ".join(labels_of_found_processes))))
+            cmd = "kill -9 %s" % (" ".join(artdaq_pids))
             if host != "localhost" and host != os.environ["HOSTNAME"]:
-                cmd = "ssh -f " + host + " '" + cmd + "'"
-            self.print_log("d", "Executing \"%s\" on %s" % (cmd, host), 2)
+                cmd = "ssh -x " + host + " '" + cmd + "'"
             Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).wait()
-
-        art_pids = get_pids("art -c .*partition_%s" % os.environ["DAQINTERFACE_PARTITION_NUMBER"], host)
-        if len(art_pids) > 0:
-            self.print_log("w", "Unable to kill at least one of the artdaq-related art processes on %s (pid(s) %s still exist)" % (host, " ".join(art_pids)))
-
-
-
 
     self.procinfos = []
 
@@ -195,7 +214,10 @@ def get_process_manager_log_filenames_base(self):
 def process_manager_cleanup_base(self):
     pass
 
-def get_pid_for_process(procinfo):
+def get_pid_for_process_base(self, procinfo):
+
+    assert procinfo in self.procinfos
+
     greptoken = bootfile_name_to_execname(procinfo.name) + " -c .*" + procinfo.port + ".*"
 
     grepped_lines = []
@@ -215,13 +237,124 @@ def get_pid_for_process(procinfo):
 
         print "Appear to have duplicate processes for %s on %s, pids: %s" % (procinfo.label, procinfo.host, " ".join( pids ))
 
+    return None
+
+def mopup_process_base(self, procinfo):
+
+    if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
+        on_other_node = True
+    else: 
+        on_other_node = False
+
+    pid = get_pid_for_process_base(self, procinfo)
+
+    if pid is not None:
+        cmd = "kill %s" % (pid)
+        
+        if on_other_node:
+            cmd = "ssh -x %s '%s'" % (procinfo.host, cmd)
+
+        status = Popen(cmd, shell=True).wait()
+        sleep(1)
+
+        if get_pid_for_process_base(self, procinfo) is not None:
+            cmd = "kill -9 %s > /dev/null 2>&1" % (pid)
+            
+            if on_other_node:
+                cmd = "ssh -x %s '%s'" % (procinfo.host, cmd)
+            
+            self.print_log("w", "A standard kill of the artdaq process %s on %s didn't work; resorting to a kill -9" % \
+                           (procinfo.label, procinfo.host))
+            Popen(cmd, shell=True).wait()
+
+    # Will need to perform some additional cleanup (clogged ports, zombie art processes, etc.)
+
+    ssh_mopup_ok = True  
+    related_process_mopup_ok = True
+
+    # Need to deal with the lingering ssh command if the lost process is on a remote host
+    if on_other_node:
+
+        # Mopup the ssh call on this side
+        ssh_grepstring = "ssh.*%s.*%s -c.*%s" % (procinfo.host, bootfile_name_to_execname(procinfo.name),
+                                                procinfo.label) 
+        pids = get_pids(ssh_grepstring)
+
+        if len(pids) == 1:
+            Popen("kill %s > /dev/null 2>&1" % (pids[0]), shell=True).wait()
+            pids = get_pids(ssh_grepstring)
+            if len(pids) == 1:
+                ssh_mopup_ok = False
+        elif len(pids) > 1:
+            ssh_mopup_ok = False
+
+    # And take out the process(es) associated with the artdaq process via its listening port (e.g., the art processes)
+    
+    cmd = "kill %s > /dev/null 2>&1" % (" ".join(get_related_pids_for_process(procinfo)))
+    
+    if on_other_node:
+        cmd = "ssh -x %s '%s'" % (procinfo.host, cmd)
+
+    Popen(cmd, shell=True).wait()
+
+    unkilled_related_pids = get_related_pids_for_process(procinfo)
+    if len(unkilled_related_pids) == 0:
+        related_process_mopup_ok = True
+    else:
+        related_process_mopup_ok = False
+        self.print_log("w", make_paragraph("Warning: unable to normally kill process(es) associated with now-deceased artdaq process %s; on %s the following pid(s) remain: %s. Will now resort to kill -9 on these processes." % (procinfo.label, procinfo.host, " ".join(unkilled_related_pids))))
+        cmd = "kill -9 %s > /dev/null 2>&1 " % (" ".join(unkilled_related_pids))
+
+        if on_other_node:
+            cmd = "ssh -x %s '%s'" % (procinfo.host, cmd)
+        
+        Popen(cmd, shell=True).wait()
+
+    if not ssh_mopup_ok:
+        self.print_log("w", make_paragraph("There was a problem killing the ssh process to %s related to the deceased artdaq process %s at %s:%s; there *may* be issues with the next run using that host and port as a result" % (procinfo.host, procinfo.label, procinfo.host, procinfo.port)))
+
+    if not related_process_mopup_ok:
+        self.print_log("w", make_paragraph("At least some of the processes on %s related to deceased artdaq process %s at %s:%s (e.g. art processes) had to be forcibly killed; there *may* be issues with the next run using that host and port as a result" % (procinfo.host, procinfo.label, procinfo.host, procinfo.port)))
+
+    
+
+# If you change what this function returns, you should rename it for obvious reasons
+def get_pids_and_labels_on_host(host, procinfos):
+
+    greptokens = []
+    
+    for procinfo in [pi for pi in procinfos if pi.host == host]:
+        greptokens.append( "[0-9]:[0-9][0-9]\s\+" + bootfile_name_to_execname(procinfo.name) + " -c .*" + procinfo.port + ".*" ) 
+
+    greptoken = "\|".join(greptokens)
+    
+    greptoken = "[0-9]:[0-9][0-9]\s\+\(%s\).*application_name.*partition_number" % \
+                ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])))
+
+    #greptoken = "[0-9]:[0-9][0-9]\s\+valgrind.*\(%s\).*application_name.*partition_number" % \
+    #            ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])))
+
+
+    grepped_lines = []
+    pids = get_pids(greptoken, host, grepped_lines)
+
+    labels_of_found_processes = []
+
+    for line in grepped_lines:
+        res = re.search(r"application_name:\s+(\S+)", line)
+        assert res
+        labels_of_found_processes.append( res.group(1) )
+        
+    return pids, labels_of_found_processes
+
+
 def get_related_pids_for_process(procinfo):
     related_pids = []
 
     netstat_cmd = "netstat -alpn | grep %s" % (procinfo.port)
 
     if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
-        netstat_cmd = "ssh -f %s '%s'" % (procinfo.host, netstat_cmd)
+        netstat_cmd = "ssh -x %s '%s'" % (procinfo.host, netstat_cmd)
 
     proc = Popen(netstat_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -246,57 +379,28 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
     procinfos_to_remove = []
     found_processes = []
 
-    for procinfo in self.procinfos:
+    for host in set([procinfo.host for procinfo in self.procinfos]):
+        
+        pids, labels_of_found_processes = get_pids_and_labels_on_host(host, self.procinfos)
+        
+        for procinfo in [procinfo for procinfo in self.procinfos if procinfo.host == host]:
+            if procinfo.label in labels_of_found_processes:
+                found_processes.append( procinfo )
+            else:
+                is_all_ok = False
 
-        if get_pid_for_process(procinfo) is not None:
-            found_processes.append( procinfo )
-        else:
-            is_all_ok = False
+                if requireSuccess:
+                    self.print_log("e", "%s: Appear to have lost process with label %s on host %s" % (date_and_time(), procinfo.label, procinfo.host))
+                    procinfos_to_remove.append( procinfo )
 
-            if requireSuccess:
-                self.print_log("e", "%s: Appear to have lost process with label %s on host %s" % (date_and_time(), procinfo.label, procinfo.host))
-                procinfos_to_remove.append( procinfo )
-
-                # Will need to perform some cleanup (clogged ports, zombie art processes, etc.)
-                ssh_mopup_ok = True  
-                related_process_mopup_ok = True
-
-                # Need to deal with the lingering ssh command if the lost process is on a remote host
-                if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
-                    
-                    # Mopup the ssh call on this side
-                    ssh_grepstring = "ssh.*%s.*%s -c.*%s" % (procinfo.host, bootfile_name_to_execname(procinfo.name),
-                                                            procinfo.label) 
-                    pids = get_pids(ssh_grepstring)
-
-                    if len(pids) == 1:
-                        Popen("kill %s" % (pids[0]), shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE).wait()
-                        pids = get_pids(ssh_grepstring)
-                        if len(pids) == 1:
-                            ssh_mopup_ok = False
-                    else:
-                        ssh_mopup_ok = False
-
-                # And take out the process(es) associated with the artdaq process via its listening port (e.g., the art processes)
-
-                Popen("ssh -f %s 'kill %s'" % (procinfo.host, " ".join(get_related_pids_for_process(procinfo))), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
-
-                unkilled_related_pids = get_related_pids_for_process(procinfo)
-                if len(unkilled_related_pids) == 0:
-                    related_process_mopup_ok = True
-                else:
-                    self.print_log("w", make_paragraph("Warning: unable to normally kill process(es) associated with now-deceased artdaq process %s; on %s the following pid(s) remain: %s. Will now resort to kill -9 on these processes." % (procinfo.label, procinfo.host, " ".join(unkilled_related_pids))))
-                    Popen("ssh -f %s 'kill -9 %s'" % (procinfo.host, " ".join(unkilled_related_pids)), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
-                    related_process_mopup_ok = False
-
-                if not ssh_mopup_ok:
-                    self.print_log("w", make_paragraph("There was a problem killing the ssh process to %s related to the deceased artdaq process %s at %s:%s; there *may* be issues with the next run using that host and port as a result" % (procinfo.host, procinfo.label, procinfo.host, procinfo.port)))
-                if not related_process_mopup_ok:
-                    self.print_log("w", make_paragraph("At least some of the processes on %s related to deceased artdaq process %s at %s:%s (e.g. art processes) had to be forcibly killed; there *may* be issues with the next run using that host and port as a result" % (procinfo.host, procinfo.label, procinfo.host, procinfo.port)))
-                        
+                    mopup_process_base(self, procinfo)
+    
     if not is_all_ok and requireSuccess:
         for procinfo in procinfos_to_remove:
             self.procinfos.remove( procinfo )
+            if procinfo.label in self.critical_processes_list:
+                self.print_log("e", "Lost process \"%s\" is in the critical process list (%s); will now end the run and go to the Stopped state", procinfo.label, os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"] )
+                raise Exception("\nCritical process \"%s\" lost" % (procinfo.label))
 
         print
         self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
