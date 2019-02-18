@@ -8,18 +8,18 @@ import re
 
 from rc.control.utilities import table_range
 from rc.control.utilities import enclosing_table_range
+from rc.control.utilities import enclosing_table_name
 from rc.control.utilities import commit_check_throws_if_failure
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import fhicl_writes_root_file
 
 def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
-    send_1_over_N = True
+    # Determine that the artdaq package used is new enough to be
+    # compatible with the assumptions made by DAQInterface about the
+    # interface artdaq offers
 
-    if self.all_events_to_all_dispatchers:
-        send_1_over_N = False
-    else:
-        raise Exception(make_paragraph("all_events_to_all_dispatchers is set to false in the settings file %s; this use is deprecated so it should either be set to true or removed entirely (default is true)" % (os.environ["DAQINTERFACE_SETTINGS"])))
+    # JCF, Nov-20-2018: update this when ready to require subsystem-compatible artdaq
 
     if os.path.exists(self.daq_dir + "/srcs/artdaq"):
         commit_check_throws_if_failure(self.daq_dir + "/srcs/artdaq", \
@@ -70,20 +70,36 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         if not passes_requirement:
             raise Exception(make_paragraph("Version of artdaq set up by setup script \"%s\" is v%s_%s_%s%s; need a version at least as recent as v%s_%s_%s" % (self.daq_setup_script, majorver, minorver, minorerver, extension, min_majorver, min_minorver, min_minorerver)))
 
+    for ss in self.subsystems:
+        if self.subsystems[ss].destination != "not set":
+            dest = self.subsystems[ss].destination
+            if self.subsystems[dest] == None or (self.subsystems[dest].source != "not set" and self.subsystems[dest].source != ss):
+                raise Exception(make_paragraph("Inconsistent subsystem configuration detected! Subsystem %d has destination %d, but subsystem %d has source %d!" % (ss, dest, dest, self.subsystems[dest].source)))
+            self.subsystems[dest].source = ss
+
+    # Start calculating values (fragment counts, memory sizes, etc.)
+    # which will need to appear in the FHiCL
+
+    # If advanced_memory_usage is set to true in the settings file,
+    # read in the max fragment size meant to be provided by each
+    # boardreader FHiCL
+
     if self.advanced_memory_usage:
 
-        memory_scale_factor = 1.1
-        max_event_size = 0
         max_fragment_sizes = []
 
         for procinfo in self.procinfos:
 
-            res = re.findall(r"\n[^#]*max_fragment_size_bytes\s*:\s*([0-9]+)", procinfo.fhicl_used)
+            res = re.findall(r"\n[^#]*max_fragment_size_bytes\s*:\s*([0-9\.exabcdefABCDEF]+)", procinfo.fhicl_used)
             
             if "BoardReader" in procinfo.name:
                 if len(res) > 0:
-                    max_fragment_size = int(res[-1])
-                    max_event_size += max_fragment_size
+                    max_fragment_size_token = res[-1]
+
+                    if max_fragment_size_token[0:2] != "0x":
+                        max_fragment_size = int(float(max_fragment_size_token))
+                    else:
+                        max_fragment_size = int(max_fragment_size_token[2:], 16)
 
                     max_fragment_sizes.append( (procinfo.label, max_fragment_size) ) 
                 else:
@@ -92,17 +108,98 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 if len(res) > 0:
                     raise Exception(make_paragraph("max_fragment_size_bytes is found in the FHiCL document for %s; this parameter must not appear in FHiCL documents for non-BoardReader artdaq processes" % (procinfo.label)))
 
-        max_event_size = int(max_event_size * memory_scale_factor)
-        if max_event_size % 8 != 0:
-            max_event_size += (8 - max_event_size % 8)
+    # Now loop over the boardreaders again to determine
+    # subsystem-level things, such as the number of fragments per
+    # event produced by each subsystem's boardreader set, and the
+    # amount of space those fragments take up
 
-        assert max_event_size % 8 == 0, "Max event size not divisible by 8"
-        
+    fragments_per_boardreader = {}
+    subsystem_fragment_count = { }
+    subsystem_fragment_space = { }
+
+    for procinfo in self.procinfos:
+        if "BoardReader" in procinfo.name:
+
+            generated_fragments_per_event = 1
+
+            # JCF, Oct-12-2018: "sends_no_fragments: true" is
+            # logically the same as "generated_fragments_per_event:
+            # 0", but I'm keeping it for reasons of backwards
+            # compatibility
+
+            if re.search(r"\n\s*sends_no_fragments\s*:\s*[Tt]rue", procinfo.fhicl_used):
+                generated_fragments_per_event = 0
+
+            res = re.search(r"\n\s*generated_fragments_per_event\s*:\s*([0-9]+)", procinfo.fhicl_used)
+
+            if res:
+                generated_fragments_per_event = int(res.group(1))
+
+            fragments_per_boardreader[ procinfo.label ] = generated_fragments_per_event
+            subsystem_fragment_count[ procinfo.subsystem ] = subsystem_fragment_count.get(procinfo.subsystem, 0) + generated_fragments_per_event
+
+            if self.advanced_memory_usage:
+                list_of_one_fragment_size = [ proctuple[1] for proctuple in max_fragment_sizes if 
+                                              proctuple[0] == procinfo.label ]
+                assert len(list_of_one_fragment_size) == 1
+                fragment_space = list_of_one_fragment_size[0]
+            else:
+                fragment_space = self.max_fragment_size_bytes
+                
+            subsystem_fragment_space[ procinfo.subsystem ] = subsystem_fragment_space.get(procinfo.subsystem, 0) + generated_fragments_per_event*fragment_space
+
+    # Now using the per-subsystem info we've gathered, use recursion
+    # to determine the *true* number of fragments per event and the
+    # size they take up, since this quantity isn't just a function of
+    # the boardreaders in the subystem but also of any connected
+    # subsystems upstream whose eventbuilders send fragments down to
+    # the subsystem in question
+
+    def calculate_expected_fragments_per_event(ss, subsystem_fragment_count):
+        count = subsystem_fragment_count.get(ss)
+
+        if self.subsystems[ss].source != "not set":
+            count += calculate_expected_fragments_per_event(self.subsystems[ss].source, subsystem_fragment_count)
+
+        return count
+
+    def calculate_max_event_size(ss, subsystem_fragment_space):
+        size = subsystem_fragment_space.get(ss)
+
+        if self.advanced_memory_usage:
+            memory_scale_factor = 1.1
+            size = int(float(size * memory_scale_factor))
+            
+            if size % 8 != 0:
+                size += (8 - size % 8)
+                assert size % 8 == 0, "Max event size not divisible by 8"
+
+        if self.subsystems[ss].source != "not set":
+            size += calculate_max_event_size(self.subsystems[ss].source, subsystem_fragment_space)
+
+        return size
+
+    expected_fragments_per_event = {}  
+    for ss in self.subsystems:
+        expected_fragments_per_event[ss] = calculate_expected_fragments_per_event(ss, subsystem_fragment_count)
+
+
+    max_event_sizes = {}
+    for ss in self.subsystems:
+        max_event_sizes[ss] = calculate_max_event_size(ss, subsystem_fragment_space)
+
+    # If we have advanced memory usage switched on, then make sure the
+    # max_event_size_bytes gets set to the value calculated here in
+    # bookkeeping, whether this involves adding the
+    # max_event_size_bytes parameter or clobbering the existing one
+
+    if self.advanced_memory_usage:
         for i_proc in range(len(self.procinfos)):
             if "BoardReader" not in self.procinfos[i_proc].name and "RoutingMaster" not in self.procinfos[i_proc].name:
-                if re.search(r"\n[^#]*max_event_size_bytes\s*:\s*[0-9]+", self.procinfos[i_proc].fhicl_used):
-                    self.procinfos[i_proc].fhicl_used = re.sub("max_event_size_bytes\s*:\s*[0-9]+",
-                                                               "max_event_size_bytes: %d" % (max_event_size),
+                if re.search(r"\n[^#]*max_event_size_bytes\s*:\s*[0-9\.e]+", self.procinfos[i_proc].fhicl_used):
+                    self.procinfos[i_proc].fhicl_used = re.sub("max_event_size_bytes\s*:\s*[0-9\.e]+",
+                                                               "max_event_size_bytes: %d" % \
+                                                               (max_event_sizes[self.procinfos[i_proc].subsystem]),
                                                                self.procinfos[i_proc].fhicl_used)
                 else:
 
@@ -111,29 +208,18 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     assert res, make_paragraph("artdaq's FHiCL requirements have changed since this code was written (DAQInterface expects a parameter called 'buffer_count' in %s, but this doesn't appear to exist -> DAQInterface code needs to be changed to accommodate this)" % (self.procinfos[i_proc].label))
                     
                     self.procinfos[i_proc].fhicl_used = re.sub(r"\n(\s*buffer_count\s*:\s*[0-9]+)",
-                                                               "\n%s\nmax_event_size_bytes: %d" % (res.group(1), max_event_size),
+                                                               "\n%s\nmax_event_size_bytes: %d" % (res.group(1), max_event_sizes[self.procinfos[i_proc].subsystem]),
                                                                self.procinfos[i_proc].fhicl_used)
 
-    if not self.advanced_memory_usage:
-        max_fragment_size_words = self.max_fragment_size_bytes / 8
-
-    num_data_loggers = 0
-    num_dispatchers = 0
-
-    for procinfo in self.procinfos:
-        if "DataLogger" in procinfo.name:
-            num_data_loggers += 1
-        elif "Dispatcher" in procinfo.name:
-            num_dispatchers += 1
+    # Construct the host map string needed in the sources and destinations tables in artdaq process FHiCL
 
     proc_hosts = []
 
     for procinfo in self.procinfos:
+
         if procinfo.name == "RoutingMaster":
             continue
         
-        num_existing = len(proc_hosts)
-
         if procinfo.host == "localhost":
             host_to_display = os.environ["HOSTNAME"]
         else:
@@ -141,150 +227,131 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         proc_hosts.append( 
             "{rank: %d host: \"%s\"}" % \
-                (num_existing, host_to_display))
+                (procinfo.rank, host_to_display))
 
-    proc_hosts_string = ", ".join( proc_hosts )
+    host_map_string = "host_map: [%s]" % (", ".join( proc_hosts ))
 
-    def create_sources_or_destinations_string(i_proc, nodetype, first, last, nth = -1, this_node_index = -1):
+    # This function will construct the sources or destinations table
+    # for a given process. If we're performing advanced memory usage,
+    # the max event size will need to be provided; this value is used
+    # to calculate the size of the buffers in the transfer plugins
+
+    def create_sources_or_destinations_string(procinfo, nodetype, max_event_size, inter_subsystem_transfer = False):
 
         if nodetype == "sources":
             prefix = "s"
         elif nodetype == "destinations":
             prefix = "d"
         else:
-            assert False
+            assert False, "nodetype passed to %s has to be either sources or destinations" % (create_sources_or_destinations_string.__name__)
+
+        buffer_size_words = -1
+
+        if self.advanced_memory_usage:
+
+            if "BoardReader" in procinfo.name:
+
+                list_of_one_fragment_size = [ proctuple[1] for proctuple in max_fragment_sizes if 
+                                              proctuple[0] == procinfo.label ]
+                assert len(list_of_one_fragment_size) == 1
+
+                buffer_size_words = list_of_one_fragment_size[0] / 8
+
+            elif "EventBuilder" not in procinfo.name or nodetype != "sources":
+                buffer_size_words = max_event_size / 8
+            else:
+                pass  # For the EventBuilder, there's a different
+                      # buffer size from each source, namely either
+                      # the max fragment size coming from its
+                      # corresponding BoardReader or, if the source is
+                      # an EventBuilder from a parent subsystem, the
+                      # relevant set of BoardReaders for the parent
+                      # subsystem. We can't use just a single
+                      # variable.
+
+        else: # Not self.advanced_memory_usage
+            if "BoardReader" in procinfo.name:
+                buffer_size_words = self.max_fragment_size_bytes / 8
+            elif "EventBuilder" not in procinfo.name or nodetype != "sources":
+                res = re.search( r"\n\s*max_event_size_bytes\s*:\s*([0-9\.e]+)", procinfo.fhicl_used)
+                if res:
+                    max_event_size = int(float(res.group(1)))
+
+                buffer_size_words = max_event_size / 8
+            else:
+                pass # Same comment for the advanced memory usage case above applies here
+                            
+        procinfos_for_string = []
+
+        for procinfo_to_check in self.procinfos:
+            add = False   # As in, "add this process we're checking to the sources or destinations table"
+
+            if procinfo_to_check.subsystem == procinfo.subsystem and not inter_subsystem_transfer:
+                if "BoardReader" in procinfo.name:
+                    if "EventBuilder" in procinfo_to_check.name and nodetype == "destinations":
+                        add = True
+                elif "EventBuilder" in procinfo.name:
+                    if "BoardReader" in procinfo_to_check.name and nodetype == "sources":
+                        add = True
+                    elif "DataLogger" in procinfo_to_check.name and nodetype == "destinations":
+                        add = True
+                elif "DataLogger" in procinfo.name:
+                    if "EventBuilder" in procinfo_to_check.name and nodetype == "sources":
+                        add = True
+                    elif "Dispatcher" in procinfo_to_check.name and nodetype == "destinations":
+                        add = True
+                elif "Dispatcher" in procinfo.name:
+                    if "DataLogger" in procinfo_to_check.name and nodetype == "sources":
+                        add = True
+            if procinfo_to_check.subsystem != procinfo.subsystem and (inter_subsystem_transfer or nodetype == "sources"):   # the two processes are in separate subsystems
+                if "EventBuilder" in procinfo.name and "EventBuilder" in procinfo_to_check.name:
+                    if (nodetype == "destinations" and self.subsystems[procinfo.subsystem].destination == procinfo_to_check.subsystem) or \
+                    (nodetype == "sources" and self.subsystems[procinfo_to_check.subsystem].destination == procinfo.subsystem):
+                        add = True
+
+            if add:
+                procinfos_for_string.append( procinfo_to_check )
 
         nodes = []
-
-        for i in range(first, last):
-            if nth == -1:
-                if i == first or nodetype == "destinations":
-                    host_map_string = "host_map: [%s]" % (proc_hosts_string)
-                else:
-                    host_map_string = ""
-
-                if self.advanced_memory_usage:
                     
-                    if "BoardReader" in self.procinfos[i_proc].name:
+        for i_procinfo_for_string, procinfo_for_string in enumerate(procinfos_for_string):
+            hms = host_map_string
+            if i_procinfo_for_string != 0 and nodetype == "sources":
+                hms = ""
 
+            if nodetype == "sources" and "EventBuilder" in procinfo.name:
+                if procinfo_for_string.name == "BoardReader":
+                    if self.advanced_memory_usage:
                         list_of_one_fragment_size = [ proctuple[1] for proctuple in max_fragment_sizes if 
-                                                      proctuple[0] == self.procinfos[i_proc].label ]
+                                                      proctuple[0] == procinfo_for_string.label ]
                         assert len(list_of_one_fragment_size) == 1
-
-                        max_fragment_size = list_of_one_fragment_size[0]
-
-                        nodes.append( 
-                            "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
-                            (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_size / 8, \
-                             host_map_string))
-                    elif "EventBuilder" in self.procinfos[i_proc].name and nodetype == "sources":
-                        nodes.append( 
-                            "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
-                            (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_sizes[i][1] / 8, \
-                             host_map_string))
-
+                        buffer_size_words = list_of_one_fragment_size[0] / 8
                     else:
-                        nodes.append( 
-                            "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
-                            (prefix, i, self.transfer, nodetype[:-1], i, max_event_size / 8, \
-                             host_map_string))
+                        buffer_size_words = self.max_fragment_size_bytes / 8
+                elif procinfo_for_string.name == "EventBuilder":
+                    buffer_size_words = max_event_sizes[ procinfo_for_string.subsystem ] / 8
                 else:
-                    nodes.append( 
-                        "%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
-                        (prefix, i, self.transfer, nodetype[:-1], i, max_fragment_size_words, \
-                         host_map_string))
-            else:
+                    assert False, "A process type of %s shouldn't be considered for an EventBuilder's sources table" % (procinfo_for_string.name)
+                
+            assert buffer_size_words != -1
+                
+            nodes.append("%s%d: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d %s }" % \
+                         (prefix, procinfo_for_string.rank, self.transfer, nodetype[:-1], procinfo_for_string.rank, \
+                          buffer_size_words, hms) )
 
-                if nodetype == "destinations":
-                    assert (last - first) == nth, "Problem with the NthEvent logic in the program: first node is %d, last is %d, but nth is %d" % (first, last, nth)
-
-                    offset = (i - first) 
-                elif nodetype == "sources":
-                    offset = this_node_index
-
-                if i == first or nodetype == "destinations":
-                    nodes.append( 
-                        "%s%d: { transferPluginType: NthEvent nth: %d offset: %d physical_transfer_plugin: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d } host_map: [%s]}" % \
-                        (prefix, i, nth, offset,self.transfer, nodetype[:-1], i, max_fragment_size_words, \
-                         proc_hosts_string))
-                else:
-                    nodes.append( 
-                        "%s%d: { transferPluginType: NthEvent nth: %d offset: %d physical_transfer_plugin: { transferPluginType: %s %s_rank: %d max_fragment_size_words: %d }}" % \
-                        (prefix, i, nth, offset,self.transfer, nodetype[:-1], i, max_fragment_size_words))
-
-        return "\n".join( nodes )
-
-    if send_1_over_N:
-        current_dispatcher_index = 0
+        return "\n".join( nodes )   # End function create_sources_or_destinations_string()
 
     for i_proc in range(len(self.procinfos)):
 
-        source_node_first = -1
-        source_node_last = -1
-        destination_node_first = -1
-        destination_node_last = -1
-
-        is_data_logger = False
-        is_dispatcher = False
-
-        if "BoardReader" in self.procinfos[i_proc].name:
-            destination_node_first = self.num_boardreaders()
-            destination_node_last = destination_node_first + \
-                                    self.num_eventbuilders()
-            
-        elif "EventBuilder" in self.procinfos[i_proc].name:
-            source_node_first = 0
-            source_node_last = source_node_first + self.num_boardreaders()
-            destination_node_first = self.num_boardreaders() + \
-                self.num_eventbuilders()
-            if num_data_loggers > 0:
-                destination_node_last = destination_node_first + num_data_loggers  
-            else:
-                destination_node_last = destination_node_first + num_dispatchers
-
-        elif "DataLogger" in self.procinfos[i_proc].name:
-            is_data_logger = True
-
-            source_node_first = self.num_boardreaders()
-            source_node_last = self.num_boardreaders() + \
-                               self.num_eventbuilders()
-
-            destination_node_first = self.num_boardreaders() + \
-                                     self.num_eventbuilders() + \
-                                     num_data_loggers
-            destination_node_last =  self.num_boardreaders() + \
-                                     self.num_eventbuilders() + \
-                                     num_data_loggers + \
-                                     num_dispatchers
-        elif "Dispatcher" in self.procinfos[i_proc].name:
-            is_dispatcher = True
-
-            if num_data_loggers > 0:
-                source_node_first = self.num_boardreaders() + \
-                                    self.num_eventbuilders()
-                source_node_last = source_node_first + num_data_loggers
-            else:
-                source_node_first = self.num_boardreaders()
-                source_node_last = source_node_first + self.num_eventbuilders()
-
-        elif "RoutingMaster" in self.procinfos[i_proc].name:
-            pass
-        else:
-            assert False, "Process type not recognized"
-
         for tablename in [ "sources", "destinations" ]:
 
-            if tablename == "sources":
-                node_first = source_node_first
-                node_last = source_node_last
-            else:
-                node_first = destination_node_first
-                node_last = destination_node_last
+            (table_start, table_end) =  table_range(self.procinfos[i_proc].fhicl_used, \
+                                        tablename)
 
- 
-            (table_start, table_end) = \
-                table_range(self.procinfos[i_proc].fhicl_used, \
-                                tablename)
+            inter_subsystem_transfer = False
+            # TODO: Generate "binaryNetOutput" block if missing and needed!
+            if enclosing_table_name(self.procinfos[i_proc].fhicl_used, tablename) == "binaryNetOutput":
+                inter_subsystem_transfer = True
 
             # 13-Apr-2018, KAB: modified this statement from an "if" test to
             # a "while" loop so that it will modify all of the source and
@@ -294,50 +361,37 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             # and destination blocks in PROLOGs.
             while table_start != -1 and table_end != -1:
                 
-                node_index = -1
-                nth = -1
-
-                if send_1_over_N:
-                    if is_data_logger and tablename == "destinations":
-                        nth = num_dispatchers
-                    elif is_dispatcher and tablename == "sources":
-                        nth = num_dispatchers
-                        node_index = current_dispatcher_index
-                        current_dispatcher_index += 1
-
                 self.procinfos[i_proc].fhicl_used = \
                     self.procinfos[i_proc].fhicl_used[:table_start] + \
                     "\n" + tablename + ": { \n" + \
-                    create_sources_or_destinations_string(i_proc, tablename, node_first, node_last, nth, node_index) + \
+                    create_sources_or_destinations_string(self.procinfos[i_proc], tablename, max_event_sizes[ self.procinfos[i_proc].subsystem ], inter_subsystem_transfer) + \
                     "\n } \n" + \
                     self.procinfos[i_proc].fhicl_used[table_end:]
 
+                searchstart = table_end
                 (table_start, table_end) = \
                     table_range(self.procinfos[i_proc].fhicl_used, \
-                                    tablename, table_end)
+                                    tablename, searchstart)
+                inter_subsystem_transfer = False
+                if enclosing_table_name(self.procinfos[i_proc].fhicl_used, tablename, searchstart) == "binaryNetOutput":
+                    inter_subsystem_transfer = True
 
-    expected_fragments_per_event = 0
 
-    for procinfo in self.procinfos:
-
-        if "BoardReader" in procinfo.name:
-
-            res = re.search(r"[^#]\s*sends_no_fragments:\s*[Tt]rue", procinfo.fhicl_used)
-
-            if not res:
-                expected_fragments_per_event += 1
-            else:
-                continue           
-
-    for procinfo in self.procinfos:
+    for i_proc in range(len(self.procinfos)):
         
-        if "RoutingMaster" in procinfo.name:
+        if "RoutingMaster" in self.procinfos[i_proc].name:
+
+            nonsending_boardreaders = []
+            for procinfo in self.procinfos:
+                if "BoardReader" in procinfo.name:
+                    if re.search(r"\n\s*sends_no_fragments\s*:\s*[Tt]rue", procinfo.fhicl_used) or \
+                       re.search(r"\n\s*generated_fragments_per_event\s*:\s*0", procinfo.fhicl_used):
+                        nonsending_boardreaders.append( procinfo.label )
 
             sender_ranks = "sender_ranks: [%s]" % ( ",".join( 
-                [ str(rank) for rank in range(0,self.num_boardreaders()) ] ))
+                [ str(otherproc.rank) for otherproc in self.procinfos if otherproc.subsystem == self.procinfos[i_proc].subsystem and "BoardReader" in otherproc.name and otherproc.label not in nonsending_boardreaders ] ))
             receiver_ranks = "receiver_ranks: [%s]" % ( ",".join( 
-                [ str(rank) for rank in range(self.num_boardreaders(), 
-                                              self.num_boardreaders() + self.num_eventbuilders()) ] ))
+                [ str(otherproc.rank) for otherproc in self.procinfos if otherproc.subsystem == self.procinfos[i_proc].subsystem and "EventBuilder" in otherproc.name ] ))
 
             self.procinfos[i_proc].fhicl_used = re.sub("sender_ranks\s*:\s*\[.*\]",
                                                        sender_ranks,
@@ -355,13 +409,15 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                        self.procinfos[i_proc].fhicl_used)
         else:
             self.procinfos[i_proc].fhicl_used = re.sub("expected_fragments_per_event\s*:\s*[0-9]+", 
-                                                       "expected_fragments_per_event: %d" % (expected_fragments_per_event), 
+                                                       "expected_fragments_per_event: %d" % (expected_fragments_per_event[self.procinfos[i_proc].subsystem]), 
                                                        self.procinfos[i_proc].fhicl_used)
         if self.request_address is None:
-            self.request_address = "227.128.%d.129" % (self.partition_number)
+            request_address = "227.128.%d.%d" % (self.partition_number, 128 + int(self.procinfos[i_proc].subsystem))
+        else:
+            request_address = self.request_address
 
         self.procinfos[i_proc].fhicl_used = re.sub("request_address\s*:\s*[\"0-9\.]+", 
-                                                   "request_address: \"%s\"" % (self.request_address.strip("\"")), 
+                                                   "request_address: \"%s\"" % (request_address.strip("\"")), 
                                                    self.procinfos[i_proc].fhicl_used)
 
         if not self.request_port is None:
@@ -374,29 +430,33 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                    self.procinfos[i_proc].fhicl_used)
 
         if self.table_update_address is None:
-            self.table_update_address = "227.129.%d.129" % (self.partition_number)
+            table_update_address = "227.129.%d.%d" % (self.partition_number, 128 + int(self.procinfos[i_proc].subsystem))
+        else:
+            table_update_address = self.table_update_address
 
         self.procinfos[i_proc].fhicl_used = re.sub("table_update_address\s*:\s*[\"0-9\.]+", 
-                                                   "table_update_address: \"%s\"" % (self.table_update_address.strip("\"")), 
+                                                   "table_update_address: \"%s\"" % (table_update_address.strip("\"")), 
                                                    self.procinfos[i_proc].fhicl_used)
         
         if self.routing_base_port is None:
-            self.routing_base_port = int(os.environ["ARTDAQ_BASE_PORT"]) + 10 + \
-                                     int(os.environ["ARTDAQ_PORTS_PER_PARTITION"])*self.partition_number
+            routing_base_port = int(os.environ["ARTDAQ_BASE_PORT"]) + 10 + \
+                                int(os.environ["ARTDAQ_PORTS_PER_PARTITION"])*self.partition_number + int(self.procinfos[i_proc].subsystem)
+        else:
+            routing_base_port = int(self.routing_base_port)
 
         self.procinfos[i_proc].fhicl_used = re.sub("routing_token_port\s*:\s*[0-9]+", 
-                                                   "routing_token_port: %d" % (int(self.routing_base_port)), 
+                                                   "routing_token_port: %d" % (routing_base_port), 
                                                    self.procinfos[i_proc].fhicl_used)
 
         self.procinfos[i_proc].fhicl_used = re.sub("table_update_port\s*:\s*[0-9]+", 
-                                                   "table_update_port: %d" % (int(self.routing_base_port) + 10), 
+                                                   "table_update_port: %d" % (routing_base_port + 10), 
                                                    self.procinfos[i_proc].fhicl_used)
 
         self.procinfos[i_proc].fhicl_used = re.sub("table_acknowledge_port\s*:\s*[0-9]+", 
-                                                   "table_acknowledge_port: %d" % (int(self.routing_base_port) + 20), 
+                                                   "table_acknowledge_port: %d" % (routing_base_port + 20), 
                                                    self.procinfos[i_proc].fhicl_used)
 
-        routingmaster_hostnames = [procinfo.host for procinfo in self.procinfos if procinfo.name == "RoutingMaster"]
+        routingmaster_hostnames = [procinfo.host for procinfo in self.procinfos if procinfo.name == "RoutingMaster" and procinfo.subsystem == self.procinfos[i_proc].subsystem ]
         assert len(routingmaster_hostnames) == 0 or len(routingmaster_hostnames) == 1
     
         if len(routingmaster_hostnames) == 1:

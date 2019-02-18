@@ -18,28 +18,58 @@ if [[ ! -e $metadata_file ]]; then
     exit 1
 fi
 
-fileglob=$( sed -r -n '/pmt logfile/s/.*:(.*)/\1/p' $metadata_file )
+method=$( sed -r -n 's/^process management method: (\S+).*/\1/p' $metadata_file)
 
-if [[ -n $fileglob ]]; then
+files=$( sed -n '/^process manager logfile/,/^\s*$/p' $RUNRECORDS/$runnum/metadata.txt | sed '1d;$d' )
 
-    # The "in run <runnum> has ended" is printed out by SharedMemoryEventManager in artdaq v3_00_02
+if [[ "$method" == "pmt" && -n $files ]]; then
 
-    file=$( grep -l "in run $runnum has ended" $fileglob )
+    for file in $files; do
 
-    if [[ -n $file ]]; then
+	host=$( echo $file | awk 'BEGIN{FS=":"}{print $1}' )
+	filename=$( echo $file | awk 'BEGIN{FS=":"}{print $2}' )
+
 	if [[ -n $examine && "$examine" != "0" ]]; then
-	    less $file
+
+	    if [[ "$host" == "$HOSTNAME" || "$host" == "localhost" ]]; then
+		if [[ -e $filename ]]; then
+		    less $filename
+		else
+		    cat <<EOF
+
+$metadata_file lists 
+$filename 
+as being on this host but it doesn't appear to exist (any longer)
+
+EOF
+		    
+		fi
+	    else
+		echo "Ability to examine logfile on remote host (\"$logfile\") not yet implemented"
+		exit 0
+	    fi
 	else
-	    ls $file
+	    echo $file
 	fi
-	exit 0
-    else
-	echo "Unable to find \"in run <runnum> has ended\" token in ${fileglob}, but that may be because the run didn't end cleanly, rather than because it's not the correct logfile"
-	exit 1
-    fi
+    done
+
+    exit 0
+
 else
-    echo "An assumption about the metadata file has been broken; please contact John Freeman at jcfree@fnal.gov about this" >&2
-    exit 1
+
+
+    
+    cat>&2<<EOF
+
+    Unable to find the process manager logfile for run $runnum; this
+    is because according to the metadata file "$metadata_file" the 
+    DAQINTERFACE_PROCESS_MANAGEMENT_METHOD environment
+    variable was set to "$method" instead of "pmt" during that run
+
+EOF
+
+exit 1
+
 fi
 
 
