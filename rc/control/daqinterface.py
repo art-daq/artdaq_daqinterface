@@ -1584,10 +1584,10 @@ class DAQInterface(Component):
                 elif self.procinfos[i_proc].name == "EventBuilder":
                     rootfile_cntr_prefix = "eb"
 
-                self.procinfos[i_proc].fhicl_used = re.sub(r'(\n\s*[^#\s].*)\.root',
-                                                       r"\1" + "_" + str(rootfile_cntr_prefix) + 
-                                                       str(rootfile_cntr+1) + ".root",
-                                                       self.procinfos[i_proc].fhicl_used)
+                #self.procinfos[i_proc].fhicl_used = re.sub(r'(\n\s*[^#\s].*)\.root',
+                #                                       r"\1" + "_" + str(rootfile_cntr_prefix) + 
+                #                                       str(rootfile_cntr+1) + ".root",
+                #                                       self.procinfos[i_proc].fhicl_used)
 
                 if self.procinfos[i_proc].fhicl_used != fhicl_before_sub:
                     rootfile_cntr += 1
