@@ -3,11 +3,13 @@ import os
 import re
 import string
 import socket
+import shutil
 
 import subprocess
 from subprocess import Popen
 
 from time import sleep
+from time import time
 
 from multiprocessing.pool import ThreadPool
 
@@ -15,7 +17,7 @@ bash_unsetup_command="upsname=$( which ups ); if [[ -n $upsname ]]; then unsetup
 
 def expand_environment_variable_in_string(line):
 
-    res = re.search(r"^(.*)(\$[A-Za-z][A-Za-z_0-9]*)(.*)", line)
+    res = re.search(r"^(.*)(\$[{A-Za-z][A-Za-z}_0-9]*)(.*)", line)
 
     if res:
         environ_var = res.group(2)
@@ -271,8 +273,7 @@ def construct_checked_command(cmds):
 
     return total_cmd
 
-
-def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
+def reformat_fhicl_documents(setup_fhiclcpp, procinfos):
 
     if not os.path.exists( setup_fhiclcpp ):
         raise Exception(make_paragraph("Expected fhiclcpp setup script %s doesn't appear to exist" % (setup_fhiclcpp)))
@@ -285,67 +286,37 @@ def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
     if not re.search(r"^[0-9]+$", nprocessors):
         raise Exception(make_paragraph("A problem occurred when DAQInterface tried to execute \"%s\"; result was not an integer" % (cmd)))
 
-    pool = ThreadPool(int(nprocessors))
+    reformat_indir = Popen("mktemp -d", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    reformat_outdir = Popen("mktemp -d", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
 
-    preformat_filenames=[ Popen("mktemp", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() for i in range(len(input_fhicl_strings))]
-    postformat_filenames=[ Popen("mktemp", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() for i in range(len(input_fhicl_strings))]
+    for procinfo in procinfos:
+        with open("%s/%s.fcl" % (reformat_indir, procinfo.label), "w") as preformat_fhicl_file:
+            preformat_fhicl_file.write( procinfo.fhicl_used )
 
-    for preformat_filename, input_fhicl_string in zip(preformat_filenames, input_fhicl_strings):
-        with open(preformat_filename, "w") as preformat_file:
-            preformat_file.write(input_fhicl_string)
+    cmds = []
+    cmds.append("if [[ -z $( command -v fhicl-dump ) ]]; then %s; source %s; fi" % \
+                (bash_unsetup_command, setup_fhiclcpp))
+    cmds.append("cd %s" % (reformat_indir))
 
-    def reformat_subset_of_documents(indices):
+    xargs_cmd = "find ./ -name \*.fcl -print | xargs -I {} -n 1 -P %s fhicl-dump -l 0 -c {} -o %s/{}" % \
+                (nprocessors, reformat_outdir)
+    cmds.append("echo About to execute '%s'" % (xargs_cmd))
+    cmds.append(xargs_cmd)
+    
+    status = Popen("\n".join(cmds), shell=True).wait()
 
-        cmds = []
-        cmds.append("if [[ -z $( command -v fhicl-dump ) ]]; then %s; source %s; fi" % \
-                    (bash_unsetup_command, setup_fhiclcpp))
-        cmds.append("which fhicl-dump")
-        for index in indices:
-            cmds.append("fhicl-dump -l 0 -c %s -o %s" % \
-                        (preformat_filenames[index], postformat_filenames[index]))
+    if status != 0:
+        raise Exception("There was a problem reformatting the FHiCL documents; to troubleshoot you can set the debug level to 2 or higher in the boot file and try again")
 
-        fullcmd = construct_checked_command( cmds )
+    reformatted_fhicl_strings = []
+    for label in [procinfo.label for procinfo in procinfos]:
+        with open("%s/%s.fcl" % (reformat_outdir, label)) as reformatted_fhicl_file:
+            reformatted_fhicl_strings.append( reformatted_fhicl_file.read() )
 
-        status = Popen(fullcmd, shell = True).wait()
+    shutil.rmtree( reformat_indir )
+    shutil.rmtree( reformat_outdir )
 
-        exception_message = ""
-        formatted_fhicl_strings = []
-
-        if status != 0:
-            exception_message = make_paragraph("Failure in attempt of %s to reformat a FHiCL document; nonzero status returned. This may indicate either a problem with the setup file %s or a problem with the FHiCL code itself" % (reformat_subset_of_documents.__name__, setup_fhiclcpp))
-
-        for index in indices:
-            if os.path.exists( postformat_filenames[index] ):
-                formatted_fhicl_strings.append( open( postformat_filenames[index] ).read() )
-                os.unlink( postformat_filenames[index] )
-            else:
-                exception_message = make_paragraph("Failure in %s: problem creating postformat file in fhicl-dump call" % (reformat_subset_of_documents.__name__))
-
-        if exception_message != "":
-            raise Exception( exception_message )
-
-        for index in indices:
-            os.unlink( preformat_filenames[index] )
-
-        return formatted_fhicl_strings   # End of reformat_subset_of_documents()
-
-        
-    document_set_size = 8
-    num_total_documents = len(input_fhicl_strings)
-
-    if num_total_documents > document_set_size:
-        document_sets = [ range(i, i+document_set_size) for i in range(0, num_total_documents, document_set_size) if i+document_set_size < num_total_documents]
-        remainder_set = range( document_sets[-1][-1] + 1, num_total_documents)
-
-        if len(remainder_set) > 0:
-            document_sets.append( remainder_set )
-    else:
-        document_sets = [ range(num_total_documents) ]
-
-    postformat_fhicl_document_lists = pool.map(reformat_subset_of_documents, document_sets)
-
-    return [ postformat_fhicl_document for postformat_fhicl_document_list in postformat_fhicl_document_lists \
-                  for postformat_fhicl_document in postformat_fhicl_document_list ]
+    return reformatted_fhicl_strings
 
 # JCF, 12/2/14
 

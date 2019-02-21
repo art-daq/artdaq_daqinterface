@@ -288,8 +288,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
             if procinfo_to_check.subsystem == procinfo.subsystem and not inter_subsystem_transfer:
                 if "BoardReader" in procinfo.name:
-                    assert nodetype == "destinations"
-                    if "EventBuilder" in procinfo_to_check.name:
+                    if "EventBuilder" in procinfo_to_check.name and nodetype == "destinations":
                         add = True
                 elif "EventBuilder" in procinfo.name:
                     if "BoardReader" in procinfo_to_check.name and nodetype == "sources":
@@ -302,8 +301,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     elif "Dispatcher" in procinfo_to_check.name and nodetype == "destinations":
                         add = True
                 elif "Dispatcher" in procinfo.name:
-                    assert nodetype == "sources"
-                    if "DataLogger" in procinfo_to_check.name:
+                    if "DataLogger" in procinfo_to_check.name and nodetype == "sources":
                         add = True
             if procinfo_to_check.subsystem != procinfo.subsystem and (inter_subsystem_transfer or nodetype == "sources"):   # the two processes are in separate subsystems
                 if "EventBuilder" in procinfo.name and "EventBuilder" in procinfo_to_check.name:

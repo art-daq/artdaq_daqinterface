@@ -58,8 +58,9 @@ elif os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "pmt":
     from rc.control.manage_processes_pmt import reset_process_manager_variables_base
     from rc.control.manage_processes_pmt import get_process_manager_log_filenames_base
     from rc.control.manage_processes_pmt import process_manager_cleanup_base
-    from rc.control.manage_processes_pmt import get_pid_for_process
+    from rc.control.manage_processes_pmt import get_pid_for_process_base
     from rc.control.manage_processes_pmt import process_launch_diagnostics_base
+    from rc.control.manage_processes_pmt import mopup_process_base
 elif os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "direct":
     from rc.control.manage_processes_direct import launch_procs_base
     from rc.control.manage_processes_direct import kill_procs_base
@@ -70,8 +71,9 @@ elif os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "direct":
     from rc.control.manage_processes_direct import reset_process_manager_variables_base
     from rc.control.manage_processes_direct import get_process_manager_log_filenames_base
     from rc.control.manage_processes_direct import process_manager_cleanup_base
-    from rc.control.manage_processes_direct import get_pid_for_process
+    from rc.control.manage_processes_direct import get_pid_for_process_base
     from rc.control.manage_processes_direct import process_launch_diagnostics_base
+    from rc.control.manage_processes_direct import mopup_process_base
 else:
     print
     raise Exception(make_paragraph("DAQInterface can't interpret the current value of the DAQINTERFACE_PROCESS_MANAGEMENT_METHOD environment variable (\"%s\"); legal values include \"pmt\" and \"direct\"" % os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"]))
@@ -343,6 +345,12 @@ class DAQInterface(Component):
 
         self.fhicl_file_path = []
 
+        # JCF, Jan-31-2019
+
+        # Labels of processes which, if they die or enter an Error state, will result in the run ending. 
+
+        self.critical_processes_list = []  
+
         # JCF, Nov-7-2015
 
         # Now that we're going with a multithreaded (simultaneous)
@@ -376,6 +384,18 @@ class DAQInterface(Component):
                     "changes, and restart.") + "\n")
             sys.exit(1)
 
+        if "DAQINTERFACE_CRITICAL_PROCESSES_LIST" in os.environ:
+            self.critical_processes_list = []
+            if not os.path.exists(os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"]):
+                raise Exception("Environment variable DAQINTERFACE_CRITICAL_PROCESSES_LIST is set to \"%s\" but the file doesn't appear to exist" % (os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"]))
+
+            with open(os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"]) as inf:
+                for line in inf.readlines():
+                    if not re.search(r"^\s*$", line) and not re.search(r"^\s*#", line):
+                        self.critical_processes_list.append(line.split()[0])
+                    else:
+                        continue
+
         self.print_log("i", "DAQInterface in partition %s launched and now in \"%s\" state, listening on port %d" % 
                                            (self.partition_number, self.state(self.name), self.rpc_port))
 
@@ -404,6 +424,8 @@ class DAQInterface(Component):
     get_process_manager_log_filenames = get_process_manager_log_filenames_base
     process_manager_cleanup = process_manager_cleanup_base
     process_launch_diagnostics = process_launch_diagnostics_base
+    mopup_process = mopup_process_base
+    get_pid_for_process = get_pid_for_process_base
 
     # The actual transition functions called by Run Control; note
     # these just set booleans which are tested in the runner()
@@ -742,8 +764,6 @@ class DAQInterface(Component):
         if self.exception:
             return
 
-        is_all_ok = True
-        
         for procinfo in self.procinfos:
 
             try:
@@ -757,18 +777,30 @@ class DAQInterface(Component):
                 exceptstring = make_paragraph("Exception caught in DAQInterface attempt to query status of artdaq process %s at %s:%s; most likely reason is process no longer exists" % \
                     (procinfo.label, procinfo.host, procinfo.port))              
                 self.print_log("e", exceptstring)
+                continue
 
             if procinfo.lastreturned == "Error":
-                is_all_ok = False
-                errmsg = "\"Error\" state returned by process %s at %s:%s; please check messageviewer and/or the logfiles for error messages" % \
-                    (procinfo.label, procinfo.host, procinfo.port)
+                loglists = [ self.boardreader_log_filenames, self.eventbuilder_log_filenames, self.datalogger_log_filenames, \
+                             self.dispatcher_log_filenames, self.routingmaster_log_filenames ]
+                logfilename_in_list_form = [ logfilename for loglist in loglists for logfilename in loglist if "/%s-" % (procinfo.label) in logfilename ]
+                assert len(logfilename_in_list_form) == 1, "Incorrect assumption made by DAQInterface about the format of the logfilenames; please contact John Freeman at jcfree@fnal.gov"
 
+                errmsg = "%s: \"Error\" state found to have been returned by process %s at %s:%s; please check MessageViewer if up and/or the process logfile, %s" % \
+                         (date_and_time(), procinfo.label, procinfo.host, procinfo.port, logfilename_in_list_form[0] )
+
+                print
                 self.print_log("e", make_paragraph(errmsg))
+                self.print_log("i", "\nWill remove %s from the list of processes" % (procinfo.label))
+                print
+                self.mopup_process(procinfo)
+                self.procinfos.remove( procinfo )
+                print
 
-        if not is_all_ok:
-            self.alert_and_recover("One or more artdaq processes"
-                                   " discovered to be in \"Error\" state")
-            return
+                if procinfo.label in self.critical_processes_list:
+                    self.print_log("e", make_paragraph("Process \"%s\" which returned Error state is in the critical process list (%s); will now end the run and go to the Stopped state" % (procinfo.label, os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"] )))
+                    raise Exception("\nCritical process \"%s\" was found in the Error state" % (procinfo.label))
+
+                self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
 
 
     def check_boot_info(self):
@@ -1346,13 +1378,14 @@ class DAQInterface(Component):
                         print
                         self.print_log("e", "The following desired artdaq processes failed to launch:\n%s" % \
                                        (", ".join(["%s at %s:%s" % (procinfo.label, procinfo.host, procinfo.port) for procinfo in missing_processes])))
-                        self.process_launch_diagnostics(missing_processes)
                         self.print_log("e", make_paragraph("In order to investigate what happened, you can try re-running with \"debug level\" in your boot file set to 4. If that doesn't help, you can directly recreate what DAQInterface did by doing the following:"))
                         
                         for host in set([procinfo.host for procinfo in self.procinfos if procinfo in missing_processes]):
 
                             self.print_log("i", "\nPerform a clean login to %s, source the DAQInterface environment, and execute the following:\n%s" % \
                                            (host, "\n".join(launch_procs_actions[ host ])))
+                        
+                        self.process_launch_diagnostics(missing_processes)
 
                         self.alert_and_recover("Scroll above the output from the \"RECOVER\" transition for more info")
                         return
@@ -1605,8 +1638,7 @@ class DAQInterface(Component):
             else:
                 raise Exception(make_paragraph("Error: was unable to find or create a file \"%s\"" % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"])))
         with deepsuppression(self.debug_level < 2):
-            reformatted_fhicl_documents = reformat_fhicl_documents(os.environ["DAQINTERFACE_SETUP_FHICLCPP"],
-                                                                   [ procinfo.fhicl_used for procinfo in self.procinfos ] )
+            reformatted_fhicl_documents = reformat_fhicl_documents(os.environ["DAQINTERFACE_SETUP_FHICLCPP"], self.procinfos)
 
         for i_proc, reformatted_fhicl_document in enumerate(reformatted_fhicl_documents):
             self.procinfos[i_proc].fhicl_used = reformatted_fhicl_document
@@ -1826,7 +1858,7 @@ class DAQInterface(Component):
 
         def attempted_stop(self, procinfo):
 
-            pid = get_pid_for_process(procinfo)
+            pid = self.get_pid_for_process(procinfo)
 
             if pid is None:
                 if self.debug_level >= 2 or not self.heartbeat_failure:

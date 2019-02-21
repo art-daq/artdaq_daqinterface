@@ -186,6 +186,9 @@ def kill_procs_base(self):
 
     return
 
+def mopup_process_base(self, procinfo):
+    pass   # Any killing of individual processes would bring down everything else with it when pmt.rb is used
+
 def softlink_process_manager_logfiles_base(self):
 
     linked_pmt_logfile = False
@@ -276,7 +279,10 @@ def process_manager_cleanup_base(self):
             if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
                 cmd = "ssh -x " + self.pmt_host + " '" + cmd + "'"
 
-def get_pid_for_process(procinfo):
+def get_pid_for_process_base(self, procinfo):
+
+    assert procinfo in self.procinfos
+
     greptoken = procinfo.name + "Main -c id: " + procinfo.port
 
     grepped_lines = []
@@ -315,7 +321,7 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
         else:
             assert False
 
-        if get_pid_for_process(procinfo) is not None:
+        if get_pid_for_process_base(self, procinfo) is not None:
             found_processes.append(procinfo)
         else:
             is_all_ok = False

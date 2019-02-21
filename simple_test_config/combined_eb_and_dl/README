@@ -13,7 +13,7 @@ Its parentage includes the multiple_dataloggers, config_includes, and demo
 configurations.  As of 18-Apr-2018, its observable output should
 be very similar to the basic demo, modulo the splitting of the data into 4 files
 on disk, the note below about only sending events from one DL to the Dispatcher,
-and the change of the RootOutput compression level from 3 to 0.
+and the change of the RootDAQOut compression level from 3 to 0.
 
 Some notes:
 * This configuration needs an enhanced copy of the typical boot.txt file, and a
@@ -29,7 +29,7 @@ Some notes:
   events to the Dispatcher. Of course, it is possible to configure a system to do
   otherwise, and such a system will run, but only one of the N events sent to the
   Dispatcher will be de-serializable. This is because the different DataLogger
-  configurations (different RootOutput filenames) will violate the requirement
+  configurations (different RootDAQOut filenames) will violate the requirement
   that upstream art configurations must be identical in order for downstream
   processes to understand them.
   It was hoped that this restriction would be removed in art v2.08+, but that
