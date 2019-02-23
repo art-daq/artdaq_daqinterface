@@ -217,10 +217,16 @@ def commit_check_throws_if_failure(packagedir, commit_hash, date, request_after)
         raise Exception(make_paragraph("Unexpectedly found git commit hash %s (%s) in directory \"%s\"; this means the version of code in that directory isn't the one expected" % (commit_hash, date, packagedir)))
 
 def is_msgviewer_running():
+    
+    tty = Popen("tty", shell=True,
+                     stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+
+    if "/dev/" in tty:
+        tty = string.replace(tty, "/dev/", "")
 
     for line in Popen("ps u", shell=True, 
                       stdout=subprocess.PIPE).stdout.readlines():
-        if "msgviewer" in line and "DAQINTERFACE_TTY" in os.environ and os.environ["DAQINTERFACE_TTY"] in line:
+        if "msgviewer" in line and tty in line:
             return True
 
     return False
@@ -419,10 +425,10 @@ udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THI
 def main():
 
     paragraphed_string_test = False
-    msgviewer_check_test = True
+    msgviewer_check_test = False
     execute_command_in_xterm_test = False
     reformat_fhicl_document_test = False
-    bash_unsetup_test = False
+    bash_unsetup_test = True
 
     if paragraphed_string_test:
         sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
