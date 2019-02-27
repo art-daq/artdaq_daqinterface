@@ -126,7 +126,7 @@ class Component(ContextObject):
 
             self.print_log("w", "\nWARNING: Unable to accept transition request " \
                 "\"%s\" from current state \"%s\"; the command will have no effect." % \
-                (requested, self.__state))
+                (self.dict_correct_grammar[requested], self.__state))
 
             allowed_transitions = []
 

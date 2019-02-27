@@ -1,5 +1,9 @@
 #!/bin/env bash
 
+. $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
+daqinterface_preamble
+
+
 . $ARTDAQ_DAQINTERFACE_DIR/bin/package_setup.sh xmlrpc_c
 
 xmlrpc_retval=$?
@@ -9,8 +13,6 @@ if [[ "$xmlrpc_retval" != "0" ]]; then
     exit 40
 fi
 
-. $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
-daqinterface_preamble
 
 xmlrpc http://localhost:$DAQINTERFACE_PORT/RPC2 listdaqcomps
 exit $?

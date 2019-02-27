@@ -1,5 +1,8 @@
 #!/bin/env bash
 
+echo "JCF, Dec-7-2018: this script is deprecated until further notice"
+exit 1
+
 # JCF, Nov-27-2017
 
 # Note that this only provides an accurate event count if the ONLY

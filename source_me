@@ -47,6 +47,7 @@ function cleanup() {
     unset DAQINTERFACE_LOGFILE
     unset DAQINTERFACE_USER_SOURCEFILE_ERRNO
     unset DAQINTERFACE_STANDARD_SOURCEFILE_SOURCED
+    unset DAQINTERFACE_PROCESS_MANAGEMENT_METHOD
 
     unalias DAQInterface
 }
@@ -84,6 +85,10 @@ if [[ -z $DAQINTERFACE_PARTITION_NUMBER ]]; then
    export DAQINTERFACE_PARTITION_NUMBER=0
 fi
 
+if [[ -z $DAQINTERFACE_PROCESS_MANAGEMENT_METHOD ]]; then
+   export DAQINTERFACE_PROCESS_MANAGEMENT_METHOD="pmt"
+fi
+
 if [[ -z $DAQINTERFACE_LOGDIR ]]; then
    export DAQINTERFACE_LOGDIR=/tmp/daqinterface_${USER}
 fi
@@ -109,7 +114,7 @@ fi
 # Make sure the logic to derive DAQInterface port # from partition #
 # is the same as in daqinterface_functions.sh!
 
-alias DAQInterface="export DAQINTERFACE_PORT=\$(( \$ARTDAQ_BASE_PORT + \$DAQINTERFACE_PARTITION_NUMBER * \$ARTDAQ_PORTS_PER_PARTITION )); stdbuf -oL $ARTDAQ_DAQINTERFACE_DIR/rc/control/daqinterface.py --partition-number \$DAQINTERFACE_PARTITION_NUMBER --rpc-port \$DAQINTERFACE_PORT  2>&1 | tee -a $DAQINTERFACE_LOGFILE "
+alias DAQInterface="export DAQINTERFACE_PORT=\$(( \$ARTDAQ_BASE_PORT + \$DAQINTERFACE_PARTITION_NUMBER * \$ARTDAQ_PORTS_PER_PARTITION )); stdbuf -oL $ARTDAQ_DAQINTERFACE_DIR/rc/control/daqinterface.py --partition-number \$DAQINTERFACE_PARTITION_NUMBER --rpc-port \$DAQINTERFACE_PORT <&- 2>&1 | tee -a $DAQINTERFACE_LOGFILE "
 
 export PATH=$ARTDAQ_DAQINTERFACE_DIR/bin:$PATH
 

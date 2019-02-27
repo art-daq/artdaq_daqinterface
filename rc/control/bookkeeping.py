@@ -90,11 +90,17 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         for procinfo in self.procinfos:
 
-            res = re.findall(r"\n[^#]*max_fragment_size_bytes\s*:\s*([0-9\.e]+)", procinfo.fhicl_used)
+            res = re.findall(r"\n[^#]*max_fragment_size_bytes\s*:\s*([0-9\.exabcdefABCDEF]+)", procinfo.fhicl_used)
             
             if "BoardReader" in procinfo.name:
                 if len(res) > 0:
-                    max_fragment_size = int(float(res[-1]))
+                    max_fragment_size_token = res[-1]
+
+                    if max_fragment_size_token[0:2] != "0x":
+                        max_fragment_size = int(float(max_fragment_size_token))
+                    else:
+                        max_fragment_size = int(max_fragment_size_token[2:], 16)
+
                     max_fragment_sizes.append( (procinfo.label, max_fragment_size) ) 
                 else:
                     raise Exception(make_paragraph("Unable to find the max_fragment_size_bytes variable in the FHiCL document for %s; this is needed since \"advanced_memory_usage\" is set to true in the settings file, %s" % (procinfo.label, os.environ["DAQINTERFACE_SETTINGS"])))
@@ -282,8 +288,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
             if procinfo_to_check.subsystem == procinfo.subsystem and not inter_subsystem_transfer:
                 if "BoardReader" in procinfo.name:
-                    assert nodetype == "destinations"
-                    if "EventBuilder" in procinfo_to_check.name:
+                    if "EventBuilder" in procinfo_to_check.name and nodetype == "destinations":
                         add = True
                 elif "EventBuilder" in procinfo.name:
                     if "BoardReader" in procinfo_to_check.name and nodetype == "sources":
@@ -296,8 +301,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     elif "Dispatcher" in procinfo_to_check.name and nodetype == "destinations":
                         add = True
                 elif "Dispatcher" in procinfo.name:
-                    assert nodetype == "sources"
-                    if "DataLogger" in procinfo_to_check.name:
+                    if "DataLogger" in procinfo_to_check.name and nodetype == "sources":
                         add = True
             if procinfo_to_check.subsystem != procinfo.subsystem and (inter_subsystem_transfer or nodetype == "sources"):   # the two processes are in separate subsystems
                 if "EventBuilder" in procinfo.name and "EventBuilder" in procinfo_to_check.name:
@@ -377,8 +381,15 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         
         if "RoutingMaster" in self.procinfos[i_proc].name:
 
+            nonsending_boardreaders = []
+            for procinfo in self.procinfos:
+                if "BoardReader" in procinfo.name:
+                    if re.search(r"\n\s*sends_no_fragments\s*:\s*[Tt]rue", procinfo.fhicl_used) or \
+                       re.search(r"\n\s*generated_fragments_per_event\s*:\s*0", procinfo.fhicl_used):
+                        nonsending_boardreaders.append( procinfo.label )
+
             sender_ranks = "sender_ranks: [%s]" % ( ",".join( 
-                [ str(otherproc.rank) for otherproc in self.procinfos if otherproc.subsystem == self.procinfos[i_proc].subsystem and "BoardReader" in otherproc.name ] ))
+                [ str(otherproc.rank) for otherproc in self.procinfos if otherproc.subsystem == self.procinfos[i_proc].subsystem and "BoardReader" in otherproc.name and otherproc.label not in nonsending_boardreaders ] ))
             receiver_ranks = "receiver_ranks: [%s]" % ( ",".join( 
                 [ str(otherproc.rank) for otherproc in self.procinfos if otherproc.subsystem == self.procinfos[i_proc].subsystem and "EventBuilder" in otherproc.name ] ))
 

@@ -1,5 +1,29 @@
 #!/bin/env bash
 
+# From https://stackoverflow.com/questions/23929235/multi-line-string-with-extra-space-preserved-indentation :
+
+read -r -d '' usage_blurb <<EOF
+:
+        You need to provide a list of integers to this script
+        corresponding to the partitions of the DAQInterface instances
+        you want killed. 
+
+        If you want to perform a hard kill (kill -9) of the
+        DAQInterface instances, add the token "--force"; this is only
+        recommended if you weren't able to kill the instances without
+        the "--force" token, as cleanup may be incomplete (orphaned
+        artdaq processes, etc.)
+
+        To see what DAQInterface instances are up, execute "listdaqinterfaces.sh". 
+
+EOF
+
+if [[ "$#" == "0" ]]; then
+
+    echo "$usage_blurb" >&2
+    exit 1
+fi
+
 . $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
 
 scriptdir="$(dirname "$0")"
@@ -12,27 +36,53 @@ else
      . $daqutils_script
 fi   
 
+forcibly_kill=false
+
+for token in "$@"; do
+    if [[ "$token" == "--force" ]]; then
+	if (( "$#" < 2 )); then
+	    echo "$usage_blurb" >&2
+	    exit 1
+	fi
+	forcibly_kill=true
+    fi
+done
+
 for partition in "$@"; do
 
-    daqinterface_pid=$( ps aux | grep -E "python.*daqinterface.py.*--partition-number\s+$partition" | grep -v grep | awk '{print $2}' )
-    tee_pid=$( ps aux | grep -E "tee.*DAQInterface_partition${partition}.log" | grep -v grep | awk '{print $2}' )
+    if [[ "$partition" == "--force" ]]; then
+	continue
+    fi
+
+    if ! [[ "$partition" =~ ^[0-9]+$ ]]; then  
+	echo "Error: argument \"$partition\" does not appear to be a partition number or an accepted option" >&2
+	exit 1
+    fi
+
+    cmd_to_get_daqinterface_pid="ps aux | grep -E \"python.*daqinterface.py.*--partition-number\s+$partition\" | grep -v grep | awk '{print \$2}'"
+    daqinterface_pid=$( eval $cmd_to_get_daqinterface_pid )
+
+    cmd_to_get_daqinterface_tee_pid="ps aux | grep -E \"tee.*DAQInterface_partition${partition}.log\" | grep -v grep | awk '{print \$2}'"
+    daqinterface_tee_pid=$( eval $cmd_to_get_daqinterface_tee_pid )
 
     if [[ -n $daqinterface_pid ]]; then
 	
-	export DAQINTERFACE_PARTITION_NUMBER=$partition
-	state_true="0"
-	check_for_state "stopped" state_true >&2 > /dev/null
+	if ! $forcibly_kill ; then
 
-	if [[ "$state_true" != "1" ]]; then
-	    cat <<EOF
+	     export DAQINTERFACE_PARTITION_NUMBER=$partition
+	     state_true="0"
+	     check_for_state "stopped" state_true >&2 > /dev/null
 
-DAQInterface instance on partition $partition does not appear to be in
+	     if [[ "$state_true" != "1" ]]; then
+		  cat <<EOF
+
+DAQInterface instance on partition $partition does is not confirmed to be in
 the "stopped" state:
 
 EOF
-	    status.sh | grep "Result\|String"
+		  status.sh | grep "Result\|String"
 
-	    cat<<EOF 
+		  cat<<EOF 
 
 Are you *sure* you want to go ahead and kill it? Doing so may result
 in improper cleanup of artdaq processes, etc. Respond with "y" or "Y"
@@ -40,16 +90,27 @@ to kill; any other string entered will not kill the instance:
 
 EOF
 
-	    read response
+		  read response
 
-	    if ! [[ "$response" =~ ^[yY]$ ]]; then
-		echo "Will skip the killing of DAQInterface instance on partition $partition"
-		continue
-	    fi
+		  if ! [[ "$response" =~ ^[yY]$ ]]; then
+		       echo "Will skip the killing of DAQInterface instance on partition $partition"
+		       continue
+		  fi
+	     fi
+
+	     echo "Killing DAQInterface listening on partition $partition"
+	     kill $daqinterface_pid $daqinterface_tee_pid 
+	else
+	     kill $daqinterface_pid $daqinterface_tee_pid 
+	     
+	     daqinterface_pid=$( eval $cmd_to_get_daqinterface_pid )
+
+	     if [[ -n $daqinterface_pid ]]; then
+		 echo "Regular kill didn't work on DAQInterface listening on partition $partition; *forcibly* killing DAQInterface (kill -9)"
+		 kill -9 $daqinterface_pid $daqinterface_tee_pid 
+	     fi
+
 	fi
-
-	echo "Killing DAQInterface listening on partition $partition"
-	kill $daqinterface_pid $tee_pid 
 
     else
 	echo "No DAQInterface listening on partition $partition was found" >&2
