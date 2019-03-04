@@ -1092,7 +1092,7 @@ class DAQInterface(Component):
                     thread.join()
 
         if self.exception:
-            raise Exception("An exception was thrown during the %s transition" % (command))
+            raise Exception(make_paragraph("An exception was thrown during the %s transition. In the event that you see a \"Connection refused\" message above it's likely that the artdaq process died during the transition." % (command)))
 
         sleep(1)
 
@@ -1108,7 +1108,10 @@ class DAQInterface(Component):
         try:
             self.check_proc_transition( target_states[ command ] )
         except Exception:
-            raise Exception("An exception was thrown during the %s transition as at least one of the artdaq processes didn't achieve its desired state" % (command))
+            additional_info = ""
+            if command == "Init":
+                additional_info = "If you see a message above stating that a boardreader returned an unexpected status message, this is likely because its fragment generator threw an exception in its constructor; see its logfile for details."
+            raise Exception(make_paragraph("An exception was thrown during the %s transition as at least one of the artdaq processes didn't achieve its desired state. %s" % (command, additional_info)))
 
 
         if command != "Init" and command != "Start" and command != "Stop":
