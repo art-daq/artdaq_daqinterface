@@ -473,7 +473,7 @@ class DAQInterface(Component):
         if not extrainfo is None:
             alertmsg = "\n\n" + make_paragraph( "\"" + extrainfo + "\"")
 
-        alertmsg += "\n" + make_paragraph("DAQInterface has set the DAQ back in the \"Stopped\" state; please scroll above the Recover transition output to find messages which may help you provide any necessary adjustments.")
+        alertmsg += "\n" + make_paragraph("DAQInterface has set the DAQ back in the \"Stopped\" state; you may need to scroll above the Recover transition output to find messages which could help you provide any necessary adjustments.")
         self.print_log("e",  alertmsg )
         print
 
@@ -675,6 +675,8 @@ class DAQInterface(Component):
                     ":" + procinfo.port + ": \"" + \
                     procinfo.lastreturned + "\""
                 self.print_log("w", make_paragraph(errmsg))
+                print
+                self.print_log("w", "See logfile %s for details" % (self.determine_logfilename(procinfo)))
 
                 if "BoardReader" in procinfo.name and target_state == "Ready" and "with ParameterSet" in procinfo.lastreturned:
                     print
@@ -1056,11 +1058,11 @@ class DAQInterface(Component):
                 if "timeout: timed out" in traceback.format_exc():
                     output_message = "Timeout sending %s transition to artdaq process %s at %s:%s; try checking logfile %s for details\n" % (command, pi.label, pi.host, pi.port, self.determine_logfilename(pi))
                 elif "[Errno 111] Connection refused" in traceback.format_exc():
-                    output_message = "artdaq process %s at %s:%s appears to have died (or at least refused the connection) when sent the %s transition" % (pi.label, pi.host, pi.port, command)
+                    output_message = "artdaq process %s at %s:%s appears to have died (or at least refused the connection) when sent the %s transition; try checking logfile %s for details" % (pi.label, pi.host, pi.port, command, self.determine_logfilename(pi))
                 else:
                     self.print_log("e", traceback.format_exc())
 
-                    output_message = "Exception caught sending %s transition to artdaq process %s at %s:%s \n" % (command, pi.label, pi.host, pi.port)
+                    output_message = "Exception caught sending %s transition to artdaq process %s at %s:%s; try checking logfile %s for details\n" % (command, pi.label, pi.host, pi.port, self.determine_logfilename(pi))
 
                 self.print_log("e", make_paragraph(output_message))
             
