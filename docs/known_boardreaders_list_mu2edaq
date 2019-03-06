@@ -327,3 +327,6 @@ component_dies_from_exit	 mu2edaq01
 component_dies_from_abort 	 mu2edaq01
 component_hangs			 mu2edaq01	
 component_fragment_size_blows_up mu2edaq01
+component_buffer_mode mu2edaq01
+component_throws_exception_on_config mu2edaq01
+component_dies_on_config mu2edaq01

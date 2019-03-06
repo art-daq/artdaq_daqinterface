@@ -473,8 +473,9 @@ class DAQInterface(Component):
         if not extrainfo is None:
             alertmsg = "\n\n" + make_paragraph( "\"" + extrainfo + "\"")
 
-        alertmsg += "\n" + make_paragraph("DAQInterface has set the DAQ back in the \"stopped\" state; please make any necessary adjustments suggested by the messages above.")
+        alertmsg += "\n" + make_paragraph("DAQInterface has set the DAQ back in the \"Stopped\" state; please scroll above the Recover transition output to find messages which may help you provide any necessary adjustments.")
         self.print_log("e",  alertmsg )
+        print
 
     def read_settings(self):
         if not os.path.exists( os.environ["DAQINTERFACE_SETTINGS"]):
@@ -675,6 +676,10 @@ class DAQInterface(Component):
                     procinfo.lastreturned + "\""
                 self.print_log("w", make_paragraph(errmsg))
 
+                if "BoardReader" in procinfo.name and target_state == "Ready" and "with ParameterSet" in procinfo.lastreturned:
+                    print
+                    self.print_log("w", make_paragraph("This is likely because the fragment generator constructor in %s threw an exception (see logfile %s for details)." % (procinfo.label, self.determine_logfilename(procinfo))))
+
                 is_all_ok = False
 
         if not is_all_ok:
@@ -780,13 +785,9 @@ class DAQInterface(Component):
                 continue
 
             if procinfo.lastreturned == "Error":
-                loglists = [ self.boardreader_log_filenames, self.eventbuilder_log_filenames, self.datalogger_log_filenames, \
-                             self.dispatcher_log_filenames, self.routingmaster_log_filenames ]
-                logfilename_in_list_form = [ logfilename for loglist in loglists for logfilename in loglist if "/%s-" % (procinfo.label) in logfilename ]
-                assert len(logfilename_in_list_form) == 1, "Incorrect assumption made by DAQInterface about the format of the logfilenames; please contact John Freeman at jcfree@fnal.gov"
 
                 errmsg = "%s: \"Error\" state found to have been returned by process %s at %s:%s; please check MessageViewer if up and/or the process logfile, %s" % \
-                         (date_and_time(), procinfo.label, procinfo.host, procinfo.port, logfilename_in_list_form[0] )
+                         (date_and_time(), procinfo.label, procinfo.host, procinfo.port, self.determine_logfilename(procinfo) )
 
                 print
                 self.print_log("e", make_paragraph(errmsg))
@@ -802,6 +803,12 @@ class DAQInterface(Component):
 
                 self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
 
+    def determine_logfilename(self, procinfo):
+        loglists = [ self.boardreader_log_filenames, self.eventbuilder_log_filenames, self.datalogger_log_filenames, \
+                     self.dispatcher_log_filenames, self.routingmaster_log_filenames ]
+        logfilename_in_list_form = [ logfilename for loglist in loglists for logfilename in loglist if "/%s-" % (procinfo.label) in logfilename ]
+        assert len(logfilename_in_list_form) == 1, "Incorrect assumption made by DAQInterface about the format of the logfilenames; please contact John Freeman at jcfree@fnal.gov"
+        return logfilename_in_list_form[0]
 
     def check_boot_info(self):
 
@@ -1047,13 +1054,15 @@ class DAQInterface(Component):
                 pi = self.procinfos[procinfo_index]
 
                 if "timeout: timed out" in traceback.format_exc():
-                    output_message = "Timeout sending %s transition to artdaq process %s at %s:%s \n" % (command, pi.label, pi.host, pi.port)
+                    output_message = "Timeout sending %s transition to artdaq process %s at %s:%s; try checking logfile %s for details\n" % (command, pi.label, pi.host, pi.port, self.determine_logfilename(pi))
+                elif "[Errno 111] Connection refused" in traceback.format_exc():
+                    output_message = "artdaq process %s at %s:%s appears to have died (or at least refused the connection) when sent the %s transition" % (pi.label, pi.host, pi.port, command)
                 else:
                     self.print_log("e", traceback.format_exc())
 
                     output_message = "Exception caught sending %s transition to artdaq process %s at %s:%s \n" % (command, pi.label, pi.host, pi.port)
 
-                self.print_log("e", output_message)
+                self.print_log("e", make_paragraph(output_message))
             
             return  # From process_command
 
@@ -1092,7 +1101,7 @@ class DAQInterface(Component):
                     thread.join()
 
         if self.exception:
-            raise Exception("An exception was thrown during the %s transition" % (command))
+            raise Exception(make_paragraph("An exception was thrown during the %s transition." % (command)))
 
         sleep(1)
 
@@ -1108,7 +1117,7 @@ class DAQInterface(Component):
         try:
             self.check_proc_transition( target_states[ command ] )
         except Exception:
-            raise Exception("An exception was thrown during the %s transition as at least one of the artdaq processes didn't achieve its desired state" % (command))
+            raise Exception(make_paragraph("An exception was thrown during the %s transition as at least one of the artdaq processes didn't achieve its desired state." % (command)))
 
 
         if command != "Init" and command != "Start" and command != "Stop":
@@ -1155,8 +1164,8 @@ class DAQInterface(Component):
                         try:
                             self.procinfos[procinfo_index].lastreturned = self.procinfos[procinfo_index].server.daq.add_config_archive_entry( label, contents )
                         except:
-                            self.print_log("e", traceback.format_exc())
-                            self.alert_and_recover(make_paragraph("An exception was thrown when attempting to add archive entry for %s to %s; see traceback above for more info" % (label, self.procinfos[procinfo_index].label)))
+                            self.print_log("d", traceback.format_exc(),2)
+                            self.alert_and_recover(make_paragraph("An exception was thrown when attempting to add archive entry for %s to %s" % (label, self.procinfos[procinfo_index].label)))
                             return
 
                         if self.procinfos[procinfo_index].lastreturned != "Success":
@@ -1378,15 +1387,16 @@ class DAQInterface(Component):
                         print
                         self.print_log("e", "The following desired artdaq processes failed to launch:\n%s" % \
                                        (", ".join(["%s at %s:%s" % (procinfo.label, procinfo.host, procinfo.port) for procinfo in missing_processes])))
-                        self.process_launch_diagnostics(missing_processes)
                         self.print_log("e", make_paragraph("In order to investigate what happened, you can try re-running with \"debug level\" in your boot file set to 4. If that doesn't help, you can directly recreate what DAQInterface did by doing the following:"))
                         
                         for host in set([procinfo.host for procinfo in self.procinfos if procinfo in missing_processes]):
 
                             self.print_log("i", "\nPerform a clean login to %s, source the DAQInterface environment, and execute the following:\n%s" % \
                                            (host, "\n".join(launch_procs_actions[ host ])))
+                        
+                        self.process_launch_diagnostics(missing_processes)
 
-                        self.alert_and_recover("Scroll above the output from the \"RECOVER\" transition for more info")
+                        self.alert_and_recover("Problem launching the artdaq processes; scroll above the output from the \"RECOVER\" transition for more info")
                         return
 
             for procinfo in self.procinfos:
@@ -1670,8 +1680,8 @@ class DAQInterface(Component):
             try:
                 self.do_command("Init")
             except Exception:
-                self.print_log("e", traceback.format_exc())
-                self.alert_and_recover("An exception was thrown when attempting to send the \"init\" transition to the artdaq processes; see traceback above for more info")
+                self.print_log("d", traceback.format_exc(),2)
+                self.alert_and_recover("An exception was thrown when attempting to send the \"init\" transition to the artdaq processes; see messages above for more info")
                 return
 
             try:
@@ -1747,8 +1757,8 @@ class DAQInterface(Component):
             try:
                 self.do_command("Start")
             except Exception:
-                self.print_log("e", traceback.format_exc())
-                self.alert_and_recover("An exception was thrown when attempting to send the \"start\" transition to the artdaq processes; see traceback above for more info")
+                self.print_log("d", traceback.format_exc(),2)
+                self.alert_and_recover("An exception was thrown when attempting to send the \"start\" transition to the artdaq processes; see messages above for more info")
                 return
             
         self.start_datataking()
@@ -1778,8 +1788,8 @@ class DAQInterface(Component):
             try:
                 self.do_command("Stop")
             except Exception:
-                self.print_log("e", traceback.format_exc())
-                self.alert_and_recover("An exception was thrown when attempting to send the \"stop\" transition to the artdaq processes; see traceback above for more info")
+                self.print_log("d", traceback.format_exc(),2)
+                self.alert_and_recover("An exception was thrown when attempting to send the \"stop\" transition to the artdaq processes; see messages above for more info")
                 return
 
         self.complete_state_change(self.name, "stopping")

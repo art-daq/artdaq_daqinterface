@@ -5,7 +5,7 @@ Description:
 This configuration is intended to demonstrate a way to structure the FHiCL documents
 that groups related parameters into dedicated files.
 Its parent is the basic "demo" configuration.  As of 18-Apr-2018, its observable output
-should be very similar to the basic demo, modulo the change of the RootOutput compression
+should be very similar to the basic demo, modulo the change of the RootDAQOut compression
 mode from 3 to 0.
 
 Some notes:
