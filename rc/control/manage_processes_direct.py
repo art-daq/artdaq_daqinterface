@@ -79,7 +79,8 @@ def launch_procs_base(self):
             launch_commands_to_run_on_host[ procinfo.host ].append( bash_unsetup_command )
             launch_commands_to_run_on_host[ procinfo.host ].append("source %s >> %s 2>&1 " % (self.daq_setup_script, self.launch_attempt_file ))
             launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_ROOT=%s" % (self.log_directory))
-            launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))
+            if self.have_artdaq_mfextensions():
+                launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))
             launch_commands_to_run_on_host[ procinfo.host ].append("which boardreader >> %s 2>&1 " % (self.launch_attempt_file)) # Assume if this works, eventbuilder, etc. are also there
             #launch_commands_to_run_on_host[ procinfo.host ].append("setup valgrind v3_13_0")
 	    #launch_commands_to_run_on_host[ procinfo.host ].append("export LD_PRELOAD=libasan.so")
