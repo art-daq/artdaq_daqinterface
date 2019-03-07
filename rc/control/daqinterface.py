@@ -905,6 +905,8 @@ class DAQInterface(Component):
         
         self.softlink_process_manager_logfiles()
 
+        softlink_commands_to_run_on_host = {}
+
         for loglist in [ self.boardreader_log_filenames,
                          self.eventbuilder_log_filenames, 
                          self.datalogger_log_filenames,
@@ -935,16 +937,23 @@ class DAQInterface(Component):
                 else:
                     assert False, "Unknown process type \"%s\" found when soflinking logfiles" % (proctype)
 
+                if host not in softlink_commands_to_run_on_host:
+                    softlink_commands_to_run_on_host[host] = []
+
                 link_logfile_cmd = "mkdir -p %s/%s; ln -s %s %s/%s/run%d-%s.log" % \
                                    (self.log_directory, subdir, logname, self.log_directory, subdir, self.run_number, label)
-                    
-                if host != "localhost" and host != os.environ["HOSTNAME"]:
-                    link_logfile_cmd = "ssh %s '%s'" % (host, link_logfile_cmd)
-
-                status = Popen(link_logfile_cmd, shell=True).wait()
+                softlink_commands_to_run_on_host[host].append(link_logfile_cmd)
                 
-                if status != 0:
-                    self.print_log("w", "WARNING: failure in executing %s" % (link_logfile_cmd))
+        for host in softlink_commands_to_run_on_host:
+            link_logfile_cmd = "; ".join( softlink_commands_to_run_on_host[host] )
+
+            if host != "localhost" and host != os.environ["HOSTNAME"]:
+                link_logfile_cmd = "ssh %s '%s'" % (host, link_logfile_cmd)
+
+            status = Popen(link_logfile_cmd, shell=True).wait()
+            
+            if status != 0:
+                self.print_log("w", "WARNING: failure in performing user-friendly softlinks to logfiles on host %s" % (host))
 
     def get_package_version(self, package):    
 
@@ -1747,12 +1756,19 @@ class DAQInterface(Component):
                                    self.tmp_run_record)
             return
 
+        starttime = time()
+        self.print_log("i,", "Attempting to save config info to the database, if in use...", 1, False);
+
         try:
             self.put_config_info()
         except Exception:
             self.print_log("e", traceback.format_exc())
             self.alert_and_recover("An exception was thrown when trying to save configuration info; see traceback above for more info")
             return
+
+        endtime = time()
+        self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
+
 
         if self.manage_processes:
 
@@ -1767,6 +1783,13 @@ class DAQInterface(Component):
 
         self.save_metadata_value("Start time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
+
+        if self.manage_processes:
+            starttime=time()
+            self.print_log("i,", "Attempting to provide run-numbered softlinks to the logfiles...", 1, False);
+            self.softlink_logfiles()
+            endtime=time()
+            self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
 
         self.print_log("i", "\nRun info can be found locally at %s\n" % \
                 (run_record_directory))
