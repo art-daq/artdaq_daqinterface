@@ -415,6 +415,16 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                            (res.group(1), 
                                                             int(self.zmq_fragment_connection_out)),
                                                        self.procinfos[i_proc].fhicl_used)
+        else:
+            raise Exception("zmq_fragment_connection_out port # needs to be defined in the boot file")
+
+        res = re.search(r"TriggerRequestAddress\s*:\s*\"(.*:)[0-9]+\"", self.procinfos[i_proc].fhicl_used)
+        if res:
+            self.procinfos[i_proc].fhicl_used = re.sub("TriggerRequestAddress\s*:\s*\"\S+\"",
+                                                       "TriggerRequestAddress: \"%s%d\"" % \
+                                                       (res.group(1), 
+                                                        int(self.zmq_fragment_connection_out)),
+                                                       self.procinfos[i_proc].fhicl_used)
 
         routingmaster_hostnames = [procinfo.host for procinfo in self.procinfos if procinfo.name == "RoutingMaster"]
         assert len(routingmaster_hostnames) == 0 or len(routingmaster_hostnames) == 1
