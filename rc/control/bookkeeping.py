@@ -425,7 +425,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                        (res.group(1), 
                                                         int(self.zmq_fragment_connection_out)),
                                                        self.procinfos[i_proc].fhicl_used)
-
+            
         routingmaster_hostnames = [procinfo.host for procinfo in self.procinfos if procinfo.name == "RoutingMaster"]
         assert len(routingmaster_hostnames) == 0 or len(routingmaster_hostnames) == 1
     
@@ -433,6 +433,21 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             self.procinfos[i_proc].fhicl_used = re.sub("routing_master_hostname\s*:\s*\S+",
                                                        "routing_master_hostname: \"%s\"" % (routingmaster_hostnames[0].strip("\"")),
                                                        self.procinfos[i_proc].fhicl_used)
+
+    firstLoggerRank = 9999999
+
+    for procinfo in self.procinfos:
+        if fhicl_writes_root_file(procinfo.fhicl_used):
+            rank_expressed_as_list = [ rank for (label, rank) in self.jcop_label_and_rank_list if label == procinfo.label ]
+            if rank_expressed_as_list[0] < firstLoggerRank:
+                firstLoggerRank = rank_expressed_as_list[0]
+
+    for i_proc in range(len(self.procinfos)):
+        if fhicl_writes_root_file(self.procinfos[i_proc].fhicl_used):
+            res = re.search(r"firstLoggerRank\s*:\s*\S+", self.procinfos[i_proc].fhicl_used)
+            if res:
+                self.procinfos[i_proc].fhicl_used = re.sub("firstLoggerRank\s*:\s*\S+", "firstLoggerRank: %d" % (firstLoggerRank), self.procinfos[i_proc].fhicl_used)
+
     if not self.data_directory_override is None:
         for i_proc in range(len(self.procinfos)):
             if "EventBuilder" in self.procinfos[i_proc].name or "DataLogger" in self.procinfos[i_proc].name:
