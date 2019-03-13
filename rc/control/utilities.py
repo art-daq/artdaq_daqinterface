@@ -307,9 +307,9 @@ def reformat_fhicl_documents(setup_fhiclcpp, input_fhicl_strings):
 
 def fhicl_writes_root_file(fhicl_string):
 
-    # 17-Apr-2018, KAB: added the MULTILINE flag to get this search to behave as desired.                                             
+    # 17-Apr-2018, KAB: added the MULTILINE flag to get this search to behave as desired.                            # 13-Mar-2019, JCF: add support for RootDAQOut in case it ever gets used by protoDUNE                 
 
-    if "RootOutput" in fhicl_string and \
+    if ( "RootOutput" in fhicl_string or "RootDAQOut" in fhicl_string ) and \
        re.search(r"^\s*fileName\s*:\s*.*\.root", fhicl_string, re.MULTILINE):
         return True
     else:
