@@ -39,9 +39,8 @@ if [[ -n $proddir ]]; then
     
     num_packages=$(ups list -aK+ $packagename | wc -l )
 
-    if [[ "$num_packages" == "0" ]]; then
-	echo -e "\n\nCommand will not work: unable to find any $packagename packages in the following products path(s) in use: " >&2
-	echo $PRODUCTS | tr ":" "\n" >&2
+    if (( $num_packages == 0 )); then
+	echo -e "\n\nCommand will not work: unable to find any $packagename packages in products directory $proddir" >&2
 	echo
 	return 60
     fi
@@ -78,8 +77,24 @@ EOF
 	return 1
     fi
 
-    setup_cmd=$( ups list -aK+ $packagename | sort -n | tail -1 | awk '{print "setup $packagename",$2," -q ", $4}' )
-    eval $setup_cmd
+    num_versions_available=$( ups list -aK+ $packagename | wc -l )
+    successful_setup=false
+
+    while (( $num_versions_available > 0 )); do
+	setup_cmd=$( ups list -aK+ $packagename | sort -n | head -$num_versions_available | tail -1 | awk '{print "setup $packagename",$2," -q ", $4}' )
+	eval $setup_cmd
+
+	if [[ "$?" == "0" ]]; then
+	    break
+	else
+	    num_versions_available=$(( num_versions_available - 1 ))
+	fi
+    done
+
+    if (( num_versions_available == 0 )); then
+	echo "Unable to set up any of the versions of $packagename found in $proddir" >&2
+	return 50
+    fi
 
     return 0
 else
