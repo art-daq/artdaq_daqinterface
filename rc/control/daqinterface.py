@@ -17,6 +17,7 @@ import stat
 from threading import Thread
 import shutil
 import random
+import signal
 
 from rc.io.timeoutclient import TimeoutServerProxy
 from rc.control.component import Component 
@@ -2183,12 +2184,26 @@ def main():  # no-coverage
         print make_paragraph("There already appears to be a DAQInterface instance running on the requested partition number (%s); please either kill the instance (if it's yours) or use a different partition. Run \"listdaqinterfaces.sh\" for more info." % (partition_number))
         return
 
+    def handle_kill_signal(signum, stack):
+        print "DAQInterface on partition %s caught signal %d" % (partition_number, signum)
+        print "Entering recovery..."
+        daqinterface_instance.recover()
+        while daqinterface_instance.state(daqinterface_instance.name) != "stopped":
+            print "State is %s" % (daqinterface_instance.state(daqinterface_instance.name))
+            sleep(1)
+        sys.exit(1)
+
+    signal.signal(signal.SIGTERM, handle_kill_signal)
+    signal.signal(signal.SIGHUP, handle_kill_signal)
+    signal.signal(signal.SIGINT, handle_kill_signal)
+
+
 
     with DAQInterface(logpath=os.path.join(os.environ["HOME"], ".lbnedaqint.log"),
-                      **vars(args)):
+                      **vars(args)) as daqinterface_instance:
         try:
             while True:
-                sleep(100)
+                sleep(10)
         except: KeyboardInterrupt
 
 if __name__ == "__main__":

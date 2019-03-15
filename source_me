@@ -128,7 +128,8 @@ fi
 # Make sure the logic to derive DAQInterface port # from partition #
 # is the same as in daqinterface_functions.sh!
 
-alias DAQInterface="export DAQINTERFACE_PORT=\$(( \$ARTDAQ_BASE_PORT + \$DAQINTERFACE_PARTITION_NUMBER * \$ARTDAQ_PORTS_PER_PARTITION )); stdbuf -oL $ARTDAQ_DAQINTERFACE_DIR/rc/control/daqinterface.py --partition-number \$DAQINTERFACE_PARTITION_NUMBER --rpc-port \$DAQINTERFACE_PORT <&- 2>&1 | tee -a $DAQINTERFACE_LOGFILE "
+alias DAQInterface="export DAQINTERFACE_PORT=\$(( \$ARTDAQ_BASE_PORT + \$DAQINTERFACE_PARTITION_NUMBER * \$ARTDAQ_PORTS_PER_PARTITION )); stdbuf -oL $ARTDAQ_DAQINTERFACE_DIR/rc/control/daqinterface.py --partition-number \$DAQINTERFACE_PARTITION_NUMBER --rpc-port \$DAQINTERFACE_PORT <&- 2>&1 | tee -i -a $DAQINTERFACE_LOGFILE "
+#alias DAQInterface="export DAQINTERFACE_PORT=\$(( \$ARTDAQ_BASE_PORT + \$DAQINTERFACE_PARTITION_NUMBER * \$ARTDAQ_PORTS_PER_PARTITION )); stdbuf -oL $ARTDAQ_DAQINTERFACE_DIR/rc/control/daqinterface.py --partition-number \$DAQINTERFACE_PARTITION_NUMBER --rpc-port \$DAQINTERFACE_PORT <&- 2>&1 "
 
 export PATH=$ARTDAQ_DAQINTERFACE_DIR/bin:$PATH
 
