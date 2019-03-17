@@ -2185,12 +2185,24 @@ def main():  # no-coverage
         return
 
     def handle_kill_signal(signum, stack):
-        print "DAQInterface on partition %s caught signal %d" % (partition_number, signum)
-        print "Entering recovery..."
-        daqinterface_instance.recover()
-        while daqinterface_instance.state(daqinterface_instance.name) != "stopped":
-            print "State is %s" % (daqinterface_instance.state(daqinterface_instance.name))
-            sleep(1)
+        with open("/tmp/deleteme.txt", "a") as outf:
+            line = "%s: DAQInterface on partition %s caught signal %d" % (date_and_time(), partition_number, signum) 
+            print line
+            outf.write("\n" + line)
+
+            print "Entering recovery..."
+            daqinterface_instance.recover()
+            
+            while daqinterface_instance.state(daqinterface_instance.name) != "stopped":
+                line = "%s: State is %s" % (date_and_time(), daqinterface_instance.state(daqinterface_instance.name))
+                print line
+                outf.write("\n" + line)
+                sleep(1)
+
+            line = "%s: exiting..." % (date_and_time()) 
+            print line
+            outf.write("\n" + line)
+
         sys.exit(1)
 
     signal.signal(signal.SIGTERM, handle_kill_signal)
@@ -2198,13 +2210,10 @@ def main():  # no-coverage
     signal.signal(signal.SIGINT, handle_kill_signal)
 
 
-
     with DAQInterface(logpath=os.path.join(os.environ["HOME"], ".lbnedaqint.log"),
                       **vars(args)) as daqinterface_instance:
-        try:
-            while True:
-                sleep(10)
-        except: KeyboardInterrupt
+        while True:
+            sleep(100)
 
 if __name__ == "__main__":
     main()
