@@ -781,11 +781,9 @@ class DAQInterface(Component):
                 self.procinfos.remove( procinfo )
                 print
 
-                # if procinfo.label in self.critical_processes_list:
-                #     self.print_log("e", make_paragraph("Process \"%s\" which returned Error state is in the critical process list (%s); will now end the run and go to the Stopped state" % (procinfo.label, os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"] )))
-                #     raise Exception("\nCritical process \"%s\" was found in the Error state" % (procinfo.label))
+                self.throw_exception_if_losing_process_violates_requirements(procinfo)
 
-                # self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
+                self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
 
     def init_process_requirements(self):
         self.default_process_requirements = []
@@ -823,10 +821,20 @@ class DAQInterface(Component):
                         self.overriding_process_requirements.append(
                                 (regexp_to_match, 
                                  starting_count_of_matching,
-                                 strictest_count_of_matching_required))
+                                 strictest_count_of_matching_required,
+                                 starting_count_of_matching))  # Last field will keep track of # of still-alive processes
                     else:
                         raise Exception("Error in file %s: line \"%s\" does not parse as \"<process label regexp> <process fraction required> <process count required>\"" % (os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"], line))
 
+    def throw_exception_if_losing_process_violates_requirements(self, procinfo):
+        for i_r, requirement_tuple in enumerate(self.overriding_process_requirements):
+            regexp, original_count, minimum_count, current_count = requirement_tuple
+            if re.search(regexp, procinfo.label):
+                current_count -= 1
+                self.overriding_process_requirements[i_r] = (regexp, original_count, minimum_count, current_count)
+                if current_count < minimum_count:
+                    self.print_log("e", make_paragraph("Error: loss of process %s drops the total number of processes whose labels match the regular expression \"%s\" to %d out of an original total of %d; this violates the minimum number of %d required in the file \"%s\"" % (procinfo.label, regexp, current_count, original_count, minimum_count, os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"])))
+                    raise Exception("Loss of process %s violates at least one of the requirements in %s; scroll up for more details" % (procinfo.label, os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"]))
 
     def determine_logfilename(self, procinfo):
         loglists = [ self.boardreader_log_filenames, self.eventbuilder_log_filenames, self.datalogger_log_filenames, \
