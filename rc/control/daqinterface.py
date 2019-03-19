@@ -345,12 +345,6 @@ class DAQInterface(Component):
 
         self.fhicl_file_path = []
 
-        # JCF, Jan-31-2019
-
-        # Labels of processes which, if they die or enter an Error state, will result in the run ending. 
-
-        self.critical_processes_list = []  
-
         # JCF, Nov-7-2015
 
         # Now that we're going with a multithreaded (simultaneous)
@@ -383,18 +377,6 @@ class DAQInterface(Component):
                     "DAQInterface will exit. Look at the messages above, make any necessary "
                     "changes, and restart.") + "\n")
             sys.exit(1)
-
-        if "DAQINTERFACE_CRITICAL_PROCESSES_LIST" in os.environ:
-            self.critical_processes_list = []
-            if not os.path.exists(os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"]):
-                raise Exception("Environment variable DAQINTERFACE_CRITICAL_PROCESSES_LIST is set to \"%s\" but the file doesn't appear to exist" % (os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"]))
-
-            with open(os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"]) as inf:
-                for line in inf.readlines():
-                    if not re.search(r"^\s*$", line) and not re.search(r"^\s*#", line):
-                        self.critical_processes_list.append(line.split()[0])
-                    else:
-                        continue
 
         self.print_log("i", "DAQInterface in partition %s launched and now in \"%s\" state, listening on port %d" % 
                                            (self.partition_number, self.state(self.name), self.rpc_port))
@@ -799,11 +781,52 @@ class DAQInterface(Component):
                 self.procinfos.remove( procinfo )
                 print
 
-                if procinfo.label in self.critical_processes_list:
-                    self.print_log("e", make_paragraph("Process \"%s\" which returned Error state is in the critical process list (%s); will now end the run and go to the Stopped state" % (procinfo.label, os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"] )))
-                    raise Exception("\nCritical process \"%s\" was found in the Error state" % (procinfo.label))
+                # if procinfo.label in self.critical_processes_list:
+                #     self.print_log("e", make_paragraph("Process \"%s\" which returned Error state is in the critical process list (%s); will now end the run and go to the Stopped state" % (procinfo.label, os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"] )))
+                #     raise Exception("\nCritical process \"%s\" was found in the Error state" % (procinfo.label))
 
-                self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
+                # self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
+
+    def init_process_requirements(self):
+        self.default_process_requirements = []
+        self.overriding_process_requirements = []
+
+        def num_processes_required_by_fraction(regexp, fraction):
+            absolute_count = 0
+            for procinfo in self.procinfos:
+                if re.search(regexp, procinfo.label):
+                    absolute_count += 1
+            return int(round(absolute_count * fraction + 0.499999)) # round up
+
+        if "DAQINTERFACE_PROCESS_REQUIREMENTS_LIST" in os.environ:
+            if not os.path.exists(os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"]):
+                raise Exception("The file \"%s\" referred to by the environment variable DAQINTERFACE_PROCESS_REQUIREMENTS_LIST doesn't appear to exist" % (os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"]))
+
+            with open(os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"]) as inf:
+                for line in inf.readlines():
+                    res = re.search(r"^\s*(\S+)\s+([\d\.]+)\s+(\d+)\s*$", line)
+                    if res:
+                        regexp_to_match = res.group(1)
+                        fraction_of_matching_required = float(res.group(2))
+                        count_of_matching_required = int(res.group(3))
+
+                        if num_processes_required_by_fraction(regexp_to_match, fraction_of_matching_required) > count_of_matching_required:
+                            strictest_count_of_matching_required = num_processes_required_by_fraction(regexp_to_match, fraction_of_matching_required)
+                        else:
+                            strictest_count_of_matching_required = count_of_matching_required
+
+                        starting_count_of_matching = num_processes_required_by_fraction(regexp_to_match, 1.0)
+
+                        if starting_count_of_matching < strictest_count_of_matching_required:
+                            raise Exception(make_paragraph("Logic on line \"%s\" of %s requires you need at least %d processes with a label matching \"%s\", but only %d are requested for the run" % (line, os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"], strictest_count_of_matching_required, regexp_to_match, starting_count_of_matching)))
+
+                        self.overriding_process_requirements.append(
+                                (regexp_to_match, 
+                                 starting_count_of_matching,
+                                 strictest_count_of_matching_required))
+                    else:
+                        raise Exception("Error in file %s: line \"%s\" does not parse as \"<process label regexp> <process fraction required> <process count required>\"" % (os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"], line))
+
 
     def determine_logfilename(self, procinfo):
         loglists = [ self.boardreader_log_filenames, self.eventbuilder_log_filenames, self.datalogger_log_filenames, \
@@ -1348,6 +1371,8 @@ class DAQInterface(Component):
                     self.print_log("e", "STDOUT output: \n%s" % ("\n".join(proc.stdout.readlines())))
                     self.print_log("e", "STDERR output: \n%s" % ("\n".join(proc.stderr.readlines())))
                     raise Exception("Problem running mkdir -p for the needed logfile directories on %s" % ( host ) )
+
+            self.init_process_requirements() 
 
             # Now, with the info on hand about the processes contained in
             # procinfos, actually launch them
