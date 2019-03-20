@@ -99,9 +99,10 @@ EOF
 	     fi
 
 	     echo "Killing DAQInterface listening on partition $partition"
-	     kill $daqinterface_pid $daqinterface_tee_pid 
+
+	     kill $daqinterface_pid 
 	else
-	     kill $daqinterface_pid $daqinterface_tee_pid 
+	     kill $daqinterface_pid 
 	     
 	     daqinterface_pid=$( eval $cmd_to_get_daqinterface_pid )
 
@@ -119,8 +120,5 @@ EOF
     
 done
 
-echo
-echo "Remaining DAQInterface instances (if any): "
-list_daqinterfaces
 
 
