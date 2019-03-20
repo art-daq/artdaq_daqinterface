@@ -135,7 +135,7 @@ def launch_procs_base(self):
         self.print_log("d", "PROCESS LAUNCH COMMANDS TO EXECUTE ON %s:\n%s\n" % (host, "\n".join(launch_commands_on_host_to_show_user[host])), 2)
         
         with deepsuppression(self.debug_level < 4):
-            status = Popen(launchcmd, shell=True).wait()
+            status = Popen(launchcmd, shell=True, preexec_fn=os.setpgrp).wait()
 
         if status != 0:   
             self.print_log("e", "Status error raised in attempting to launch processes on %s, to investigate, see %s:%s for output" % (host, host, self.launch_attempt_file))

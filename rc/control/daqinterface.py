@@ -2185,23 +2185,20 @@ def main():  # no-coverage
         return
 
     def handle_kill_signal(signum, stack):
-        with open("/tmp/deleteme.txt", "a") as outf:
-            line = "%s: DAQInterface on partition %s caught signal %d" % (date_and_time(), partition_number, signum) 
-            print line
-            outf.write("\n" + line)
+        daqinterface_instance.print_log("e", "%s: DAQInterface on partition %s caught kill signal %d" % (date_and_time(), partition_number, signum))
+        daqinterface_instance.recover()
 
-            print "Entering recovery..."
-            daqinterface_instance.recover()
-            
-            while daqinterface_instance.state(daqinterface_instance.name) != "stopped":
-                line = "%s: State is %s" % (date_and_time(), daqinterface_instance.state(daqinterface_instance.name))
-                print line
-                outf.write("\n" + line)
-                sleep(1)
+        timeout = 180
+        starttime = time()
+        while daqinterface_instance.state(daqinterface_instance.name) != "stopped":
+            if int( time() - starttime ) > timeout:
+                daqinterface_instance.print_log("e", "DAQInterface signal handler recovery attempt timed out after %d seconds; DAQInterface is in the %s state rather than the %s state" % (timeout, daqinterface_instance.state(daqinterface_instance.name), daqinterface_instance.state(daqinterface_instance.name)))
+                break
 
-            line = "%s: exiting..." % (date_and_time()) 
-            print line
-            outf.write("\n" + line)
+            sleep(10)
+
+        line = "%s: exiting..." % (date_and_time()) 
+        print line
 
         sys.exit(1)
 
