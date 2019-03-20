@@ -827,14 +827,31 @@ class DAQInterface(Component):
                         raise Exception("Error in file %s: line \"%s\" does not parse as \"<process label regexp> <process fraction required> <process count required>\"" % (os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"], line))
 
     def throw_exception_if_losing_process_violates_requirements(self, procinfo):
+        
+        process_matches_requirements_regexp = False  # As in, the requirements found in $DAQINTERFACE_PROCESS_REQUIREMENTS_LIST should it exist
+
         for i_r, requirement_tuple in enumerate(self.overriding_process_requirements):
             regexp, original_count, minimum_count, current_count = requirement_tuple
             if re.search(regexp, procinfo.label):
+                process_matches_requirements_regexp = True
                 current_count -= 1
                 self.overriding_process_requirements[i_r] = (regexp, original_count, minimum_count, current_count)
                 if current_count < minimum_count:
                     self.print_log("e", make_paragraph("Error: loss of process %s drops the total number of processes whose labels match the regular expression \"%s\" to %d out of an original total of %d; this violates the minimum number of %d required in the file \"%s\"" % (procinfo.label, regexp, current_count, original_count, minimum_count, os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"])))
                     raise Exception("Loss of process %s violates at least one of the requirements in %s; scroll up for more details" % (procinfo.label, os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"]))
+
+        if not process_matches_requirements_regexp:
+            process_description = ""
+            if "BoardReader" in procinfo.name:
+                process_description = "BoardReader"
+            elif fhicl_writes_root_file(procinfo.fhicl_used):
+                process_description = "process that writes data to disk"
+            
+            if process_description != "":
+                self.print_log("e", make_paragraph("Error: loss of process %s will now end the run, since it's a %s and there are no special rule(s) for it in the file $DAQINTERFACE_PROCESS_REQUIREMENTS_LIST (if the file exists)" % (procinfo.label, process_description)))
+                
+                raise Exception(make_paragraph("Loss of process %s violates one of DAQInterface's default requirements; scroll up for more details. You can override this behavior by adding a rule to the file referred to by the DAQINTERFACE_PROCESS_REQUIREMENTS_LIST environment variable" % (procinfo.label)))
+            
 
     def determine_logfilename(self, procinfo):
         loglists = [ self.boardreader_log_filenames, self.eventbuilder_log_filenames, self.datalogger_log_filenames, \
