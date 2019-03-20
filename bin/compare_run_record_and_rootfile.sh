@@ -22,14 +22,22 @@ setupscript=$recorddir/$runnum/setup.txt
 if [[ -e $setupscript ]]; then
 
     if [[ -n $PRODUCTS ]]; then
-	proddir=$( echo $PRODUCTS | tr ":" "\n" | head -1 )
+	
+	ups_is_setup=false  # Needed for unset function
 
-	if [[ -e $proddir/setup ]]; then
-	    . $proddir/setup
-	else
-	    echo "Unable to find file $proddir/setup despite $proddir appearing in the PRODUCTS environment variable, $PRODUCTS" >&2
+	for proddir in $( echo $PRODUCTS | tr ":" "\n" ) ; do
+
+	    if [[ -e $proddir/setup && -d $proddir/ups ]]; then
+		. $proddir/setup
+		ups_is_setup=true
+	    fi
+	done
+	
+	if ! $ups_is_setup ; then
+	    echo "Unable set up product \"ups\" given products directories $PRODUCTS. ups is needed for the unsetup function, so will exit..." >&2
 	    exit 100
 	fi
+
 
 	# Ron's unsetup function
 
