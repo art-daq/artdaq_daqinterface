@@ -1,9 +1,8 @@
-#!/bin/sh
 
 # Make sure the logic to derive DAQInterface port # from partition #
 # is the same as in source_me!
 
-export DAQINTERFACE_PORT=$(( $ARTDAQ_BASE_PORT + ${DAQINTERFACE_PARTITION_NUMBER:-0} * $ARTDAQ_PORTS_PER_PARTITION ))
+export DAQINTERFACE_PORT=$(( $ARTDAQ_BASE_PORT + $DAQINTERFACE_PARTITION_NUMBER * $ARTDAQ_PORTS_PER_PARTITION ))
 
 
 function list_daqinterfaces() {
