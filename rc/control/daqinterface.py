@@ -786,7 +786,6 @@ class DAQInterface(Component):
                 self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
 
     def init_process_requirements(self):
-        self.default_process_requirements = []
         self.overriding_process_requirements = []
 
         def num_processes_required_by_fraction(regexp, fraction):
