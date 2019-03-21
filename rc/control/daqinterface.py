@@ -400,6 +400,14 @@ class DAQInterface(Component):
         self.print_log("i", "DAQInterface in partition %s launched and now in \"%s\" state, listening on port %d" % 
                                            (self.partition_number, self.state(self.name), self.rpc_port))
 
+    def __del__(self):
+        tail_pids = get_pids("%s.*tail -f %s" % 
+                             (os.environ["DAQINTERFACE_TTY"], os.environ["DAQINTERFACE_LOGFILE"]))
+        if len(tail_pids) > 0:
+            status = Popen("kill %s" % (" ".join(tail_pids)), shell=True).wait()
+            if status != 0:
+                self.print_log("w", "There was a problem killing \"tail -f\" commands in this terminal; you'll want to do this manually or you'll get confusing output moving forward")
+
     get_config_info = get_config_info_base
     put_config_info = put_config_info_base
     get_boot_info = get_boot_info_base
@@ -2200,6 +2208,7 @@ def main():  # no-coverage
         line = "%s: exiting..." % (date_and_time()) 
         print line
 
+        daqinterface_instance.__del__()
         sys.exit(1)
 
     signal.signal(signal.SIGTERM, handle_kill_signal)
