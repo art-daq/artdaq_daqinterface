@@ -801,6 +801,14 @@ class DAQInterface(Component):
 
             with open(os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"]) as inf:
                 for line in inf.readlines():
+
+                    if re.search(r"^\s*$", line) or re.search(r"^\s*#", line):
+                        continue
+
+                    possible_comment_location = line.find("#")
+                    if possible_comment_location != -1:
+                        line = line[:possible_comment_location]
+
                     res = re.search(r"^\s*(\S+)\s+([\d\.]+)\s+(\d+)\s*$", line)
                     if res:
                         regexp_to_match = res.group(1)
