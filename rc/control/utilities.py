@@ -477,6 +477,15 @@ def main():
     if bash_unsetup_test:
         Popen( bash_unsetup_command, shell=True)
 
+def kill_tail_f():
+    tail_pids = get_pids("%s.*tail -f %s" % 
+                         (os.environ["DAQINTERFACE_TTY"], os.environ["DAQINTERFACE_LOGFILE"]))
+    if len(tail_pids) > 0:
+        status = Popen("kill %s" % (" ".join(tail_pids)), shell=True).wait()
+        if status != 0:
+            print "There was a problem killing \"tail -f\" commands in this terminal; you'll want to do this manually or you'll get confusing output moving forward"
+
+
 if __name__ == "__main__":
     main()
 

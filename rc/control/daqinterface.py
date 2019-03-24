@@ -44,6 +44,7 @@ from rc.control.utilities import construct_checked_command
 from rc.control.utilities import reformat_fhicl_documents
 from rc.control.utilities import fhicl_writes_root_file
 from rc.control.utilities import bash_unsetup_command
+from rc.control.utilities import kill_tail_f
 
 if not "DAQINTERFACE_PROCESS_MANAGEMENT_METHOD" in os.environ:
     print
@@ -401,12 +402,7 @@ class DAQInterface(Component):
                                            (self.partition_number, self.state(self.name), self.rpc_port))
 
     def __del__(self):
-        tail_pids = get_pids("%s.*tail -f %s" % 
-                             (os.environ["DAQINTERFACE_TTY"], os.environ["DAQINTERFACE_LOGFILE"]))
-        if len(tail_pids) > 0:
-            status = Popen("kill %s" % (" ".join(tail_pids)), shell=True).wait()
-            if status != 0:
-                self.print_log("w", "There was a problem killing \"tail -f\" commands in this terminal; you'll want to do this manually or you'll get confusing output moving forward")
+        kill_tail_f()
 
     get_config_info = get_config_info_base
     put_config_info = put_config_info_base
@@ -2190,17 +2186,18 @@ def main():  # no-coverage
     pids = get_pids(greptoken)
     if len(pids) > 1:  
         print make_paragraph("There already appears to be a DAQInterface instance running on the requested partition number (%s); please either kill the instance (if it's yours) or use a different partition. Run \"listdaqinterfaces.sh\" for more info." % (partition_number))
+        kill_tail_f() # Because tail -f is launched before this script is launched
         return
 
     def handle_kill_signal(signum, stack):
         daqinterface_instance.print_log("e", "%s: DAQInterface on partition %s caught kill signal %d" % (date_and_time(), partition_number, signum))
         daqinterface_instance.recover()
 
-        timeout = 180
+        timeout = 180  # Because the recover() call above is non-blocking
         starttime = time()
         while daqinterface_instance.state(daqinterface_instance.name) != "stopped":
             if int( time() - starttime ) > timeout:
-                daqinterface_instance.print_log("e", "DAQInterface signal handler recovery attempt timed out after %d seconds; DAQInterface is in the %s state rather than the %s state" % (timeout, daqinterface_instance.state(daqinterface_instance.name), daqinterface_instance.state(daqinterface_instance.name)))
+                daqinterface_instance.print_log("e", "DAQInterface signal handler recovery attempt timed out after %d seconds; DAQInterface is in the %s state rather than the stopped state" % (timeout, daqinterface_instance.state(daqinterface_instance.name)))
                 break
 
             sleep(10)
