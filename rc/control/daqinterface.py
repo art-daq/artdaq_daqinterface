@@ -2206,11 +2206,23 @@ def main():  # no-coverage
         print line
 
         daqinterface_instance.__del__()
-        sys.exit(1)
 
-    signal.signal(signal.SIGTERM, handle_kill_signal)
-    signal.signal(signal.SIGHUP, handle_kill_signal)
-    signal.signal(signal.SIGINT, handle_kill_signal)
+        if signum == signal.SIGTERM:
+            default_sigterm_handler
+        elif signum == signal.SIGHUP:
+            default_sighup_handler
+        elif signum == signal.SIGINT:
+            default_sigint_handler
+        else:
+            assert False
+        
+        # JCF, Mar-25-2019
+        # os._exit is harder than sys.exit; see https://stackoverflow.com/questions/9591350/what-is-difference-between-sys-exit0-and-os-exit
+        os._exit(1)
+
+    default_sigterm_handler = signal.signal(signal.SIGTERM, handle_kill_signal)
+    default_sighup_handler = signal.signal(signal.SIGHUP, handle_kill_signal)
+    default_sigint_handler = signal.signal(signal.SIGINT, handle_kill_signal)
 
 
     with DAQInterface(logpath=os.path.join(os.environ["HOME"], ".lbnedaqint.log"),
