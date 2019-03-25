@@ -101,6 +101,20 @@ mkdir -p $DAQINTERFACE_LOGDIR
 
 export DAQINTERFACE_LOGFILE=$DAQINTERFACE_LOGDIR/DAQInterface_partition\${DAQINTERFACE_PARTITION_NUMBER}.log
 
+export DAQINTERFACE_TTY=$( tty | sed -r 's!/dev/!!' )
+
+if ! [[ "$DAQINTERFACE_TTY" =~ pts/[0-9]+ ]]; then
+
+cat<<EOF >&2
+
+WARNING: unable to determine tty. While this will not affect
+actual datataking, any DAQInterface launched in this environment
+may have problems with sending output to a MessageViewer instance
+
+EOF
+
+fi
+
 if [[ -z $ARTDAQ_BASE_PORT ]]; then
    export ARTDAQ_BASE_PORT=10000
 fi
@@ -114,7 +128,7 @@ fi
 # Make sure the logic to derive DAQInterface port # from partition #
 # is the same as in daqinterface_functions.sh!
 
-alias DAQInterface="export DAQINTERFACE_PORT=\$(( \$ARTDAQ_BASE_PORT + \$DAQINTERFACE_PARTITION_NUMBER * \$ARTDAQ_PORTS_PER_PARTITION )); stdbuf -oL $ARTDAQ_DAQINTERFACE_DIR/rc/control/daqinterface.py --partition-number \$DAQINTERFACE_PARTITION_NUMBER --rpc-port \$DAQINTERFACE_PORT  2>&1 | tee -a $DAQINTERFACE_LOGFILE "
+alias DAQInterface="export DAQINTERFACE_PORT=\$(( \$ARTDAQ_BASE_PORT + \$DAQINTERFACE_PARTITION_NUMBER * \$ARTDAQ_PORTS_PER_PARTITION )); stdbuf -oL $ARTDAQ_DAQINTERFACE_DIR/rc/control/daqinterface.py --partition-number \$DAQINTERFACE_PARTITION_NUMBER --rpc-port \$DAQINTERFACE_PORT <&- 2>&1 | tee -a $DAQINTERFACE_LOGFILE "
 
 export PATH=$ARTDAQ_DAQINTERFACE_DIR/bin:$PATH
 

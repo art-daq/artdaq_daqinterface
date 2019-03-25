@@ -59,6 +59,14 @@ def save_run_record_base(self):
     if not os.path.exists(outdir + "/setup.txt"):
         self.alert_and_recover("Problem creating file %s/setup.txt" % (outdir))
 
+    assert os.path.exists( os.environ["DAQINTERFACE_SETTINGS"] )
+
+    Popen("cp -p " + os.environ["DAQINTERFACE_SETTINGS"] + " " + outdir + 
+          "/settings.txt", shell=True).wait()
+
+    if not os.path.exists(outdir + "/settings.txt"):
+        self.alert_and_recover("Problem creating file " + outdir + "/settings.txt")    
+
     assert os.path.exists( os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"] )
 
     Popen("cp -p " + os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"] +

@@ -26,3 +26,6 @@ component_dies_from_exit localhost
 component_dies_from_abort localhost 	
 component_hangs localhost 		
 component_fragment_size_blows_up localhost
+component_buffer_mode localhost
+component_throws_exception_on_config localhost
+component_dies_on_config localhost

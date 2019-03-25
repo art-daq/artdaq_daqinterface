@@ -79,9 +79,12 @@ def launch_procs_base(self):
             launch_commands_to_run_on_host[ procinfo.host ].append( bash_unsetup_command )
             launch_commands_to_run_on_host[ procinfo.host ].append("source %s >> %s 2>&1 " % (self.daq_setup_script, self.launch_attempt_file ))
             launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_ROOT=%s" % (self.log_directory))
-            launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))
+            if self.have_artdaq_mfextensions():
+                launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))
             launch_commands_to_run_on_host[ procinfo.host ].append("which boardreader >> %s 2>&1 " % (self.launch_attempt_file)) # Assume if this works, eventbuilder, etc. are also there
             #launch_commands_to_run_on_host[ procinfo.host ].append("setup valgrind v3_13_0")
+	    #launch_commands_to_run_on_host[ procinfo.host ].append("export LD_PRELOAD=libasan.so")
+	    #launch_commands_to_run_on_host[ procinfo.host ].append("export ASAN_OPTIONS=alloc_dealloc_mismatch=0")
 
             for command in launch_commands_to_run_on_host[ procinfo.host ]:
                 res = re.search(r"^([^>]*).*%s.*$" % (self.launch_attempt_file), command)
@@ -190,7 +193,7 @@ def kill_procs_base(self):
             cmd = "kill -9 %s" % (" ".join(artdaq_pids))
             if host != "localhost" and host != os.environ["HOSTNAME"]:
                 cmd = "ssh -x " + host + " '" + cmd + "'"
-                Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).wait()
+            Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).wait()
 
     self.procinfos = []
 
@@ -396,16 +399,26 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
                     mopup_process_base(self, procinfo)
     
     if not is_all_ok and requireSuccess:
-        for procinfo in procinfos_to_remove:
-            self.procinfos.remove( procinfo )
-            if procinfo.label in self.critical_processes_list:
-                self.print_log("e", "Lost process \"%s\" is in the critical process list (%s); will now end the run and go to the Stopped state", procinfo.label, os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"] )
-                raise Exception("\nCritical process \"%s\" lost" % (procinfo.label))
 
-        print
-        self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
-        return
+        if self.state(self.name) == "running":
 
+            critical_processes_died = []
+
+            for procinfo in procinfos_to_remove:
+                self.procinfos.remove( procinfo )
+                if procinfo.label in self.critical_processes_list:
+                    self.print_log("e", "Lost process \"%s\" is in the critical process list (%s); this means DAQInterface will end the run and go to the Stopped state", procinfo.label, os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"] )
+                    critical_processes_died.append( procinfo.label )
+
+            if len(critical_processes_died) == 0:
+                print
+                self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
+                return
+            else:
+                raise Exception("\nCritical process(es) %s died" % ( ", ".join([ '"' + proclabel + '"' for proclabel in critical_processes_died]) ))
+        else: 
+            raise Exception("\nProcess(es) %s died" % (", ".join(['"' + procinfo.label + '"' for procinfo in procinfos_to_remove])))
+            
     if is_all_ok:
         assert len(found_processes) == len(self.procinfos)
 
