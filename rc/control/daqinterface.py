@@ -503,7 +503,7 @@ class DAQInterface(Component):
         self.fake_messagefacility = False
         self.data_directory_override = None
         self.max_configurations_to_list = 1000000
-        self.disable_unique_rootfile_labels = True
+        self.disable_unique_rootfile_labels = False
 
         self.productsdir = None
 
