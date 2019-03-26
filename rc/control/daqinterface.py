@@ -868,7 +868,11 @@ class DAQInterface(Component):
                     process_description = "EventBuilder in a run with no RoutingMaster"
 
             if process_description != "":
-                self.print_log("e", make_paragraph("Error: loss of process %s will now end the run, since it's a %s and there are no special rule(s) for it in the file $DAQINTERFACE_PROCESS_REQUIREMENTS_LIST (if the file exists)" % (procinfo.label, process_description)))
+                if "DAQINTERFACE_PROCESS_REQUIREMENTS_LIST" in os.environ:
+                    self.print_log("e", make_paragraph("Error: loss of process %s will now end the run, since it's a %s. This is the default action because there are no special rules for it in %s. To learn how to add rules, see the relevant section of the DAQInterface manual, https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Defining_which_processes_are_critical_to_a_run" % (procinfo.label, process_description, os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"])))
+                else:
+                    self.print_log("e", make_paragraph("Error: loss of process %s will now end the run, since it's a %s. This is the default action because DAQInterface wasn't provided with a file overriding its default behavior. To learn how to override, see \"%s/docs/process_requirements_list_example\" for an example of such a file and also read the relevant section of the DAQInterface manual, https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Defining_which_processes_are_critical_to_a_run" % (procinfo.label, process_description, os.environ["ARTDAQ_DAQINTERFACE_DIR"])))
+
                 
                 raise Exception(make_paragraph("Loss of process %s violates one of DAQInterface's default requirements; scroll up for more details. You can override this behavior by adding a rule to the file referred to by the DAQINTERFACE_PROCESS_REQUIREMENTS_LIST environment variable" % (procinfo.label)))
             
