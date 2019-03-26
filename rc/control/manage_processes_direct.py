@@ -305,7 +305,7 @@ def mopup_process_base(self, procinfo):
         related_process_mopup_ok = True
     else:
         related_process_mopup_ok = False
-        self.print_log("w", make_paragraph("Warning: unable to normally kill process(es) associated with now-deceased artdaq process %s; on %s the following pid(s) remain: %s. Will now resort to kill -9 on these processes." % (procinfo.label, procinfo.host, " ".join(unkilled_related_pids))))
+        self.print_log("d", make_paragraph("Warning: unable to normally kill process(es) associated with now-deceased artdaq process %s; on %s the following pid(s) remain: %s. Will now resort to kill -9 on these processes." % (procinfo.label, procinfo.host, " ".join(unkilled_related_pids))), 2)
         cmd = "kill -9 %s > /dev/null 2>&1 " % (" ".join(unkilled_related_pids))
 
         if on_other_node:
