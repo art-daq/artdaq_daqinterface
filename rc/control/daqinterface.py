@@ -854,10 +854,18 @@ class DAQInterface(Component):
             elif fhicl_writes_root_file(procinfo.fhicl_used):
                 process_description = "process that writes data to disk"
             elif "EventBuilder" in procinfo.name:
-                eventbuilder_procinfos = [ pi for pi in self.procinfos if "EventBuilder" in pi.name ]
-                if len(eventbuilder_procinfos) == 0 or \
-                (len(eventbuilder_procinfos) == 1 and procinfo.label == eventbuilder_procinfos[0].label):
-                    process_description = "final remaining EventBuilder"
+                is_routingmaster_used = True
+                if len([pi for pi in self.procinfos if "RoutingMaster" in pi.name]) == 0:
+                    is_routingmaster_used = False
+
+                if is_routingmaster_used:
+                    eventbuilder_procinfos = [ pi for pi in self.procinfos if "EventBuilder" in pi.name ]
+
+                    if len(eventbuilder_procinfos) == 0 or \
+                    (len(eventbuilder_procinfos) == 1 and procinfo.label == eventbuilder_procinfos[0].label):
+                        process_description = "final remaining EventBuilder"
+                else:
+                    process_description = "EventBuilder in a run with no RoutingMaster"
 
             if process_description != "":
                 self.print_log("e", make_paragraph("Error: loss of process %s will now end the run, since it's a %s and there are no special rule(s) for it in the file $DAQINTERFACE_PROCESS_REQUIREMENTS_LIST (if the file exists)" % (procinfo.label, process_description)))
