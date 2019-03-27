@@ -118,7 +118,7 @@ def save_run_record_base(self):
 
     outf = open(outdir + "/" + metadata_basename, "w")
 
-    outf.write("Config name: %s\n" % self.config_for_run)
+    outf.write("Config name: %s\n" % (" ".join(self.subconfigs_for_run)))
 
     for i_comp, component in \
             enumerate(sorted(self.daq_comp_list)):

@@ -5,6 +5,9 @@ sys.path.append( os.environ["ARTDAQ_DAQINTERFACE_DIR"] )
 
 import re
 import traceback
+import shutil
+import subprocess
+from subprocess import Popen
 
 from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
@@ -17,17 +20,29 @@ def get_config_parentdir():
 
 def get_config_info_base(self):
 
-    config_dirname = get_config_parentdir()
-    config_dirname_subdir = config_dirname + "/" + self.config_for_run + "/"
-
-    if not os.path.exists( config_dirname_subdir ):
-        raise Exception(make_paragraph("Error: unable to find expected directory of FHiCL configuration files \"%s\"; this may mean you're not running out of DAQInterface's base directory" % (config_dirname_subdir) ))
+    uuidgen=Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    tmpdir = "/tmp/%s" % (uuidgen)
+    os.mkdir(tmpdir)
 
     ffp = []
-    ffp.append( config_dirname_subdir )
-    ffp.append( "%s/common_code" % (config_dirname))
 
-    return config_dirname_subdir, ffp
+    if os.path.exists( "%s/common_code" % get_config_parentdir() ):
+        self.subconfigs_for_run.append( "common_code" ) # For backwards-compatibility with earlier versions of this function
+
+    for subconfig in self.subconfigs_for_run:
+        subconfig_dir = "%s/%s" % (get_config_parentdir(), subconfig)
+        
+        if os.path.exists( subconfig_dir ):
+            tmp_subconfig_dir = "%s/%s" % (tmpdir, subconfig)
+            shutil.copytree( subconfig_dir, tmp_subconfig_dir )
+            assert os.path.exists( tmp_subconfig_dir )
+
+            for dirname, dummy, dummy in os.walk( tmp_subconfig_dir ):
+                ffp.append( dirname )
+        else:
+            raise Exception(make_paragraph("Error: unable to find expected directory of FHiCL configuration files \"%s\"" % (subconfig_dir) ))
+
+    return tmpdir, ffp
 
 # put_config_info_base and put_config_info_on_stop_base should be no-ops
 
