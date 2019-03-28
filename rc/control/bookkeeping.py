@@ -156,7 +156,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     # the subsystem in question
 
     def calculate_expected_fragments_per_event(ss, subsystem_fragment_count):
-        count = subsystem_fragment_count.get(ss)
+        count = subsystem_fragment_count.get(ss, 0)
 
         if self.subsystems[ss].source != "not set":
             count += calculate_expected_fragments_per_event(self.subsystems[ss].source, subsystem_fragment_count)
