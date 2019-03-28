@@ -305,7 +305,7 @@ def mopup_process_base(self, procinfo):
         related_process_mopup_ok = True
     else:
         related_process_mopup_ok = False
-        self.print_log("w", make_paragraph("Warning: unable to normally kill process(es) associated with now-deceased artdaq process %s; on %s the following pid(s) remain: %s. Will now resort to kill -9 on these processes." % (procinfo.label, procinfo.host, " ".join(unkilled_related_pids))))
+        self.print_log("d", make_paragraph("Warning: unable to normally kill process(es) associated with now-deceased artdaq process %s; on %s the following pid(s) remain: %s. Will now resort to kill -9 on these processes." % (procinfo.label, procinfo.host, " ".join(unkilled_related_pids))), 2)
         cmd = "kill -9 %s > /dev/null 2>&1 " % (" ".join(unkilled_related_pids))
 
         if on_other_node:
@@ -399,25 +399,13 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
                     mopup_process_base(self, procinfo)
     
     if not is_all_ok and requireSuccess:
-
         if self.state(self.name) == "running":
-
-            critical_processes_died = []
-
             for procinfo in procinfos_to_remove:
                 self.procinfos.remove( procinfo )
-                if procinfo.label in self.critical_processes_list:
-                    self.print_log("e", "Lost process \"%s\" is in the critical process list (%s); this means DAQInterface will end the run and go to the Stopped state", procinfo.label, os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"] )
-                    critical_processes_died.append( procinfo.label )
-
-            if len(critical_processes_died) == 0:
-                print
-                self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
-                return
-            else:
-                raise Exception("\nCritical process(es) %s died" % ( ", ".join([ '"' + proclabel + '"' for proclabel in critical_processes_died]) ))
-        else: 
-            raise Exception("\nProcess(es) %s died" % (", ".join(['"' + procinfo.label + '"' for procinfo in procinfos_to_remove])))
+                self.throw_exception_if_losing_process_violates_requirements(procinfo)
+            self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
+        else:
+            raise Exception("\nProcess(es) %s died or found in Error state" % (", ".join(['"' + procinfo.label + '"' for procinfo in procinfos_to_remove])))
             
     if is_all_ok:
         assert len(found_processes) == len(self.procinfos)
