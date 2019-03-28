@@ -137,7 +137,7 @@ def put_config_info_base(self):
                     
                     for procinfo in self.procinfos:
                         if label == procinfo.label:
-                            assert host == procinfo.host
+                            assert host == procinfo.host or (procinfo.host == "localhost" and host == os.environ["HOSTNAME"])
                             assert port == procinfo.port
 
                             # "host" used for the check, but could just as well be "port", "label" or "rank"
@@ -168,7 +168,8 @@ def put_config_info_base(self):
     os.chdir( tmpdir )
 
     with deepsuppression(self.debug_level < 2):
-        result = archiveRunConfiguration( self.config_for_run, runnum )
+        subconfigs_for_run = [subconfig.replace("/","_") for subconfig in self.subconfigs_for_run]
+        result = archiveRunConfiguration( "_".join(subconfigs_for_run), runnum )
 
     if not result:
         raise Exception(make_paragraph("There was an error attempting to archive the FHiCL documents (temporarily saved in %s); this may be because of an issue with the schema file, %s/schema.fcl, such as an unlisted fragment generator" % (tmpdir, os.environ["ARTDAQ_DATABASE_CONFDIR"])))

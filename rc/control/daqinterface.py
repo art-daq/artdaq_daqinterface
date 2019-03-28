@@ -17,6 +17,7 @@ import stat
 from threading import Thread
 import shutil
 import random
+import signal
 
 from rc.io.timeoutclient import TimeoutServerProxy
 from rc.control.component import Component 
@@ -43,6 +44,7 @@ from rc.control.utilities import construct_checked_command
 from rc.control.utilities import reformat_fhicl_documents
 from rc.control.utilities import fhicl_writes_root_file
 from rc.control.utilities import bash_unsetup_command
+from rc.control.utilities import kill_tail_f
 
 if not "DAQINTERFACE_PROCESS_MANAGEMENT_METHOD" in os.environ:
     print
@@ -345,12 +347,6 @@ class DAQInterface(Component):
 
         self.fhicl_file_path = []
 
-        # JCF, Jan-31-2019
-
-        # Labels of processes which, if they die or enter an Error state, will result in the run ending. 
-
-        self.critical_processes_list = []  
-
         # JCF, Nov-7-2015
 
         # Now that we're going with a multithreaded (simultaneous)
@@ -384,20 +380,11 @@ class DAQInterface(Component):
                     "changes, and restart.") + "\n")
             sys.exit(1)
 
-        if "DAQINTERFACE_CRITICAL_PROCESSES_LIST" in os.environ:
-            self.critical_processes_list = []
-            if not os.path.exists(os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"]):
-                raise Exception("Environment variable DAQINTERFACE_CRITICAL_PROCESSES_LIST is set to \"%s\" but the file doesn't appear to exist" % (os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"]))
-
-            with open(os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"]) as inf:
-                for line in inf.readlines():
-                    if not re.search(r"^\s*$", line) and not re.search(r"^\s*#", line):
-                        self.critical_processes_list.append(line.split()[0])
-                    else:
-                        continue
-
         self.print_log("i", "DAQInterface in partition %s launched and now in \"%s\" state, listening on port %d" % 
                                            (self.partition_number, self.state(self.name), self.rpc_port))
+
+    def __del__(self):
+        kill_tail_f()
 
     get_config_info = get_config_info_base
     put_config_info = put_config_info_base
@@ -473,7 +460,7 @@ class DAQInterface(Component):
         if not extrainfo is None:
             alertmsg = "\n\n" + make_paragraph( "\"" + extrainfo + "\"")
 
-        alertmsg += "\n" + make_paragraph("DAQInterface has set the DAQ back in the \"Stopped\" state; please scroll above the Recover transition output to find messages which may help you provide any necessary adjustments.")
+        alertmsg += "\n" + make_paragraph("DAQInterface has set the DAQ back in the \"Stopped\" state; you may need to scroll above the Recover transition output to find messages which could help you provide any necessary adjustments.")
         self.print_log("e",  alertmsg )
         print
 
@@ -675,6 +662,8 @@ class DAQInterface(Component):
                     ":" + procinfo.port + ": \"" + \
                     procinfo.lastreturned + "\""
                 self.print_log("w", make_paragraph(errmsg))
+                print
+                self.print_log("w", "See logfile %s for details" % (self.determine_logfilename(procinfo)))
 
                 if "BoardReader" in procinfo.name and target_state == "Ready" and "with ParameterSet" in procinfo.lastreturned:
                     print
@@ -797,11 +786,101 @@ class DAQInterface(Component):
                 self.procinfos.remove( procinfo )
                 print
 
-                if procinfo.label in self.critical_processes_list:
-                    self.print_log("e", make_paragraph("Process \"%s\" which returned Error state is in the critical process list (%s); will now end the run and go to the Stopped state" % (procinfo.label, os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"] )))
-                    raise Exception("\nCritical process \"%s\" was found in the Error state" % (procinfo.label))
+                self.throw_exception_if_losing_process_violates_requirements(procinfo)
 
                 self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
+
+    def init_process_requirements(self):
+        self.overriding_process_requirements = []
+
+        def num_processes_required_by_fraction(regexp, fraction):
+            absolute_count = 0
+            for procinfo in self.procinfos:
+                if re.search(regexp, procinfo.label):
+                    absolute_count += 1
+            return int(round(absolute_count * fraction + 0.499999)) # round up
+
+        if "DAQINTERFACE_PROCESS_REQUIREMENTS_LIST" in os.environ:
+            if not os.path.exists(os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"]):
+                raise Exception("The file \"%s\" referred to by the environment variable DAQINTERFACE_PROCESS_REQUIREMENTS_LIST doesn't appear to exist" % (os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"]))
+
+            with open(os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"]) as inf:
+                for line in inf.readlines():
+
+                    if re.search(r"^\s*$", line) or re.search(r"^\s*#", line):
+                        continue
+
+                    possible_comment_location = line.find("#")
+                    if possible_comment_location != -1:
+                        line = line[:possible_comment_location]
+
+                    res = re.search(r"^\s*(\S+)\s+([\d\.]+)\s+(\d+)\s*$", line)
+                    if res:
+                        regexp_to_match = res.group(1)
+                        fraction_of_matching_required = float(res.group(2))
+                        count_of_matching_required = int(res.group(3))
+
+                        if num_processes_required_by_fraction(regexp_to_match, fraction_of_matching_required) > count_of_matching_required:
+                            strictest_count_of_matching_required = num_processes_required_by_fraction(regexp_to_match, fraction_of_matching_required)
+                        else:
+                            strictest_count_of_matching_required = count_of_matching_required
+
+                        starting_count_of_matching = num_processes_required_by_fraction(regexp_to_match, 1.0)
+
+                        if starting_count_of_matching < strictest_count_of_matching_required:
+                            raise Exception(make_paragraph("Logic on line \"%s\" of %s requires you need at least %d processes with a label matching \"%s\", but only %d are requested for the run" % (line, os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"], strictest_count_of_matching_required, regexp_to_match, starting_count_of_matching)))
+
+                        self.overriding_process_requirements.append(
+                                (regexp_to_match, 
+                                 starting_count_of_matching,
+                                 strictest_count_of_matching_required,
+                                 starting_count_of_matching))  # Last field will keep track of # of still-alive processes
+                    else:
+                        raise Exception("Error in file %s: line \"%s\" does not parse as \"<process label regexp> <process fraction required> <process count required>\"" % (os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"], line))
+
+    def throw_exception_if_losing_process_violates_requirements(self, procinfo):
+        
+        process_matches_requirements_regexp = False  # As in, the requirements found in $DAQINTERFACE_PROCESS_REQUIREMENTS_LIST should it exist
+
+        for i_r, requirement_tuple in enumerate(self.overriding_process_requirements):
+            regexp, original_count, minimum_count, current_count = requirement_tuple
+            if re.search(regexp, procinfo.label):
+                process_matches_requirements_regexp = True
+                current_count -= 1
+                self.overriding_process_requirements[i_r] = (regexp, original_count, minimum_count, current_count)
+                if current_count < minimum_count:
+                    self.print_log("e", make_paragraph("Error: loss of process %s drops the total number of processes whose labels match the regular expression \"%s\" to %d out of an original total of %d; this violates the minimum number of %d required in the file \"%s\"" % (procinfo.label, regexp, current_count, original_count, minimum_count, os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"])))
+                    raise Exception("Loss of process %s violates at least one of the requirements in %s; scroll up for more details" % (procinfo.label, os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"]))
+
+        if not process_matches_requirements_regexp:
+            process_description = ""
+            if "BoardReader" in procinfo.name:
+                process_description = "BoardReader"
+            elif fhicl_writes_root_file(procinfo.fhicl_used):
+                process_description = "process that writes data to disk"
+            elif "EventBuilder" in procinfo.name:
+                is_routingmaster_used = True
+                if len([pi for pi in self.procinfos if "RoutingMaster" in pi.name]) == 0:
+                    is_routingmaster_used = False
+
+                if is_routingmaster_used:
+                    eventbuilder_procinfos = [ pi for pi in self.procinfos if "EventBuilder" in pi.name ]
+
+                    if len(eventbuilder_procinfos) == 0 or \
+                    (len(eventbuilder_procinfos) == 1 and procinfo.label == eventbuilder_procinfos[0].label):
+                        process_description = "final remaining EventBuilder"
+                else:
+                    process_description = "EventBuilder in a run with no RoutingMaster"
+
+            if process_description != "":
+                if "DAQINTERFACE_PROCESS_REQUIREMENTS_LIST" in os.environ:
+                    self.print_log("e", make_paragraph("Error: loss of process %s will now end the run, since it's a %s. This is the default action because there are no special rules for it in %s. To learn how to add rules, see the relevant section of the DAQInterface manual, https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Defining_which_processes_are_critical_to_a_run" % (procinfo.label, process_description, os.environ["DAQINTERFACE_PROCESS_REQUIREMENTS_LIST"])))
+                else:
+                    self.print_log("e", make_paragraph("Error: loss of process %s will now end the run, since it's a %s. This is the default action because DAQInterface wasn't provided with a file overriding its default behavior. To learn how to override, see \"%s/docs/process_requirements_list_example\" for an example of such a file and also read the relevant section of the DAQInterface manual, https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Defining_which_processes_are_critical_to_a_run" % (procinfo.label, process_description, os.environ["ARTDAQ_DAQINTERFACE_DIR"])))
+
+                
+                raise Exception(make_paragraph("Loss of process %s violates one of DAQInterface's default requirements; scroll up for more details. You can override this behavior by adding a rule to the file referred to by the DAQINTERFACE_PROCESS_REQUIREMENTS_LIST environment variable" % (procinfo.label)))
+            
 
     def determine_logfilename(self, procinfo):
         loglists = [ self.boardreader_log_filenames, self.eventbuilder_log_filenames, self.datalogger_log_filenames, \
@@ -903,6 +982,8 @@ class DAQInterface(Component):
         
         self.softlink_process_manager_logfiles()
 
+        softlink_commands_to_run_on_host = {}
+
         for loglist in [ self.boardreader_log_filenames,
                          self.eventbuilder_log_filenames, 
                          self.datalogger_log_filenames,
@@ -933,16 +1014,23 @@ class DAQInterface(Component):
                 else:
                     assert False, "Unknown process type \"%s\" found when soflinking logfiles" % (proctype)
 
+                if host not in softlink_commands_to_run_on_host:
+                    softlink_commands_to_run_on_host[host] = []
+
                 link_logfile_cmd = "mkdir -p %s/%s; ln -s %s %s/%s/run%d-%s.log" % \
                                    (self.log_directory, subdir, logname, self.log_directory, subdir, self.run_number, label)
-                    
-                if host != "localhost" and host != os.environ["HOSTNAME"]:
-                    link_logfile_cmd = "ssh %s '%s'" % (host, link_logfile_cmd)
-
-                status = Popen(link_logfile_cmd, shell=True).wait()
+                softlink_commands_to_run_on_host[host].append(link_logfile_cmd)
                 
-                if status != 0:
-                    self.print_log("w", "WARNING: failure in executing %s" % (link_logfile_cmd))
+        for host in softlink_commands_to_run_on_host:
+            link_logfile_cmd = "; ".join( softlink_commands_to_run_on_host[host] )
+
+            if host != "localhost" and host != os.environ["HOSTNAME"]:
+                link_logfile_cmd = "ssh %s '%s'" % (host, link_logfile_cmd)
+
+            status = Popen(link_logfile_cmd, shell=True).wait()
+            
+            if status != 0:
+                self.print_log("w", "WARNING: failure in performing user-friendly softlinks to logfiles on host %s" % (host))
 
     def get_package_version(self, package):    
 
@@ -1056,11 +1144,11 @@ class DAQInterface(Component):
                 if "timeout: timed out" in traceback.format_exc():
                     output_message = "Timeout sending %s transition to artdaq process %s at %s:%s; try checking logfile %s for details\n" % (command, pi.label, pi.host, pi.port, self.determine_logfilename(pi))
                 elif "[Errno 111] Connection refused" in traceback.format_exc():
-                    output_message = "artdaq process %s at %s:%s appears to have died (or at least refused the connection) when sent the %s transition" % (pi.label, pi.host, pi.port, command)
+                    output_message = "artdaq process %s at %s:%s appears to have died (or at least refused the connection) when sent the %s transition; try checking logfile %s for details" % (pi.label, pi.host, pi.port, command, self.determine_logfilename(pi))
                 else:
                     self.print_log("e", traceback.format_exc())
 
-                    output_message = "Exception caught sending %s transition to artdaq process %s at %s:%s \n" % (command, pi.label, pi.host, pi.port)
+                    output_message = "Exception caught sending %s transition to artdaq process %s at %s:%s; try checking logfile %s for details\n" % (command, pi.label, pi.host, pi.port, self.determine_logfilename(pi))
 
                 self.print_log("e", make_paragraph(output_message))
             
@@ -1337,6 +1425,8 @@ class DAQInterface(Component):
                     self.print_log("e", "STDOUT output: \n%s" % ("\n".join(proc.stdout.readlines())))
                     self.print_log("e", "STDERR output: \n%s" % ("\n".join(proc.stderr.readlines())))
                     raise Exception("Problem running mkdir -p for the needed logfile directories on %s" % ( host ) )
+
+            self.init_process_requirements() 
 
             # Now, with the info on hand about the processes contained in
             # procinfos, actually launch them
@@ -1745,12 +1835,19 @@ class DAQInterface(Component):
                                    self.tmp_run_record)
             return
 
+        starttime = time()
+        self.print_log("i,", "Attempting to save config info to the database, if in use...", 1, False);
+
         try:
             self.put_config_info()
         except Exception:
             self.print_log("e", traceback.format_exc())
             self.alert_and_recover("An exception was thrown when trying to save configuration info; see traceback above for more info")
             return
+
+        endtime = time()
+        self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
+
 
         if self.manage_processes:
 
@@ -1765,6 +1862,13 @@ class DAQInterface(Component):
 
         self.save_metadata_value("Start time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
+
+        if self.manage_processes:
+            starttime=time()
+            self.print_log("i,", "Attempting to provide run-numbered softlinks to the logfiles...", 1, False);
+            self.softlink_logfiles()
+            endtime=time()
+            self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
 
         self.print_log("i", "\nRun info can be found locally at %s\n" % \
                 (run_record_directory))
@@ -2156,15 +2260,49 @@ def main():  # no-coverage
     pids = get_pids(greptoken)
     if len(pids) > 1:  
         print make_paragraph("There already appears to be a DAQInterface instance running on the requested partition number (%s); please either kill the instance (if it's yours) or use a different partition. Run \"listdaqinterfaces.sh\" for more info." % (partition_number))
+        kill_tail_f() # Because tail -f is launched before this script is launched
         return
+
+    def handle_kill_signal(signum, stack):
+        daqinterface_instance.print_log("e", "%s: DAQInterface on partition %s caught kill signal %d" % (date_and_time(), partition_number, signum))
+        daqinterface_instance.recover()
+
+        timeout = 180  # Because the recover() call above is non-blocking
+        starttime = time()
+        while daqinterface_instance.state(daqinterface_instance.name) != "stopped":
+            if int( time() - starttime ) > timeout:
+                daqinterface_instance.print_log("e", "DAQInterface signal handler recovery attempt timed out after %d seconds; DAQInterface is in the %s state rather than the stopped state" % (timeout, daqinterface_instance.state(daqinterface_instance.name)))
+                break
+
+            sleep(10)
+
+        line = "%s: exiting..." % (date_and_time()) 
+        print line
+
+        daqinterface_instance.__del__()
+
+        if signum == signal.SIGTERM:
+            default_sigterm_handler
+        elif signum == signal.SIGHUP:
+            default_sighup_handler
+        elif signum == signal.SIGINT:
+            default_sigint_handler
+        else:
+            assert False
+        
+        # JCF, Mar-25-2019
+        # os._exit is harder than sys.exit; see https://stackoverflow.com/questions/9591350/what-is-difference-between-sys-exit0-and-os-exit
+        os._exit(1)
+
+    default_sigterm_handler = signal.signal(signal.SIGTERM, handle_kill_signal)
+    default_sighup_handler = signal.signal(signal.SIGHUP, handle_kill_signal)
+    default_sigint_handler = signal.signal(signal.SIGINT, handle_kill_signal)
 
 
     with DAQInterface(logpath=os.path.join(os.environ["HOME"], ".lbnedaqint.log"),
-                      **vars(args)):
-        try:
-            while True:
-                sleep(100)
-        except: KeyboardInterrupt
+                      **vars(args)) as daqinterface_instance:
+        while True:
+            sleep(100)
 
 if __name__ == "__main__":
     main()

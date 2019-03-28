@@ -79,7 +79,8 @@ def launch_procs_base(self):
             launch_commands_to_run_on_host[ procinfo.host ].append( bash_unsetup_command )
             launch_commands_to_run_on_host[ procinfo.host ].append("source %s >> %s 2>&1 " % (self.daq_setup_script, self.launch_attempt_file ))
             launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_ROOT=%s" % (self.log_directory))
-            launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))
+            if self.have_artdaq_mfextensions():
+                launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))
             launch_commands_to_run_on_host[ procinfo.host ].append("which boardreader >> %s 2>&1 " % (self.launch_attempt_file)) # Assume if this works, eventbuilder, etc. are also there
             #launch_commands_to_run_on_host[ procinfo.host ].append("setup valgrind v3_13_0")
 	    #launch_commands_to_run_on_host[ procinfo.host ].append("export LD_PRELOAD=libasan.so")
@@ -134,7 +135,7 @@ def launch_procs_base(self):
         self.print_log("d", "PROCESS LAUNCH COMMANDS TO EXECUTE ON %s:\n%s\n" % (host, "\n".join(launch_commands_on_host_to_show_user[host])), 2)
         
         with deepsuppression(self.debug_level < 4):
-            status = Popen(launchcmd, shell=True).wait()
+            status = Popen(launchcmd, shell=True, preexec_fn=os.setpgrp).wait()
 
         if status != 0:   
             self.print_log("e", "Status error raised in attempting to launch processes on %s, to investigate, see %s:%s for output" % (host, host, self.launch_attempt_file))
@@ -304,7 +305,7 @@ def mopup_process_base(self, procinfo):
         related_process_mopup_ok = True
     else:
         related_process_mopup_ok = False
-        self.print_log("w", make_paragraph("Warning: unable to normally kill process(es) associated with now-deceased artdaq process %s; on %s the following pid(s) remain: %s. Will now resort to kill -9 on these processes." % (procinfo.label, procinfo.host, " ".join(unkilled_related_pids))))
+        self.print_log("d", make_paragraph("Warning: unable to normally kill process(es) associated with now-deceased artdaq process %s; on %s the following pid(s) remain: %s. Will now resort to kill -9 on these processes." % (procinfo.label, procinfo.host, " ".join(unkilled_related_pids))), 2)
         cmd = "kill -9 %s > /dev/null 2>&1 " % (" ".join(unkilled_related_pids))
 
         if on_other_node:
@@ -398,16 +399,14 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
                     mopup_process_base(self, procinfo)
     
     if not is_all_ok and requireSuccess:
-        for procinfo in procinfos_to_remove:
-            self.procinfos.remove( procinfo )
-            if procinfo.label in self.critical_processes_list:
-                self.print_log("e", "Lost process \"%s\" is in the critical process list (%s); will now end the run and go to the Stopped state", procinfo.label, os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"] )
-                raise Exception("\nCritical process \"%s\" lost" % (procinfo.label))
-
-        print
-        self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
-        return
-
+        if self.state(self.name) == "running":
+            for procinfo in procinfos_to_remove:
+                self.procinfos.remove( procinfo )
+                self.throw_exception_if_losing_process_violates_requirements(procinfo)
+            self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
+        else:
+            raise Exception("\nProcess(es) %s died or found in Error state" % (", ".join(['"' + procinfo.label + '"' for procinfo in procinfos_to_remove])))
+            
     if is_all_ok:
         assert len(found_processes) == len(self.procinfos)
 

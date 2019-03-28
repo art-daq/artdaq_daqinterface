@@ -280,7 +280,11 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 buffer_size_words = max_event_size / 8
             else:
                 pass # Same comment for the advanced memory usage case above applies here
-                            
+
+        procinfo_subsystem_has_dataloggers = True
+        if len([pi for pi in self.procinfos if pi.subsystem == procinfo.subsystem and pi.name == "DataLogger"]) == 0:
+            procinfo_subsystem_has_dataloggers = False
+                
         procinfos_for_string = []
 
         for procinfo_to_check in self.procinfos:
@@ -295,6 +299,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                         add = True
                     elif "DataLogger" in procinfo_to_check.name and nodetype == "destinations":
                         add = True
+                    elif not procinfo_subsystem_has_dataloggers and "Dispatcher" in procinfo_to_check.name and nodetype == "destinations":
+                        add = True
                 elif "DataLogger" in procinfo.name:
                     if "EventBuilder" in procinfo_to_check.name and nodetype == "sources":
                         add = True
@@ -303,6 +309,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 elif "Dispatcher" in procinfo.name:
                     if "DataLogger" in procinfo_to_check.name and nodetype == "sources":
                         add = True
+                    elif not procinfo_subsystem_has_dataloggers and "EventBuilder" in procinfo_to_check.name and nodetype == "sources":
+                        add = True
+
             if procinfo_to_check.subsystem != procinfo.subsystem and (inter_subsystem_transfer or nodetype == "sources"):   # the two processes are in separate subsystems
                 if "EventBuilder" in procinfo.name and "EventBuilder" in procinfo_to_check.name:
                     if (nodetype == "destinations" and self.subsystems[procinfo.subsystem].destination == procinfo_to_check.subsystem) or \
@@ -466,6 +475,18 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                        "routing_master_hostname: \"%s\"" % (routingmaster_hostnames[0].strip("\"")),
                                                        self.procinfos[i_proc].fhicl_used)
 
+    firstLoggerRank = 9999999
+
+    for procinfo in self.procinfos:
+        if fhicl_writes_root_file(procinfo.fhicl_used):
+            if procinfo.rank < firstLoggerRank:
+                firstLoggerRank = procinfo.rank
+
+    for i_proc in range(len(self.procinfos)):
+        if fhicl_writes_root_file(self.procinfos[i_proc].fhicl_used):
+            res = re.search(r"firstLoggerRank\s*:\s*\S+", self.procinfos[i_proc].fhicl_used)
+            if res:
+                self.procinfos[i_proc].fhicl_used = re.sub("firstLoggerRank\s*:\s*\S+", "firstLoggerRank: %d" % (firstLoggerRank), self.procinfos[i_proc].fhicl_used)
 
     if not self.data_directory_override is None:
         for i_proc in range(len(self.procinfos)):
