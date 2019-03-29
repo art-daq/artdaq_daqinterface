@@ -176,6 +176,21 @@ def get_boot_info_base(self, boot_filename):
                 if res.group(2) == "host":
                     num_expected_processes += 1
 
+        # JCF, Mar-29-2019
+
+        # In light of the experience at ProtoDUNE, it appears
+        # necessary to allow experiments the ability to overwrite
+        # FHiCL parameters at will in the boot file. A use case that
+        # came up was that a fragment generator had a parameter whose
+        # value needed to be a function of the partition, but the
+        # fragment generator had no direct knowledge of what partition
+        # it was on
+
+        res = re.search(r"^\s*(\S+)\s*:\s*(\S+)", line)
+        if res:
+            print "Caught line %s for FHiCL overwrite" % (line)
+            self.bootfile_fhicl_overwrites[ res.group(1) ] = res.group(2)
+
         # Taken from Eric: if a line is blank or a comment or we've
         # reached the last line in the boot file, check to see if
         # we've got a complete set of info for an artdaq process

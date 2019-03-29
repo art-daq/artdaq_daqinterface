@@ -215,7 +215,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     proc_hosts = []
 
-    for procinfo in self.procinfos:
+    procinfos_sorted_by_rank = sorted(self.procinfos, key=lambda procinfo: procinfo.rank)
+    for procinfo in procinfos_sorted_by_rank:
 
         if procinfo.name == "RoutingMaster":
             continue
@@ -287,7 +288,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 
         procinfos_for_string = []
 
-        for procinfo_to_check in self.procinfos:
+        procinfos_sorted_by_rank = sorted(self.procinfos, key=lambda procinfo: procinfo.rank)
+        for procinfo_to_check in procinfos_sorted_by_rank:
             add = False   # As in, "add this process we're checking to the sources or destinations table"
 
             if procinfo_to_check.subsystem == procinfo.subsystem and not inter_subsystem_transfer:
@@ -515,7 +517,14 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                         rootoutput_table + \
                                                         self.procinfos[i_proc].fhicl_used[end:]
                                                     
-                
+    for fhicl_key, fhicl_value in self.bootfile_fhicl_overwrites.iteritems():
+        print fhicl_key, fhicl_value
+        for i_proc in range(len(self.procinfos)):
+            self.procinfos[i_proc].fhicl_used = re.sub(r"%s\s*:\s*\S+" % (fhicl_key), \
+                                                       "%s: %s" % (fhicl_key, fhicl_value), \
+                                                       self.procinfos[i_proc].fhicl_used)
+        
+                                                                         
 
 def bookkeeping_for_fhicl_documents_artdaq_v4_base(self):
     pass

@@ -347,6 +347,8 @@ class DAQInterface(Component):
 
         self.fhicl_file_path = []
 
+        self.bootfile_fhicl_overwrites = {}
+
         # JCF, Nov-7-2015
 
         # Now that we're going with a multithreaded (simultaneous)
@@ -1291,7 +1293,7 @@ class DAQInterface(Component):
                             matched = True
                             if host != procinfo.host or port != procinfo.port:
                                 raise Exception("Error: mismatch between values for process %s in DAQInterface's procinfo structure and the ranks file, %s" % (procinfo.label, ranksfile))
-                            self.procinfos[i_proc].rank = rank
+                            self.procinfos[i_proc].rank = int(rank)
                     if matched == False:
                         raise Exception("Error: expected to find a process with label %s in the ranks file %s, but none was found" % (procinfo.label, ranksfile))
                     
@@ -1425,7 +1427,7 @@ class DAQInterface(Component):
                                (ss, self.subsystems[ss].source, self.subsystems[ss].destination), 2)
 
             for procinfo in self.procinfos:
-                self.print_log("d", "%s at %s:%s, part of subsystem %s, has rank %s" % (procinfo.label, procinfo.host, procinfo.port, procinfo.subsystem, procinfo.rank), 2)
+                self.print_log("d", "%s at %s:%s, part of subsystem %s, has rank %d" % (procinfo.label, procinfo.host, procinfo.port, procinfo.subsystem, procinfo.rank), 2)
  
             # Ensure the needed log directories are in place
 
@@ -1615,7 +1617,7 @@ class DAQInterface(Component):
 
         print "Before calling add_ranks_from_ranksfile:"
         for procinfo in self.procinfos:
-            print "%s: %s" % (procinfo.label, procinfo.rank)
+            print "%s: %d" % (procinfo.label, procinfo.rank)
 
         if True:
             assert self.manage_processes == False
@@ -1623,7 +1625,7 @@ class DAQInterface(Component):
             
         print "After calling add_ranks_from_ranksfile:"
         for procinfo in self.procinfos:
-            print "%s: %s" % (procinfo.label, procinfo.rank)
+            print "%s: %d" % (procinfo.label, procinfo.rank)
 
 
         self.complete_state_change(self.name, "booting")
