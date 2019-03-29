@@ -1268,7 +1268,33 @@ class DAQInterface(Component):
 
         self.archive_documents([ ("metadata", 'contents: "\n%s\n"\n' % (contents)) ])
 
-        
+    def add_ranks_from_ranksfile(self):
+
+        ranksfile = "/tmp/ranks%s.txt" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"])
+            
+        if not os.path.exists(ranksfile):
+            raise Exception("Error: DAQInterface run in XXXXXX mode expects your experiment's run control to provide it with a file named /tmp/ranks%s.txt (see documentation YYYYYY)" % (ranksfile))
+
+        with open(ranksfile) as inf:
+            for line in inf.readlines():
+                # port and rank are 2nd and 4th entries, and both integers...
+                res = re.search(r"^\s*(\S+)\s+(\d+)\s+(\S+)\s+(\d+)", line)
+                if res:
+                    host = res.group(1)
+                    port = res.group(2)
+                    label = res.group(3)
+                    rank = res.group(4)
+
+                    matched = False
+                    for i_proc, procinfo in enumerate(self.procinfos):
+                        if procinfo.label == label:
+                            matched = True
+                            if host != procinfo.host or port != procinfo.port:
+                                raise Exception("Error: mismatch between values for process %s in DAQInterface's procinfo structure and the ranks file, %s" % (procinfo.label, ranksfile))
+                            self.procinfos[i_proc].rank = rank
+                    if matched == False:
+                        raise Exception("Error: expected to find a process with label %s in the ranks file %s, but none was found" % (procinfo.label, ranksfile))
+                    
     # do_boot(), do_config(), do_start_running(), etc., are the
     # functions which get called in the runner() function when a
     # transition is requested
@@ -1586,6 +1612,19 @@ class DAQInterface(Component):
                 return
             endtime = time()
             self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
+
+        print "Before calling add_ranks_from_ranksfile:"
+        for procinfo in self.procinfos:
+            print "%s: %s" % (procinfo.label, procinfo.rank)
+
+        if True:
+            assert self.manage_processes == False
+            self.add_ranks_from_ranksfile()
+            
+        print "After calling add_ranks_from_ranksfile:"
+        for procinfo in self.procinfos:
+            print "%s: %s" % (procinfo.label, procinfo.rank)
+
 
         self.complete_state_change(self.name, "booting")
 
