@@ -44,9 +44,12 @@ def get_config_info_base(self):
 
     return tmpdir, ffp
 
-# put_config_info_base should be a no-op 
+# put_config_info_base and put_config_info_on_stop_base should be no-ops
 
 def put_config_info_base(self):
+    pass
+
+def put_config_info_on_stop_base(self):
     pass
 
 def get_boot_info_base(self, boot_filename):

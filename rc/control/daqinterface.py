@@ -16,6 +16,7 @@ import glob
 import stat
 from threading import Thread
 import shutil
+from shutil import copyfile
 import random
 import signal
 
@@ -87,11 +88,13 @@ if not "DAQINTERFACE_FHICL_DIRECTORY" in os.environ:
 elif os.environ["DAQINTERFACE_FHICL_DIRECTORY"] == "IGNORED":
     from rc.control.config_functions_database_v2 import get_config_info_base
     from rc.control.config_functions_database_v2 import put_config_info_base
+    from rc.control.config_functions_database_v2 import put_config_info_on_stop_base
     from rc.control.config_functions_database_v2 import listconfigs_base
 
 else:
     from rc.control.config_functions_local import get_config_info_base
     from rc.control.config_functions_local import put_config_info_base
+    from rc.control.config_functions_local import put_config_info_on_stop_base
     from rc.control.config_functions_local import listconfigs_base
 
 from rc.control.config_functions_local import get_boot_info_base
@@ -390,6 +393,7 @@ class DAQInterface(Component):
 
     get_config_info = get_config_info_base
     put_config_info = put_config_info_base
+    put_config_info_on_stop = put_config_info_on_stop_base
     get_boot_info = get_boot_info_base
     listdaqcomps = listdaqcomps_base
     listconfigs = listconfigs_base
@@ -1889,6 +1893,13 @@ class DAQInterface(Component):
         endtime = time()
         self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
 
+        if True and not self.manage_processes:
+            copyfile("/tmp/info_to_archive_partition%d.txt" % (self.partition_number), \
+                     "%s/rc_info_start.txt" % (run_record_directory))
+
+            if not os.path.exists("%s/rc_info_start.txt" % (run_record_directory)):
+                self.alert_and_recover(make_paragraph("Problem copying /tmp/info_to_archive_partition%d.txt into %s/rc_info_start.txt; does original file exist?" % (self.partition_number, run_record_directory)))
+
 
         if self.manage_processes:
 
@@ -1926,7 +1937,30 @@ class DAQInterface(Component):
         self.save_metadata_value("Stop time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
 
+        starttime = time()
+        self.print_log("i,", "Attempting to save config info to the database, if in use...", 1, False);
+
+        try:
+            self.put_config_info_on_stop()
+        except Exception:
+            self.print_log("e", traceback.format_exc())
+            self.alert_and_recover("An exception was thrown when trying to save configuration info; see traceback above for more info")
+            return
+
+        endtime = time()
+        self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
+
         self.stop_datataking()
+
+        if True and not self.manage_processes:
+            run_record_directory = "%s/%s" % \
+                                   (self.record_directory, str(self.run_number))
+
+            copyfile("/tmp/info_to_archive_partition%d.txt" % (self.partition_number), \
+                     "%s/rc_info_stop.txt" % (run_record_directory))
+
+            if not os.path.exists("%s/rc_info_stop.txt" % (run_record_directory)):
+                self.alert_and_recover(make_paragraph("Problem copying /tmp/info_to_archive_partition%d.txt into %s/rc_info_stop.txt; does original file exist?" % (self.partition_number, run_record_directory)))
 
         if self.manage_processes:
 
