@@ -1,0 +1,69 @@
+#include "routing_master_parameters.fcl"
+
+services: {
+  scheduler: {
+    errorOnFailureToPut: false
+  }
+  NetMonTransportServiceInterface: {
+    service_provider: NetMonTransportService
+    #broadcast_sends: true
+    destinations: {}
+  }
+}
+
+daq: {
+  event_builder: {
+    expected_fragments_per_event: 0  # Will be set by DAQInterface
+    max_event_size_bytes: 16777216
+    use_art: true
+    buffer_count: 5
+    max_incomplete_events: 75 # Same as boardreader sync interval
+    verbose: true
+    send_requests: false
+
+    routing_token_config: {
+        use_routing_master: false
+    }
+
+    sources: { }
+  }
+
+  metrics: {
+    evbFile: {
+      metricPluginType: "file"
+      level: 3
+      fileName: "/tmp/eventbuilder/evb_%UID%_metrics.log"
+      uniquify: true
+    }
+  }
+} 
+
+outputs: {
+  binaryNetOutput: {
+    module_type: BinaryNetOutput
+    destinations: {}
+
+    routing_table_config: {
+        use_routing_master: false
+    }
+  }
+}
+
+physics: {
+  analyzers: {
+  }
+
+  producers: {
+  }
+
+  filters: {
+  }
+
+  my_output_modules2: [ binaryNetOutput ]
+}
+source: {
+  module_type: DemoInput
+  waiting_time: 2500000
+  resume_after_timeout: true
+}
+process_name: DAQ
