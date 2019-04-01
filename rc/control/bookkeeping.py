@@ -288,7 +288,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 
         procinfos_for_string = []
 
-        procinfos_sorted_by_rank = sorted(self.procinfos, key=lambda procinfo: procinfo.rank)
         for procinfo_to_check in procinfos_sorted_by_rank:
             add = False   # As in, "add this process we're checking to the sources or destinations table"
 
@@ -400,9 +399,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                         nonsending_boardreaders.append( procinfo.label )
 
             sender_ranks = "sender_ranks: [%s]" % ( ",".join( 
-                [ str(otherproc.rank) for otherproc in self.procinfos if otherproc.subsystem == self.procinfos[i_proc].subsystem and "BoardReader" in otherproc.name and otherproc.label not in nonsending_boardreaders ] ))
+                [ str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "BoardReader" in otherproc.name and otherproc.label not in nonsending_boardreaders ] ))
             receiver_ranks = "receiver_ranks: [%s]" % ( ",".join( 
-                [ str(otherproc.rank) for otherproc in self.procinfos if otherproc.subsystem == self.procinfos[i_proc].subsystem and "EventBuilder" in otherproc.name ] ))
+                [ str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "EventBuilder" in otherproc.name ] ))
 
             self.procinfos[i_proc].fhicl_used = re.sub("sender_ranks\s*:\s*\[.*\]",
                                                        sender_ranks,
