@@ -17,6 +17,7 @@ import stat
 from threading import Thread
 import shutil
 import random
+import signal
 
 from rc.io.timeoutclient import TimeoutServerProxy
 from rc.control.component import Component 
@@ -43,6 +44,7 @@ from rc.control.utilities import construct_checked_command
 from rc.control.utilities import reformat_fhicl_documents
 from rc.control.utilities import fhicl_writes_root_file
 from rc.control.utilities import bash_unsetup_command
+from rc.control.utilities import kill_tail_f
 
 if not "DAQINTERFACE_PROCESS_MANAGEMENT_METHOD" in os.environ:
     print
@@ -380,6 +382,9 @@ class DAQInterface(Component):
 
         self.print_log("i", "DAQInterface in partition %s launched and now in \"%s\" state, listening on port %d" % 
                                            (self.partition_number, self.state(self.name), self.rpc_port))
+
+    def __del__(self):
+        kill_tail_f()
 
     get_config_info = get_config_info_base
     put_config_info = put_config_info_base
@@ -2255,15 +2260,49 @@ def main():  # no-coverage
     pids = get_pids(greptoken)
     if len(pids) > 1:  
         print make_paragraph("There already appears to be a DAQInterface instance running on the requested partition number (%s); please either kill the instance (if it's yours) or use a different partition. Run \"listdaqinterfaces.sh\" for more info." % (partition_number))
+        kill_tail_f() # Because tail -f is launched before this script is launched
         return
+
+    def handle_kill_signal(signum, stack):
+        daqinterface_instance.print_log("e", "%s: DAQInterface on partition %s caught kill signal %d" % (date_and_time(), partition_number, signum))
+        daqinterface_instance.recover()
+
+        timeout = 180  # Because the recover() call above is non-blocking
+        starttime = time()
+        while daqinterface_instance.state(daqinterface_instance.name) != "stopped":
+            if int( time() - starttime ) > timeout:
+                daqinterface_instance.print_log("e", "DAQInterface signal handler recovery attempt timed out after %d seconds; DAQInterface is in the %s state rather than the stopped state" % (timeout, daqinterface_instance.state(daqinterface_instance.name)))
+                break
+
+            sleep(10)
+
+        line = "%s: exiting..." % (date_and_time()) 
+        print line
+
+        daqinterface_instance.__del__()
+
+        if signum == signal.SIGTERM:
+            default_sigterm_handler
+        elif signum == signal.SIGHUP:
+            default_sighup_handler
+        elif signum == signal.SIGINT:
+            default_sigint_handler
+        else:
+            assert False
+        
+        # JCF, Mar-25-2019
+        # os._exit is harder than sys.exit; see https://stackoverflow.com/questions/9591350/what-is-difference-between-sys-exit0-and-os-exit
+        os._exit(1)
+
+    default_sigterm_handler = signal.signal(signal.SIGTERM, handle_kill_signal)
+    default_sighup_handler = signal.signal(signal.SIGHUP, handle_kill_signal)
+    default_sigint_handler = signal.signal(signal.SIGINT, handle_kill_signal)
 
 
     with DAQInterface(logpath=os.path.join(os.environ["HOME"], ".lbnedaqint.log"),
-                      **vars(args)):
-        try:
-            while True:
-                sleep(100)
-        except: KeyboardInterrupt
+                      **vars(args)) as daqinterface_instance:
+        while True:
+            sleep(100)
 
 if __name__ == "__main__":
     main()
