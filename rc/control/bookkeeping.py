@@ -164,7 +164,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         return count
 
     def calculate_max_event_size(ss, subsystem_fragment_space):
-        size = subsystem_fragment_space.get(ss)
+        size = subsystem_fragment_space.get(ss, 0)
 
         if self.advanced_memory_usage:
             memory_scale_factor = 1.1
