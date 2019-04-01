@@ -1792,8 +1792,8 @@ class DAQInterface(Component):
 
         self.tmp_run_record = "/tmp/run_record_attempted_%s/%s" % \
             (os.environ["USER"],
-            Popen("date +%a_%b_%d_%H:%M:%S.%N", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip())
-        
+             os.environ["DAQINTERFACE_PARTITION_NUMBER"])
+
         if os.path.exists(self.tmp_run_record):
             shutil.rmtree(self.tmp_run_record)
 
