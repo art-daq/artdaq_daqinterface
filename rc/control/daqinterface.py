@@ -1070,6 +1070,36 @@ class DAQInterface(Component):
         
         return version
 
+    def execute_trace_script(self, transition):
+
+        trace_script = "/nfs/sw/control_files/trace/trace_control.sh"
+
+        if os.path.exists(trace_script):
+
+            trace_file=""
+            with open(self.daq_setup_script) as inf:
+                for line in inf.readlines():
+                    res = re.search(r"^\s*export\s+TRACE_FILE=(\S+)", line)
+                    if res:
+                        trace_file = res.group(1)
+
+            if trace_file == "":
+                raise Exception(make_paragraph("Exception in %s: unable to determine TRACE_FILE setting from \"%s\"" % (self.execute_trace_script.__name__, self.daq_setup_script)))
+
+            nodes_for_rgang={}
+            for procinfo in self.procinfos:
+                nodes_for_rgang[ procinfo.host ] = 1
+
+            cmd = "%s %s --run %d --transition %s --node-list=\"%s\"" % \
+                  (trace_script, trace_file, self.run_number, transition, \
+                   " ".join(nodes_for_rgang.keys()))
+            self.print_log("d", "Executing \"%s\"" % (cmd), 2)
+
+            retval = Popen(cmd, shell=True).wait()
+
+            if retval != 0:
+                self.print_log("w", make_paragraph("WARNING: \"%s\" yielded a nonzero return value" % (cmd)))
+
     # JCF, Nov-8-2015
 
     # The core functionality for "do_command" is that it will launch a
@@ -1901,6 +1931,8 @@ class DAQInterface(Component):
                 self.alert_and_recover(make_paragraph("Problem copying /tmp/info_to_archive_partition%d.txt into %s/rc_info_start.txt; does original file exist?" % (self.partition_number, run_record_directory)))
 
 
+        self.execute_trace_script("start")
+
         if self.manage_processes:
 
             try:
@@ -1970,6 +2002,8 @@ class DAQInterface(Component):
                 self.print_log("d", traceback.format_exc(),2)
                 self.alert_and_recover("An exception was thrown when attempting to send the \"stop\" transition to the artdaq processes; see messages above for more info")
                 return
+
+        self.execute_trace_script("stop")
 
         self.complete_state_change(self.name, "stopping")
         self.print_log("i", "\n%s: STOP transition complete for run %d" % \
