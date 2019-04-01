@@ -439,7 +439,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                    self.procinfos[i_proc].fhicl_used)
 
         if self.table_update_address is None:
-            table_update_address = "227.129.%d.%d" % (self.partition_number, 128 + int(self.procinfos[i_proc].subsystem))
+            if "DFO" in self.procinfos[i_proc].label:
+                table_update_address = "227.129.%d.%d" % (self.partition_number, 129 + int(self.procinfos[i_proc].subsystem))
+            else:
+                table_update_address = "227.129.%d.%d" % (self.partition_number, 128 + int(self.procinfos[i_proc].subsystem))
         else:
             table_update_address = self.table_update_address
 
@@ -448,8 +451,13 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                    self.procinfos[i_proc].fhicl_used)
         
         if self.routing_base_port is None:
-            routing_base_port = int(os.environ["ARTDAQ_BASE_PORT"]) + 10 + \
-                                int(os.environ["ARTDAQ_PORTS_PER_PARTITION"])*self.partition_number + int(self.procinfos[i_proc].subsystem)
+            print self.procinfos[i_proc].label
+            if "DFO" in self.procinfos[i_proc].label:
+                routing_base_port = int(os.environ["ARTDAQ_BASE_PORT"]) + 11 + \
+                                    int(os.environ["ARTDAQ_PORTS_PER_PARTITION"])*self.partition_number + int(self.procinfos[i_proc].subsystem)
+            else:
+                routing_base_port = int(os.environ["ARTDAQ_BASE_PORT"]) + 10 + \
+                                    int(os.environ["ARTDAQ_PORTS_PER_PARTITION"])*self.partition_number + int(self.procinfos[i_proc].subsystem)
         else:
             routing_base_port = int(self.routing_base_port)
 
