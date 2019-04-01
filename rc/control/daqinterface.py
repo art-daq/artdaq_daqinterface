@@ -1912,7 +1912,7 @@ class DAQInterface(Component):
             
         self.start_datataking()
 
-        self.save_metadata_value("Start time", \
+        self.save_metadata_value("DAQInterface start time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
 
         if self.manage_processes:
@@ -1934,7 +1934,7 @@ class DAQInterface(Component):
         self.print_log("i", "\n%s: STOP transition underway for run %d" % \
             (date_and_time(), self.run_number))
 
-        self.save_metadata_value("Stop time", \
+        self.save_metadata_value("DAQInterface stop time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
 
         starttime = time()
