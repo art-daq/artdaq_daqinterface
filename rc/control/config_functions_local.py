@@ -86,19 +86,6 @@ def get_boot_info_base(self, boot_filename):
             self.daq_dir = os.path.dirname( self.daq_setup_script ) + "/"
             continue
 
-        res = re.search(r"^\s*tcp_base_port\s*:\s*(\S+)",
-                        line)
-        if res:
-            self.print_log("w", "You've got a tcp_base_port in your boot file")
-            continue
-            #raise Exception(make_paragraph("Jun-29-2018: the variable \"tcp_base_port\" was found in the boot file %s; this use is deprecated as tcp port values are now set internally in artdaq since artdaq commit d338b810c589a177ff1a34d82fa82a459cc1704b" % (boot_filename)))
-
-        res = re.search(r"^\s*request_port\s*:\s*(\S+)",
-                        line)
-        if res:
-            self.request_port = int( res.group(1) )
-            continue
-
         res = re.search(r"^\s*request_address\s*:\s*(\S+)",
                         line)
         if res:
@@ -116,13 +103,6 @@ def get_boot_info_base(self, boot_filename):
         if res:
             self.routing_base_port = res.group(1)
             continue
-
-        res = re.search(r"^\s*partition_number\s*:\s*(\S+)",
-                        line)
-        if res:
-            self.print_log("w", "You've got a partition_number in your boot file")
-            continue
-            #raise Exception(make_paragraph("Jun-24-2018: the variable \"partition_number\" was found in the boot file %s; this use is deprecated as \"partition_number\" is now set by the DAQINTERFACE_PARTITION_NUMBER environment variable" % (boot_filename)))
 
         res = re.search(r"^\s*debug level\s*:\s*(\S+)",
                         line)
