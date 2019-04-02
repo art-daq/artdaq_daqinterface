@@ -161,7 +161,7 @@ def put_config_info_base(self):
 
         with open( "%s/%s/metadata.fcl" % (tmpdir, runnum) ) as metadata_file:
             for line in metadata_file.readlines():
-                if "Start_time" not in line and "Stop_time" not in line and not line == "":
+                if "DAQInterface_start_time" not in line and "DAQInterface_stop_time" not in line and not line == "":
                     dataflow_file.write("\n" + line)
 
     with open( "%s/%s/RunHistory.fcl" % (tmpdir, runnum), "w" ) as runhistory_file:
@@ -174,7 +174,7 @@ def put_config_info_base(self):
                 elif "components" in line:
                     runhistory_file.write("\n" + line)
 
-        if not self.manage_processes and \
+        if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "external_run_control" and \
            os.path.exists("/tmp/info_to_archive_partition%d.txt" % (self.partition_number)):
             runhistory_file.write( fhiclize_document( "/tmp/info_to_archive_partition%d.txt" % (self.partition_number) ) )
 
@@ -199,7 +199,8 @@ def put_config_info_base(self):
 
 def put_config_info_on_stop_base(self):
 
-    if self.manage_processes:
+    if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] != "external_run_control" or \
+       not os.path.exists("/tmp/info_to_archive_partition%d.txt" % (self.partition_number)):
         return
 
     runnum = str(self.run_number)
@@ -210,8 +211,7 @@ def put_config_info_on_stop_base(self):
 
 
     with open( "%s/%s/RunHistory2.fcl" % (tmpdir, runnum), "w" ) as runhistory_file:
-        if os.path.exists("/tmp/info_to_archive_partition%d.txt" % (self.partition_number)):
-            runhistory_file.write( fhiclize_document( "/tmp/info_to_archive_partition%d.txt" % (self.partition_number ) ))
+        runhistory_file.write( fhiclize_document( "/tmp/info_to_archive_partition%d.txt" % (self.partition_number ) ))
 
     copyfile("%s/schema.fcl" % (os.environ["ARTDAQ_DATABASE_CONFDIR"]), "%s/schema.fcl" % (tmpdir))
 

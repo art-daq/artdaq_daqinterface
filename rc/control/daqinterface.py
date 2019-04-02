@@ -1649,18 +1649,9 @@ class DAQInterface(Component):
             endtime = time()
             self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
 
-        print "Before calling add_ranks_from_ranksfile:"
-        for procinfo in self.procinfos:
-            print "%s: %d" % (procinfo.label, procinfo.rank)
 
-        if True:
-            assert self.manage_processes == False
+        if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "external_run_control":
             self.add_ranks_from_ranksfile()
-            
-        print "After calling add_ranks_from_ranksfile:"
-        for procinfo in self.procinfos:
-            print "%s: %d" % (procinfo.label, procinfo.rank)
-
 
         self.complete_state_change(self.name, "booting")
 
@@ -1923,7 +1914,8 @@ class DAQInterface(Component):
         endtime = time()
         self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
 
-        if True and not self.manage_processes:
+        if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "external_run_control" and \
+           os.path.exists("/tmp/info_to_archive_partition%d.txt" % (self.partition_number)):
             copyfile("/tmp/info_to_archive_partition%d.txt" % (self.partition_number), \
                      "%s/rc_info_start.txt" % (run_record_directory))
 
@@ -1984,7 +1976,8 @@ class DAQInterface(Component):
 
         self.stop_datataking()
 
-        if True and not self.manage_processes:
+        if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "external_run_control" and \
+           os.path.exists("/tmp/info_to_archive_partition%d.txt" % (self.partition_number)):
             run_record_directory = "%s/%s" % \
                                    (self.record_directory, str(self.run_number))
 
