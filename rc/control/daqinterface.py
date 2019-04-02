@@ -47,11 +47,23 @@ from rc.control.utilities import fhicl_writes_root_file
 from rc.control.utilities import bash_unsetup_command
 from rc.control.utilities import kill_tail_f
 
-if not "DAQINTERFACE_PROCESS_MANAGEMENT_METHOD" in os.environ:
-    print
-    raise Exception(make_paragraph("The DAQINTERFACE_PROCESS_MANAGEMENT_METHOD environment variable must be defined; legal values include \"pmt\" and \"direct\""))
+from rc.control.config_functions_local import get_boot_info_base
+from rc.control.config_functions_local import listdaqcomps_base
 
-elif os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "pmt":
+process_management_methods = ["direct", "pmt", "external_run_control"]
+
+if "DAQINTERFACE_PROCESS_MANAGEMENT_METHOD" not in os.environ.keys():
+    raise Exception(make_paragraph("Need to have the DAQINTERFACE_PROCESS_MANAGEMENT_METHOD set so DAQinterface knows what method to use to control the artdaq processes (%s, etc.)" % (",".join([ "\"" + pmm + "\"" for pmm in process_management_methods[:2]]))))
+else:
+    legal_method_found = False
+    for pmm in process_management_methods:
+        if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == pmm:
+            legal_method_found = True
+
+    if not legal_method_found:
+        raise Exception(make_paragraph("DAQInterface can't interpret the current value of the DAQINTERFACE_PROCESS_MANAGEMENT_METHOD environment variable (\"%s\"); legal values are: %s" % (os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"], ",".join([ "\"" + pmm + "\"" for pmm in process_management_methods]))))
+
+if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "pmt":
     from rc.control.manage_processes_pmt import launch_procs_base
     from rc.control.manage_processes_pmt import kill_procs_base
     from rc.control.manage_processes_pmt import check_proc_heartbeats_base
@@ -77,10 +89,22 @@ elif os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "direct":
     from rc.control.manage_processes_direct import get_pid_for_process_base
     from rc.control.manage_processes_direct import process_launch_diagnostics_base
     from rc.control.manage_processes_direct import mopup_process_base
-else:
-    print
-    raise Exception(make_paragraph("DAQInterface can't interpret the current value of the DAQINTERFACE_PROCESS_MANAGEMENT_METHOD environment variable (\"%s\"); legal values include \"pmt\" and \"direct\"" % os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"]))
-
+elif os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "external_run_control":
+    from rc.control.all_functions_noop import launch_procs_base
+    from rc.control.all_functions_noop import kill_procs_base
+    from rc.control.all_functions_noop import check_proc_heartbeats_base
+    from rc.control.all_functions_noop import softlink_process_manager_logfiles_base
+    from rc.control.all_functions_noop import set_process_manager_default_variables_base
+    from rc.control.all_functions_noop import reset_process_manager_variables_base
+    from rc.control.all_functions_noop import get_process_manager_log_filenames_base
+    from rc.control.all_functions_noop import process_manager_cleanup_base
+    from rc.control.all_functions_noop import get_pid_for_process_base
+    from rc.control.all_functions_noop import process_launch_diagnostics_base
+    from rc.control.all_functions_noop import mopup_process_base
+    def find_process_manager_variable_base(self, line):  # Actually used in get_boot_info() despite external_run_control
+        return False
+# This is the end of if-elifs of process management methods 
+    
 
 if not "DAQINTERFACE_FHICL_DIRECTORY" in os.environ:
     print
@@ -97,8 +121,6 @@ else:
     from rc.control.config_functions_local import put_config_info_on_stop_base
     from rc.control.config_functions_local import listconfigs_base
 
-from rc.control.config_functions_local import get_boot_info_base
-from rc.control.config_functions_local import listdaqcomps_base
 
 
 class DAQInterface(Component):
@@ -2337,6 +2359,20 @@ def main():  # no-coverage
         print make_paragraph("Need to have the DAQINTERFACE_KNOWN_BOARDREADERS_LIST environment variable set to refer to the list of boardreader types DAQInterface can use")
         print
         return
+
+    process_management_methods = ["direct", "pmt", "external_run_control"]
+    if "DAQINTERFACE_PROCESS_MANAGEMENT_METHOD" not in os.environ.keys():
+        raise Exception(make_paragraph("Need to have the DAQINTERFACE_PROCESS_MANAGEMENT_METHOD set so DAQinterface knows what method to use to control the artdaq processes (%s, etc.)" % (",".join([ "\"" + pmm + "\"" for pmm in process_management_methods]))))
+    else:
+        legal_method_found = False
+        for pmm in process_management_methods:
+            if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == pmm:
+                legal_method_found = True
+
+        if not legal_method_found:
+            raise Exception(make_paragraph("DAQInterface can't interpret the current value of the DAQINTERFACE_PROCESS_MANAGEMENT_METHOD environment variable (\"%s\"); legal values include %s" % (os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"], ",".join([ "\"" + pmm + "\"" for pmm in process_management_methods]))))
+
+
 
     if not os.path.exists( os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"] ):
         print make_paragraph("The file referred to by the DAQINTERFACE_KNOWN_BOARDREADERS_LIST environment variable, \"%s\", does not appear to exist" % (os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"]))
