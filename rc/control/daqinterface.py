@@ -491,7 +491,7 @@ class DAQInterface(Component):
         self.data_directory_override = None
         self.max_configurations_to_list = 1000000
         self.disable_unique_rootfile_labels = False
-        self.taskset_bitmask = None
+        self.taskset_cpu_list = None
 
         self.productsdir = None
 
@@ -588,8 +588,8 @@ class DAQInterface(Component):
                     self.data_directory_override = self.data_directory_override + "/"
             elif "transfer_plugin_to_use" in line or "transfer plugin to use" in line:
                 self.transfer = line.split()[-1].strip()
-            elif "taskset_bitmask" in line or "taskset bitmask" in line:
-                self.taskset_bitmask = line.split()[-1].strip()
+            elif "taskset_cpu_list" in line or "taskset cpu list" in line:
+                self.taskset_cpu_list = line.split()[-1].strip()
                 
 
         missing_vars = []

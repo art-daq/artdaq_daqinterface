@@ -97,8 +97,8 @@ def launch_procs_base(self):
         base_launch_cmd = "%s -c \"id: %s commanderPluginType: xmlrpc rank: %s application_name: %s partition_number: %s\"" % \
                           (bootfile_name_to_execname(procinfo.name), procinfo.port, procinfo.rank, procinfo.label, 
                            os.environ["DAQINTERFACE_PARTITION_NUMBER"])
-        if self.taskset_bitmask is not None:
-            base_launch_cmd="taskset %s %s" % (self.taskset_bitmask, base_launch_cmd)
+        if self.taskset_cpu_list is not None:
+            base_launch_cmd="taskset --cpu-list %s %s" % (self.taskset_cpu_list, base_launch_cmd)
         #base_launch_cmd = "valgrind --tool=callgrind %s" % (base_launch_cmd)
         launch_cmd = "%s >> %s 2>&1 & " % (base_launch_cmd, self.launch_attempt_file)
 
