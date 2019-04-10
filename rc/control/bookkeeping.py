@@ -398,7 +398,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                         nonsending_boardreaders.append( procinfo.label )
 
             sender_ranks = "sender_ranks: [%s]" % ( ",".join( 
-                [ str(otherproc.rank) for otherproc in self.procinfos if otherproc.subsystem == self.procinfos[i_proc].subsystem and "BoardReader" in otherproc.name and otherproc.label not in nonsending_boardreaders ] ))
+                [ str(otherproc.rank) for otherproc in self.procinfos if (otherproc.subsystem == self.procinfos[i_proc].subsystem and "BoardReader" in otherproc.name and otherproc.label not in nonsending_boardreaders) or ("DFO" in otherproc.label) ] ))
             receiver_ranks = "receiver_ranks: [%s]" % ( ",".join( 
                 [ str(otherproc.rank) for otherproc in self.procinfos if otherproc.subsystem == self.procinfos[i_proc].subsystem and "EventBuilder" in otherproc.name ] ))
 
