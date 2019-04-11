@@ -1765,14 +1765,10 @@ class DAQInterface(Component):
                ("EventBuilder" in self.procinfos[i_proc].name or "DataLogger" in self.procinfos[i_proc].name):
                 fhicl_before_sub = self.procinfos[i_proc].fhicl_used
 
-                if self.procinfos[i_proc].name == "DataLogger":
-                    rootfile_cntr_prefix = "dl"
-                elif self.procinfos[i_proc].name == "EventBuilder":
-                    rootfile_cntr_prefix = "eb"
+                rootfile_cntr_prefix = "dl"
 
                 self.procinfos[i_proc].fhicl_used = re.sub(r'(\n\s*[^#\s].*)\.root',
-                                                       r"\1" + "_" + str(rootfile_cntr_prefix) + 
-                                                       str(rootfile_cntr+1) + ".root",
+                                                       r"\1" + "_dl" + str(rootfile_cntr+1) + ".root",
                                                        self.procinfos[i_proc].fhicl_used)
 
                 if self.procinfos[i_proc].fhicl_used != fhicl_before_sub:
