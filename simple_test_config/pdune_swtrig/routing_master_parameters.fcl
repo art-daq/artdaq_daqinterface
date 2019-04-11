@@ -1,63 +1,43 @@
 BEGIN_PROLOG
 
-# for receiving routing tables from a BR-to-EB Routing Master
-artdaq_BR_routing_table_specification: {
-           ## True if using the Routing Master
-           use_routing_master: true
-       
-           ## Port that table updates should arrive on
-           table_update_port: 35556  # default
-       
-           ## Address that table updates should arrive on
-           table_update_address: "227.128.12.28"  # default
-       
-           ## Port that acknowledgements should be sent to
-           table_acknowledge_port: 35557  # default
-       
-           ## Host that acknowledgements should be sent to
-           routing_master_hostname: "localhost"  # default
-       
-           ## Time to wait (in ms) for a routing table update if the table is exhausted
-           routing_timeout_ms: 2000  # default 1000
-       
-           ## Number of times to retry getting destination from routing table
-           routing_retry_count: 5  # default
+# for receiving routing tables from the Routing Master in subsystem 2
+subsystem2_routing_table_specification: {
+  ## True if using the Routing Master
+  use_routing_master: true
+
+  ## Port that table updates should arrive on
+  table_update_port: 35556  # default
+
+  ## Address that table updates should arrive on
+  table_update_address: "227.128.12.28"  # default
+
+  ## Port that acknowledgements should be sent to
+  table_acknowledge_port: 35557  # default
+
+  ## Host that acknowledgements should be sent to
+  routing_master_hostname: "localhost"  # default
+
+  ## Time to wait (in ms) for a routing table update if the table is exhausted
+  routing_timeout_ms: 2000  # default 1000
+
+  ## Number of times to retry getting destination from routing table
+  routing_retry_count: 5  # default
 
   #use_routing_master: false
 }
 
-# for exchanging routing tokens with a BR-to-EB Routing Master
-artdaq_EB_routing_token_specification: {
-        ## True if using the Routing Master
-        use_routing_master: true
+# for exchanging routing tokens with the Routing Master in subsystem 2
+subsystem2_routing_token_specification: {
+  ## True if using the Routing Master
+  use_routing_master: true
 
-        ## Port to send tokens on
-        routing_token_port: 35555  # default
+  ## Port to send tokens on
+  routing_token_port: 35555  # default
 
-        ## Hostname or IP of RoutingMaster
-        routing_master_hostname: "localhost"  # default
+  ## Hostname or IP of RoutingMaster
+  routing_master_hostname: "localhost"  # default
 
   #use_routing_master: false
-}
-
-# for receiving routing tables from an EB-to-DL Routing Master
-artdaq_EB_routing_table_specification: {
-  use_routing_master: false
-}
-
-# for exchanging routing tokens with an EB-to-DL Routing Master
-artdaq_DL_routing_token_specification: {
-  use_routing_master: false
-}
-
-# for receiving routing tables from a DL-to-Disp Routing Master
-artdaq_DL_routing_table_specification: {
-  use_routing_master: false
-}
-
-# for exchanging routing tokens with a DL-to-Disp Routing Master
-artdaq_DISP_routing_token_specification: {
-  use_routing_master: false
 }
 
 END_PROLOG
