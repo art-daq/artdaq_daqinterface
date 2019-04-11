@@ -1,17 +1,7 @@
-services: {
-  scheduler: {
-    errorOnFailureToPut: false
-  }
-  NetMonTransportServiceInterface: {
-    service_provider: NetMonTransportService
-  }
-}
-
 daq: {
   aggregator: {
     expected_events_per_bunch: 1
     max_event_size_bytes: 16777216
-    print_event_store_stats: true
     buffer_count: 10
     event_queue_depth: 2
     event_queue_wait_time: 1
@@ -19,13 +9,13 @@ daq: {
     is_dispatcher: true
     overwrite_mode: true
 
-	routing_token_config: {
-		use_routing_master: false
-	}
+    routing_token_config: {
+        use_routing_master: false
+    }
 
     auto_suppression_enabled: false
 
-	sources: { }
+    sources: { }
   }
 
   metrics: {
@@ -39,15 +29,21 @@ daq: {
 
 }
 
+services: {
+  scheduler: {
+    errorOnFailureToPut: false
+  }
+  NetMonTransportServiceInterface: {
+    service_provider: NetMonTransportService
+  }
+}
+
 source: {
   module_type: NetMonInput
 }
 
-outputs: {
+outputs: { }
 
-}
+physics: { }
 
-physics: {
-
-}
 process_name: DAQDP
