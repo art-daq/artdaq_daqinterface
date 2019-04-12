@@ -1312,7 +1312,20 @@ class DAQInterface(Component):
 
         for boardreader_rank, compname in enumerate(self.daq_comp_list):
 
-            boardreader_host, boardreader_port, boardreader_subsystem = self.daq_comp_list[ compname ]
+            boardreader_port = "-1"
+            boardreader_subsystem="1"
+            boardreader_processor_list="-1"
+
+            if len(self.daq_comp_list[ compname ] ) == 1:
+                boardreader_host = self.daq_comp_list[ compname ]
+            elif len(self.daq_comp_list[ compname ] ) == 2:
+                boardreader_host, boardreader_port = self.daq_comp_list[ compname ]
+            elif len(self.daq_comp_list[ compname ] ) == 3:
+                boardreader_host, boardreader_port, boardreader_subsystem = self.daq_comp_list[ compname ]
+            elif len(self.daq_comp_list[ compname ] ) == 4:
+                boardreader_host, boardreader_port, boardreader_subsystem, boardreader_processor_list = self.daq_comp_list[ compname ]
+            else:
+                raise Exception(make_paragraph("There's an unexpected number of elements which were passed for component \"%s\" in the setdaqcomps call" % (compname)))
 
             # Make certain the formula below for calculating the port
             # # matches with the formula used to calculate the ports
