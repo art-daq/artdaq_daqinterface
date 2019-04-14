@@ -62,7 +62,7 @@ def get_boot_info_base(self, boot_filename):
                             "unable to locate configuration file \"" +
                             boot_filename + "\""))
 
-    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set"}
+    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set", "allowed_processors": "not set"}
     subsystemDict = {"id": None, "source": "not set", "destination": "not set"}
 
     num_expected_processes = 0
@@ -219,16 +219,20 @@ def get_boot_info_base(self, boot_filename):
                                               self.partition_number*int(os.environ["ARTDAQ_PORTS_PER_PARTITION"]) + \
                                               rank )
 
+                if memberDict["allowed_processors"] == "not set":
+                    memberDict["allowed_processors"] = None  # Where None actually means "allow all processors"
+
                 self.procinfos.append(self.Procinfo(memberDict["name"],
                                                     rank,
                                                     memberDict["host"],
                                                     memberDict["port"],
                                                     memberDict["label"],
-                                                    memberDict["subsystem"]
+                                                    memberDict["subsystem"],
+                                                    memberDict["allowed_processors"]
                                                     ))
 
                 for varname in memberDict.keys():
-                    if varname != "port" and varname != "subsystem":
+                    if varname != "port" and varname != "subsystem" and varname != "allowed_processors":
                         memberDict[varname] = None
                     else:
                         memberDict[varname] = "not set"
