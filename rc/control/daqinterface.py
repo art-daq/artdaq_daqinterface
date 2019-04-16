@@ -16,6 +16,7 @@ import glob
 import stat
 from threading import Thread
 import shutil
+from shutil import copyfile
 import random
 import signal
 
@@ -46,11 +47,23 @@ from rc.control.utilities import fhicl_writes_root_file
 from rc.control.utilities import bash_unsetup_command
 from rc.control.utilities import kill_tail_f
 
-if not "DAQINTERFACE_PROCESS_MANAGEMENT_METHOD" in os.environ:
-    print
-    raise Exception(make_paragraph("The DAQINTERFACE_PROCESS_MANAGEMENT_METHOD environment variable must be defined; legal values include \"pmt\" and \"direct\""))
+from rc.control.config_functions_local import get_boot_info_base
+from rc.control.config_functions_local import listdaqcomps_base
 
-elif os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "pmt":
+process_management_methods = ["direct", "pmt", "external_run_control"]
+
+if "DAQINTERFACE_PROCESS_MANAGEMENT_METHOD" not in os.environ.keys():
+    raise Exception(make_paragraph("Need to have the DAQINTERFACE_PROCESS_MANAGEMENT_METHOD set so DAQinterface knows what method to use to control the artdaq processes (%s, etc.)" % (",".join([ "\"" + pmm + "\"" for pmm in process_management_methods[:2]]))))
+else:
+    legal_method_found = False
+    for pmm in process_management_methods:
+        if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == pmm:
+            legal_method_found = True
+
+    if not legal_method_found:
+        raise Exception(make_paragraph("DAQInterface can't interpret the current value of the DAQINTERFACE_PROCESS_MANAGEMENT_METHOD environment variable (\"%s\"); legal values are: %s" % (os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"], ",".join([ "\"" + pmm + "\"" for pmm in process_management_methods]))))
+
+if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "pmt":
     from rc.control.manage_processes_pmt import launch_procs_base
     from rc.control.manage_processes_pmt import kill_procs_base
     from rc.control.manage_processes_pmt import check_proc_heartbeats_base
@@ -76,10 +89,22 @@ elif os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "direct":
     from rc.control.manage_processes_direct import get_pid_for_process_base
     from rc.control.manage_processes_direct import process_launch_diagnostics_base
     from rc.control.manage_processes_direct import mopup_process_base
-else:
-    print
-    raise Exception(make_paragraph("DAQInterface can't interpret the current value of the DAQINTERFACE_PROCESS_MANAGEMENT_METHOD environment variable (\"%s\"); legal values include \"pmt\" and \"direct\"" % os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"]))
-
+elif os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "external_run_control":
+    from rc.control.all_functions_noop import launch_procs_base
+    from rc.control.all_functions_noop import kill_procs_base
+    from rc.control.all_functions_noop import check_proc_heartbeats_base
+    from rc.control.all_functions_noop import softlink_process_manager_logfiles_base
+    from rc.control.all_functions_noop import set_process_manager_default_variables_base
+    from rc.control.all_functions_noop import reset_process_manager_variables_base
+    from rc.control.all_functions_noop import get_process_manager_log_filenames_base
+    from rc.control.all_functions_noop import process_manager_cleanup_base
+    from rc.control.all_functions_noop import get_pid_for_process_base
+    from rc.control.all_functions_noop import process_launch_diagnostics_base
+    from rc.control.all_functions_noop import mopup_process_base
+    def find_process_manager_variable_base(self, line):  # Actually used in get_boot_info() despite external_run_control
+        return False
+# This is the end of if-elifs of process management methods 
+    
 
 if not "DAQINTERFACE_FHICL_DIRECTORY" in os.environ:
     print
@@ -87,15 +112,15 @@ if not "DAQINTERFACE_FHICL_DIRECTORY" in os.environ:
 elif os.environ["DAQINTERFACE_FHICL_DIRECTORY"] == "IGNORED":
     from rc.control.config_functions_database_v2 import get_config_info_base
     from rc.control.config_functions_database_v2 import put_config_info_base
+    from rc.control.config_functions_database_v2 import put_config_info_on_stop_base
     from rc.control.config_functions_database_v2 import listconfigs_base
 
 else:
     from rc.control.config_functions_local import get_config_info_base
     from rc.control.config_functions_local import put_config_info_base
+    from rc.control.config_functions_local import put_config_info_on_stop_base
     from rc.control.config_functions_local import listconfigs_base
 
-from rc.control.config_functions_local import get_boot_info_base
-from rc.control.config_functions_local import listdaqcomps_base
 
 
 class DAQInterface(Component):
@@ -329,7 +354,6 @@ class DAQInterface(Component):
 
         self.debug_level = 10000
         self.request_address = None
-        self.request_port = None 
         self.table_update_address = None
         self.routing_base_port = None
         self.partition_number = partition_number
@@ -346,6 +370,8 @@ class DAQInterface(Component):
         # given with an absolute path in the #include .
 
         self.fhicl_file_path = []
+
+        self.bootfile_fhicl_overwrites = {}
 
         # JCF, Nov-7-2015
 
@@ -388,6 +414,7 @@ class DAQInterface(Component):
 
     get_config_info = get_config_info_base
     put_config_info = put_config_info_base
+    put_config_info_on_stop = put_config_info_on_stop_base
     get_boot_info = get_boot_info_base
     listdaqcomps = listdaqcomps_base
     listconfigs = listconfigs_base
@@ -1064,6 +1091,36 @@ class DAQInterface(Component):
         
         return version
 
+    def execute_trace_script(self, transition):
+
+        trace_script = "/nfs/sw/control_files/trace/trace_control.sh"
+
+        if os.path.exists(trace_script):
+
+            trace_file=""
+            with open(self.daq_setup_script) as inf:
+                for line in inf.readlines():
+                    res = re.search(r"^\s*export\s+TRACE_FILE=(\S+)", line)
+                    if res:
+                        trace_file = res.group(1)
+
+            if trace_file == "":
+                raise Exception(make_paragraph("Exception in %s: unable to determine TRACE_FILE setting from \"%s\"" % (self.execute_trace_script.__name__, self.daq_setup_script)))
+
+            nodes_for_rgang={}
+            for procinfo in self.procinfos:
+                nodes_for_rgang[ procinfo.host ] = 1
+
+            cmd = "%s %s --run %d --transition %s --node-list=\"%s\"" % \
+                  (trace_script, trace_file, self.run_number, transition, \
+                   " ".join(nodes_for_rgang.keys()))
+            self.print_log("d", "Executing \"%s\"" % (cmd), 2)
+
+            retval = Popen(cmd, shell=True).wait()
+
+            if retval != 0:
+                self.print_log("w", make_paragraph("WARNING: \"%s\" yielded a nonzero return value" % (cmd)))
+
     # JCF, Nov-8-2015
 
     # The core functionality for "do_command" is that it will launch a
@@ -1268,7 +1325,33 @@ class DAQInterface(Component):
 
         self.archive_documents([ ("metadata", 'contents: "\n%s\n"\n' % (contents)) ])
 
-        
+    def add_ranks_from_ranksfile(self):
+
+        ranksfile = "/tmp/ranks%s.txt" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"])
+            
+        if not os.path.exists(ranksfile):
+            raise Exception("Error: DAQInterface run in XXXXXX mode expects your experiment's run control to provide it with a file named /tmp/ranks%s.txt (see documentation YYYYYY)" % (ranksfile))
+
+        with open(ranksfile) as inf:
+            for line in inf.readlines():
+                # port and rank are 2nd and 4th entries, and both integers...
+                res = re.search(r"^\s*(\S+)\s+(\d+)\s+(\S+)\s+(\d+)", line)
+                if res:
+                    host = res.group(1)
+                    port = res.group(2)
+                    label = res.group(3)
+                    rank = res.group(4)
+
+                    matched = False
+                    for i_proc, procinfo in enumerate(self.procinfos):
+                        if procinfo.label == label:
+                            matched = True
+                            if host != procinfo.host or port != procinfo.port:
+                                raise Exception("Error: mismatch between values for process %s in DAQInterface's procinfo structure and the ranks file, %s" % (procinfo.label, ranksfile))
+                            self.procinfos[i_proc].rank = int(rank)
+                    if matched == False:
+                        raise Exception("Error: expected to find a process with label %s in the ranks file %s, but none was found" % (procinfo.label, ranksfile))
+                    
     # do_boot(), do_config(), do_start_running(), etc., are the
     # functions which get called in the runner() function when a
     # transition is requested
@@ -1399,7 +1482,7 @@ class DAQInterface(Component):
                                (ss, self.subsystems[ss].source, self.subsystems[ss].destination), 2)
 
             for procinfo in self.procinfos:
-                self.print_log("d", "%s at %s:%s, part of subsystem %s, has rank %s" % (procinfo.label, procinfo.host, procinfo.port, procinfo.subsystem, procinfo.rank), 2)
+                self.print_log("d", "%s at %s:%s, part of subsystem %s, has rank %d" % (procinfo.label, procinfo.host, procinfo.port, procinfo.subsystem, procinfo.rank), 2)
  
             # Ensure the needed log directories are in place
 
@@ -1587,6 +1670,10 @@ class DAQInterface(Component):
             endtime = time()
             self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
 
+
+        if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "external_run_control":
+            self.add_ranks_from_ranksfile()
+
         self.complete_state_change(self.name, "booting")
 
         self.print_log( "i", "\n%s: BOOT transition complete" % \
@@ -1678,14 +1765,10 @@ class DAQInterface(Component):
                ("EventBuilder" in self.procinfos[i_proc].name or "DataLogger" in self.procinfos[i_proc].name):
                 fhicl_before_sub = self.procinfos[i_proc].fhicl_used
 
-                if self.procinfos[i_proc].name == "DataLogger":
-                    rootfile_cntr_prefix = "dl"
-                elif self.procinfos[i_proc].name == "EventBuilder":
-                    rootfile_cntr_prefix = "eb"
+                rootfile_cntr_prefix = "dl"
 
                 self.procinfos[i_proc].fhicl_used = re.sub(r'(\n\s*[^#\s].*)\.root',
-                                                       r"\1" + "_" + str(rootfile_cntr_prefix) + 
-                                                       str(rootfile_cntr+1) + ".root",
+                                                       r"\1" + "_dl" + str(rootfile_cntr+1) + ".root",
                                                        self.procinfos[i_proc].fhicl_used)
 
                 if self.procinfos[i_proc].fhicl_used != fhicl_before_sub:
@@ -1747,8 +1830,8 @@ class DAQInterface(Component):
 
         self.tmp_run_record = "/tmp/run_record_attempted_%s/%s" % \
             (os.environ["USER"],
-            Popen("date +%a_%b_%d_%H:%M:%S.%N", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip())
-        
+             os.environ["DAQINTERFACE_PARTITION_NUMBER"])
+
         if os.path.exists(self.tmp_run_record):
             shutil.rmtree(self.tmp_run_record)
 
@@ -1848,6 +1931,16 @@ class DAQInterface(Component):
         endtime = time()
         self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
 
+        if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "external_run_control" and \
+           os.path.exists("/tmp/info_to_archive_partition%d.txt" % (self.partition_number)):
+            copyfile("/tmp/info_to_archive_partition%d.txt" % (self.partition_number), \
+                     "%s/rc_info_start.txt" % (run_record_directory))
+
+            if not os.path.exists("%s/rc_info_start.txt" % (run_record_directory)):
+                self.alert_and_recover(make_paragraph("Problem copying /tmp/info_to_archive_partition%d.txt into %s/rc_info_start.txt; does original file exist?" % (self.partition_number, run_record_directory)))
+
+
+        self.execute_trace_script("start")
 
         if self.manage_processes:
 
@@ -1860,7 +1953,7 @@ class DAQInterface(Component):
             
         self.start_datataking()
 
-        self.save_metadata_value("Start time", \
+        self.save_metadata_value("DAQInterface start time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
 
         if self.manage_processes:
@@ -1882,10 +1975,34 @@ class DAQInterface(Component):
         self.print_log("i", "\n%s: STOP transition underway for run %d" % \
             (date_and_time(), self.run_number))
 
-        self.save_metadata_value("Stop time", \
+        self.save_metadata_value("DAQInterface stop time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
 
+        starttime = time()
+        self.print_log("i,", "Attempting to save config info to the database, if in use...", 1, False);
+
+        try:
+            self.put_config_info_on_stop()
+        except Exception:
+            self.print_log("e", traceback.format_exc())
+            self.alert_and_recover("An exception was thrown when trying to save configuration info; see traceback above for more info")
+            return
+
+        endtime = time()
+        self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
+
         self.stop_datataking()
+
+        if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "external_run_control" and \
+           os.path.exists("/tmp/info_to_archive_partition%d.txt" % (self.partition_number)):
+            run_record_directory = "%s/%s" % \
+                                   (self.record_directory, str(self.run_number))
+
+            copyfile("/tmp/info_to_archive_partition%d.txt" % (self.partition_number), \
+                     "%s/rc_info_stop.txt" % (run_record_directory))
+
+            if not os.path.exists("%s/rc_info_stop.txt" % (run_record_directory)):
+                self.alert_and_recover(make_paragraph("Problem copying /tmp/info_to_archive_partition%d.txt into %s/rc_info_stop.txt; does original file exist?" % (self.partition_number, run_record_directory)))
 
         if self.manage_processes:
 
@@ -1895,6 +2012,8 @@ class DAQInterface(Component):
                 self.print_log("d", traceback.format_exc(),2)
                 self.alert_and_recover("An exception was thrown when attempting to send the \"stop\" transition to the artdaq processes; see messages above for more info")
                 return
+
+        self.execute_trace_script("stop")
 
         self.complete_state_change(self.name, "stopping")
         self.print_log("i", "\n%s: STOP transition complete for run %d" % \
@@ -1906,9 +2025,6 @@ class DAQInterface(Component):
             (date_and_time()))
 
         print
-
-        if hasattr(self, "tmp_run_record") and os.path.exists(self.tmp_run_record):
-            shutil.rmtree(self.tmp_run_record)
 
         if self.manage_processes:
 
@@ -2235,6 +2351,20 @@ def main():  # no-coverage
         print make_paragraph("Need to have the DAQINTERFACE_KNOWN_BOARDREADERS_LIST environment variable set to refer to the list of boardreader types DAQInterface can use")
         print
         return
+
+    process_management_methods = ["direct", "pmt", "external_run_control"]
+    if "DAQINTERFACE_PROCESS_MANAGEMENT_METHOD" not in os.environ.keys():
+        raise Exception(make_paragraph("Need to have the DAQINTERFACE_PROCESS_MANAGEMENT_METHOD set so DAQinterface knows what method to use to control the artdaq processes (%s, etc.)" % (",".join([ "\"" + pmm + "\"" for pmm in process_management_methods]))))
+    else:
+        legal_method_found = False
+        for pmm in process_management_methods:
+            if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == pmm:
+                legal_method_found = True
+
+        if not legal_method_found:
+            raise Exception(make_paragraph("DAQInterface can't interpret the current value of the DAQINTERFACE_PROCESS_MANAGEMENT_METHOD environment variable (\"%s\"); legal values include %s" % (os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"], ",".join([ "\"" + pmm + "\"" for pmm in process_management_methods]))))
+
+
 
     if not os.path.exists( os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"] ):
         print make_paragraph("The file referred to by the DAQINTERFACE_KNOWN_BOARDREADERS_LIST environment variable, \"%s\", does not appear to exist" % (os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"]))

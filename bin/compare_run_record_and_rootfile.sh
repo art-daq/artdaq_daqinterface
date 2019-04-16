@@ -163,7 +163,7 @@ fi
 
 cleaned_run_records_metadata_file=/tmp/$(uuidgen)
 
-grep -E -v 'Total events|Start time|Stop time' $run_records_metadata_file > $cleaned_run_records_metadata_file
+grep -E -v 'Total events|DAQInterface start time|DAQInterface stop time' $run_records_metadata_file > $cleaned_run_records_metadata_file
 
 res_boot=$( diff --ignore-blank-lines $temporary_daqinterface_boot_file $run_records_boot_file )
 res_metadata=$( diff --ignore-blank-lines $temporary_metadata_file $cleaned_run_records_metadata_file )

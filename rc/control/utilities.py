@@ -368,6 +368,34 @@ def fhicl_writes_root_file(fhicl_string):
     else:
         return False
 
+def fhiclize_document(filename):
+
+    fhiclized_lines = []
+
+    with open(filename) as inf:
+        for line in inf.readlines():
+            # Parse any line that's not blank or a comment                                                                           
+            if not re.search(r"^\s*$", line) and not re.search(r"^\s*#.*$", line):
+                res = re.search(r"^\s*(\S[^:]*):\s*(\S.*)[\s]", line)
+                if res:
+                    key = res.group(1)
+                    key = "_".join( key.split() )
+                    key = re.sub(r"[\(\)/]", "_", key)
+
+                    value = res.group(2)
+                    value = value.strip(' "')
+                    value = value.strip("'")
+                    value = value.replace("\"", "\\\"")
+
+                    fhiclized_lines.append("%s: \"%s\"" % (key, value))
+                else:
+                    print "WARNING: %s not able to FHiCLize the line \"%s\"" % \
+                        (fhiclize_document.__name__, line.rstrip())
+            else:
+                continue
+    return "\n".join( fhiclized_lines )
+
+
 def obtain_messagefacility_fhicl():
 
     if "DAQINTERFACE_MESSAGEFACILITY_FHICL" in os.environ.keys():

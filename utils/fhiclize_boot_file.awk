@@ -52,7 +52,7 @@
 	    }
 	}
 
-	if (secondpart !~ /^[0-9.]+$/ || gsub("\\.", ".", secondpart) > 1 ) {
+	if ((secondpart !~ /^[0-9.]+$/ || gsub("\\.", ".", secondpart) > 1) && (secondpart !~ /^\".*\"$/)) {
 	    print firstpart ": \"" secondpart "\"";
 	} else {
 	    print firstpart ": " secondpart

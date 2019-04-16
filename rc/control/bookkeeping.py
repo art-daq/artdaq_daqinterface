@@ -215,7 +215,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     proc_hosts = []
 
-    for procinfo in self.procinfos:
+    procinfos_sorted_by_rank = sorted(self.procinfos, key=lambda procinfo: procinfo.rank)
+    for procinfo in procinfos_sorted_by_rank:
 
         if procinfo.name == "RoutingMaster":
             continue
@@ -287,7 +288,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 
         procinfos_for_string = []
 
-        for procinfo_to_check in self.procinfos:
+        for procinfo_to_check in procinfos_sorted_by_rank:
             add = False   # As in, "add this process we're checking to the sources or destinations table"
 
             if procinfo_to_check.subsystem == procinfo.subsystem and not inter_subsystem_transfer:
@@ -398,9 +399,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                         nonsending_boardreaders.append( procinfo.label )
 
             sender_ranks = "sender_ranks: [%s]" % ( ",".join( 
-                [ str(otherproc.rank) for otherproc in self.procinfos if (otherproc.subsystem == self.procinfos[i_proc].subsystem and "BoardReader" in otherproc.name and otherproc.label not in nonsending_boardreaders) or ("DFO" in otherproc.label) ] ))
+                [ str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "BoardReader" in otherproc.name and otherproc.label not in nonsending_boardreaders ] ))
             receiver_ranks = "receiver_ranks: [%s]" % ( ",".join( 
-                [ str(otherproc.rank) for otherproc in self.procinfos if otherproc.subsystem == self.procinfos[i_proc].subsystem and "EventBuilder" in otherproc.name ] ))
+                [ str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "EventBuilder" in otherproc.name ] ))
 
             self.procinfos[i_proc].fhicl_used = re.sub("sender_ranks\s*:\s*\[.*\]",
                                                        sender_ranks,
@@ -428,11 +429,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         self.procinfos[i_proc].fhicl_used = re.sub("request_address\s*:\s*[\"0-9\.]+", 
                                                    "request_address: \"%s\"" % (request_address.strip("\"")), 
                                                    self.procinfos[i_proc].fhicl_used)
-
-        if not self.request_port is None:
-            self.procinfos[i_proc].fhicl_used = re.sub("request_port\s*:\s*[0-9]+", 
-                                                       "request_port: %d" % (self.request_port), 
-                                                       self.procinfos[i_proc].fhicl_used)
 
         self.procinfos[i_proc].fhicl_used = re.sub("partition_number\s*:\s*[0-9]+", 
                                                    "partition_number: %d" % (self.partition_number), 
@@ -523,7 +519,14 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                         rootoutput_table + \
                                                         self.procinfos[i_proc].fhicl_used[end:]
                                                     
-                
+    for fhicl_key, fhicl_value in self.bootfile_fhicl_overwrites.iteritems():
+        print fhicl_key, fhicl_value
+        for i_proc in range(len(self.procinfos)):
+            self.procinfos[i_proc].fhicl_used = re.sub(r"%s\s*:\s*\S+" % (fhicl_key), \
+                                                       "%s: %s" % (fhicl_key, fhicl_value), \
+                                                       self.procinfos[i_proc].fhicl_used)
+        
+                                                                         
 
 def bookkeeping_for_fhicl_documents_artdaq_v4_base(self):
     pass

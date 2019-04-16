@@ -44,9 +44,12 @@ def get_config_info_base(self):
 
     return tmpdir, ffp
 
-# put_config_info_base should be a no-op 
+# put_config_info_base and put_config_info_on_stop_base should be no-ops
 
 def put_config_info_base(self):
+    pass
+
+def put_config_info_on_stop_base(self):
     pass
 
 def get_boot_info_base(self, boot_filename):
@@ -83,17 +86,6 @@ def get_boot_info_base(self, boot_filename):
             self.daq_dir = os.path.dirname( self.daq_setup_script ) + "/"
             continue
 
-        res = re.search(r"^\s*tcp_base_port\s*:\s*(\S+)",
-                        line)
-        if res:
-            raise Exception(make_paragraph("Jun-29-2018: the variable \"tcp_base_port\" was found in the boot file %s; this use is deprecated as tcp port values are now set internally in artdaq since artdaq commit d338b810c589a177ff1a34d82fa82a459cc1704b" % (boot_filename)))
-
-        res = re.search(r"^\s*request_port\s*:\s*(\S+)",
-                        line)
-        if res:
-            self.request_port = int( res.group(1) )
-            continue
-
         res = re.search(r"^\s*request_address\s*:\s*(\S+)",
                         line)
         if res:
@@ -111,11 +103,6 @@ def get_boot_info_base(self, boot_filename):
         if res:
             self.routing_base_port = res.group(1)
             continue
-
-        res = re.search(r"^\s*partition_number\s*:\s*(\S+)",
-                        line)
-        if res:
-            raise Exception(make_paragraph("Jun-24-2018: the variable \"partition_number\" was found in the boot file %s; this use is deprecated as \"partition_number\" is now set by the DAQINTERFACE_PARTITION_NUMBER environment variable" % (boot_filename)))
 
         res = re.search(r"^\s*debug level\s*:\s*(\S+)",
                         line)
@@ -171,6 +158,21 @@ def get_boot_info_base(self, boot_filename):
 
                 if res.group(2) == "host":
                     num_expected_processes += 1
+
+        # JCF, Mar-29-2019
+
+        # In light of the experience at ProtoDUNE, it appears
+        # necessary to allow experiments the ability to overwrite
+        # FHiCL parameters at will in the boot file. A use case that
+        # came up was that a fragment generator had a parameter whose
+        # value needed to be a function of the partition, but the
+        # fragment generator had no direct knowledge of what partition
+        # it was on
+
+        res = re.search(r"^\s*(\S+)\s*:\s*(\S+)", line)
+        if res:
+            print "Caught line %s for FHiCL overwrite" % (line)
+            self.bootfile_fhicl_overwrites[ res.group(1) ] = res.group(2)
 
         # Taken from Eric: if a line is blank or a comment or we've
         # reached the last line in the boot file, check to see if
