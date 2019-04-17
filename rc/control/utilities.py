@@ -154,6 +154,23 @@ def enclosing_table_range(fhiclstring, searchstring, startingloc=0):
 
     open_brace_loc = string.rindex(fhiclstring, "{", startingloc, loc)
 
+    # JCF, Apr-16-2019
+
+    # Going by the principle of "if you're going to fail, fail
+    # loudly", assert False if it turns out that the open_brace_loc
+    # above isn't actually the start of the enclosing table but is
+    # rather the start of a table which is WITHIN the enclosing table,
+    # but above the snippet represented by searchstring
+
+    try:
+        prior_close_brace_loc = string.rindex(fhiclstring, "}", startingloc, loc)
+        assert prior_close_brace_loc < open_brace_loc, "Error in enclosing_table_range: a } was found between the snippet \"%s\"and the {, meaning the { doesn't actually enclose the full table containing the snippet" % (searchstring)
+
+    except:
+        pass
+        # Exception here means there's no close brace at all above the snippet, so we're golden
+
+
     close_braces_needed = 1
     close_brace_loc = -1
 

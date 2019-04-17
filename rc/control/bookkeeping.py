@@ -434,50 +434,125 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                    "partition_number: %d" % (self.partition_number), 
                                                    self.procinfos[i_proc].fhicl_used)
 
-        if self.table_update_address is None:
-            if "DFO" in self.procinfos[i_proc].label:
-                table_update_address = "227.129.%d.%d" % (self.partition_number, 129 + int(self.procinfos[i_proc].subsystem))
-            else:
-                table_update_address = "227.129.%d.%d" % (self.partition_number, 128 + int(self.procinfos[i_proc].subsystem))
-        else:
-            table_update_address = self.table_update_address
+    # JCF, Apr-17-2019
 
-        self.procinfos[i_proc].fhicl_used = re.sub("table_update_address\s*:\s*[\"0-9\.]+", 
-                                                   "table_update_address: \"%s\"" % (table_update_address.strip("\"")), 
-                                                   self.procinfos[i_proc].fhicl_used)
+    # For this next pass over the artdaq processes, we'll bookkeep the
+    # parameters (ports, addresses, etc.) describing the physical
+    # hookup of the routingmaster to its connected processes. So,
+    # let's memo-ize these parameters
+
+    table_update_addresses = {}
+    routing_base_ports = {}
+    routing_master_hostnames = {}
+
+    for subsystem_id, subsystem in self.subsystems.items():
+        routing_master_for_subsystem_as_list = [routing_master_for_subsystem for routing_master_for_subsystem in \
+                                               self.procinfos if "RoutingMaster" in routing_master_for_subsystem.name \
+                                               and routing_master_for_subsystem.subsystem == subsystem_id ]
+
+        if len(routing_master_for_subsystem_as_list) == 0:
+            table_update_addresses[ subsystem_id ] = None
+            routing_base_ports[ subsystem_id ] = None
+            routing_master_hostnames[ subsystem_id ] = None             
+
+        elif len(routing_master_for_subsystem_as_list) == 1:
+            routing_master_for_subsystem = routing_master_for_subsystem_as_list[0]
+
+            table_update_addresses[ subsystem_id ] = "227.129.%d.%d" % (self.partition_number, \
+                                                                        int(subsystem_id) + 128)
+            routing_base_ports[ subsystem_id ] = int(os.environ["ARTDAQ_BASE_PORT"]) + 10 + \
+                                                 int(os.environ["ARTDAQ_PORTS_PER_PARTITION"])*self.partition_number + int(subsystem_id)
+            routing_master_hostnames[ subsystem_id ] = routing_master_for_subsystem.host
+            if routing_master_hostnames[ subsystem_id ] == "localhost":
+                routing_master_hostnames[ subsystem_id ] = os.environ["HOSTNAME"]
+        else:
+            raise Exception(make_paragraph("DAQInterface has found more than one RoutingMaster associated with subsystem %s requested in the boot file %s; this isn't currently supported" % (subsystem_id, self.boot_filename)))
+
+
+    for i_proc in range(len(self.procinfos)):
         
-        if self.routing_base_port is None:
-            print self.procinfos[i_proc].label
-            if "DFO" in self.procinfos[i_proc].label:
-                routing_base_port = int(os.environ["ARTDAQ_BASE_PORT"]) + 11 + \
-                                    int(os.environ["ARTDAQ_PORTS_PER_PARTITION"])*self.partition_number + int(self.procinfos[i_proc].subsystem)
-            else:
-                routing_base_port = int(os.environ["ARTDAQ_BASE_PORT"]) + 10 + \
-                                    int(os.environ["ARTDAQ_PORTS_PER_PARTITION"])*self.partition_number + int(self.procinfos[i_proc].subsystem)
-        else:
-            routing_base_port = int(self.routing_base_port)
+        if "BoardReader" in self.procinfos[i_proc].name:
 
-        self.procinfos[i_proc].fhicl_used = re.sub("routing_token_port\s*:\s*[0-9]+", 
-                                                   "routing_token_port: %d" % (routing_base_port), 
-                                                   self.procinfos[i_proc].fhicl_used)
+            br_subsystem = self.procinfos[i_proc].subsystem
+            if br_subsystem not in routing_master_hostnames.keys(): 
+                continue
+                
+            table_start, table_end = table_range(self.procinfos[i_proc].fhicl_used, "routing_table_config")
 
-        self.procinfos[i_proc].fhicl_used = re.sub("table_update_port\s*:\s*[0-9]+", 
-                                                   "table_update_port: %d" % (routing_base_port + 10), 
-                                                   self.procinfos[i_proc].fhicl_used)
+            if table_start == -1 or table_end == -1:
+                raise Exception(make_paragraph("RoutingMaster process for subsystem %s requires that a routing_table_config FHiCL table exists in the %s BoardReaders's FHiCL, but none was found" % (br_subsystem, self.procinfos[i_proc].label)))
 
-        self.procinfos[i_proc].fhicl_used = re.sub("table_acknowledge_port\s*:\s*[0-9]+", 
-                                                   "table_acknowledge_port: %d" % (routing_base_port + 20), 
-                                                   self.procinfos[i_proc].fhicl_used)
+            routing_table_config = self.procinfos[i_proc].fhicl_used[table_start:table_end]
+            routing_table_config = re.sub("table_update_address\s*:\s*[\"0-9\.]+", 
+                                          "table_update_address: \"%s\"" % (table_update_addresses[br_subsystem].strip("\"")),
+                                          routing_table_config)
+            routing_table_config = re.sub("table_update_port\s*:\s*[0-9]+", 
+                                          "table_update_port: %d" % (routing_base_ports[br_subsystem] + 10), 
+                                          routing_table_config)
+            routing_table_config = re.sub("table_acknowledge_port\s*:\s*[0-9]+", 
+                                          "table_acknowledge_port: %d" % (routing_base_ports[br_subsystem] + 20), 
+                                          routing_table_config)
+            routing_table_config = re.sub("routing_master_hostname\s*:\s*\S+",
+                                          "routing_master_hostname: \"%s\"" % (routing_master_hostnames[br_subsystem].strip("\"")),
+                                          routing_table_config)
 
-        routingmaster_hostnames = [procinfo.host for procinfo in self.procinfos if procinfo.name == "RoutingMaster" and procinfo.subsystem == self.procinfos[i_proc].subsystem ]
-        assert len(routingmaster_hostnames) == 0 or len(routingmaster_hostnames) == 1
+            self.procinfos[i_proc].fhicl_used = self.procinfos[i_proc].fhicl_used[:table_start] + \
+                                "\n" + routing_table_config + "\n" + \
+                                self.procinfos[i_proc].fhicl_used[table_end:]
+         
+        elif "EventBuilder" in self.procinfos[i_proc].name:
+            pass
+
+        # if self.table_update_address is None:
+
+        #     last_part_of_default_address = 128 + int(self.procinfos[i_proc].subsystem)
+
+        #     (start, end) = enclosing_table_range(self.procinfos[i_proc].fhicl_used, "BinaryNetOutput\s*:")
+
+        #     if start != -1 and end != -1:
+        #         if "routing_table_config" in self.procinfos[i_proc].fhicl_used[start:end]:
+        #             last_part_of_default_address += 1
+
+        #     table_update_address = "227.129.%d.%d" % (self.partition_number, last_part_of_default_address)
+        # else:
+        #     table_update_address = self.table_update_address
+
+        # self.procinfos[i_proc].fhicl_used = re.sub("table_update_address\s*:\s*[\"0-9\.]+", 
+        #                                            "table_update_address: \"%s\"" % (table_update_address.strip("\"")), 
+        #                                            self.procinfos[i_proc].fhicl_used)
+        
+        # if self.routing_base_port is None:
+        #     print self.procinfos[i_proc].label
+        #     if "DFO" in self.procinfos[i_proc].label:
+        #         routing_base_port = int(os.environ["ARTDAQ_BASE_PORT"]) + 11 + \
+        #                             int(os.environ["ARTDAQ_PORTS_PER_PARTITION"])*self.partition_number + int(self.procinfos[i_proc].subsystem)
+        #     else:
+        #         routing_base_port = int(os.environ["ARTDAQ_BASE_PORT"]) + 10 + \
+        #                             int(os.environ["ARTDAQ_PORTS_PER_PARTITION"])*self.partition_number + int(self.procinfos[i_proc].subsystem)
+        # else:
+        #     routing_base_port = int(self.routing_base_port)
+
+        # self.procinfos[i_proc].fhicl_used = re.sub("routing_token_port\s*:\s*[0-9]+", 
+        #                                            "routing_token_port: %d" % (routing_base_port), 
+        #                                            self.procinfos[i_proc].fhicl_used)
+
+        # self.procinfos[i_proc].fhicl_used = re.sub("table_update_port\s*:\s*[0-9]+", 
+        #                                            "table_update_port: %d" % (routing_base_port + 10), 
+        #                                            self.procinfos[i_proc].fhicl_used)
+
+        # self.procinfos[i_proc].fhicl_used = re.sub("table_acknowledge_port\s*:\s*[0-9]+", 
+        #                                            "table_acknowledge_port: %d" % (routing_base_port + 20), 
+        #                                            self.procinfos[i_proc].fhicl_used)
+
+        # routing_master_hostnames = [procinfo.host for procinfo in self.procinfos if procinfo.name == "RoutingMaster" and procinfo.subsystem == self.procinfos[i_proc].subsystem ]
+        # assert len(routing_master_hostnames) == 0 or len(routing_master_hostnames) == 1
     
-        if len(routingmaster_hostnames) == 1:
-            if routingmaster_hostnames[0] == "localhost":
-                routingmaster_hostnames[0] = os.environ["HOSTNAME"]
-            self.procinfos[i_proc].fhicl_used = re.sub("routing_master_hostname\s*:\s*\S+",
-                                                       "routing_master_hostname: \"%s\"" % (routingmaster_hostnames[0].strip("\"")),
-                                                       self.procinfos[i_proc].fhicl_used)
+        # if len(routing_master_hostnames) == 1:
+        #     if routing_master_hostnames[0] == "localhost":
+        #         routing_master_hostnames[0] = os.environ["HOSTNAME"]
+        #     self.procinfos[i_proc].fhicl_used = re.sub("routing_master_hostname\s*:\s*\S+",
+        #                                                "routing_master_hostname: \"%s\"" % (routing_master_hostnames[0].strip("\"")),
+        #                                                self.procinfos[i_proc].fhicl_used)
 
     firstLoggerRank = 9999999
 
