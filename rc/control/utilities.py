@@ -118,6 +118,15 @@ def table_range(fhiclstring, tablename, startingloc=0):
     if loc == -1:
         return (-1, -1)
 
+    # JCF, Apr-18-2019
+    # Account for the scenario where in the FHiCL we have something like 
+    # table_whose_range_we_want: @local::table_which_gets_assigned_to_table_whose_range_we_want
+
+    res = re.search(r"%s\s*:\s*@local::(\S+)" % tablename, fhiclstring[loc:])
+    if res:
+        original_table_name = res.group(1)
+        return table_range(fhiclstring, original_table_name)
+
     open_brace_loc = string.index(fhiclstring[loc:], "{")
 
     close_braces_needed = 1
