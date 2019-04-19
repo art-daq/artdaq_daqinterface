@@ -472,35 +472,39 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         elif len(routing_master_for_subsystem_as_list) > 1:
             raise Exception(make_paragraph("DAQInterface has found more than one RoutingMaster associated with subsystem %s requested in the boot file %s; this isn't currently supported" % (subsystem_id, self.boot_filename)))
 
+    # JCF, Apr-18-2019
 
-    # Bookkeep the routing_table_config FHiCL table for process with
-    # index i_proc using physical values associated with the
-    # routing_master found in subsystem "routing_master_subsystem"
+    # bookkeep_table_for_routing_master takes any parameters in a
+    # table related to a routing_master, and bookkeeps them so they
+    # refer to the routing_master in routing_master_subsystem
 
-    def bookkeep_routing_table_config(i_proc, routing_master_subsystem):
+    def bookkeep_table_for_routing_master(i_proc, routing_master_subsystem, tablename):
 
-        table_start, table_end = table_range(self.procinfos[i_proc].fhicl_used, "routing_table_config")
+        table_start, table_end = table_range(self.procinfos[i_proc].fhicl_used, tablename)
 
         if table_start == -1 or table_end == -1:
-            raise Exception(make_paragraph("RoutingMaster process for subsystem %s requires that a routing_table_config FHiCL table exists in process %s's FHiCL (found in subsystem %s), but none was found" % (routing_master_subsystem, self.procinfos[i_proc].label, self.procinfos[i_proc].subsystem)))
+            raise Exception(make_paragraph("RoutingMaster process for subsystem %s requires that a FHiCL table called \"%s\" exists in process %s's FHiCL, but none was found" % (routing_master_subsystem, tablename, self.procinfos[i_proc].label)))
 
-        routing_table_config = self.procinfos[i_proc].fhicl_used[table_start:table_end]
+        table_to_bookkeep = self.procinfos[i_proc].fhicl_used[table_start:table_end]
 
-        routing_table_config = re.sub("table_update_address\s*:\s*[\"0-9\.]+", 
+        table_to_bookkeep = re.sub("table_update_address\s*:\s*[\"0-9\.]+", 
                                       "table_update_address: \"%s\"" % (table_update_addresses[routing_master_subsystem].strip("\"")),
-                                      routing_table_config)
-        routing_table_config = re.sub("table_update_port\s*:\s*[0-9]+", 
+                                      table_to_bookkeep)
+        table_to_bookkeep = re.sub("table_update_port\s*:\s*[0-9]+", 
                                       "table_update_port: %d" % (routing_base_ports[routing_master_subsystem] + 10), 
-                                      routing_table_config)
-        routing_table_config = re.sub("table_acknowledge_port\s*:\s*[0-9]+", 
+                                      table_to_bookkeep)
+        table_to_bookkeep = re.sub("table_acknowledge_port\s*:\s*[0-9]+", 
                                       "table_acknowledge_port: %d" % (routing_base_ports[routing_master_subsystem] + 20), 
-                                      routing_table_config)
-        routing_table_config = re.sub("routing_master_hostname\s*:\s*\S+",
+                                      table_to_bookkeep)
+        table_to_bookkeep = re.sub("routing_master_hostname\s*:\s*\S+",
                                       "routing_master_hostname: \"%s\"" % (routing_master_hostnames[routing_master_subsystem].strip("\"")),
-                                      routing_table_config)
+                                      table_to_bookkeep)
+        table_to_bookkeep = re.sub("routing_token_port\s*:\s*[0-9]+", 
+                                      "routing_token_port: %d" % (routing_base_ports[routing_master_subsystem]), 
+                                      table_to_bookkeep)
 
         self.procinfos[i_proc].fhicl_used = self.procinfos[i_proc].fhicl_used[:table_start] + \
-                            "\n" + routing_table_config + "\n" + \
+                            "\n" + table_to_bookkeep + "\n" + \
                             self.procinfos[i_proc].fhicl_used[table_end:]
 
 
@@ -513,32 +517,20 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             if routing_master_subsystem not in routing_master_hostnames: 
                 continue
                 
-            bookkeep_routing_table_config(i_proc, routing_master_subsystem)
+            bookkeep_table_for_routing_master(i_proc, routing_master_subsystem, "routing_table_config")
          
         elif "EventBuilder" in self.procinfos[i_proc].name:
             eb_subsystem = self.procinfos[i_proc].subsystem
 
             if eb_subsystem in routing_master_hostnames: 
-
-                table_start, table_end = table_range(self.procinfos[i_proc].fhicl_used, "routing_token_config")
-
-                if table_start == -1 or table_end == -1:
-                    raise Exception(make_paragraph("RoutingMaster process for subsystem %s requires that a routing_token_config FHiCL table exists in the %s EventBuilder's FHiCL, but none was found" % (eb_subsystem, self.procinfos[i_proc].label)))
-
-                routing_token_config = self.procinfos[i_proc].fhicl_used[table_start:table_end]                
-
-                routing_token_config = re.sub("routing_token_port\s*:\s*[0-9]+", 
-                                              "routing_token_port: %d" % (routing_base_ports[eb_subsystem]), 
-                                              routing_token_config)
-
-                routing_token_config = re.sub("routing_master_hostname\s*:\s*\S+",
-                                              "routing_master_hostname: \"%s\"" % (routing_master_hostnames[eb_subsystem].strip("\"")),
-                                              routing_token_config)
+                bookkeep_table_for_routing_master(i_proc, eb_subsystem, "routing_token_config")
 
             parents_of_subsystems_with_routing_masters = [self.subsystems[subsystem_id].source for subsystem_id in self.subsystems if self.subsystems[subsystem_id].source != "not set" and subsystem_id in routing_master_hostnames.keys()]
                 
             if eb_subsystem in parents_of_subsystems_with_routing_masters:
-                bookkeep_routing_table_config(i_proc, self.subsystems[eb_subsystem].destination)
+                bookkeep_table_for_routing_master(i_proc, self.subsystems[eb_subsystem].destination, "routing_table_config")
+        elif "RoutingMaster" in self.procinfos[i_proc].name:
+            bookkeep_table_for_routing_master(i_proc, self.procinfos[i_proc].subsystem, "daq")
 
     firstLoggerRank = 9999999
 
