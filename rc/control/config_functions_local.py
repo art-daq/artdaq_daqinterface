@@ -143,7 +143,12 @@ def get_boot_info_base(self, boot_filename):
                                 "problem parsing " + boot_filename +
                                 " at line \"" + line + "\"")
 
-            subsystemDict[res.group(2)] = res.group(3)
+            subsystem_key = res.group(2)
+
+            if subsystem_key != "source" or subsystemDict[ "source" ] == "not set":
+                subsystemDict[subsystem_key] = res.group(3)
+            else:
+                subsystemDict[subsystem_key] += " %s" % (res.group(3))
 
 
         if "EventBuilder" in line or \
@@ -171,7 +176,6 @@ def get_boot_info_base(self, boot_filename):
 
         res = re.search(r"^\s*(\S+)\s*:\s*(\S+)", line)
         if res:
-            print "Caught line %s for FHiCL overwrite" % (line)
             self.bootfile_fhicl_overwrites[ res.group(1) ] = res.group(2)
 
         # Taken from Eric: if a line is blank or a comment or we've
@@ -196,7 +200,16 @@ def get_boot_info_base(self, boot_filename):
 
             if filled_subsystem_info:
                 
-                self.subsystems[subsystemDict["id"]] = self.Subsystem(subsystemDict["source"], subsystemDict["destination"])
+                sources = []
+                if subsystemDict["source"] != "not set":
+                    sources = [ source.strip() for source in subsystemDict["source"].split() ] 
+                
+                destination = None
+                if subsystemDict["destination"] != "not set":
+                    destination = subsystemDict["destination"]
+
+                self.subsystems[subsystemDict["id"]] = self.Subsystem(sources, destination)
+
                 subsystemDict["id"] = None
                 subsystemDict["source"] = "not set"
                 subsystemDict["destination"] = "not set"
@@ -239,7 +252,7 @@ def get_boot_info_base(self, boot_filename):
     # doesn't have any source subsystems or any destination subsystems
 
     if len(self.subsystems) == 0:
-        self.subsystems["1"] = self.Subsystem("not set", "not set")
+        self.subsystems["1"] = self.Subsystem()
 
     self.set_process_manager_default_variables()
 
