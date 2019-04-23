@@ -1,5 +1,6 @@
 # Name Host [Port [Subsystem]]
 felixHF01 localhost -1 1
+felixHF02 localhost -1 5
 felix01 localhost -1 4
 felix02 localhost -1 4
 felix03 localhost -1 4
