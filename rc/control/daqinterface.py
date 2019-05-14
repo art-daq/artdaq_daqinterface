@@ -155,13 +155,14 @@ class DAQInterface(Component):
     # host and port
 
     class Procinfo(object):
-        def __init__(self, name, rank, host, port, label=None, subsystem="1", fhicl=None, fhicl_file_path = []):
+        def __init__(self, name, rank, host, port, label=None, subsystem="1", allowed_processors = None, fhicl=None, fhicl_file_path = []):
             self.name = name
             self.rank = rank
             self.port = port
             self.host = host
             self.label = label
             self.subsystem = subsystem
+            self.allowed_processors = allowed_processors
             self.fhicl = fhicl     # Name of the input FHiCL document
             self.ffp = fhicl_file_path
             self.priority = 999
@@ -518,6 +519,7 @@ class DAQInterface(Component):
         self.data_directory_override = None
         self.max_configurations_to_list = 1000000
         self.disable_unique_rootfile_labels = False
+        self.allowed_processors = None
 
         self.productsdir = None
 
@@ -614,6 +616,8 @@ class DAQInterface(Component):
                     self.data_directory_override = self.data_directory_override + "/"
             elif "transfer_plugin_to_use" in line or "transfer plugin to use" in line:
                 self.transfer = line.split()[-1].strip()
+            elif "allowed_processors" in line or "allowed processors" in line:
+                self.allowed_processors = line.split()[-1].strip()
                 
 
         missing_vars = []
@@ -1398,7 +1402,20 @@ class DAQInterface(Component):
 
         for boardreader_rank, compname in enumerate(self.daq_comp_list):
 
-            boardreader_host, boardreader_port, boardreader_subsystem = self.daq_comp_list[ compname ]
+            boardreader_port = "-1"
+            boardreader_subsystem="1"
+            boardreader_allowed_processors="-1"
+
+            if len(self.daq_comp_list[ compname ] ) == 1:
+                boardreader_host = self.daq_comp_list[ compname ]
+            elif len(self.daq_comp_list[ compname ] ) == 2:
+                boardreader_host, boardreader_port = self.daq_comp_list[ compname ]
+            elif len(self.daq_comp_list[ compname ] ) == 3:
+                boardreader_host, boardreader_port, boardreader_subsystem = self.daq_comp_list[ compname ]
+            elif len(self.daq_comp_list[ compname ] ) == 4:
+                boardreader_host, boardreader_port, boardreader_subsystem, boardreader_allowed_processors = self.daq_comp_list[ compname ]
+            else:
+                raise Exception(make_paragraph("There's an unexpected number of elements which were passed for component \"%s\" in the setdaqcomps call" % (compname)))
 
             # Make certain the formula below for calculating the port
             # # matches with the formula used to calculate the ports
@@ -1412,10 +1429,13 @@ class DAQInterface(Component):
                                         boardreader_rank )
                 self.daq_comp_list[ compname ] = boardreader_host, boardreader_port, boardreader_subsystem
 
+            if boardreader_allowed_processors == "-1":
+                boardreader_allowed_processors = None
+
             self.procinfos.append(self.Procinfo("BoardReader",
                                                 boardreader_rank,
                                                 boardreader_host,
-                                                boardreader_port, compname, boardreader_subsystem))
+                                                boardreader_port, compname, boardreader_subsystem, boardreader_allowed_processors))
 
             try:
                 for priority, regexp in enumerate(self.boardreader_priorities):
