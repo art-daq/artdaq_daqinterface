@@ -117,7 +117,7 @@ def launch_procs_base(self):
     self.print_log("d", "PROCESS LAUNCH COMMANDS: \n" + "\n".join( self.launch_cmds ), 2)
 
     with deepsuppression(self.debug_level < 4):
-        status = Popen(launchcmd, shell=True).wait()
+        status = Popen(launchcmd, shell=True, preexec_fn=os.setpgrp).wait()
 
     if status != 0:   
         raise Exception("Status error raised; commands were \"\n%s\n\n\". For more information, you can check to see if a pmt (process management tool) logfile was produced during the failure in the directory %s/pmt on %s. Also try again with \"debug level\" set to 4 in the boot file, or even running the above commands interactively on %s after performing a clean login and source-ing the DAQInterface environment." %

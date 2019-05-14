@@ -59,6 +59,14 @@ def save_run_record_base(self):
     if not os.path.exists(outdir + "/setup.txt"):
         self.alert_and_recover("Problem creating file %s/setup.txt" % (outdir))
 
+    assert os.path.exists( os.environ["DAQINTERFACE_SETTINGS"] )
+
+    Popen("cp -p " + os.environ["DAQINTERFACE_SETTINGS"] + " " + outdir + 
+          "/settings.txt", shell=True).wait()
+
+    if not os.path.exists(outdir + "/settings.txt"):
+        self.alert_and_recover("Problem creating file " + outdir + "/settings.txt")    
+
     assert os.path.exists( os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"] )
 
     Popen("cp -p " + os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"] +
@@ -150,7 +158,8 @@ def save_run_record_base(self):
         ranksfile.write("        host   port         label  rank\n")
         ranksfile.write("\n")
 
-        for procinfo in self.procinfos:
+        procinfos_sorted_by_rank = sorted(self.procinfos, key=lambda procinfo: procinfo.rank)
+        for procinfo in procinfos_sorted_by_rank:
             host = procinfo.host
             if host == "localhost":
                 host = os.environ["HOSTNAME"]

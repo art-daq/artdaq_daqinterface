@@ -5,7 +5,8 @@ services: {
   }
   NetMonTransportServiceInterface: {
     service_provider: NetMonTransportService
-    #broadcast_sends: true
+    broadcast_sends: true
+    nonblocking_sends: true
 	destinations: {	}
 
 	routing_table_config: {
@@ -48,11 +49,12 @@ outputs: {
   }
   normalOutput: {
    module_type: RootDAQOut
-   fileName: "/tmp/artdaqdemo_eb00_r%06r_sr%02s_%to_%#.root"
+   fileName: "/tmp/artdaqdemo_eb${OneBasedRelativeRank}_r%06r_sr%02s_%to_%#.root"
    #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
    fileProperties: { maxRuns: 1  }
    compressionLevel: 3
    fastCloning: false
+    firstLoggerRank: 9999999
  }
 }
 

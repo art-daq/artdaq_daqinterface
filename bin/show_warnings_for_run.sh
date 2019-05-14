@@ -19,8 +19,8 @@ if [[ ! -e $metadata_file ]]; then
     exit 1
 fi
 
-run_start_time=$( sed -r -n "s/Start time:\s*(.*)/\1/p" $metadata_file )
-run_stop_time=$( sed -r -n "s/Stop time:\s*(.*)/\1/p" $metadata_file )
+run_start_time=$( sed -r -n "s/DAQInterface start time:\s*(.*)/\1/p" $metadata_file )
+run_stop_time=$( sed -r -n "s/DAQInterface stop time:\s*(.*)/\1/p" $metadata_file )
 
 if [[ -z $run_start_time ]]; then
     run_start_time="unknown"
