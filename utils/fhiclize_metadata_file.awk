@@ -139,8 +139,8 @@
 	secondpart=substr($0, RSTART+1);
 	sub("^[ +]", "", secondpart)
 
-	if (firstpart ~ "Config name" || firstpart ~ "Start time" ||
-	    firstpart ~ "Stop time" || firstpart ~ "Total events" ) {
+	if (firstpart ~ "Config name" || firstpart ~ "DAQInterface start time" ||
+	    firstpart ~ "DAQInterface stop time" || firstpart ~ "Total events" ) {
 	    
 	    firstpart = tolower(firstpart)
 	    sub(" ", "_", firstpart)
