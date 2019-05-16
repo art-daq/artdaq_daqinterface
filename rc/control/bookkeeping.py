@@ -41,8 +41,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         version = self.get_package_version("artdaq")
 
-        res = re.search(r"v([0-9])_([0-9]{2})_([0-9]{2})(.*)", version)
-    
+        res = re.search(r"v([0-9]+)_([0-9]+)_([0-9]+)(.*)", version)    
+
         if not res:
             raise Exception("Problem parsing the calculated version of artdaq, %s" % (version))
 
