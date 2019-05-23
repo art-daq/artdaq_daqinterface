@@ -36,4 +36,4 @@ max_fragment_size_bytes: 1024000
 
 advanced_memory_usage: false
 
-disable_unique_rootfile_labels: true
+#disable_unique_rootfile_labels: true
