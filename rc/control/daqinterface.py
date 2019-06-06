@@ -1334,7 +1334,7 @@ class DAQInterface(Component):
         ranksfile = "/tmp/ranks%s.txt" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"])
             
         if not os.path.exists(ranksfile):
-            raise Exception("Error: DAQInterface run in XXXXXX mode expects your experiment's run control to provide it with a file named /tmp/ranks%s.txt (see documentation YYYYYY)" % (ranksfile))
+            raise Exception("Error: DAQInterface run in external_run_control mode expects your experiment's run control to provide it with a file named %s" % (ranksfile))
 
         with open(ranksfile) as inf:
             for line in inf.readlines():
