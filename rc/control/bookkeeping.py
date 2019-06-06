@@ -516,8 +516,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
             if routing_master_subsystem not in routing_master_hostnames: 
                 continue
-                
-            bookkeep_table_for_routing_master(i_proc, routing_master_subsystem, "routing_table_config")
+
+            if not re.search(r"\n\s*sends_no_fragments\s*:\s*[Tt]rue", self.procinfos[i_proc].fhicl_used) and \
+               not re.search(r"\n\s*generated_fragments_per_event\s*:\s*0", self.procinfos[i_proc].fhicl_used):                
+                bookkeep_table_for_routing_master(i_proc, routing_master_subsystem, "routing_table_config")
          
         elif "EventBuilder" in self.procinfos[i_proc].name:
             eb_subsystem = self.procinfos[i_proc].subsystem
