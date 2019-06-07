@@ -16,6 +16,7 @@ expanded_daqinterface_logfilename=$( echo $( eval echo $DAQINTERFACE_LOGFILE ) )
 if [[ -e $expanded_daqinterface_logfilename ]]; then
     previous_lines_of_logfile=$( wc -l $expanded_daqinterface_logfilename | awk '{print $1}' )
 else
+    > $expanded_daqinterface_logfilename  # Create the logfile so tail -f, below, won't complain
     previous_lines_of_logfile=0
 fi
 
