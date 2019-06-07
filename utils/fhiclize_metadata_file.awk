@@ -151,7 +151,7 @@
 	    next
 	} else if (firstpart ~ /commit\/version/) {
 	    gsub("[- ]", "_", firstpart)
-	    sub("commit\/version", "commit_or_version", firstpart)
+	    sub("commit/version", "commit_or_version", firstpart)
 	    gsub("\"", " ", secondpart); # Strip the quotes surrounding the commit
 	    # comment, otherwise quotes added later
 	    # will render illegal FHiCL
