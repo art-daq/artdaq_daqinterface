@@ -362,6 +362,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             # TODO: Generate "binaryNetOutput" block if missing and needed!
             if enclosing_table_name(self.procinfos[i_proc].fhicl_used, tablename) == "binaryNetOutput":
                 inter_subsystem_transfer = True
+            if enclosing_table_name(self.procinfos[i_proc].fhicl_used, tablename) == "routingNetOutput":
+                inter_subsystem_transfer = True
 
             # 13-Apr-2018, KAB: modified this statement from an "if" test to
             # a "while" loop so that it will modify all of the source and
@@ -385,11 +387,13 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 inter_subsystem_transfer = False
                 if enclosing_table_name(self.procinfos[i_proc].fhicl_used, tablename, searchstart) == "binaryNetOutput":
                     inter_subsystem_transfer = True
+                if enclosing_table_name(self.procinfos[i_proc].fhicl_used, tablename, searchstart) == "routingNetOutput":
+                    inter_subsystem_transfer = True
 
 
     for i_proc in range(len(self.procinfos)):
         
-        if "RoutingMaster" in self.procinfos[i_proc].name:
+        if "RoutingMaster" in self.procinfos[i_proc].name or "DFO" in self.procinfos[i_proc].label:
 
             nonsending_boardreaders = []
             for procinfo in self.procinfos:
@@ -405,7 +409,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             eventbuilders_in_sender_ranks = [ int(otherproc.rank) for otherproc in procinfos_sorted_by_rank if "EventBuilder" in otherproc.name and self.subsystems[otherproc.subsystem].destination == self.procinfos[i_proc].subsystem ]
 
             sorted_sender_ranks_list = sorted(boardreaders_in_sender_ranks + eventbuilders_in_sender_ranks, key=lambda rank: rank)
-            sorted_receiver_ranks_list = [ str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "EventBuilder" in otherproc.name ]
+            if "DFO" in self.procinfos[i_proc].label:
+                sorted_receiver_ranks_list = [ str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.subsystems[self.procinfos[i_proc].subsystem].destination and "EventBuilder" in otherproc.name ]
+            else:
+                sorted_receiver_ranks_list = [ str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "EventBuilder" in otherproc.name ]
 
             sender_ranks = "sender_ranks: [%s]" % ( ",".join( [str(rnk) for rnk in sorted_sender_ranks_list] ))
             receiver_ranks = "receiver_ranks: [%s]" % ( ",".join( sorted_receiver_ranks_list ))
