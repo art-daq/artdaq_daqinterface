@@ -1,0 +1,68 @@
+#include "routing_master_parameters.fcl"
+
+BEGIN_PROLOG
+
+eventbuilder_daq_standard: {
+  event_builder: {
+    expected_fragments_per_event: 0  # Will be set by DAQInterface
+    max_event_size_bytes: 16777216
+    use_art: true
+    buffer_count: 5
+    max_incomplete_events: 75 # Same as boardreader sync interval
+    verbose: true
+    send_requests: true
+    request_port: 3001
+    request_address: "227.128.12.26" # Multicast request address
+
+    routing_token_config: @local::subsystem2_routing_token_specification
+
+    sources: { }
+  }
+  metrics: {
+    evbFile: {
+      metricPluginType: "file"
+      level: 3
+      fileName: "/tmp/eventbuilder/evb_%UID%_metrics.log"
+      uniquify: true
+    }
+  }
+} 
+
+eventbuilder_art_standard: {
+  services: {
+    scheduler: {
+      errorOnFailureToPut: false
+    }
+    NetMonTransportServiceInterface: {
+      service_provider: NetMonTransportService
+      #broadcast_sends: true
+      destinations: { }
+    }
+  }
+
+  source: {
+    module_type: DemoInput
+    waiting_time: 2500000
+    resume_after_timeout: true
+  }
+
+  physics: {
+    analyzers: { }
+
+    producers: { }
+
+    filters: { }
+
+    my_output_modules: [ rootNetOutput ]
+  }
+
+  outputs: {
+    rootNetOutput: {
+      module_type: RootNetOutput
+      #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
+    }
+  }
+  process_name: DAQ
+}
+
+END_PROLOG
