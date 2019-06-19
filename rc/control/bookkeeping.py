@@ -351,6 +351,20 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         return "\n".join( nodes )   # End function create_sources_or_destinations_string()
 
+    def get_router_process_identifier(procinfo):
+        if "RoutingMaster" in procinfo.name:
+            return "RoutingMaster"
+        elif "DFO" in procinfo.label:
+            return "DFO"
+        else:
+            return None
+
+    router_process_info = {}
+    router_process_info["RoutingMaster"] = { "location" : "child", \
+                                             "enclosing_table_for_senders" : "binaryNetOutput" }
+    router_process_info["DFO"] = { "location" : "parent", \
+                                   "enclosing_table_for_senders" : "routingNetOutput" }
+
     for i_proc in range(len(self.procinfos)):
 
         for tablename in [ "sources", "destinations" ]:
@@ -358,10 +372,17 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             (table_start, table_end) =  table_range(self.procinfos[i_proc].fhicl_used, \
                                         tablename)
 
-            inter_subsystem_transfer = False
-            # TODO: Generate "binaryNetOutput" block if missing and needed!
-            if enclosing_table_name(self.procinfos[i_proc].fhicl_used, tablename) == "binaryNetOutput":
-                inter_subsystem_transfer = True
+            def determine_if_inter_subsystem_transfer(procinfo, table_name, table_searchstart):
+                router_process_identifier = get_router_process_identifier(procinfo)
+
+                if router_process_identifier in router_process_info and \
+                   router_process_info[ router_process_identifier ]["enclosing_table_for_senders"] == enclosing_table_name(procinfo.fhicl_used, table_name, table_searchstart):
+                    return True
+                else:
+                    return False
+
+            searchstart = 0
+            inter_subsystem_transfer = determine_if_inter_subsystem_transfer(self.procinfos[i_proc], tablename, searchstart)
 
             # 13-Apr-2018, KAB: modified this statement from an "if" test to
             # a "while" loop so that it will modify all of the source and
@@ -382,9 +403,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 (table_start, table_end) = \
                     table_range(self.procinfos[i_proc].fhicl_used, \
                                     tablename, searchstart)
-                inter_subsystem_transfer = False
-                if enclosing_table_name(self.procinfos[i_proc].fhicl_used, tablename, searchstart) == "binaryNetOutput":
-                    inter_subsystem_transfer = True
+
+                inter_subsystem_transfer = determine_if_inter_subsystem_transfer(self.procinfos[i_proc], tablename, searchstart)
 
 
     for i_proc in range(len(self.procinfos)):
