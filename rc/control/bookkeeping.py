@@ -365,6 +365,17 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     router_process_info["DFO"] = { "location" : "parent_subsystem", \
                                    "enclosing_table_for_senders" : "routingNetOutput" }
 
+    # Couple of sanity checks
+
+    for procinfo in self.procinfos:
+        
+        # A DFO shouldn't share a subsystem with any other eventbuilders 
+
+        if get_router_process_identifier(procinfo) == "DFO":
+            rogue_eventbuilders = [ pi.label for pi in self.procinfos if "EventBuilder" in pi.name and pi.subsystem == procinfo.subsystem and pi.label != procinfo.label ]
+            if len(rogue_eventbuilders) > 0:
+                raise Exception(make_paragraph("The following EventBuilder(s) were found in subsystem %s, location of DFO process %s; a DFO can't share a subsystems with other EventBuilders: %s" % (procinfo.subsystem, procinfo.label, " ".join(rogue_eventbuilders))))
+
     for i_proc in range(len(self.procinfos)):
 
         for tablename in [ "sources", "destinations" ]:
