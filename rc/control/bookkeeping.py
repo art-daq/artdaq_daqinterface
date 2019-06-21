@@ -360,10 +360,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             return None
 
     router_process_info = {}
-    router_process_info["RoutingMaster"] = { "location" : "child_subsystem", \
-                                             "enclosing_table_for_senders" : "binaryNetOutput" }
-    router_process_info["DFO"] = { "location" : "parent_subsystem", \
-                                   "enclosing_table_for_senders" : "routingNetOutput" }
+    router_process_info["RoutingMaster"] = { "location" : "child_subsystem" }
+    router_process_info["DFO"] = { "location" : "parent_subsystem" }
 
     # Couple of sanity checks
 
@@ -391,13 +389,11 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                         tablename)
 
             def determine_if_inter_subsystem_transfer(procinfo, table_name, table_searchstart):
-                router_process_identifier = get_router_process_identifier(procinfo)
+                for enclosing_sender_table in ["routingNetOutput", "binaryNetOutput"]:
+                    if enclosing_table_name(procinfo.fhicl_used, table_name, table_searchstart) == enclosing_sender_table:
+                        return True
 
-                if router_process_identifier in router_process_info and \
-                   router_process_info[ router_process_identifier ]["enclosing_table_for_senders"] == enclosing_table_name(procinfo.fhicl_used, table_name, table_searchstart):
-                    return True
-                else:
-                    return False
+                return False
 
             searchstart = 0
             inter_subsystem_transfer = determine_if_inter_subsystem_transfer(self.procinfos[i_proc], tablename, searchstart)
