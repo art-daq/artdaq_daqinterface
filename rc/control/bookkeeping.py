@@ -376,6 +376,13 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             if len(rogue_eventbuilders) > 0:
                 raise Exception(make_paragraph("The following EventBuilder(s) were found in subsystem %s, location of DFO process %s; a DFO can't share a subsystems with other EventBuilders: %s" % (procinfo.subsystem, procinfo.label, " ".join(rogue_eventbuilders))))
 
+        # There shouldn't be a RoutingMaster in a subsystem with a parent subsystem which contains a DFO
+
+        if get_router_process_identifier(procinfo) == "DFO":
+            rogue_routingmasters = [pi.label for pi in self.procinfos if "RoutingMaster" in pi.name and self.subsystems[procinfo.subsystem].destination == pi.subsystem]
+            if len(rogue_routingmasters) > 0:
+                raise Exception(make_paragraph("A RoutingMaster was found in subsystem %s; this is illegal since a parent of subsystem %s, subsystem %s, contains a DFO (%s). The problem RoutingMaster(s): %s" % (self.subsystems[procinfo.subsystem].destination, self.subsystems[procinfo.subsystem].destination, procinfo.subsystem, procinfo.label, " ".join(rogue_routingmasters))))
+
     for i_proc in range(len(self.procinfos)):
 
         for tablename in [ "sources", "destinations" ]:
@@ -435,14 +442,18 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             # and eventbuilders in subsystem M if subsystem M is a parent of subsystem N
 
             boardreaders_in_sender_ranks = [ int(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "BoardReader" in otherproc.name and otherproc.label not in nonsending_boardreaders ]
+
             eventbuilders_in_sender_ranks = [ int(otherproc.rank) for otherproc in procinfos_sorted_by_rank if "EventBuilder" in otherproc.name and self.subsystems[otherproc.subsystem].destination == self.procinfos[i_proc].subsystem ]
 
             sorted_sender_ranks_list = sorted(boardreaders_in_sender_ranks + eventbuilders_in_sender_ranks, key=lambda rank: rank)
-            if router_process_info[ router_process_identifier ]["location"] == "child_subsystem":
+
+            router_location = router_process_info[ router_process_identifier ]["location"]
+            if router_location == "child_subsystem":
                 sorted_receiver_ranks_list = [ str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "EventBuilder" in otherproc.name ]
-            elif router_process_info[ router_process_identifier ]["location"] == "parent_subsystem":
+            elif router_location == "parent_subsystem":
                 sorted_receiver_ranks_list = [ str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.subsystems[self.procinfos[i_proc].subsystem].destination and "EventBuilder" in otherproc.name ]
-                
+            else:
+                assert False, "Developer error: logic needs to be added here for the %s case of a router process location" % (router_location)
 
             sender_ranks = "sender_ranks: [%s]" % ( ",".join( [str(rnk) for rnk in sorted_sender_ranks_list] ))
             receiver_ranks = "receiver_ranks: [%s]" % ( ",".join( sorted_receiver_ranks_list ))
