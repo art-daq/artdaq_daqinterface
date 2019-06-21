@@ -581,8 +581,12 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
 
     for i_proc in range(len(self.procinfos)):
-        
-        if "BoardReader" in self.procinfos[i_proc].name:
+
+        if get_router_process_identifier(self.procinfos[i_proc]) == "RoutingMaster":
+            bookkeep_table_for_router_process(i_proc, self.procinfos[i_proc].subsystem, "daq")
+        elif get_router_process_identifier(self.procinfos[i_proc]) == "DFO":
+            bookkeep_table_for_router_process(i_proc, self.subsystems[self.procinfos[i_proc].subsystem].destination, "art")
+        elif "BoardReader" in self.procinfos[i_proc].name:
             br_subsystem = self.procinfos[i_proc].subsystem
             router_process_subsystem = br_subsystem
 
@@ -603,10 +607,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 
             if eb_subsystem in parents_of_subsystems_with_routing_masters:
                 bookkeep_table_for_router_process(i_proc, self.subsystems[eb_subsystem].destination, "routing_table_config")
-        elif get_router_process_identifier(self.procinfos[i_proc]) == "RoutingMaster":
-            bookkeep_table_for_router_process(i_proc, self.procinfos[i_proc].subsystem, "daq")
-        elif get_router_process_identifier(self.procinfos[i_proc]) == "DFO":
-            bookkeep_table_for_router_process(i_proc, self.subsystems[self.procinfos[i_proc].subsystem].destination, "art")
 
     firstLoggerRank = 9999999
 
