@@ -917,8 +917,11 @@ class DAQInterface(Component):
         loglists = [ self.boardreader_log_filenames, self.eventbuilder_log_filenames, self.datalogger_log_filenames, \
                      self.dispatcher_log_filenames, self.routingmaster_log_filenames ]
         logfilename_in_list_form = [ logfilename for loglist in loglists for logfilename in loglist if "/%s-" % (procinfo.label) in logfilename ]
-        assert len(logfilename_in_list_form) == 1, "Incorrect assumption made by DAQInterface about the format of the logfilenames; please contact John Freeman at jcfree@fnal.gov"
-        return logfilename_in_list_form[0]
+        assert len(logfilename_in_list_form) <= 1, "Incorrect assumption made by DAQInterface about the format of the logfilenames; please contact John Freeman at jcfree@fnal.gov"
+        if len(logfilename_in_list_form) == 1:
+            return logfilename_in_list_form[0]
+        else:
+            return "(LOGFILE UNDETERMINED)"
 
     def check_boot_info(self):
 
