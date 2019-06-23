@@ -265,7 +265,7 @@ def listdaqcomps_base(self):
     count = len(lines)
 
     for line in lines:
-        if re.search(r"^\s*#", line):
+        if re.search(r"^\s*#", line) or re.search(r"^\s*$", line):
             count = count - 1
 
     print
@@ -273,7 +273,7 @@ def listdaqcomps_base(self):
 
     lines.sort()
     for line in lines:
-        if re.search(r"^\s*#", line):
+        if re.search(r"^\s*#", line) or re.search(r"^\s*$", line):
             continue
         component = line.split()[0].strip()
         host = line.split()[1].strip()
