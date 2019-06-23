@@ -969,19 +969,17 @@ class DAQInterface(Component):
             else:
                 full_hostname = os.environ["HOSTNAME"]
             
-            res = re.search(r"^([^.]+)", full_hostname)
-            assert res
-            short_hostname = res.group(1)
-
             procinfos_for_host = [procinfo for procinfo in self.procinfos if procinfo.host == host]
             cmds = []
             proctypes = []
 
+            cmds.append('short_hostname=$( hostname | sed -r "s/([^.]+).*/\\1/" )')
             for procinfo in procinfos_for_host:
 
-                cmds.append( "ls -tr1 %s/%s-%s-%s/%s-%s-%s*.log | tail -1" % (self.log_directory,
-                                                                       procinfo.label, short_hostname, procinfo.port,
-                                                                       procinfo.label, short_hostname, procinfo.port) )
+                cmds.append( "ls -tr1 %s/%s-$short_hostname-%s/%s-$short_hostname-%s*.log | tail -1" % \
+                             (self.log_directory,
+                              procinfo.label, procinfo.port,
+                              procinfo.label, procinfo.port) )
                 proctypes.append( procinfo.name )
 
             cmd = "; ".join( cmds )
