@@ -38,6 +38,8 @@ def launch_procs_base(self):
     pass
 def mopup_process_base(self):
     pass
+def perform_periodic_action_base(self):
+    pass
 def process_launch_diagnostics_base(self):
     pass
 def process_manager_cleanup_base(self):

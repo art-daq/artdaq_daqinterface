@@ -3,6 +3,8 @@
 import os
 import sys
 sys.path.append( os.environ["ARTDAQ_DAQINTERFACE_DIR"] )
+if "DAQINTERFACE_OVERRIDES_FOR_EXPERIMENT_MODULE_DIR" in os.environ:
+    sys.path.append( os.environ["DAQINTERFACE_OVERRIDES_FOR_EXPERIMENT_MODULE_DIR"] )
 
 import argparse
 import datetime
@@ -19,6 +21,7 @@ import shutil
 from shutil import copyfile
 import random
 import signal
+import imp
 
 from rc.io.timeoutclient import TimeoutServerProxy
 from rc.control.component import Component 
@@ -27,10 +30,6 @@ from rc.control.deepsuppression import deepsuppression
 from rc.control.save_run_record import save_run_record_base
 from rc.control.save_run_record import total_events_in_run_base
 from rc.control.save_run_record import save_metadata_value_base
-from rc.control.all_functions_noop import start_datataking_base
-from rc.control.all_functions_noop import stop_datataking_base
-from rc.control.all_functions_noop import do_enable_base
-from rc.control.all_functions_noop import do_disable_base
 from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v3_base
 
 from rc.control.online_monitoring import launch_art_procs_base
@@ -49,6 +48,36 @@ from rc.control.utilities import kill_tail_f
 
 from rc.control.config_functions_local import get_boot_info_base
 from rc.control.config_functions_local import listdaqcomps_base
+
+try:
+    imp.find_module("daqinterface_overrides_for_experiment")
+    from daqinterface_overrides_for_experiment import perform_periodic_action_base
+except:
+    from rc.control.all_functions_noop import perform_periodic_action_base
+
+try:
+    imp.find_module("daqinterface_overrides_for_experiment")
+    from daqinterface_overrides_for_experiment import start_datataking_base
+except:
+    from rc.control.all_functions_noop import start_datataking_base
+
+try:
+    imp.find_module("daqinterface_overrides_for_experiment")
+    from daqinterface_overrides_for_experiment import stop_datataking_base
+except:
+    from rc.control.all_functions_noop import stop_datataking_base
+
+try:
+    imp.find_module("daqinterface_overrides_for_experiment")
+    from daqinterface_overrides_for_experiment import do_enable_base
+except:
+    from rc.control.all_functions_noop import do_enable_base
+
+try:
+    imp.find_module("daqinterface_overrides_for_experiment")
+    from daqinterface_overrides_for_experiment import do_disable_base
+except:
+    from rc.control.all_functions_noop import do_disable_base
 
 process_management_methods = ["direct", "pmt", "external_run_control"]
 
@@ -101,10 +130,10 @@ elif os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "external_run_contr
     from rc.control.all_functions_noop import get_pid_for_process_base
     from rc.control.all_functions_noop import process_launch_diagnostics_base
     from rc.control.all_functions_noop import mopup_process_base
+
     def find_process_manager_variable_base(self, line):  # Actually used in get_boot_info() despite external_run_control
         return False
 # This is the end of if-elifs of process management methods 
-    
 
 if not "DAQINTERFACE_FHICL_DIRECTORY" in os.environ:
     print
@@ -441,6 +470,7 @@ class DAQInterface(Component):
     process_launch_diagnostics = process_launch_diagnostics_base
     mopup_process = mopup_process_base
     get_pid_for_process = get_pid_for_process_base
+    perform_periodic_action = perform_periodic_action_base
 
     # The actual transition functions called by Run Control; note
     # these just set booleans which are tested in the runner()
@@ -2317,6 +2347,7 @@ class DAQInterface(Component):
                 self.do_disable()
 
             elif self.manage_processes and self.state(self.name) != "stopped" and self.state(self.name) != "booting" and self.state(self.name) != "terminating":
+                self.perform_periodic_action()
                 self.check_proc_heartbeats()
                 self.check_proc_exceptions()
 
@@ -2451,9 +2482,9 @@ def main():  # no-coverage
     default_sighup_handler = signal.signal(signal.SIGHUP, handle_kill_signal)
     default_sigint_handler = signal.signal(signal.SIGINT, handle_kill_signal)
 
-
     with DAQInterface(logpath=os.path.join(os.environ["HOME"], ".lbnedaqint.log"),
                       **vars(args)) as daqinterface_instance:
+
         while True:
             sleep(100)
 
