@@ -262,8 +262,8 @@ class DAQInterface(Component):
     # artdaq subsytem.
 
     class Subsystem(object):
-        def __init__(self, source = None, destination = None):
-            self.source = source
+        def __init__(self, sources = [], destination = None):
+            self.sources = sources
             self.destination = destination
 
         def __lt__(self, other):
@@ -957,6 +957,12 @@ class DAQInterface(Component):
         if len(set([procinfo.label for procinfo in self.procinfos])) < len(self.procinfos):
             raise Exception(make_paragraph("At least one of your desired artdaq processes has a duplicate label; please check the boot file to ensure that each process gets a unique label"))
 
+        for ss in self.subsystems:
+           dest = self.subsystems[ss].destination
+           if dest is not None:
+                 if self.subsystems[dest] == None or ss not in self.subsystems[dest].sources:
+                    raise Exception(make_paragraph("Inconsistent subsystem configuration detected! Subsystem %s has destination %s, but subsystem %s doesn't have %s in its list of sources!" % (ss, dest, dest, ss)))
+
     def get_artdaq_log_filenames(self):
 
         self.boardreader_log_filenames = []
@@ -1501,8 +1507,20 @@ class DAQInterface(Component):
         if self.manage_processes:
             
             for ss in self.subsystems:
-                self.print_log("d", "Subsystem %s, source subsystem %s, destination subsystem %s" % 
-                               (ss, self.subsystems[ss].source, self.subsystems[ss].destination), 2)
+
+                subsystem_line = "Subsystem %s: " % (ss)
+
+                if len(self.subsystems[ss].sources) == 0:
+                    subsystem_line += "subsystem source(s): None"
+                else:
+                    subsystem_line += "subsystem source(s): %s" % ([", ".join(self.subsystems[ss].sources)])
+
+                if self.subsystems[ss].destination is None:
+                    subsystem_line += ", subsystem destination: None"
+                else:
+                    subsystem_line += ", subsystem destination: %s" % (self.subsystems[ss].destination)
+
+                self.print_log("d", subsystem_line, 2)
 
             for procinfo in self.procinfos:
                 self.print_log("d", "%s at %s:%s, part of subsystem %s, has rank %d" % (procinfo.label, procinfo.host, procinfo.port, procinfo.subsystem, procinfo.rank), 2)

@@ -19,6 +19,11 @@ Subsystem source: 2
 
 Subsystem id: 4
 Subsystem source: 3
+Subsystem source: 5
+
+Subsystem id: 5
+Subsystem destination: 4
+
 
 EventBuilder host: localhost
 EventBuilder label: TrigCand
@@ -43,6 +48,10 @@ EventBuilder subsystem: 4
 EventBuilder host: localhost
 EventBuilder label: EventBuilder3
 EventBuilder subsystem: 4
+
+EventBuilder host: localhost
+EventBuilder label: EventBuilder4
+EventBuilder subsystem: 5
 
 DataLogger host: localhost
 DataLogger label: DataLogger1

@@ -12,8 +12,8 @@
     ## True if using the Routing Master
     use_routing_master: true
 
-    ## Port to send tokens on
     token_receiver: {
+    ## Port to send tokens on
         routing_token_port: 35555  # default
     }
 
