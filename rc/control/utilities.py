@@ -118,6 +118,15 @@ def table_range(fhiclstring, tablename, startingloc=0):
     if loc == -1:
         return (-1, -1)
 
+    # JCF, Apr-18-2019
+    # Account for the scenario where in the FHiCL we have something like 
+    # table_whose_range_we_want: @local::table_which_gets_assigned_to_table_whose_range_we_want
+
+    res = re.search(r"%s\s*:\s*@local::(\S+)" % tablename, fhiclstring[loc:])
+    if res:
+        original_table_name = res.group(1)
+        return table_range(fhiclstring, original_table_name)
+
     open_brace_loc = string.index(fhiclstring[loc:], "{")
 
     close_braces_needed = 1
@@ -153,6 +162,23 @@ def enclosing_table_range(fhiclstring, searchstring, startingloc=0):
         return (-1, -1)
 
     open_brace_loc = string.rindex(fhiclstring, "{", startingloc, loc)
+
+    # JCF, Apr-16-2019
+
+    # Going by the principle of "if you're going to fail, fail
+    # loudly", assert False if it turns out that the open_brace_loc
+    # above isn't actually the start of the enclosing table but is
+    # rather the start of a table which is WITHIN the enclosing table,
+    # but above the snippet represented by searchstring
+
+    try:
+        prior_close_brace_loc = string.rindex(fhiclstring, "}", startingloc, loc)
+        assert prior_close_brace_loc < open_brace_loc, "Error in enclosing_table_range: a } was found between the snippet \"%s\"and the {, meaning the { doesn't actually enclose the full table containing the snippet" % (searchstring)
+
+    except:
+        pass
+        # Exception here means there's no close brace at all above the snippet, so we're golden
+
 
     close_braces_needed = 1
     close_brace_loc = -1
@@ -368,6 +394,34 @@ def fhicl_writes_root_file(fhicl_string):
     else:
         return False
 
+def fhiclize_document(filename):
+
+    fhiclized_lines = []
+
+    with open(filename) as inf:
+        for line in inf.readlines():
+            # Parse any line that's not blank or a comment                                                                           
+            if not re.search(r"^\s*$", line) and not re.search(r"^\s*#.*$", line):
+                res = re.search(r"^\s*(\S[^:]*):\s*(\S.*)[\s]", line)
+                if res:
+                    key = res.group(1)
+                    key = "_".join( key.split() )
+                    key = re.sub(r"[\(\)/]", "_", key)
+
+                    value = res.group(2)
+                    value = value.strip(' "')
+                    value = value.strip("'")
+                    value = value.replace("\"", "\\\"")
+
+                    fhiclized_lines.append("%s: \"%s\"" % (key, value))
+                else:
+                    print "WARNING: %s not able to FHiCLize the line \"%s\"" % \
+                        (fhiclize_document.__name__, line.rstrip())
+            else:
+                continue
+    return "\n".join( fhiclized_lines )
+
+
 def obtain_messagefacility_fhicl():
 
     if "DAQINTERFACE_MESSAGEFACILITY_FHICL" in os.environ.keys():
@@ -476,6 +530,15 @@ def main():
 
     if bash_unsetup_test:
         Popen( bash_unsetup_command, shell=True)
+
+def kill_tail_f():
+    tail_pids = get_pids("%s.*tail -f %s" % 
+                         (os.environ["DAQINTERFACE_TTY"], os.environ["DAQINTERFACE_LOGFILE"]))
+    if len(tail_pids) > 0:
+        status = Popen("kill %s" % (" ".join(tail_pids)), shell=True).wait()
+        if status != 0:
+            print "There was a problem killing \"tail -f\" commands in this terminal; you'll want to do this manually or you'll get confusing output moving forward"
+
 
 if __name__ == "__main__":
     main()

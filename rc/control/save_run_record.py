@@ -158,7 +158,8 @@ def save_run_record_base(self):
         ranksfile.write("        host   port         label  rank\n")
         ranksfile.write("\n")
 
-        for procinfo in self.procinfos:
+        procinfos_sorted_by_rank = sorted(self.procinfos, key=lambda procinfo: procinfo.rank)
+        for procinfo in procinfos_sorted_by_rank:
             host = procinfo.host
             if host == "localhost":
                 host = os.environ["HOSTNAME"]

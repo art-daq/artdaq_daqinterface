@@ -15,6 +15,9 @@ import subprocess
 from subprocess import Popen
 from rc.control.deepsuppression import deepsuppression
 from rc.control.utilities import make_paragraph
+from rc.control.utilities import fhiclize_document
+import shutil
+from shutil import copyfile
 
 import re
 import os
@@ -26,6 +29,7 @@ from conftool import exportConfiguration
 from conftool import getListOfAvailableRunConfigurationPrefixes
 from conftool import getListOfAvailableRunConfigurations
 from conftool import archiveRunConfiguration
+from conftool import updateArchivedRunConfiguration
 
 def config_basedir(self):
     return "/tmp/database/"
@@ -89,7 +93,7 @@ def put_config_info_base(self):
     cmds.append( "chmod 777 " + runnum )
     cmds.append( "cat " + runnum + "/metadata.txt | awk -f $scriptdir/fhiclize_metadata_file.awk > " + runnum + "/metadata.fcl" )
     cmds.append( "cat " + runnum + "/boot.txt | awk -f $scriptdir/fhiclize_boot_file.awk > " + runnum + "/boot.fcl" )
-    cmds.append( "cat " + runnum + "/known_boardreaders_list.txt | sed -r 's/^\s*(\S+)\s+(\S+)\s+(\S+)/\\1: [\"\\2\", \"\\3\"]/' > " + runnum + "/known_boardreaders_list.fcl")
+    cmds.append( "cat " + runnum + "/known_boardreaders_list.txt | awk -f $scriptdir/fhiclize_known_boardreaders_list_file.awk > " + runnum + "/known_boardreaders_list.fcl")
     cmds.append( "rm -f " + runnum + "/*.txt")
 
     if os.getenv("ARTDAQ_DATABASE_CONFDIR") is None:
@@ -137,7 +141,7 @@ def put_config_info_base(self):
                     
                     for procinfo in self.procinfos:
                         if label == procinfo.label:
-                            assert host == procinfo.host
+                            assert host == procinfo.host or (procinfo.host == "localhost" and host == os.environ["HOSTNAME"])
                             assert port == procinfo.port
 
                             # "host" used for the check, but could just as well be "port", "label" or "rank"
@@ -157,18 +161,29 @@ def put_config_info_base(self):
 
         with open( "%s/%s/metadata.fcl" % (tmpdir, runnum) ) as metadata_file:
             for line in metadata_file.readlines():
-                if "Start_time" not in line and "Stop_time" not in line and not line == "":
+                if "DAQInterface_start_time" not in line and "DAQInterface_stop_time" not in line and not line == "":
                     dataflow_file.write("\n" + line)
 
     with open( "%s/%s/RunHistory.fcl" % (tmpdir, runnum), "w" ) as runhistory_file:
         runhistory_file.write("\nrun_number: %s" % (runnum))
         
+        with open( "%s/%s/metadata.fcl" % (tmpdir, runnum) ) as metadata_file:
+            for line in metadata_file.readlines():
+                if "config_name" in line:
+                    runhistory_file.write("\n" + line)
+                elif "components" in line:
+                    runhistory_file.write("\n" + line)
+
+        if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "external_run_control" and \
+           os.path.exists("/tmp/info_to_archive_partition%d.txt" % (self.partition_number)):
+            runhistory_file.write( fhiclize_document( "/tmp/info_to_archive_partition%d.txt" % (self.partition_number) ) )
 
     basedir=os.getcwd()
     os.chdir( tmpdir )
 
     with deepsuppression(self.debug_level < 2):
-        result = archiveRunConfiguration( self.config_for_run, runnum )
+        subconfigs_for_run = [subconfig.replace("/","_") for subconfig in self.subconfigs_for_run]
+        result = archiveRunConfiguration( "_".join(subconfigs_for_run), runnum )
 
     if not result:
         raise Exception(make_paragraph("There was an error attempting to archive the FHiCL documents (temporarily saved in %s); this may be because of an issue with the schema file, %s/schema.fcl, such as an unlisted fragment generator" % (tmpdir, os.environ["ARTDAQ_DATABASE_CONFDIR"])))
@@ -181,6 +196,38 @@ def put_config_info_base(self):
     shutil.rmtree( tmpdir )
 
     return
+
+def put_config_info_on_stop_base(self):
+
+    if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] != "external_run_control" or \
+       not os.path.exists("/tmp/info_to_archive_partition%d.txt" % (self.partition_number)):
+        return
+
+    runnum = str(self.run_number)
+    tmpdir = "/tmp/" + Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    os.mkdir(tmpdir)
+    os.mkdir("%s/%s" % (tmpdir, runnum))
+    os.chdir(tmpdir)
+
+
+    with open( "%s/%s/RunHistory2.fcl" % (tmpdir, runnum), "w" ) as runhistory_file:
+        runhistory_file.write( fhiclize_document( "/tmp/info_to_archive_partition%d.txt" % (self.partition_number ) ))
+
+    copyfile("%s/schema.fcl" % (os.environ["ARTDAQ_DATABASE_CONFDIR"]), "%s/schema.fcl" % (tmpdir))
+
+    with deepsuppression():
+        subconfigs_for_run = [subconfig.replace("/","_") for subconfig in self.subconfigs_for_run]
+        result = updateArchivedRunConfiguration( "_".join(subconfigs_for_run), runnum )
+
+    if not result:
+        raise Exception(make_paragraph("There was an error attempting to archive the FHiCL documents (temporarily saved in %s); this may be because of an issue with the schema file, %s/schema.fcl, such as an unlisted fragment generator" % (tmpdir, os.environ["ARTDAQ_DATABASE_CONFDIR"])))
+
+
+    res = re.search(r"\w{8}-\w{4}-\w{4}-\w{4}-\w{12}", tmpdir)
+    assert res, "Unable to find uuidgen-generated temporary directory, will perform no deletions"
+
+    os.chdir("/tmp")
+    shutil.rmtree( tmpdir )
 
 def listdaqcomps_base(self):
     assert False, "%s not yet implemented" % (listdaqcomps_base.__name__)
