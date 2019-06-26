@@ -2347,9 +2347,9 @@ class DAQInterface(Component):
                 self.do_disable()
 
             elif self.manage_processes and self.state(self.name) != "stopped" and self.state(self.name) != "booting" and self.state(self.name) != "terminating":
-                self.perform_periodic_action()
                 self.check_proc_heartbeats()
                 self.check_proc_exceptions()
+                self.perform_periodic_action()
 
         except Exception:
             self.in_recovery = True
