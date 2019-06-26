@@ -326,7 +326,7 @@ def reformat_fhicl_documents(setup_fhiclcpp, procinfos):
     status = Popen("\n".join(cmds), shell=True).wait()
 
     if status != 0:
-        raise Exception("There was a problem reformatting the FHiCL documents; to troubleshoot you can set the debug level to 2 or higher in the boot file and try again")
+        raise Exception("There was a problem reformatting the FHiCL documents found in %s; to troubleshoot you can set the debug level to 2 or higher in the boot file and try again" % (reformat_indir))
 
     reformatted_fhicl_strings = []
     for label in [procinfo.label for procinfo in procinfos]:
