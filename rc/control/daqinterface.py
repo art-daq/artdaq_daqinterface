@@ -407,8 +407,8 @@ class DAQInterface(Component):
                     "changes, and restart.") + "\n")
             sys.exit(1)
 
-        self.print_log("i", "DAQInterface in partition %s launched and now in \"%s\" state, listening on port %d" % 
-                                           (self.partition_number, self.state(self.name), self.rpc_port))
+        self.print_log("i", "%s: DAQInterface in partition %s launched and now in \"%s\" state, listening on port %d" % 
+                                           (date_and_time(), self.partition_number, self.state(self.name), self.rpc_port))
 
     def __del__(self):
         kill_tail_f()
