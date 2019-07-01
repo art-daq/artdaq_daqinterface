@@ -79,6 +79,13 @@ try:
 except:
     from rc.control.all_functions_noop import do_disable_base
 
+try:
+    imp.find_module("daqinterface_overrides_for_experiment")
+    from daqinterface_overrides_for_experiment import check_config_base
+except:
+    from rc.control.all_functions_noop import check_config_base
+
+
 process_management_methods = ["direct", "pmt", "external_run_control"]
 
 if "DAQINTERFACE_PROCESS_MANAGEMENT_METHOD" not in os.environ.keys():
@@ -471,6 +478,7 @@ class DAQInterface(Component):
     mopup_process = mopup_process_base
     get_pid_for_process = get_pid_for_process_base
     perform_periodic_action = perform_periodic_action_base
+    check_config = check_config_base
 
     # The actual transition functions called by Run Control; note
     # these just set booleans which are tested in the runner()
@@ -1900,6 +1908,13 @@ class DAQInterface(Component):
 
         endtime = time()
         self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
+
+        try:
+            self.check_config()
+        except Exception:
+            self.print_log("w", traceback.format_exc())
+            self.revert_failed_transition("calling experiment-defined function get_config_info()")
+            return
 
         if self.manage_processes:
 

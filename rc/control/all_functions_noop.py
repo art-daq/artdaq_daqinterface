@@ -20,6 +20,8 @@
 
 def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     pass
+def check_config_base(self):
+    pass
 def check_proc_heartbeats_base(self):
     pass
 def do_disable_base(self):
