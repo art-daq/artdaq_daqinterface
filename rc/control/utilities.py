@@ -4,6 +4,7 @@ import re
 import string
 import socket
 import shutil
+import sys
 
 import subprocess
 from subprocess import Popen
@@ -382,6 +383,9 @@ def get_commit_comment( gitrepo ):
         single_line_comment = single_line_comment[0:max_length] + "..."
 
     return single_line_comment
+
+def get_commit_info(pkgname, gitrepo):
+    return "%s commit/version: %s \"%s\"" % (pkgname, get_commit_hash(gitrepo), get_commit_comment(gitrepo))
         
 def fhicl_writes_root_file(fhicl_string):
 
@@ -471,6 +475,38 @@ udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THI
 
 
 def main():
+
+    if len(sys.argv) > 1 and sys.argv[1] == "get_commit_info":
+        if len(sys.argv) != 5:
+            print make_paragraph("Error: expected four arguments (\"get_commit_info\", the name of the package (dashes, not underscores), the full pathname of that package's git repository whose commit info you want, and the full pathname of the output directory where you want to save the commit info)")
+            sys.exit(1)
+        pkgname = sys.argv[2]
+        gitrepo = sys.argv[3]
+        outputdir = sys.argv[4]
+
+        if not os.path.exists(gitrepo):
+            print "Error: requested repo \"%s\" doesn't appear to exist" % (gitrepo)
+            sys.exit(2)
+
+        if not os.path.exists(outputdir):
+            print "Error: requested output directory \"%s\" doesn't appear to exist" % (outputdir)
+            sys.exit(3)
+
+        filename = "%s/%s_commit_info.txt" % (outputdir, pkgname) 
+
+        try:
+            outf = open(filename, "w")
+        except:
+            print "Error: problem opening the file \"%s\" for writing" % (filename)
+            sys.exit(4)
+            
+        try:
+            outf.write(get_commit_info(pkgname, gitrepo))
+        except:
+            print "Error: problem getting the commit info from \"%s\"" % (gitrepo)
+            sys.exit(5)
+        
+        sys.exit(0)
 
     paragraphed_string_test = False
     msgviewer_check_test = True
