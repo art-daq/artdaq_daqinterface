@@ -384,9 +384,17 @@ def get_commit_comment( gitrepo ):
 
     return single_line_comment
 
+# JCF, Jul-6-2019
+
+# Note to self: if you modify the label before the colon below, make sure you make commensurate 
+# modifications in save_run_record...
+
 def get_commit_info(pkgname, gitrepo):
     return "%s commit/version: %s \"%s\"" % (pkgname, get_commit_hash(gitrepo), get_commit_comment(gitrepo))
         
+def get_commit_info_filename(pkgname):
+    return "%s_commit_info.txt" % (pkgname)
+
 def fhicl_writes_root_file(fhicl_string):
 
     # 17-Apr-2018, KAB: added the MULTILINE flag to get this search to behave as desired.
@@ -492,7 +500,7 @@ def main():
             print "Error: requested output directory \"%s\" doesn't appear to exist" % (outputdir)
             sys.exit(3)
 
-        filename = "%s/%s_commit_info.txt" % (outputdir, pkgname) 
+        filename = "%s/%s" % (outputdir, get_commit_info_filename(pkgname))
 
         try:
             outf = open(filename, "w")
