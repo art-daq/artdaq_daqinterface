@@ -407,6 +407,61 @@ def get_commit_info(pkgname, gitrepo):
 def get_commit_info_filename(pkgname):
     return "%s_commit_info.txt" % (pkgname)
 
+def get_build_info(pkgname, setup_script):
+
+    buildinfo_time="\"time from BuildInfo undetermined\""
+    buildinfo_version="\"version from BuildInfo undetermined\""
+
+    ups_pkgname = string.replace(pkgname, "-", "_")
+    
+    cmds = []
+    cmds.append(". %s" % (setup_script))
+    cmds.append("ups active")
+    cmds.append("ups active | grep -E \"^%s\s+\"" % (ups_pkgname))
+    proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdoutlines = proc.stdout.readlines()
+    stderrlines = proc.stderr.readlines()
+
+    if len(stdoutlines) == 0 or len(stderrlines) != 0:
+        print "Unable to find ups product for %s; output:" % (pkgname)
+        print "STDOUT:"
+        print "".join(stdoutlines)
+        print "STDERR:"
+        print "".join(stderrlines)
+        print "Will not be able to save build info for %s in the run record" % (pkgname)
+        return "%s %s" % (buildinfo_time, buildinfo_version)
+
+    version=stdoutlines[-1].split()[1]    
+    upsdir=stdoutlines[-1].split()[-1]
+
+    ups_sourcedir="%s/%s/%s/source" % (upsdir, ups_pkgname, version)
+
+    if not os.path.exists(ups_sourcedir):
+        print "Unable to find expected ups source file directory %s" % (ups_sourcedir)
+        print "Will not be able to save build info for %s in the run record" % (pkgname)
+        return "%s %s" % (buildinfo_time, buildinfo_version)
+
+    buildinfo_file="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, pkgname)
+    if not os.path.exists(buildinfo_file):
+        print "Unable to find expected %s BuildInfo file %s" % (pkgname, buildinfo_file)
+        print "Will not be able to save build info for %s in the run record" % (pkgname)
+        return "%s %s" % (buildinfo_time, buildinfo_version)
+
+    with open(buildinfo_file) as inf:
+        for line in inf.readlines():
+
+            res = re.search(r"setPackageVersion\((.*)\)", line)
+            if res:
+                buildinfo_version=res.group(1)
+                continue
+
+            res = re.search(r"setBuildTimestamp\((.*)\)", line)
+            if res:
+                buildinfo_time=res.group(1)
+                continue
+
+    return "%s %s" % (buildinfo_version, buildinfo_time)
+
 def fhicl_writes_root_file(fhicl_string):
 
     # 17-Apr-2018, KAB: added the MULTILINE flag to get this search to behave as desired.
@@ -533,7 +588,8 @@ def main():
     execute_command_in_xterm_test = False
     reformat_fhicl_document_test = False
     bash_unsetup_test = False
-    get_commit_info_test = True
+    get_commit_info_test = False
+    get_build_info_test = True
 
     if paragraphed_string_test:
         sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
@@ -589,12 +645,18 @@ def main():
         Popen( bash_unsetup_command, shell=True)
 
     if get_commit_info_test:
-        pkgname = "artdaq-demo"
-        gitrepo = "/home/jcfree/artdaq-demo_v3_04_01/srcs/artdaq_demo"
+        pkgname = "artdaq"
+        gitrepo = "/home/jcfree/artdaq-demo_v3_04_01/srcs/artdaq"
 
         print "Commit info for %s:" % (gitrepo)
         print get_commit_info(pkgname, gitrepo)
 
+    if get_build_info_test:
+        pkgname = "artdaq"
+        daq_setup_script = "/home/jcfree/artdaq-demo_v3_04_01/setupARTDAQDEMO"
+
+        print "Build info for %s:" % (pkgname)
+        print get_build_info(pkgname, daq_setup_script)
 
 def kill_tail_f():
     tail_pids = get_pids("%s.*tail -f %s" % 
