@@ -8,8 +8,8 @@ import traceback
 from rc.control.deepsuppression import deepsuppression
 
 from rc.control.utilities import make_paragraph
-from rc.control.utilities import get_commit_hash
-from rc.control.utilities import get_commit_comment
+from rc.control.utilities import get_commit_info
+from rc.control.utilities import get_commit_info_filename
 from rc.control.utilities import expand_environment_variable_in_string
 
 def save_run_record_base(self):
@@ -105,7 +105,12 @@ def save_run_record_base(self):
 
     with deepsuppression(self.debug_level < 3):
         try:
-            outf.write("DAQInterface commit/version: %s \"%s\"\n" % ( get_commit_hash(os.environ["ARTDAQ_DAQINTERFACE_DIR"]), get_commit_comment( os.environ["ARTDAQ_DAQINTERFACE_DIR"] )))
+            commit_info_fullpathname = "%s/%s" % (os.path.dirname(self.daq_setup_script), get_commit_info_filename("DAQInterface"))
+            if os.path.exists(commit_info_fullpathname):
+                with open(commit_info_fullpathname) as commitfile:
+                    outf.write("%s\n" % (commitfile.read()))
+            else:
+                outf.write("%s\n" % (get_commit_info("DAQInterface", os.environ["ARTDAQ_DAQINTERFACE_DIR"])))
         except Exception:
             # Not an exception in a bad sense as the throw just means we're using DAQInterface as a ups product
             outf.write("DAQInterface commit/version: %s\n" % ( self.get_package_version("artdaq_daqinterface") ))
@@ -115,20 +120,24 @@ def save_run_record_base(self):
     for pkgname in self.package_hashes_to_save:
         
         pkg_full_path = "%s/srcs/%s" % (self.daq_dir, pkgname.replace("-", "_"))
+        commit_info_fullpathname = "%s/%s" % (os.path.dirname(self.daq_setup_script), get_commit_info_filename(pkgname))
 
-        if os.path.exists( pkg_full_path ):
+        if os.path.exists(commit_info_fullpathname):
+            with open(commit_info_fullpathname) as commitfile:
+                self.package_info_dict[pkgname] = commitfile.read()
+
+        elif os.path.exists( pkg_full_path ):
             try: 
-                self.package_info_dict[pkgname] = get_commit_hash( pkg_full_path )
-                self.package_info_dict[pkgname] += " \"%s\"" % (get_commit_comment( pkg_full_path ))
+                self.package_info_dict[pkgname] = get_commit_info( pkgname, pkg_full_path )
             except Exception:
                 self.print_log("e", traceback.format_exc())
-                self.alert_and_recover("An exception was thrown in get_commit_hash; see traceback above for more info")
+                self.alert_and_recover("An exception was thrown in get_commit_info; see traceback above for more info")
                 return
         else:
-            self.package_info_dict[pkgname] = self.get_package_version( pkgname.replace("-", "_") )
+            self.package_info_dict[pkgname] = "%s commit/version: %s" % (pkgname, self.get_package_version( pkgname.replace("-", "_")))
 
     for pkg in sorted(self.package_info_dict.keys()):
-        outf.write("%s commit/version: %s\n" % (pkg, self.package_info_dict[ pkg ] ))
+        outf.write("%s\n" % (self.package_info_dict[pkg]))
 
     outf.write("\nprocess management method: %s\n" % (os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"]))
 
