@@ -4,6 +4,7 @@ import re
 import string
 import socket
 import shutil
+import sys
 
 import subprocess
 from subprocess import Popen
@@ -343,43 +344,23 @@ def reformat_fhicl_documents(setup_fhiclcpp, procinfos):
 # Given the directory name of a git repository, this will return
 # the most recent hash commit in the repo
 
-# JCF, Jun-27-2019
-
-# I'm renaming the get_commit_hash function the get_commit_info
-# function; this will include the functionality of get_commit_hash and
-# get_commit_comment as well as include the # of lines which differ
-# between any uncommitted code and the commit, as well as the
-# uncommitted code and what's in the ups package (see Issue #22777)
-
-def get_commit_info(gitrepo):
+def get_commit_hash(gitrepo):
 
     if not os.path.exists(gitrepo):
-        return ("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", "Repo did not exist", "0", "0")
+        return "Unknown"
 
     cmds = []
     cmds.append("cd %s" % (gitrepo))
     cmds.append("git log | head -1 | awk '{print $2}'")
 
-    proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE)
+    proc = Popen(";".join(cmds), shell=True,
+                 stdout=subprocess.PIPE)
     proclines = proc.stdout.readlines()
 
     if len(proclines) != 1 or len(proclines[0].strip()) != 40:
         raise Exception(make_paragraph("Commit hash for \"%s\" not found; this was requested in the \"packages_hashes_to_save\" list found in %s" % (gitrepo, os.environ["DAQINTERFACE_SETTINGS"])))
-
+        
     commit_hash = proclines[0].strip()
-
-    cmds = []
-    cmds.append("cd %s" % (gitrepo))
-    cmds.append("git log --format=%B -n 1 HEAD")
-    proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE)
-    commit_comment = " ".join( proc.stdout.readlines() )
-
-    for badchar in [ '\n', '"', "'" ]:
-        commit_comment = commit_comment.replace(badchar, "")
-
-    max_length_of_comment_to_save = 50
-    if len(commit_comment) > max_length_of_comment_to_save:
-        commit_comment = commit_comment[0:max_length_of_comment_to_save] + "..."
 
     cmds = []
     cmds.append("cd %s" % (gitrepo))
@@ -391,10 +372,41 @@ def get_commit_info(gitrepo):
     cmds.append("git diff --unified=0 | grep \"^+[^+][^+]\" | wc -l")
     num_added_lines = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
 
-    return (commit_hash, commit_comment, num_subtracted_lines, num_added_lines)
+    return "%s %s %s" % (commit_hash, num_subtracted_lines, num_added_lines)
+
+def get_commit_comment( gitrepo ):
     
+    max_length = 50
     
+    if not os.path.exists(gitrepo):
+        return ""
+
+    cmds = []
+    cmds.append("cd %s" % (gitrepo))
+    cmds.append("git log --format=%B -n 1 HEAD")
+    proc = Popen(";".join(cmds), shell=True,
+                 stdout=subprocess.PIPE)
+    single_line_comment = " ".join( proc.stdout.readlines() )
+
+    for badchar in [ '\n', '"', "'" ]:
+        single_line_comment = single_line_comment.replace(badchar, "")
+
+    if len(single_line_comment) > max_length:
+        single_line_comment = single_line_comment[0:max_length] + "..."
+
+    return single_line_comment
+
+# JCF, Jul-6-2019
+
+# Note to self: if you modify the label before the colon below, make sure you make commensurate 
+# modifications in save_run_record...
+
+def get_commit_info(pkgname, gitrepo):
+    return "%s commit/version: %s \"%s\"" % (pkgname, get_commit_hash(gitrepo), get_commit_comment(gitrepo))
         
+def get_commit_info_filename(pkgname):
+    return "%s_commit_info.txt" % (pkgname)
+
 def fhicl_writes_root_file(fhicl_string):
 
     # 17-Apr-2018, KAB: added the MULTILINE flag to get this search to behave as desired.
@@ -481,16 +493,40 @@ udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THI
 
     return processed_messagefacility_fhicl_filename
 
-def kill_tail_f():
-    tail_pids = get_pids("%s.*tail -f %s" % 
-                         (os.environ["DAQINTERFACE_TTY"], os.environ["DAQINTERFACE_LOGFILE"]))
-    if len(tail_pids) > 0:
-        status = Popen("kill %s" % (" ".join(tail_pids)), shell=True).wait()
-        if status != 0:
-            print "There was a problem killing \"tail -f\" commands in this terminal; you'll want to do this manually or you'll get confusing output moving forward"
-
 
 def main():
+
+    if len(sys.argv) > 1 and sys.argv[1] == "get_commit_info":
+        if len(sys.argv) != 5:
+            print make_paragraph("Error: expected four arguments (\"get_commit_info\", the name of the package (dashes, not underscores), the full pathname of that package's git repository whose commit info you want, and the full pathname of the output directory where you want to save the commit info)")
+            sys.exit(1)
+        pkgname = sys.argv[2]
+        gitrepo = sys.argv[3]
+        outputdir = sys.argv[4]
+
+        if not os.path.exists(gitrepo):
+            print "Error: requested repo \"%s\" doesn't appear to exist" % (gitrepo)
+            sys.exit(2)
+
+        if not os.path.exists(outputdir):
+            print "Error: requested output directory \"%s\" doesn't appear to exist" % (outputdir)
+            sys.exit(3)
+
+        filename = "%s/%s" % (outputdir, get_commit_info_filename(pkgname))
+
+        try:
+            outf = open(filename, "w")
+        except:
+            print "Error: problem opening the file \"%s\" for writing" % (filename)
+            sys.exit(4)
+            
+        try:
+            outf.write(get_commit_info(pkgname, gitrepo))
+        except:
+            print "Error: problem getting the commit info from \"%s\"" % (gitrepo)
+            sys.exit(5)
+        
+        sys.exit(0)
 
     paragraphed_string_test = False
     msgviewer_check_test = False
@@ -553,11 +589,21 @@ def main():
         Popen( bash_unsetup_command, shell=True)
 
     if get_commit_info_test:
+        pkgname = "artdaq-demo"
         gitrepo = "/home/jcfree/artdaq-demo_v3_04_01/srcs/artdaq_demo"
-        commit_hash, commit_comment, num_subtracted_lines, num_added_lines = get_commit_info(gitrepo)
+
         print "Commit info for %s:" % (gitrepo)
-        print "%s \"%s\" %s %s" % (commit_hash, commit_comment, num_subtracted_lines, num_added_lines)
-        
+        print get_commit_info(pkgname, gitrepo)
+
+
+def kill_tail_f():
+    tail_pids = get_pids("%s.*tail -f %s" % 
+                         (os.environ["DAQINTERFACE_TTY"], os.environ["DAQINTERFACE_LOGFILE"]))
+    if len(tail_pids) > 0:
+        status = Popen("kill %s" % (" ".join(tail_pids)), shell=True).wait()
+        if status != 0:
+            print "There was a problem killing \"tail -f\" commands in this terminal; you'll want to do this manually or you'll get confusing output moving forward"
+
 
 if __name__ == "__main__":
     main()
