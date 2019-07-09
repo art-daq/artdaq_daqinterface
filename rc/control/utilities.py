@@ -407,52 +407,70 @@ def get_commit_info(pkgname, gitrepo):
 def get_commit_info_filename(pkgname):
     return "%s_commit_info.txt" % (pkgname)
 
-def get_build_info(pkgname, setup_script):
+def get_build_info(pkgnames, setup_script):
 
-    buildinfo_time="\"time from BuildInfo undetermined\""
-    buildinfo_version="\"version from BuildInfo undetermined\""
-
-    ups_pkgname = string.replace(pkgname, "-", "_")
-    
+    pkg_build_infos = {}
     cmds = []
     cmds.append(". %s" % (setup_script))
-    cmds.append("ups active | grep -E \"^%s\s+\"" % (ups_pkgname))
-    proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    for pkgname in pkgnames:
+        ups_pkgname = string.replace(pkgname, "-", "_")
+        cmds.append("ups active | grep -E \"^%s\s+\"" % (ups_pkgname))
+
+    proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE)
     stdoutlines = proc.stdout.readlines()
-    stderrlines = proc.stderr.readlines()
 
-    if len(stdoutlines) == 0 or not re.search(r"^%s\s+" % (ups_pkgname), stdoutlines[-1]) or len(stderrlines) != 0:
-        print "Unable to find ups product for %s, will not be able to save its build info in the run record" % (pkgname)
-        return "%s %s" % (buildinfo_time, buildinfo_version)
+    for pkgname in pkgnames:
 
-    version=stdoutlines[-1].split()[1]    
-    upsdir=stdoutlines[-1].split()[-1]
+        buildinfo_time="\"time from BuildInfo undetermined\""
+        buildinfo_version="\"version from BuildInfo undetermined\""
+        pkg_build_infos[ pkgname ] = "%s %s" % (buildinfo_time, buildinfo_version)
 
-    ups_sourcedir="%s/%s/%s/source" % (upsdir, ups_pkgname, version)
+        ups_pkgname = string.replace(pkgname, "-", "_")
 
-    if not os.path.exists(ups_sourcedir):
-        print "Unable to find expected ups source file directory %s, will not be able to save build info for %s in the run record" % (ups_sourcedir, pkgname)
-        return "%s %s" % (buildinfo_time, buildinfo_version)
+        found_package = False
+        package_line_number = -1
+        for i_l, line in enumerate(stdoutlines):
+            if re.search(r"^%s\s+" % (ups_pkgname), line):
+                found_package = True
+                package_line_number = i_l
+                break
 
-    buildinfo_file="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, pkgname)
-    if not os.path.exists(buildinfo_file):
-        print "Unable to find expected %s BuildInfo file %s, will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file, pkgname)
-        return "%s %s" % (buildinfo_time, buildinfo_version)
+        if found_package:
+            version=stdoutlines[package_line_number].split()[1]    
+            upsdir=stdoutlines[package_line_number].split()[-1]
 
-    with open(buildinfo_file) as inf:
-        for line in inf.readlines():
+            ups_sourcedir="%s/%s/%s/source" % (upsdir, ups_pkgname, version)
 
-            res = re.search(r"setPackageVersion\((.*)\)", line)
-            if res:
-                buildinfo_version=res.group(1)
+            if not os.path.exists(ups_sourcedir):
+                print "Unable to find expected ups source file directory %s, will not be able to save build info for %s in the run record" % (ups_sourcedir, pkgname)
                 continue
 
-            res = re.search(r"setBuildTimestamp\((.*)\)", line)
-            if res:
-                buildinfo_time=res.group(1)
+            buildinfo_file="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, pkgname)
+            if not os.path.exists(buildinfo_file):
+                print "Unable to find hoped-for %s BuildInfo file %s, will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file, pkgname)
                 continue
 
-    return "%s %s" % (buildinfo_version, buildinfo_time)
+            with open(buildinfo_file) as inf:
+                for line in inf.readlines():
+
+                    res = re.search(r"setPackageVersion\((.*)\)", line)
+                    if res:
+                        buildinfo_version=res.group(1)
+                        continue
+
+                    res = re.search(r"setBuildTimestamp\((.*)\)", line)
+                    if res:
+                        buildinfo_time=res.group(1)
+                        continue
+
+            pkg_build_infos[ pkgname ] = "%s %s" % (buildinfo_time, buildinfo_version)
+            continue
+
+        else:
+            print "Unable to find ups product for %s, will not be able to save its build info in the run record" % (pkgname)
+
+    return pkg_build_infos
 
 def fhicl_writes_root_file(fhicl_string):
 
@@ -644,11 +662,13 @@ def main():
         print get_commit_info(pkgname, gitrepo)
 
     if get_build_info_test:
-        pkgname = "artdaq"
+        pkgnames = ["artdaq-demo", "artdaq-core-demo", "artdaq", "artdaq-utilities", "artdaq-core"]
         daq_setup_script = "/home/jcfree/artdaq-demo_v3_04_01/setupARTDAQDEMO"
 
-        print "Build info for %s:" % (pkgname)
-        print get_build_info(pkgname, daq_setup_script)
+        pkg_build_infos_dict = get_build_info(pkgnames, daq_setup_script)
+        for pkg, buildinfo in pkg_build_infos_dict.items():
+            print "%s: %s" % (pkg, buildinfo)
+            
 
 def kill_tail_f():
     tail_pids = get_pids("%s.*tail -f %s" % 

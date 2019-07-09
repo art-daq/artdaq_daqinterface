@@ -106,11 +106,14 @@ def save_run_record_base(self):
     # Add additional info along with that described above, as per Redmine Issue #22777
 
     outf.write("\n# Two possible sets of fields provided below for code info, depending on if a git repo was available: ")
-    outf.write("\n# <git commit hash> <LoCs added on top of commit> <LoCs removed on top of commit> <git commit comment> <BuildInfo version build time (if available)> <BuildInfo version (if available)>")
+    outf.write("\n# <git commit hash> <LoCs added on top of commit> <LoCs removed on top of commit> <git commit comment> <BuildInfo build time (if available)> <BuildInfo version (if available)>")
     outf.write("\n# <package version> <BuildInfo build time (if available)> <BuildInfo version (if available)>\n\n")
                
-
     assert "ARTDAQ_DAQINTERFACE_DIR" in os.environ and os.path.exists(os.environ["ARTDAQ_DAQINTERFACE_DIR"])
+
+    buildinfo_packages = [pkg for pkg in self.package_hashes_to_save]  # Directly assigning would make buildinfo_packages a reference, not a copy
+    buildinfo_packages.append("artdaq_daqinterface")
+    package_buildinfo_dict = get_build_info(buildinfo_packages, self.daq_setup_script)
 
     with deepsuppression(self.debug_level < 3):
         try:
@@ -124,9 +127,9 @@ def save_run_record_base(self):
             # Not an exception in a bad sense as the throw just means we're using DAQInterface as a ups product
             outf.write("DAQInterface commit/version: %s" % ( self.get_package_version("artdaq_daqinterface") ))
             
-        outf.write(" %s\n" % (get_build_info("artdaq_daqinterface", self.daq_setup_script)))
+        outf.write(" %s\n" % (package_buildinfo_dict["artdaq_daqinterface"]))
 
-    self.package_info_dict = {}
+    package_commit_dict = {}
 
     for pkgname in self.package_hashes_to_save:
         
@@ -135,21 +138,21 @@ def save_run_record_base(self):
 
         if os.path.exists(commit_info_fullpathname):
             with open(commit_info_fullpathname) as commitfile:
-                self.package_info_dict[pkgname] = commitfile.read()
+                package_commit_dict[pkgname] = commitfile.read()
 
         elif os.path.exists( pkg_full_path ):
             try: 
-                self.package_info_dict[pkgname] = get_commit_info( pkgname, pkg_full_path )
+                package_commit_dict[pkgname] = get_commit_info( pkgname, pkg_full_path )
             except Exception:
                 self.print_log("e", traceback.format_exc())
                 self.alert_and_recover("An exception was thrown in get_commit_info; see traceback above for more info")
                 return
         else:
-            self.package_info_dict[pkgname] = "%s commit/version: %s" % (pkgname, self.get_package_version( pkgname.replace("-", "_")))
+            package_commit_dict[pkgname] = "%s commit/version: %s" % (pkgname, self.get_package_version( pkgname.replace("-", "_")))
 
-    for pkg in sorted(self.package_info_dict.keys()):
-        outf.write("%s" % (self.package_info_dict[pkg]))
-        outf.write(" %s\n" % (get_build_info(pkg, self.daq_setup_script)))
+    for pkg in sorted(package_commit_dict.keys()):
+        outf.write("%s" % (package_commit_dict[pkg]))
+        outf.write(" %s\n" % (package_buildinfo_dict[pkg]))
 
     outf.write("\nprocess management method: %s\n" % (os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"]))
 
