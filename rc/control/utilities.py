@@ -416,19 +416,13 @@ def get_build_info(pkgname, setup_script):
     
     cmds = []
     cmds.append(". %s" % (setup_script))
-    cmds.append("ups active")
     cmds.append("ups active | grep -E \"^%s\s+\"" % (ups_pkgname))
     proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdoutlines = proc.stdout.readlines()
     stderrlines = proc.stderr.readlines()
 
-    if len(stdoutlines) == 0 or len(stderrlines) != 0:
-        print "Unable to find ups product for %s; output:" % (pkgname)
-        print "STDOUT:"
-        print "".join(stdoutlines)
-        print "STDERR:"
-        print "".join(stderrlines)
-        print "Will not be able to save build info for %s in the run record" % (pkgname)
+    if len(stdoutlines) == 0 or not re.search(r"^%s\s+" % (ups_pkgname), stdoutlines[-1]) or len(stderrlines) != 0:
+        print "Unable to find ups product for %s, will not be able to save its build info in the run record" % (pkgname)
         return "%s %s" % (buildinfo_time, buildinfo_version)
 
     version=stdoutlines[-1].split()[1]    
@@ -437,14 +431,12 @@ def get_build_info(pkgname, setup_script):
     ups_sourcedir="%s/%s/%s/source" % (upsdir, ups_pkgname, version)
 
     if not os.path.exists(ups_sourcedir):
-        print "Unable to find expected ups source file directory %s" % (ups_sourcedir)
-        print "Will not be able to save build info for %s in the run record" % (pkgname)
+        print "Unable to find expected ups source file directory %s, will not be able to save build info for %s in the run record" % (ups_sourcedir, pkgname)
         return "%s %s" % (buildinfo_time, buildinfo_version)
 
     buildinfo_file="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, pkgname)
     if not os.path.exists(buildinfo_file):
-        print "Unable to find expected %s BuildInfo file %s" % (pkgname, buildinfo_file)
-        print "Will not be able to save build info for %s in the run record" % (pkgname)
+        print "Unable to find expected %s BuildInfo file %s, will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file, pkgname)
         return "%s %s" % (buildinfo_time, buildinfo_version)
 
     with open(buildinfo_file) as inf:
