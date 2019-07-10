@@ -423,8 +423,10 @@ def get_commit_info_filename(pkgname):
 
 def get_build_info(pkgnames, setup_script):
 
+
     pkg_build_infos = {}
     cmds = []
+    cmds.append( bash_unsetup_command )
     cmds.append(". %s" % (setup_script))
 
     for pkgname in pkgnames:
