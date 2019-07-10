@@ -3,7 +3,7 @@ BEGIN_PROLOG
 global_metrics_default: {
   file: {
     metricPluginType: "file"
-    level: 3
+    level: 4
     uniquify: true
 	absolute_file_path: false
   }

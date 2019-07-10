@@ -37,7 +37,7 @@ windowModeBR_daq_standard: {
   metrics: {
     brFile: {
       metricPluginType: "file"
-      level: 3
+      level: 4
       fileName: "boardreader/br_%UID%_metrics.log"
          absolute_file_path: false
       uniquify: true

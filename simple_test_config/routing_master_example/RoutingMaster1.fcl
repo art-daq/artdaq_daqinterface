@@ -39,14 +39,14 @@
   metrics: {
 	rmFile: {
 	  metricPluginType: "file"
-	  level: 3
+	  level: 4
 	  fileName: "RoutingMaster/rm_%UID%_metrics.log"
          absolute_file_path: false
 	  uniquify: true
 	}
 	 ganglia: {
 	   metricPluginType: "ganglia"
-	   level: 3
+	   level: 4
 	   reporting_interval: 15.0
 	 
 	   configFile: "/etc/ganglia/gmond.conf"
