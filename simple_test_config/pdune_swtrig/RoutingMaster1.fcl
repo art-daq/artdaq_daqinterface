@@ -39,7 +39,8 @@
 	rmFile: {
 	  metricPluginType: "file"
 	  level: 3
-	  fileName: "/tmp/RoutingMaster/rm_%UID%_metrics.log"
+	  fileName: "RoutingMaster/rm_%UID%_metrics.log"
+         absolute_file_path: false
 	  uniquify: true
 	}
 	# msgfac: {

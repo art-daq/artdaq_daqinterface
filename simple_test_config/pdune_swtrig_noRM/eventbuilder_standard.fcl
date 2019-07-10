@@ -22,7 +22,8 @@ eventbuilder_daq_standard: {
     evbFile: {
       metricPluginType: "file"
       level: 3
-      fileName: "/tmp/eventbuilder/evb_%UID%_metrics.log"
+      fileName: "eventbuilder/evb_%UID%_metrics.log"
+         absolute_file_path: false
       uniquify: true
     }
   }

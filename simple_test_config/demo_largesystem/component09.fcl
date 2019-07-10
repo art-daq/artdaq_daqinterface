@@ -74,7 +74,8 @@
 	brFile: {
 	  metricPluginType: "file"
 	  level: 3
-	  fileName: "/tmp/boardreader/br_%UID%_metrics.log"
+	  fileName: "boardreader/br_%UID%_metrics.log"
+         absolute_file_path: false
 	  uniquify: true
 	}
   }

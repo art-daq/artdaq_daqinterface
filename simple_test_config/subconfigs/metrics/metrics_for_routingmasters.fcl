@@ -1,6 +1,7 @@
 metrics: {
   rmFile: {
-    fileName: "/tmp/RoutingMaster/rm_%UID%_metrics.log"
+    fileName: "RoutingMaster/rm_%UID%_metrics.log"
+         absolute_file_path: false
     level: 3
     metricPluginType: "file"
 

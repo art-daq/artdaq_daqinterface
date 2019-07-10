@@ -75,7 +75,8 @@ hardware_poll_interval_us: 0 # How often, in microseconds, checkHWStatus_() shou
 	brFile: {
 	    metricPluginType: "file"
 	    level: 3
-	    fileName: "/tmp/boardreader/br_%UID%_metrics.log"
+	    fileName: "boardreader/br_%UID%_metrics.log"
+         absolute_file_path: false
 	    uniquify: true
 	}
     }
