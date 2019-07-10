@@ -396,13 +396,27 @@ def get_commit_comment( gitrepo ):
 
     return single_line_comment
 
+def get_commit_time(gitrepo):
+
+    if not os.path.exists(gitrepo):
+        return "Unknown"
+
+    cmds = []
+    cmds.append("cd %s" % (gitrepo))
+    cmds.append("git log -1 | sed -r -n 's/Date:\\s+(.*)/\\1/p'")
+
+    proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE)
+    proclines = proc.stdout.readlines()
+    
+    return proclines[0].strip()
+
 # JCF, Jul-6-2019
 
 # Note to self: if you modify the label before the colon below, make sure you make commensurate 
 # modifications in save_run_record...
 
 def get_commit_info(pkgname, gitrepo):
-    return "%s commit/version: %s \"%s\"" % (pkgname, get_commit_hash(gitrepo), get_commit_comment(gitrepo))
+    return "%s commit/version: %s \"%s\" \"%s\"" % (pkgname, get_commit_hash(gitrepo), get_commit_comment(gitrepo), get_commit_time(gitrepo))
         
 def get_commit_info_filename(pkgname):
     return "%s_commit_info.txt" % (pkgname)
@@ -598,7 +612,7 @@ def main():
     execute_command_in_xterm_test = False
     reformat_fhicl_document_test = False
     bash_unsetup_test = False
-    get_commit_info_test = False
+    get_commit_info_test = True
     get_build_info_test = True
 
     if paragraphed_string_test:
