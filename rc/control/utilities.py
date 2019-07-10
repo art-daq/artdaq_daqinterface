@@ -423,6 +423,20 @@ def get_commit_info_filename(pkgname):
 
 def get_build_info(pkgnames, setup_script):
 
+    def parse_buildinfo_file(buildinfo_filename):
+        with open(buildinfo_filename) as inf:
+            for line in inf.readlines():
+
+                res = re.search(r"setPackageVersion\((.*)\)", line)
+                if res:
+                    buildinfo_version=res.group(1)
+                    continue
+
+                res = re.search(r"setBuildTimestamp\((.*)\)", line)
+                if res:
+                    buildinfo_time=res.group(1)
+                    continue
+        return "%s %s" % (buildinfo_time, buildinfo_version)
 
     pkg_build_infos = {}
     cmds = []
@@ -444,15 +458,15 @@ def get_build_info(pkgnames, setup_script):
 
         ups_pkgname = string.replace(pkgname, "-", "_")
 
-        found_package = False
+        found_ups_package = False
         package_line_number = -1
         for i_l, line in enumerate(stdoutlines):
             if re.search(r"^%s\s+" % (ups_pkgname), line):
-                found_package = True
+                found_ups_package = True
                 package_line_number = i_l
                 break
 
-        if found_package:
+        if found_ups_package:
             version=stdoutlines[package_line_number].split()[1]    
             upsdir=stdoutlines[package_line_number].split()[-1]
 
@@ -467,24 +481,25 @@ def get_build_info(pkgnames, setup_script):
                 print "Unable to find hoped-for %s BuildInfo file %s, will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file, pkgname)
                 continue
 
-            with open(buildinfo_file) as inf:
-                for line in inf.readlines():
-
-                    res = re.search(r"setPackageVersion\((.*)\)", line)
-                    if res:
-                        buildinfo_version=res.group(1)
-                        continue
-
-                    res = re.search(r"setBuildTimestamp\((.*)\)", line)
-                    if res:
-                        buildinfo_time=res.group(1)
-                        continue
-
-            pkg_build_infos[ pkgname ] = "%s %s" % (buildinfo_time, buildinfo_version)
+            pkg_build_infos[ pkgname ] = parse_buildinfo_file(buildinfo_file)
             continue
-
         else:
-            print "Unable to find ups product for %s, will not be able to save its build info in the run record" % (pkgname)
+            mrb_basedir = os.path.dirname( setup_script )
+            print "No ups product for %s is set up by %s, will check for build info in local build subdirectory of %s" % (pkgname, setup_script, mrb_basedir)
+            builddir_as_list = [ builddir for builddir in os.listdir( os.path.dirname( setup_script )) if re.search(r"build_.*\..*", builddir)]
+
+            if len(builddir_as_list) == 1:
+                builddir= builddir_as_list[0]
+                desired_file = "%s/%s/%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (mrb_basedir, builddir, string.replace(pkgname, "-", "_"), pkgname)
+                if os.path.exists(desired_file):
+                    pkg_build_infos[ pkgname ] = parse_buildinfo_file(desired_file)
+                else:
+                    print "Unable to find a file with the name %s, will not be able to save build info for %s in the run record" % (desired_file, pkgname)
+                
+            elif len(builddir_as_list) > 1:
+                print "Warning: unable to find build info for %s as %s doesn't set up a ups product for it and there's more than one local build subdirectory in %s: %s" % (pkgname, setup_script, mrb_basedir, " ".join(builddir_as_list))
+            else:
+                print "No local build subdirectory was found in %s, no build info for %s will be saved in the run record" % (mrb_basedir, pkgname)
 
     return pkg_build_infos
 
@@ -614,7 +629,7 @@ def main():
     execute_command_in_xterm_test = False
     reformat_fhicl_document_test = False
     bash_unsetup_test = False
-    get_commit_info_test = True
+    get_commit_info_test = False
     get_build_info_test = True
 
     if paragraphed_string_test:
