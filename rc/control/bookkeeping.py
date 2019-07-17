@@ -323,7 +323,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     
         for i_procinfo_for_string, procinfo_for_string in enumerate(procinfos_for_string):
             hms = host_map_string
-            if i_procinfo_for_string != 0 and nodetype == "sources":
+            if i_procinfo_for_string != 0 and (nodetype == "sources" or nodetype == "destinations"):
                 hms = ""
 
             if nodetype == "sources" and "EventBuilder" in procinfo.name:
