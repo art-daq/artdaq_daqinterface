@@ -7,6 +7,12 @@
 
 {
 
+    # Comments in the metadata file don't need modification
+    if ( $0 ~ /^\s*#/) {
+	print $0
+	next
+    }
+
     if (components_section_active) {
 	if ( $0 !~ /Component #[0-9]/) {
 	    printf "components: ["
