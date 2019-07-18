@@ -262,9 +262,10 @@ class DAQInterface(Component):
     # artdaq subsytem.
 
     class Subsystem(object):
-        def __init__(self, sources = [], destination = None):
+        def __init__(self, sources = [], destination = None, fragmentMode = True):
             self.sources = sources
             self.destination = destination
+            self.fragmentMode = fragmentMode
 
         def __lt__(self, other):
             if self.id != other.id:
