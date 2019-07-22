@@ -1,9 +1,4 @@
 
-services: {
-  scheduler: {
-    errorOnFailureToPut: false
-  }
-}
 
 daq: {
   event_builder: {
@@ -14,7 +9,10 @@ daq: {
 	buffer_count: 20
 	max_incomplete_events: 75 # Same as boardreader sync interval
 	verbose: true
-	send_requests: false
+	send_init_frags: false
+	send_requests: true
+    request_port: 3001
+    request_address: "227.128.12.26" # Multicast request address
 
 	routing_token_config: {
 	use_routing_master: false
@@ -34,8 +32,14 @@ daq: {
   }
 } 
 
+art: {
+services: {
+  scheduler: {
+    errorOnFailureToPut: false
+  }
+}
 outputs: {
-  rootNetOutput: {
+  binaryNetOutput: {
     module_type: RootNetOutput
     #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
     #broadcast_sends: true
@@ -86,11 +90,12 @@ physics: {
    
   a1: [ toy1Integ, toy2Integ ]
   my_output_modules2: [ binaryNetOutput ]
-  my_output_modules: [ rootNetOutput ]
+ # my_output_modules: [ rootNetOutput ]
 }
 source: {
   module_type: DemoInput
   waiting_time: 2500000
   resume_after_timeout: true
 }
-process_name: DAQ
+process_name: DAQEB2
+}

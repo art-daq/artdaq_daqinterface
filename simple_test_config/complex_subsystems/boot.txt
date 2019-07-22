@@ -15,6 +15,7 @@ Subsystem destination: 3
 Subsystem id: 3
 Subsystem source: 1
 Subsystem source: 2
+Subsystem fragmentMode: False
 
 EventBuilder host: localhost
 EventBuilder label: EventBuilder1

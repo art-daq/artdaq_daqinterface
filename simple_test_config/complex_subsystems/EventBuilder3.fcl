@@ -1,9 +1,4 @@
 
-services: {
-  scheduler: {
-    errorOnFailureToPut: false
-  }
-}
 
 daq: {
   event_builder: {
@@ -14,9 +9,7 @@ daq: {
 	buffer_count: 20
 	max_incomplete_events: 75 # Same as boardreader sync interval
 	verbose: true
-	send_requests: true
-    request_port: 3001
-    request_address: "227.128.12.26" # Multicast request address
+	init_fragment_count: 2
 
 	routing_token_config: {
 	use_routing_master: false
@@ -35,6 +28,12 @@ daq: {
   }
 } 
 
+art: {
+services: {
+  scheduler: {
+    errorOnFailureToPut: false
+  }
+}
 outputs: {
   rootNetOutput: {
     module_type: RootNetOutput
@@ -96,4 +95,5 @@ physics: {
 source: {
   module_type: NetMonInput
 }
-process_name: DAQ
+process_name: DAQEB3
+}
