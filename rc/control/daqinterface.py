@@ -1874,6 +1874,12 @@ class DAQInterface(Component):
             (os.environ["USER"],
              os.environ["DAQINTERFACE_PARTITION_NUMBER"])
 
+        self.semipermanent_run_record = "/tmp/run_record_attempted_%s/%s" % \
+            (os.environ["USER"],
+             Popen("date +%a_%b_%d_%H:%M:%S.%N", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip())
+
+        assert not os.path.exists(self.semipermanent_run_record)
+
         if os.path.exists(self.tmp_run_record):
             shutil.rmtree(self.tmp_run_record)
 
@@ -1951,7 +1957,9 @@ class DAQInterface(Component):
             cmd = "cp -r %s %s" % (self.tmp_run_record, run_record_directory)
             status = Popen(cmd, shell = True).wait()
 
-            if status != 0:
+            if status == 0:
+                shutil.rmtree( self.semipermanent_run_record )
+            else:
                 self.alert_and_recover("Error in DAQInterface: a nonzero value was returned executing \"%s\"" %
                                        cmd)
                 return

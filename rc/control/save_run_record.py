@@ -5,6 +5,8 @@ import re
 import subprocess
 from subprocess import Popen
 import traceback
+import shutil
+
 from rc.control.deepsuppression import deepsuppression
 
 from rc.control.utilities import make_paragraph
@@ -188,6 +190,15 @@ def save_run_record_base(self):
             if host == "localhost":
                 host = os.environ["HOSTNAME"]
             ranksfile.write("%s\t%s\t%s\t%d\n" % (host, procinfo.port, procinfo.label, procinfo.rank))            
+
+    
+    try:
+        shutil.copytree(self.tmp_run_record, self.semipermanent_run_record)
+    except:
+        self.print_log("w", traceback.format_exc())
+        self.print_log("w", make_paragraph("Attempt to copy temporary run record \"%s\" into \"%s\" didn't work; keep in mind that %s will be clobbered next time you run on this partition" % (self.tmp_run_record, self.semipermanent_run_record, self.tmp_run_record)))
+    
+
     if self.debug_level >= 2:
         print "Saved run configuration records in %s" % \
             (outdir)
