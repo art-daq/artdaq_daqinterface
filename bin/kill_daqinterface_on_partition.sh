@@ -87,6 +87,14 @@ for partition in "$@"; do
 	
 	if ! $forcibly_kill ; then
 
+cat <<EOF
+
+Checking to make sure that DAQInterface on partition $partition is in the "stopped" state.
+If the script appears to hang here, there's an issue communicating with DAQInterface; hit Ctrl-c, 
+and then re-run this script with the "--force" option added at the end.
+
+EOF
+
 	     export DAQINTERFACE_PARTITION_NUMBER=$partition
 	     state_true="0"
 	     check_for_state "stopped" state_true >&2 > /dev/null

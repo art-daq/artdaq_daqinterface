@@ -7,6 +7,12 @@
 
 {
 
+    # Comments in the metadata file don't need modification
+    if ( $0 ~ /^\s*#/) {
+	print $0
+	next
+    }
+
     if (components_section_active) {
 	if ( $0 !~ /Component #[0-9]/) {
 	    printf "components: ["
@@ -151,7 +157,7 @@
 	    next
 	} else if (firstpart ~ /commit\/version/) {
 	    gsub("[- ]", "_", firstpart)
-	    sub("commit\/version", "commit_or_version", firstpart)
+	    sub("commit/version", "commit_or_version", firstpart)
 	    gsub("\"", " ", secondpart); # Strip the quotes surrounding the commit
 	    # comment, otherwise quotes added later
 	    # will render illegal FHiCL

@@ -20,8 +20,9 @@ daq: {
   metrics: {
     aggFile: {
       metricPluginType: "file"
-      level: 3
-      fileName: "/tmp/aggregator/agg_%UID%_metrics.log"
+      level: 4
+      fileName: "aggregator/agg_%UID%_metrics.log"
+         absolute_file_path: false
       uniquify: true
     }
   }

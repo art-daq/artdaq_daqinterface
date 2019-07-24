@@ -155,13 +155,14 @@ class DAQInterface(Component):
     # host and port
 
     class Procinfo(object):
-        def __init__(self, name, rank, host, port, label=None, subsystem="1", fhicl=None, fhicl_file_path = []):
+        def __init__(self, name, rank, host, port, label=None, subsystem="1", allowed_processors = None, fhicl=None, fhicl_file_path = []):
             self.name = name
             self.rank = rank
             self.port = port
             self.host = host
             self.label = label
             self.subsystem = subsystem
+            self.allowed_processors = allowed_processors
             self.fhicl = fhicl     # Name of the input FHiCL document
             self.ffp = fhicl_file_path
             self.priority = 999
@@ -261,8 +262,8 @@ class DAQInterface(Component):
     # artdaq subsytem.
 
     class Subsystem(object):
-        def __init__(self, source = None, destination = None):
-            self.source = source
+        def __init__(self, sources = [], destination = None):
+            self.sources = sources
             self.destination = destination
 
         def __lt__(self, other):
@@ -406,8 +407,8 @@ class DAQInterface(Component):
                     "changes, and restart.") + "\n")
             sys.exit(1)
 
-        self.print_log("i", "DAQInterface in partition %s launched and now in \"%s\" state, listening on port %d" % 
-                                           (self.partition_number, self.state(self.name), self.rpc_port))
+        self.print_log("i", "%s: DAQInterface in partition %s launched and now in \"%s\" state, listening on port %d" % 
+                                           (date_and_time(), self.partition_number, self.state(self.name), self.rpc_port))
 
     def __del__(self):
         kill_tail_f()
@@ -518,6 +519,7 @@ class DAQInterface(Component):
         self.data_directory_override = None
         self.max_configurations_to_list = 1000000
         self.disable_unique_rootfile_labels = False
+        self.allowed_processors = None
 
         self.productsdir = None
 
@@ -614,6 +616,8 @@ class DAQInterface(Component):
                     self.data_directory_override = self.data_directory_override + "/"
             elif "transfer_plugin_to_use" in line or "transfer plugin to use" in line:
                 self.transfer = line.split()[-1].strip()
+            elif "allowed_processors" in line or "allowed processors" in line:
+                self.allowed_processors = line.split()[-1].strip()
                 
 
         missing_vars = []
@@ -913,8 +917,11 @@ class DAQInterface(Component):
         loglists = [ self.boardreader_log_filenames, self.eventbuilder_log_filenames, self.datalogger_log_filenames, \
                      self.dispatcher_log_filenames, self.routingmaster_log_filenames ]
         logfilename_in_list_form = [ logfilename for loglist in loglists for logfilename in loglist if "/%s-" % (procinfo.label) in logfilename ]
-        assert len(logfilename_in_list_form) == 1, "Incorrect assumption made by DAQInterface about the format of the logfilenames; please contact John Freeman at jcfree@fnal.gov"
-        return logfilename_in_list_form[0]
+        assert len(logfilename_in_list_form) <= 1, "Incorrect assumption made by DAQInterface about the format of the logfilenames; please contact John Freeman at jcfree@fnal.gov"
+        if len(logfilename_in_list_form) == 1:
+            return logfilename_in_list_form[0]
+        else:
+            return "(LOGFILE UNDETERMINED)"
 
     def check_boot_info(self):
 
@@ -949,6 +956,12 @@ class DAQInterface(Component):
 
         if len(set([procinfo.label for procinfo in self.procinfos])) < len(self.procinfos):
             raise Exception(make_paragraph("At least one of your desired artdaq processes has a duplicate label; please check the boot file to ensure that each process gets a unique label"))
+
+        for ss in self.subsystems:
+           dest = self.subsystems[ss].destination
+           if dest is not None:
+                 if self.subsystems[dest] == None or ss not in self.subsystems[dest].sources:
+                    raise Exception(make_paragraph("Inconsistent subsystem configuration detected! Subsystem %s has destination %s, but subsystem %s doesn't have %s in its list of sources!" % (ss, dest, dest, ss)))
 
     def get_artdaq_log_filenames(self):
 
@@ -1330,7 +1343,7 @@ class DAQInterface(Component):
         ranksfile = "/tmp/ranks%s.txt" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"])
             
         if not os.path.exists(ranksfile):
-            raise Exception("Error: DAQInterface run in XXXXXX mode expects your experiment's run control to provide it with a file named /tmp/ranks%s.txt (see documentation YYYYYY)" % (ranksfile))
+            raise Exception("Error: DAQInterface run in external_run_control mode expects your experiment's run control to provide it with a file named %s" % (ranksfile))
 
         with open(ranksfile) as inf:
             for line in inf.readlines():
@@ -1392,7 +1405,20 @@ class DAQInterface(Component):
 
         for boardreader_rank, compname in enumerate(self.daq_comp_list):
 
-            boardreader_host, boardreader_port, boardreader_subsystem = self.daq_comp_list[ compname ]
+            boardreader_port = "-1"
+            boardreader_subsystem="1"
+            boardreader_allowed_processors="-1"
+
+            if len(self.daq_comp_list[ compname ] ) == 1:
+                boardreader_host = self.daq_comp_list[ compname ]
+            elif len(self.daq_comp_list[ compname ] ) == 2:
+                boardreader_host, boardreader_port = self.daq_comp_list[ compname ]
+            elif len(self.daq_comp_list[ compname ] ) == 3:
+                boardreader_host, boardreader_port, boardreader_subsystem = self.daq_comp_list[ compname ]
+            elif len(self.daq_comp_list[ compname ] ) == 4:
+                boardreader_host, boardreader_port, boardreader_subsystem, boardreader_allowed_processors = self.daq_comp_list[ compname ]
+            else:
+                raise Exception(make_paragraph("There's an unexpected number of elements which were passed for component \"%s\" in the setdaqcomps call" % (compname)))
 
             # Make certain the formula below for calculating the port
             # # matches with the formula used to calculate the ports
@@ -1406,10 +1432,13 @@ class DAQInterface(Component):
                                         boardreader_rank )
                 self.daq_comp_list[ compname ] = boardreader_host, boardreader_port, boardreader_subsystem
 
+            if boardreader_allowed_processors == "-1":
+                boardreader_allowed_processors = None
+
             self.procinfos.append(self.Procinfo("BoardReader",
                                                 boardreader_rank,
                                                 boardreader_host,
-                                                boardreader_port, compname, boardreader_subsystem))
+                                                boardreader_port, compname, boardreader_subsystem, boardreader_allowed_processors))
 
             try:
                 for priority, regexp in enumerate(self.boardreader_priorities):
@@ -1478,8 +1507,20 @@ class DAQInterface(Component):
         if self.manage_processes:
             
             for ss in self.subsystems:
-                self.print_log("d", "Subsystem %s, source subsystem %s, destination subsystem %s" % 
-                               (ss, self.subsystems[ss].source, self.subsystems[ss].destination), 2)
+
+                subsystem_line = "Subsystem %s: " % (ss)
+
+                if len(self.subsystems[ss].sources) == 0:
+                    subsystem_line += "subsystem source(s): None"
+                else:
+                    subsystem_line += "subsystem source(s): %s" % ([", ".join(self.subsystems[ss].sources)])
+
+                if self.subsystems[ss].destination is None:
+                    subsystem_line += ", subsystem destination: None"
+                else:
+                    subsystem_line += ", subsystem destination: %s" % (self.subsystems[ss].destination)
+
+                self.print_log("d", subsystem_line, 2)
 
             for procinfo in self.procinfos:
                 self.print_log("d", "%s at %s:%s, part of subsystem %s, has rank %d" % (procinfo.label, procinfo.host, procinfo.port, procinfo.subsystem, procinfo.rank), 2)
@@ -1832,6 +1873,12 @@ class DAQInterface(Component):
             (os.environ["USER"],
              os.environ["DAQINTERFACE_PARTITION_NUMBER"])
 
+        self.semipermanent_run_record = "/tmp/run_record_attempted_%s/%s" % \
+            (os.environ["USER"],
+             Popen("date +%a_%b_%d_%H:%M:%S.%N", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip())
+
+        assert not os.path.exists(self.semipermanent_run_record)
+
         if os.path.exists(self.tmp_run_record):
             shutil.rmtree(self.tmp_run_record)
 
@@ -1909,7 +1956,9 @@ class DAQInterface(Component):
             cmd = "cp -r %s %s" % (self.tmp_run_record, run_record_directory)
             status = Popen(cmd, shell = True).wait()
 
-            if status != 0:
+            if status == 0:
+                shutil.rmtree( self.semipermanent_run_record )
+            else:
                 self.alert_and_recover("Error in DAQInterface: a nonzero value was returned executing \"%s\"" %
                                        cmd)
                 return

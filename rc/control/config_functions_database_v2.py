@@ -93,7 +93,7 @@ def put_config_info_base(self):
     cmds.append( "chmod 777 " + runnum )
     cmds.append( "cat " + runnum + "/metadata.txt | awk -f $scriptdir/fhiclize_metadata_file.awk > " + runnum + "/metadata.fcl" )
     cmds.append( "cat " + runnum + "/boot.txt | awk -f $scriptdir/fhiclize_boot_file.awk > " + runnum + "/boot.fcl" )
-    cmds.append( "cat " + runnum + "/known_boardreaders_list.txt | sed -r 's/^\s*(\S+)\s+(\S+)\s+(\S+)/\\1: [\"\\2\", \"\\3\"]/' > " + runnum + "/known_boardreaders_list.fcl")
+    cmds.append( "cat " + runnum + "/known_boardreaders_list.txt | awk -f $scriptdir/fhiclize_known_boardreaders_list_file.awk > " + runnum + "/known_boardreaders_list.fcl")
     cmds.append( "rm -f " + runnum + "/*.txt")
 
     if os.getenv("ARTDAQ_DATABASE_CONFDIR") is None:

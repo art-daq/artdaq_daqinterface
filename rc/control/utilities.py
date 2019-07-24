@@ -4,6 +4,7 @@ import re
 import string
 import socket
 import shutil
+import sys
 
 import subprocess
 from subprocess import Popen
@@ -118,6 +119,15 @@ def table_range(fhiclstring, tablename, startingloc=0):
     if loc == -1:
         return (-1, -1)
 
+    # JCF, Apr-18-2019
+    # Account for the scenario where in the FHiCL we have something like 
+    # table_whose_range_we_want: @local::table_which_gets_assigned_to_table_whose_range_we_want
+
+    res = re.search(r"%s\s*:\s*@local::(\S+)" % tablename, fhiclstring[loc:])
+    if res:
+        original_table_name = res.group(1)
+        return table_range(fhiclstring, original_table_name)
+
     open_brace_loc = string.index(fhiclstring[loc:], "{")
 
     close_braces_needed = 1
@@ -153,6 +163,23 @@ def enclosing_table_range(fhiclstring, searchstring, startingloc=0):
         return (-1, -1)
 
     open_brace_loc = string.rindex(fhiclstring, "{", startingloc, loc)
+
+    # JCF, Apr-16-2019
+
+    # Going by the principle of "if you're going to fail, fail
+    # loudly", assert False if it turns out that the open_brace_loc
+    # above isn't actually the start of the enclosing table but is
+    # rather the start of a table which is WITHIN the enclosing table,
+    # but above the snippet represented by searchstring
+
+    try:
+        prior_close_brace_loc = string.rindex(fhiclstring, "}", startingloc, loc)
+        assert prior_close_brace_loc < open_brace_loc, "Error in enclosing_table_range: a } was found between the snippet \"%s\"and the {, meaning the { doesn't actually enclose the full table containing the snippet" % (searchstring)
+
+    except:
+        pass
+        # Exception here means there's no close brace at all above the snippet, so we're golden
+
 
     close_braces_needed = 1
     close_brace_loc = -1
@@ -300,7 +327,7 @@ def reformat_fhicl_documents(setup_fhiclcpp, procinfos):
     status = Popen("\n".join(cmds), shell=True).wait()
 
     if status != 0:
-        raise Exception("There was a problem reformatting the FHiCL documents; to troubleshoot you can set the debug level to 2 or higher in the boot file and try again")
+        raise Exception("There was a problem reformatting the FHiCL documents found in %s; to troubleshoot you can set the debug level to 2 or higher in the boot file and try again" % (reformat_indir))
 
     reformatted_fhicl_strings = []
     for label in [procinfo.label for procinfo in procinfos]:
@@ -332,8 +359,20 @@ def get_commit_hash(gitrepo):
 
     if len(proclines) != 1 or len(proclines[0].strip()) != 40:
         raise Exception(make_paragraph("Commit hash for \"%s\" not found; this was requested in the \"packages_hashes_to_save\" list found in %s" % (gitrepo, os.environ["DAQINTERFACE_SETTINGS"])))
+        
+    commit_hash = proclines[0].strip()
 
-    return proclines[0].strip()
+    cmds = []
+    cmds.append("cd %s" % (gitrepo))
+    cmds.append("git diff --unified=0 | grep \"^-[^-][^-]\" | wc -l")
+    num_subtracted_lines = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    
+    cmds = []
+    cmds.append("cd %s" % (gitrepo))
+    cmds.append("git diff --unified=0 | grep \"^+[^+][^+]\" | wc -l")
+    num_added_lines = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+
+    return "%s %s %s" % (commit_hash, num_subtracted_lines, num_added_lines)
 
 def get_commit_comment( gitrepo ):
     
@@ -356,7 +395,114 @@ def get_commit_comment( gitrepo ):
         single_line_comment = single_line_comment[0:max_length] + "..."
 
     return single_line_comment
+
+def get_commit_time(gitrepo):
+
+    if not os.path.exists(gitrepo):
+        return "Unknown"
+
+    cmds = []
+    cmds.append("cd %s" % (gitrepo))
+    cmds.append("git log -1 | sed -r -n 's/Date:\\s+(.*)/\\1/p'")
+
+    proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE)
+    proclines = proc.stdout.readlines()
+    
+    return proclines[0].strip()
+
+# JCF, Jul-6-2019
+
+# Note to self: if you modify the label before the colon below, make sure you make commensurate 
+# modifications in save_run_record...
+
+def get_commit_info(pkgname, gitrepo):
+    return "%s commit/version: %s \"%s\" \"%s\"" % (pkgname, get_commit_hash(gitrepo), get_commit_comment(gitrepo), get_commit_time(gitrepo))
         
+def get_commit_info_filename(pkgname):
+    return "%s_commit_info.txt" % (pkgname)
+
+def get_build_info(pkgnames, setup_script):
+
+    def parse_buildinfo_file(buildinfo_filename):
+        with open(buildinfo_filename) as inf:
+            for line in inf.readlines():
+
+                res = re.search(r"setPackageVersion\((.*)\)", line)
+                if res:
+                    buildinfo_version=res.group(1)
+                    continue
+
+                res = re.search(r"setBuildTimestamp\((.*)\)", line)
+                if res:
+                    buildinfo_time=res.group(1)
+                    continue
+        return "%s %s" % (buildinfo_time, buildinfo_version)
+
+    pkg_build_infos = {}
+    cmds = []
+    cmds.append( bash_unsetup_command )
+    cmds.append(". %s" % (setup_script))
+
+    for pkgname in pkgnames:
+        ups_pkgname = string.replace(pkgname, "-", "_")
+        cmds.append("ups active | grep -E \"^%s\s+\"" % (ups_pkgname))
+
+    proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE)
+    stdoutlines = proc.stdout.readlines()
+
+    for pkgname in pkgnames:
+
+        buildinfo_time="\"time from BuildInfo undetermined\""
+        buildinfo_version="\"version from BuildInfo undetermined\""
+        pkg_build_infos[ pkgname ] = "%s %s" % (buildinfo_time, buildinfo_version)
+
+        ups_pkgname = string.replace(pkgname, "-", "_")
+
+        found_ups_package = False
+        package_line_number = -1
+        for i_l, line in enumerate(stdoutlines):
+            if re.search(r"^%s\s+" % (ups_pkgname), line):
+                found_ups_package = True
+                package_line_number = i_l
+                break
+
+        if found_ups_package:
+            version=stdoutlines[package_line_number].split()[1]    
+            upsdir=stdoutlines[package_line_number].split()[-1]
+
+            ups_sourcedir="%s/%s/%s/source" % (upsdir, ups_pkgname, version)
+
+            if not os.path.exists(ups_sourcedir):
+                print "Unable to find expected ups source file directory %s, will not be able to save build info for %s in the run record" % (ups_sourcedir, pkgname)
+                continue
+
+            buildinfo_file="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, pkgname)
+            if not os.path.exists(buildinfo_file):
+                print "Unable to find hoped-for %s BuildInfo file %s, will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file, pkgname)
+                continue
+
+            pkg_build_infos[ pkgname ] = parse_buildinfo_file(buildinfo_file)
+            continue
+        else:
+            mrb_basedir = os.path.dirname( setup_script )
+            print "No ups product for %s is set up by %s, will check for build info in local build subdirectory of %s" % (pkgname, setup_script, mrb_basedir)
+            builddir_as_list = [ builddir for builddir in os.listdir( os.path.dirname( setup_script )) if re.search(r"build_.*\..*", builddir)]
+
+            if len(builddir_as_list) == 1:
+                builddir= builddir_as_list[0]
+                desired_file = "%s/%s/%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (mrb_basedir, builddir, string.replace(pkgname, "-", "_"), pkgname)
+                if os.path.exists(desired_file):
+                    pkg_build_infos[ pkgname ] = parse_buildinfo_file(desired_file)
+                else:
+                    print "Unable to find a file with the name %s, will not be able to save build info for %s in the run record" % (desired_file, pkgname)
+                
+            elif len(builddir_as_list) > 1:
+                print "Warning: unable to find build info for %s as %s doesn't set up a ups product for it and there's more than one local build subdirectory in %s: %s" % (pkgname, setup_script, mrb_basedir, " ".join(builddir_as_list))
+            else:
+                print "No local build subdirectory was found in %s, no build info for %s will be saved in the run record" % (mrb_basedir, pkgname)
+
+    return pkg_build_infos
+
 def fhicl_writes_root_file(fhicl_string):
 
     # 17-Apr-2018, KAB: added the MULTILINE flag to get this search to behave as desired.
@@ -446,11 +592,45 @@ udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THI
 
 def main():
 
+    if len(sys.argv) > 1 and sys.argv[1] == "get_commit_info":
+        if len(sys.argv) != 5:
+            print make_paragraph("Error: expected four arguments (\"get_commit_info\", the name of the package (dashes, not underscores), the full pathname of that package's git repository whose commit info you want, and the full pathname of the output directory where you want to save the commit info)")
+            sys.exit(1)
+        pkgname = sys.argv[2]
+        gitrepo = sys.argv[3]
+        outputdir = sys.argv[4]
+
+        if not os.path.exists(gitrepo):
+            print "Error: requested repo \"%s\" doesn't appear to exist" % (gitrepo)
+            sys.exit(2)
+
+        if not os.path.exists(outputdir):
+            print "Error: requested output directory \"%s\" doesn't appear to exist" % (outputdir)
+            sys.exit(3)
+
+        filename = "%s/%s" % (outputdir, get_commit_info_filename(pkgname))
+
+        try:
+            outf = open(filename, "w")
+        except:
+            print "Error: problem opening the file \"%s\" for writing" % (filename)
+            sys.exit(4)
+            
+        try:
+            outf.write(get_commit_info(pkgname, gitrepo))
+        except:
+            print "Error: problem getting the commit info from \"%s\"" % (gitrepo)
+            sys.exit(5)
+        
+        sys.exit(0)
+
     paragraphed_string_test = False
-    msgviewer_check_test = True
+    msgviewer_check_test = False
     execute_command_in_xterm_test = False
     reformat_fhicl_document_test = False
     bash_unsetup_test = False
+    get_commit_info_test = False
+    get_build_info_test = True
 
     if paragraphed_string_test:
         sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
@@ -504,6 +684,22 @@ def main():
 
     if bash_unsetup_test:
         Popen( bash_unsetup_command, shell=True)
+
+    if get_commit_info_test:
+        pkgname = "artdaq"
+        gitrepo = "/home/jcfree/artdaq-demo_v3_04_01/srcs/artdaq"
+
+        print "Commit info for %s:" % (gitrepo)
+        print get_commit_info(pkgname, gitrepo)
+
+    if get_build_info_test:
+        pkgnames = ["artdaq-demo", "artdaq-core-demo", "artdaq", "artdaq-utilities", "artdaq-core"]
+        daq_setup_script = "/home/jcfree/artdaq-demo_v3_04_01/setupARTDAQDEMO"
+
+        pkg_build_infos_dict = get_build_info(pkgnames, daq_setup_script)
+        for pkg, buildinfo in pkg_build_infos_dict.items():
+            print "%s: %s" % (pkg, buildinfo)
+            
 
 def kill_tail_f():
     tail_pids = get_pids("%s.*tail -f %s" % 

@@ -62,7 +62,7 @@ def get_boot_info_base(self, boot_filename):
                             "unable to locate configuration file \"" +
                             boot_filename + "\""))
 
-    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set"}
+    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set", "allowed_processors": "not set"}
     subsystemDict = {"id": None, "source": "not set", "destination": "not set"}
 
     num_expected_processes = 0
@@ -143,7 +143,12 @@ def get_boot_info_base(self, boot_filename):
                                 "problem parsing " + boot_filename +
                                 " at line \"" + line + "\"")
 
-            subsystemDict[res.group(2)] = res.group(3)
+            subsystem_key = res.group(2)
+
+            if subsystem_key != "source" or subsystemDict[ "source" ] == "not set":
+                subsystemDict[subsystem_key] = res.group(3)
+            else:
+                subsystemDict[subsystem_key] += " %s" % (res.group(3))
 
 
         if "EventBuilder" in line or \
@@ -171,7 +176,6 @@ def get_boot_info_base(self, boot_filename):
 
         res = re.search(r"^\s*(\S+)\s*:\s*(\S+)", line)
         if res:
-            print "Caught line %s for FHiCL overwrite" % (line)
             self.bootfile_fhicl_overwrites[ res.group(1) ] = res.group(2)
 
         # Taken from Eric: if a line is blank or a comment or we've
@@ -196,7 +200,16 @@ def get_boot_info_base(self, boot_filename):
 
             if filled_subsystem_info:
                 
-                self.subsystems[subsystemDict["id"]] = self.Subsystem(subsystemDict["source"], subsystemDict["destination"])
+                sources = []
+                if subsystemDict["source"] != "not set":
+                    sources = [ source.strip() for source in subsystemDict["source"].split() ] 
+                
+                destination = None
+                if subsystemDict["destination"] != "not set":
+                    destination = subsystemDict["destination"]
+
+                self.subsystems[subsystemDict["id"]] = self.Subsystem(sources, destination)
+
                 subsystemDict["id"] = None
                 subsystemDict["source"] = "not set"
                 subsystemDict["destination"] = "not set"
@@ -219,16 +232,20 @@ def get_boot_info_base(self, boot_filename):
                                               self.partition_number*int(os.environ["ARTDAQ_PORTS_PER_PARTITION"]) + \
                                               rank )
 
+                if memberDict["allowed_processors"] == "not set":
+                    memberDict["allowed_processors"] = None  # Where None actually means "allow all processors"
+
                 self.procinfos.append(self.Procinfo(memberDict["name"],
                                                     rank,
                                                     memberDict["host"],
                                                     memberDict["port"],
                                                     memberDict["label"],
-                                                    memberDict["subsystem"]
+                                                    memberDict["subsystem"],
+                                                    memberDict["allowed_processors"]
                                                     ))
 
                 for varname in memberDict.keys():
-                    if varname != "port" and varname != "subsystem":
+                    if varname != "port" and varname != "subsystem" and varname != "allowed_processors":
                         memberDict[varname] = None
                     else:
                         memberDict[varname] = "not set"
@@ -239,7 +256,7 @@ def get_boot_info_base(self, boot_filename):
     # doesn't have any source subsystems or any destination subsystems
 
     if len(self.subsystems) == 0:
-        self.subsystems["1"] = self.Subsystem("not set", "not set")
+        self.subsystems["1"] = self.Subsystem()
 
     self.set_process_manager_default_variables()
 
@@ -261,7 +278,7 @@ def listdaqcomps_base(self):
     count = len(lines)
 
     for line in lines:
-        if re.search(r"^\s*#", line):
+        if re.search(r"^\s*#", line) or re.search(r"^\s*$", line):
             count = count - 1
 
     print
@@ -269,7 +286,7 @@ def listdaqcomps_base(self):
 
     lines.sort()
     for line in lines:
-        if re.search(r"^\s*#", line):
+        if re.search(r"^\s*#", line) or re.search(r"^\s*$", line):
             continue
         component = line.split()[0].strip()
         host = line.split()[1].strip()
