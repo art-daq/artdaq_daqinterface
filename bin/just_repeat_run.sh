@@ -19,20 +19,7 @@ if ! [[ "$runnum" =~ ^[0-9]+$ ]] ; then
     exit 1
 fi
 
-if [[ -z $ARTDAQ_DAQINTERFACE_DIR ]]; then
-    cat >&2 <<EOF 
-
-The ARTDAQ_DAQINTERFACE_DIR environment variable isn't set; you
-need to have set up the DAQInterface environment to run this
-script. See the DAQInterface wiki for details,
-https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Artdaq-daqinterface
-
-EOF
-
-exit 1
-    
-fi
-
+. $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
 . $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
 if $nostrict ; then

@@ -24,6 +24,7 @@ if [[ "$#" == "0" ]]; then
     exit 1
 fi
 
+. $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
 . $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
 
 scriptdir="$(dirname "$0")"

@@ -1,5 +1,3 @@
-#!/bin/sh
-
 
 # In the code below:
 # -The "nohup" is there so DAQInterface can wind down cleanly if users close its terminal
