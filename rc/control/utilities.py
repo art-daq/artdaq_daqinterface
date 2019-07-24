@@ -410,13 +410,27 @@ def get_commit_time(gitrepo):
     
     return proclines[0].strip()
 
+def get_commit_branch(gitrepo):
+    if not os.path.exists(gitrepo):
+        return "Unknown"
+
+    cmds = []
+    cmds.append("cd %s" % (gitrepo))
+    cmds.append("git branch | sed -r -n 's/^\\* (\\S+)/\\1/p'")
+
+    proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE)
+    proclines = proc.stdout.readlines()
+    
+    return proclines[0].strip()
+
+
 # JCF, Jul-6-2019
 
 # Note to self: if you modify the label before the colon below, make sure you make commensurate 
 # modifications in save_run_record...
 
 def get_commit_info(pkgname, gitrepo):
-    return "%s commit/version: %s \"%s\" \"%s\"" % (pkgname, get_commit_hash(gitrepo), get_commit_comment(gitrepo), get_commit_time(gitrepo))
+    return "%s commit/version: %s \"%s\" \"%s\" \"%s\"" % (pkgname, get_commit_hash(gitrepo), get_commit_comment(gitrepo), get_commit_time(gitrepo), get_commit_branch(gitrepo))
         
 def get_commit_info_filename(pkgname):
     return "%s_commit_info.txt" % (pkgname)

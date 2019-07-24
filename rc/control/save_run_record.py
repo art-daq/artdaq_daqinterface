@@ -108,7 +108,7 @@ def save_run_record_base(self):
     # Add additional info along with that described above, as per Redmine Issue #22777
 
     outf.write("\n# Two possible sets of fields provided below for code info, depending on if a git repo was available: ")
-    outf.write("\n# <git commit hash> <LoCs added on top of commit> <LoCs removed on top of commit> <git commit comment> <git commit time> <BuildInfo build time (if available)> <BuildInfo version (if available)>")
+    outf.write("\n# <git commit hash> <LoCs added on top of commit> <LoCs removed on top of commit> <git commit comment> <git commit time> <git branch> <BuildInfo build time (if available)> <BuildInfo version (if available)>")
     outf.write("\n# <package version> <BuildInfo build time (if available)> <BuildInfo version (if available)>\n\n")
                
     assert "ARTDAQ_DAQINTERFACE_DIR" in os.environ and os.path.exists(os.environ["ARTDAQ_DAQINTERFACE_DIR"])
@@ -154,7 +154,7 @@ def save_run_record_base(self):
 
     for pkg in sorted(package_commit_dict.keys()):
         outf.write("%s" % (package_commit_dict[pkg]))
-        outf.write(" %s\n" % (package_buildinfo_dict[pkg]))
+        outf.write(" %s\n\n" % (package_buildinfo_dict[pkg]))
 
     outf.write("\nprocess management method: %s\n" % (os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"]))
 
