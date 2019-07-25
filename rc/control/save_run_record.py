@@ -129,7 +129,7 @@ def save_run_record_base(self):
             # Not an exception in a bad sense as the throw just means we're using DAQInterface as a ups product
             outf.write("DAQInterface commit/version: %s" % ( self.get_package_version("artdaq_daqinterface") ))
             
-        outf.write(" %s\n" % (package_buildinfo_dict["artdaq_daqinterface"]))
+        outf.write(" %s\n\n" % (package_buildinfo_dict["artdaq_daqinterface"]))
 
     package_commit_dict = {}
 
