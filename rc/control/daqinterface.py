@@ -1094,6 +1094,7 @@ class DAQInterface(Component):
                                 (self.get_package_version.__name__, cmd, "".join(stderrlines)))
 
         if len(stdoutlines) == 0:
+            print traceback.format_exc()
             raise Exception("Error in %s: the command \"%s\" yields no output to stdout" % \
                             (self.get_package_version.__name__, cmd))
             
@@ -1957,7 +1958,9 @@ class DAQInterface(Component):
             status = Popen(cmd, shell = True).wait()
 
             if status == 0:
-                shutil.rmtree( self.semipermanent_run_record )
+                assert re.search(r"^/tmp/\S", self.semipermanent_run_record)
+                if os.path.exists( self.semipermanent_run_record ):
+                    shutil.rmtree( self.semipermanent_run_record )
             else:
                 self.alert_and_recover("Error in DAQInterface: a nonzero value was returned executing \"%s\"" %
                                        cmd)
