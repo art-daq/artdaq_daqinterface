@@ -410,13 +410,27 @@ def get_commit_time(gitrepo):
     
     return proclines[0].strip()
 
+def get_commit_branch(gitrepo):
+    if not os.path.exists(gitrepo):
+        return "Unknown"
+
+    cmds = []
+    cmds.append("cd %s" % (gitrepo))
+    cmds.append("git branch | sed -r -n 's/^\\* (\\S+)/\\1/p'")
+
+    proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE)
+    proclines = proc.stdout.readlines()
+    
+    return proclines[0].strip()
+
+
 # JCF, Jul-6-2019
 
 # Note to self: if you modify the label before the colon below, make sure you make commensurate 
 # modifications in save_run_record...
 
 def get_commit_info(pkgname, gitrepo):
-    return "%s commit/version: %s \"%s\" \"%s\"" % (pkgname, get_commit_hash(gitrepo), get_commit_comment(gitrepo), get_commit_time(gitrepo))
+    return "%s commit/version: %s \"%s\" \"%s\" \"%s\"" % (pkgname, get_commit_hash(gitrepo), get_commit_comment(gitrepo), get_commit_time(gitrepo), get_commit_branch(gitrepo))
         
 def get_commit_info_filename(pkgname):
     return "%s_commit_info.txt" % (pkgname)
@@ -473,7 +487,7 @@ def get_build_info(pkgnames, setup_script):
             ups_sourcedir="%s/%s/%s/source" % (upsdir, ups_pkgname, version)
 
             if not os.path.exists(ups_sourcedir):
-                print "Unable to find expected ups source file directory %s, will not be able to save build info for %s in the run record" % (ups_sourcedir, pkgname)
+                #print "Unable to find expected ups source file directory %s, will not be able to save build info for %s in the run record" % (ups_sourcedir, pkgname)
                 continue
 
             buildinfo_file="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, pkgname)
@@ -485,7 +499,7 @@ def get_build_info(pkgnames, setup_script):
             continue
         else:
             mrb_basedir = os.path.dirname( setup_script )
-            print "No ups product for %s is set up by %s, will check for build info in local build subdirectory of %s" % (pkgname, setup_script, mrb_basedir)
+            #print "No ups product for %s is set up by %s, will check for build info in local build subdirectory of %s" % (pkgname, setup_script, mrb_basedir)
             builddir_as_list = [ builddir for builddir in os.listdir( os.path.dirname( setup_script )) if re.search(r"build_.*\..*", builddir)]
 
             if len(builddir_as_list) == 1:
@@ -494,12 +508,15 @@ def get_build_info(pkgnames, setup_script):
                 if os.path.exists(desired_file):
                     pkg_build_infos[ pkgname ] = parse_buildinfo_file(desired_file)
                 else:
-                    print "Unable to find a file with the name %s, will not be able to save build info for %s in the run record" % (desired_file, pkgname)
+                    #print "Unable to find a file with the name %s, will not be able to save build info for %s in the run record" % (desired_file, pkgname)
+                    pass
                 
             elif len(builddir_as_list) > 1:
                 print "Warning: unable to find build info for %s as %s doesn't set up a ups product for it and there's more than one local build subdirectory in %s: %s" % (pkgname, setup_script, mrb_basedir, " ".join(builddir_as_list))
+                pass
             else:
-                print "No local build subdirectory was found in %s, no build info for %s will be saved in the run record" % (mrb_basedir, pkgname)
+                #print "No local build subdirectory was found in %s, no build info for %s will be saved in the run record" % (mrb_basedir, pkgname)
+                pass
 
     return pkg_build_infos
 
