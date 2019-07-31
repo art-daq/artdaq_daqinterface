@@ -25,7 +25,6 @@ from rc.control.component import Component
 from rc.control.deepsuppression import deepsuppression
 
 from rc.control.save_run_record import save_run_record_base
-from rc.control.save_run_record import total_events_in_run_base
 from rc.control.save_run_record import save_metadata_value_base
 from rc.control.all_functions_noop import start_datataking_base
 from rc.control.all_functions_noop import stop_datataking_base
@@ -420,7 +419,6 @@ class DAQInterface(Component):
     listdaqcomps = listdaqcomps_base
     listconfigs = listconfigs_base
     save_run_record = save_run_record_base
-    total_events_in_run = total_events_in_run_base
     save_metadata_value = save_metadata_value_base
     start_datataking = start_datataking_base
     stop_datataking = stop_datataking_base
