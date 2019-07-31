@@ -1952,17 +1952,18 @@ class DAQInterface(Component):
             run_record_directory = "%s/%s" % \
                 (self.record_directory, str(self.run_number))
 
-            cmd = "cp -r %s %s" % (self.tmp_run_record, run_record_directory)
-            status = Popen(cmd, shell = True).wait()
+            try:
+                shutil.copytree(self.tmp_run_record, run_record_directory)
+            except:
+                self.print_log("w", traceback.format_exc())
+                self.print_log("w", make_paragraph("Attempt to copy temporary run record \"%s\" into permanent run record \"%s\" didn't work; THIS MEANS YOU WON'T HAVE A RUN RECORD FOR THIS RUN" % (self.tmp_run_record, run_record_directory)))
 
-            if status == 0:
-                assert re.search(r"^/tmp/\S", self.semipermanent_run_record)
-                if os.path.exists( self.semipermanent_run_record ):
-                    shutil.rmtree( self.semipermanent_run_record )
-            else:
-                self.alert_and_recover("Error in DAQInterface: a nonzero value was returned executing \"%s\"" %
-                                       cmd)
-                return
+            os.chmod(run_record_directory, 0o555)
+
+            assert re.search(r"^/tmp/\S", self.semipermanent_run_record)
+            if os.path.exists( self.semipermanent_run_record ):
+                shutil.rmtree( self.semipermanent_run_record )
+
         else:
             self.alert_and_recover("Error in DAQInterface: unable to find temporary run records directory %s" % 
                                    self.tmp_run_record)
@@ -1983,8 +1984,11 @@ class DAQInterface(Component):
 
         if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "external_run_control" and \
            os.path.exists("/tmp/info_to_archive_partition%d.txt" % (self.partition_number)):
+
+            os.chmod(run_record_directory, 0o755)
             copyfile("/tmp/info_to_archive_partition%d.txt" % (self.partition_number), \
                      "%s/rc_info_start.txt" % (run_record_directory))
+            os.chmod(run_record_directory, 0o555)
 
             if not os.path.exists("%s/rc_info_start.txt" % (run_record_directory)):
                 self.alert_and_recover(make_paragraph("Problem copying /tmp/info_to_archive_partition%d.txt into %s/rc_info_start.txt; does original file exist?" % (self.partition_number, run_record_directory)))
@@ -2047,9 +2051,11 @@ class DAQInterface(Component):
            os.path.exists("/tmp/info_to_archive_partition%d.txt" % (self.partition_number)):
             run_record_directory = "%s/%s" % \
                                    (self.record_directory, str(self.run_number))
+            os.chmod(run_record_directory, 0o755)
 
             copyfile("/tmp/info_to_archive_partition%d.txt" % (self.partition_number), \
                      "%s/rc_info_stop.txt" % (run_record_directory))
+            os.chmod(run_record_directory, 0o555)
 
             if not os.path.exists("%s/rc_info_stop.txt" % (run_record_directory)):
                 self.alert_and_recover(make_paragraph("Problem copying /tmp/info_to_archive_partition%d.txt into %s/rc_info_stop.txt; does original file exist?" % (self.partition_number, run_record_directory)))

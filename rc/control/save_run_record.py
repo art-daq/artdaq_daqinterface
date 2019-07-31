@@ -191,13 +191,15 @@ def save_run_record_base(self):
                 host = os.environ["HOSTNAME"]
             ranksfile.write("%s\t%s\t%s\t%d\n" % (host, procinfo.port, procinfo.label, procinfo.rank))            
 
+    for (recorddir, dummy, recordfiles) in os.walk(self.tmp_run_record):
+        for recordfile in recordfiles:
+            os.chmod("%s/%s" % (recorddir, recordfile), 0o444)
     
     try:
         shutil.copytree(self.tmp_run_record, self.semipermanent_run_record)
     except:
         self.print_log("w", traceback.format_exc())
         self.print_log("w", make_paragraph("Attempt to copy temporary run record \"%s\" into \"%s\" didn't work; keep in mind that %s will be clobbered next time you run on this partition" % (self.tmp_run_record, self.semipermanent_run_record, self.tmp_run_record)))
-    
 
     if self.debug_level >= 2:
         print "Saved run configuration records in %s" % \
@@ -272,10 +274,10 @@ def total_events_in_run_base(self):
 
 def save_metadata_value_base(self, key, value):
 
-    outdir = "%s/%s" % (self.record_directory, str(self.run_number))
-    assert os.path.exists(outdir + "/metadata.txt")
+    metadata_filename = "%s/%s/metadata.txt" % (self.record_directory, str(self.run_number))
+    assert os.path.exists(metadata_filename)
 
-    outf = open(outdir + "/metadata.txt", "a")
-
-    outf.write("\n%s: %s\n" % (key, value))
-
+    os.chmod(metadata_filename, 0o644)
+    with open(metadata_filename, "a") as metadata_file:
+        metadata_file.write("\n%s: %s\n" % (key, value))
+    os.chmod(metadata_filename, 0o444)
