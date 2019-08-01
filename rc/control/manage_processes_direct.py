@@ -334,14 +334,13 @@ def get_pids_and_labels_on_host(host, procinfos):
     
     for procinfo in [pi for pi in procinfos if pi.host == host]:
         greptokens.append( "[0-9]:[0-9][0-9]\s\+" + bootfile_name_to_execname(procinfo.name) + " -c .*" + procinfo.port + ".*" ) 
+    greptoken = "[0-9]:[0-9][0-9]\s\+\(%s\).*application_name.*partition_number:\s*%s" % \
+                ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])), \
+                 os.environ["DAQINTERFACE_PARTITION_NUMBER"])
 
-    greptoken = "\|".join(greptokens)
-    
-    greptoken = "[0-9]:[0-9][0-9]\s\+\(%s\).*application_name.*partition_number" % \
-                ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])))
-
-    #greptoken = "[0-9]:[0-9][0-9]\s\+valgrind.*\(%s\).*application_name.*partition_number" % \
-    #            ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])))
+    #greptoken = "[0-9]:[0-9][0-9]\s\+valgrind.*\(%s\).*application_name.*partition_number:\s*%s" % \
+    #            ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])), \
+    # os.environ["DAQINTERFACE_PARTITION_NUMBER"])
 
 
     grepped_lines = []
