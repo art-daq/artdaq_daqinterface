@@ -128,6 +128,20 @@ def table_range(fhiclstring, tablename, startingloc=0):
         original_table_name = res.group(1)
         return table_range(fhiclstring, original_table_name)
 
+    # JCF, Aug-1-2019
+
+    # Check that what we have is actually a table - this is prompted
+    # by an email Kurt sent on June 26, 12:46 PM. If it's not, then
+    # keep searching further on in the FHiCL blob.
+
+    res = re.search(r"^%s\s*:\s*{" % tablename, fhiclstring[loc:])
+    if not res:
+        (offset_start, offset_end) = table_range(fhiclstring[loc+1:], tablename)
+        if (offset_start, offset_end) != (-1, -1):
+            return (loc + 1 + offset_start, loc + 1 + offset_end)
+        else:
+            return (-1, -1)
+
     open_brace_loc = string.index(fhiclstring[loc:], "{")
 
     close_braces_needed = 1
@@ -647,7 +661,8 @@ def main():
     reformat_fhicl_document_test = False
     bash_unsetup_test = False
     get_commit_info_test = False
-    get_build_info_test = True
+    get_build_info_test = False
+    table_range_test = True
 
     if paragraphed_string_test:
         sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
@@ -716,7 +731,19 @@ def main():
         pkg_build_infos_dict = get_build_info(pkgnames, daq_setup_script)
         for pkg, buildinfo in pkg_build_infos_dict.items():
             print "%s: %s" % (pkg, buildinfo)
-            
+
+    if table_range_test:
+
+        assert "ARTDAQ_DAQINTERFACE_DIR" in os.environ, "Need to have DAQInterface environment sourced for table_range test"
+        filename = "%s/simple_test_config/pdune_swtrig_noRM/DFO.fcl" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"])
+        print "From file %s:" % (filename)
+
+        with open( filename ) as inf:
+            inf_contents = inf.read()
+
+            (table_start, table_end) = table_range( inf_contents, "art" )
+            print "Contents of table: "
+            print inf_contents[table_start:table_end]
 
 def kill_tail_f():
     tail_pids = get_pids("%s.*tail -f %s" % 
