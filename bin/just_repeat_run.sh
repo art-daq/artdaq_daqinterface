@@ -19,20 +19,7 @@ if ! [[ "$runnum" =~ ^[0-9]+$ ]] ; then
     exit 1
 fi
 
-if [[ -z $ARTDAQ_DAQINTERFACE_DIR ]]; then
-    cat >&2 <<EOF 
-
-The ARTDAQ_DAQINTERFACE_DIR environment variable isn't set; you
-need to have set up the DAQInterface environment to run this
-script. See the DAQInterface wiki for details,
-https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Artdaq-daqinterface
-
-EOF
-
-exit 1
-    
-fi
-
+. $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
 . $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
 if $nostrict ; then
@@ -83,11 +70,34 @@ Since the code in the installation area which was used for run $runnum
 appears to have changed (details above), this attempt to repeat run
 $runnum will not proceed. To override this refusal because the change
 in code is irrelevant to your reasons for repeating run $runnum,
-re-run the command with the --nostrict option added at the end. 
+re-run the command with the --nostrict option added at the end. Exiting...
 
 EOF
 
 	exit 1
+    fi
+
+    if [[ -n $( diff $DAQINTERFACE_KNOWN_BOARDREADERS_LIST $recorddir/$runnum/known_boardreaders_list.txt ) ]]; then
+	cat <<EOF
+
+A difference was found in the contents of the file currently pointed
+to by the DAQINTERFACE_KNOWN_BOARDREADERS_LIST environment variable
+("$DAQINTERFACE_KNOWN_BOARDREADERS_LIST") and the file that was used
+during run $runnum; you can ignore this by re-running the command with
+the --nostrict option, or you can kill the current instance of
+DAQInterface on your partition, and execute the following two commands:
+
+cp $recorddir/$runnum/known_boardreaders_list.txt /tmp/known_boardreaders_list.txt
+export DAQINTERFACE_KNOWN_BOARDREADERS_LIST=/tmp/known_boardreaders_list.txt
+
+After executing these commands, relaunch DAQInterface before re-running
+this script.
+
+Exiting...
+
+EOF
+
+       exit 1
     fi
 fi
 

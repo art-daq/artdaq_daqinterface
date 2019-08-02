@@ -24,6 +24,7 @@ if [[ "$#" == "0" ]]; then
     exit 1
 fi
 
+. $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
 . $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
 
 scriptdir="$(dirname "$0")"
@@ -48,6 +49,27 @@ for token in "$@"; do
     fi
 done
 
+# JCF, Mar-22-2019
+
+# Since I discovered that getting DAQInterface to recover gracefully
+# in the event of a window close (SIGHUP) required that I stop tee-ing
+# the output and instead tail -f its logfile as a way to get output to
+# screen, I need to make sure that we don't leave any zombie tail
+# -f's...otherwise double (triple, etc.) lines of output may get
+# printed to screen!
+
+# Note that the assumed basename of $DAQINTERFACE_LOGFILE is
+# DAQInterface_partition<partition number>.log as defined in
+# source_me; if this changes, the logic here will need to change as
+# well
+
+function kill_tail_f {
+
+    for pid in $( ps aux | grep -E "tail -f.*DAQInterface_partition${1}" | grep -v grep | awk '{print $2}' ); do
+	kill $pid
+    done
+}
+
 for partition in "$@"; do
 
     if [[ "$partition" == "--force" ]]; then
@@ -62,12 +84,17 @@ for partition in "$@"; do
     cmd_to_get_daqinterface_pid="ps aux | grep -E \"python.*daqinterface.py.*--partition-number\s+$partition\" | grep -v grep | awk '{print \$2}'"
     daqinterface_pid=$( eval $cmd_to_get_daqinterface_pid )
 
-    cmd_to_get_daqinterface_tee_pid="ps aux | grep -E \"tee.*DAQInterface_partition${partition}.log\" | grep -v grep | awk '{print \$2}'"
-    daqinterface_tee_pid=$( eval $cmd_to_get_daqinterface_tee_pid )
-
     if [[ -n $daqinterface_pid ]]; then
 	
 	if ! $forcibly_kill ; then
+
+cat <<EOF
+
+Checking to make sure that DAQInterface on partition $partition is in the "stopped" state.
+If the script appears to hang here, there's an issue communicating with DAQInterface; hit Ctrl-c, 
+and then re-run this script with the "--force" option added at the end.
+
+EOF
 
 	     export DAQINTERFACE_PARTITION_NUMBER=$partition
 	     state_true="0"
@@ -99,15 +126,19 @@ EOF
 	     fi
 
 	     echo "Killing DAQInterface listening on partition $partition"
-	     kill $daqinterface_pid $daqinterface_tee_pid 
+
+	     kill $daqinterface_pid 
+	     kill_tail_f $partition
 	else
-	     kill $daqinterface_pid $daqinterface_tee_pid 
-	     
+	     kill $daqinterface_pid 
+	     kill_tail_f $partition	     
+
 	     daqinterface_pid=$( eval $cmd_to_get_daqinterface_pid )
 
 	     if [[ -n $daqinterface_pid ]]; then
 		 echo "Regular kill didn't work on DAQInterface listening on partition $partition; *forcibly* killing DAQInterface (kill -9)"
-		 kill -9 $daqinterface_pid $daqinterface_tee_pid 
+		 kill -9 $daqinterface_pid
+		 kill_tail_f $partition
 	     fi
 
 	fi
@@ -119,8 +150,5 @@ EOF
     
 done
 
-echo
-echo "Remaining DAQInterface instances (if any): "
-list_daqinterfaces
 
 

@@ -97,6 +97,12 @@ def launch_procs_base(self):
         base_launch_cmd = "%s -c \"id: %s commanderPluginType: xmlrpc rank: %s application_name: %s partition_number: %s\"" % \
                           (bootfile_name_to_execname(procinfo.name), procinfo.port, procinfo.rank, procinfo.label, 
                            os.environ["DAQINTERFACE_PARTITION_NUMBER"])
+        if procinfo.allowed_processors is not None:
+            base_launch_cmd="taskset --cpu-list %s %s" % (procinfo.allowed_processors, base_launch_cmd)
+        elif self.allowed_processors is not None:
+            base_launch_cmd="taskset --cpu-list %s %s" % (self.allowed_processors, base_launch_cmd)
+        
+
         #base_launch_cmd = "valgrind --tool=callgrind %s" % (base_launch_cmd)
         launch_cmd = "%s >> %s 2>&1 & " % (base_launch_cmd, self.launch_attempt_file)
 
@@ -135,7 +141,7 @@ def launch_procs_base(self):
         self.print_log("d", "PROCESS LAUNCH COMMANDS TO EXECUTE ON %s:\n%s\n" % (host, "\n".join(launch_commands_on_host_to_show_user[host])), 2)
         
         with deepsuppression(self.debug_level < 4):
-            status = Popen(launchcmd, shell=True).wait()
+            status = Popen(launchcmd, shell=True, preexec_fn=os.setpgrp).wait()
 
         if status != 0:   
             self.print_log("e", "Status error raised in attempting to launch processes on %s, to investigate, see %s:%s for output" % (host, host, self.launch_attempt_file))
@@ -305,7 +311,7 @@ def mopup_process_base(self, procinfo):
         related_process_mopup_ok = True
     else:
         related_process_mopup_ok = False
-        self.print_log("w", make_paragraph("Warning: unable to normally kill process(es) associated with now-deceased artdaq process %s; on %s the following pid(s) remain: %s. Will now resort to kill -9 on these processes." % (procinfo.label, procinfo.host, " ".join(unkilled_related_pids))))
+        self.print_log("d", make_paragraph("Warning: unable to normally kill process(es) associated with now-deceased artdaq process %s; on %s the following pid(s) remain: %s. Will now resort to kill -9 on these processes." % (procinfo.label, procinfo.host, " ".join(unkilled_related_pids))), 2)
         cmd = "kill -9 %s > /dev/null 2>&1 " % (" ".join(unkilled_related_pids))
 
         if on_other_node:
@@ -328,14 +334,13 @@ def get_pids_and_labels_on_host(host, procinfos):
     
     for procinfo in [pi for pi in procinfos if pi.host == host]:
         greptokens.append( "[0-9]:[0-9][0-9]\s\+" + bootfile_name_to_execname(procinfo.name) + " -c .*" + procinfo.port + ".*" ) 
+    greptoken = "[0-9]:[0-9][0-9]\s\+\(%s\).*application_name.*partition_number:\s*%s" % \
+                ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])), \
+                 os.environ["DAQINTERFACE_PARTITION_NUMBER"])
 
-    greptoken = "\|".join(greptokens)
-    
-    greptoken = "[0-9]:[0-9][0-9]\s\+\(%s\).*application_name.*partition_number" % \
-                ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])))
-
-    #greptoken = "[0-9]:[0-9][0-9]\s\+valgrind.*\(%s\).*application_name.*partition_number" % \
-    #            ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])))
+    #greptoken = "[0-9]:[0-9][0-9]\s\+valgrind.*\(%s\).*application_name.*partition_number:\s*%s" % \
+    #            ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])), \
+    # os.environ["DAQINTERFACE_PARTITION_NUMBER"])
 
 
     grepped_lines = []
@@ -399,16 +404,14 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
                     mopup_process_base(self, procinfo)
     
     if not is_all_ok and requireSuccess:
-        for procinfo in procinfos_to_remove:
-            self.procinfos.remove( procinfo )
-            if procinfo.label in self.critical_processes_list:
-                self.print_log("e", "Lost process \"%s\" is in the critical process list (%s); will now end the run and go to the Stopped state", procinfo.label, os.environ["DAQINTERFACE_CRITICAL_PROCESSES_LIST"] )
-                raise Exception("\nCritical process \"%s\" lost" % (procinfo.label))
-
-        print
-        self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
-        return
-
+        if self.state(self.name) == "running":
+            for procinfo in procinfos_to_remove:
+                self.procinfos.remove( procinfo )
+                self.throw_exception_if_losing_process_violates_requirements(procinfo)
+            self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
+        else:
+            raise Exception("\nProcess(es) %s died or found in Error state" % (", ".join(['"' + procinfo.label + '"' for procinfo in procinfos_to_remove])))
+            
     if is_all_ok:
         assert len(found_processes) == len(self.procinfos)
 

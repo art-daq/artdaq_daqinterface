@@ -10,6 +10,7 @@ runnum=$1
 
 echo
 
+. $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
 . $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
 metadata_file=$recorddir/$runnum/metadata.txt
@@ -19,8 +20,8 @@ if [[ ! -e $metadata_file ]]; then
     exit 1
 fi
 
-run_start_time=$( sed -r -n "s/Start time:\s*(.*)/\1/p" $metadata_file )
-run_stop_time=$( sed -r -n "s/Stop time:\s*(.*)/\1/p" $metadata_file )
+run_start_time=$( sed -r -n "s/DAQInterface start time:\s*(.*)/\1/p" $metadata_file )
+run_stop_time=$( sed -r -n "s/DAQInterface stop time:\s*(.*)/\1/p" $metadata_file )
 
 if [[ -z $run_start_time ]]; then
     run_start_time="unknown"
