@@ -1,4 +1,15 @@
 
+if [[ -n $1 ]]; then
+    if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+	. $ARTDAQ_DAQINTERFACE_DIR/bin/help.sh
+	return
+    else
+	echo "Unknown option passed to DAQInterface!"
+	return
+    fi
+fi
+
+
 # In the code below:
 # -The "nohup" is there so DAQInterface can wind down cleanly if users close its terminal
 # -The "stdbuf -oL" is there so that DAQInterface output makes it into the logfile in realtime
