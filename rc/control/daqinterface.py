@@ -45,6 +45,7 @@ from rc.control.utilities import reformat_fhicl_documents
 from rc.control.utilities import fhicl_writes_root_file
 from rc.control.utilities import bash_unsetup_command
 from rc.control.utilities import kill_tail_f
+from rc.control.utilities import upsproddir_from_productsdir
 
 from rc.control.config_functions_local import get_boot_info_base
 from rc.control.config_functions_local import listdaqcomps_base
@@ -732,7 +733,7 @@ class DAQInterface(Component):
 
         cmds = []
         cmds.append(bash_unsetup_command)
-        cmds.append(". %s" % (self.daq_setup_script))
+        cmds.append(". %s for_running" % (self.daq_setup_script))
         cmds.append('if test -n "$SETUP_ARTDAQ_MFEXTENSIONS" -o -d "$ARTDAQ_MFEXTENSIONS_DIR"; then true; else false; fi')
 
         checked_cmd = construct_checked_command( cmds )
@@ -751,7 +752,7 @@ class DAQInterface(Component):
 
         cmds = []
         cmds.append(bash_unsetup_command)
-        cmds.append(". %s" % (self.daq_setup_script))
+        cmds.append(". %s for_running" % (self.daq_setup_script))
         cmds.append('if [ -n "$SETUP_ARTDAQ_MFEXTENSIONS" ]; then printenv SETUP_ARTDAQ_MFEXTENSIONS; else echo "artdaq_mfextensions $ARTDAQ_MFEXTENSIONS_VERSION $MRB_QUALS";fi')
 
         proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -1477,7 +1478,7 @@ class DAQInterface(Component):
                            (random_host, self.daq_setup_script), 1, False)
 
             with deepsuppression(self.debug_level < 3):
-                cmd = "%s ; . %s" % (bash_unsetup_command, self.daq_setup_script)
+                cmd = "%s ; . %s for_running" % (bash_unsetup_command, self.daq_setup_script)
 
                 if random_host != "localhost" and random_host != os.environ["HOSTNAME"]:
                     cmd = "ssh %s '%s'" % (random_host, cmd)
@@ -1656,7 +1657,7 @@ class DAQInterface(Component):
                     port_to_replace = 30000
                     msgviewer_fhicl = "/tmp/msgviewer_partition%d_%s.fcl" % (self.partition_number, os.environ["USER"])
                     cmds.append(bash_unsetup_command)
-                    cmds.append(". %s" % (self.daq_setup_script))
+                    cmds.append(". %s for_running" % (self.daq_setup_script))
                     cmds.append("which msgviewer")
                     cmds.append("cp $ARTDAQ_MFEXTENSIONS_DIR/fcl/msgviewer.fcl %s" % (msgviewer_fhicl))
                     cmds.append("res=$( grep -l \"port: %d\" %s )" % (port_to_replace, msgviewer_fhicl))
@@ -1839,9 +1840,9 @@ class DAQInterface(Component):
         if not os.path.exists(os.environ["DAQINTERFACE_SETUP_FHICLCPP"]):
             self.print_log("w", make_paragraph("File \"%s\", needed for formatting FHiCL configurations, does not appear to exist; will attempt to auto-generate one..." % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"])))
             with open( os.environ["DAQINTERFACE_SETUP_FHICLCPP"], "w") as outf:
-                outf.write("source %s/setup\n" % (self.productsdir))
+                outf.write("export PRODUCTS=\"%s\"; . %s/setup\n" % (self.productsdir,upsproddir_from_productsdir(self.productsdir)))
                 outf.write( bash_unsetup_command + "\n" )
-                lines = Popen("export PRODUCTS= ; source %s/setup; ups list -aK+ fhiclcpp | sort -n" % (self.productsdir), 
+                lines = Popen("export PRODUCTS=\"%s\"; . %s/setup; ups list -aK+ fhiclcpp | sort -n" % (self.productsdir,upsproddir_from_productsdir(self.productsdir)), 
                                                shell=True, stdout=subprocess.PIPE).stdout.readlines()
                 if len(lines) > 0:
                     fhiclcpp_to_setup_line = lines[-1]

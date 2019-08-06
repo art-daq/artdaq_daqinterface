@@ -17,6 +17,7 @@ from rc.control.utilities import date_and_time
 from rc.control.utilities import construct_checked_command
 from rc.control.utilities import obtain_messagefacility_fhicl
 from rc.control.utilities import make_paragraph
+from rc.control.utilities import upsproddir_from_productsdir
 from rc.control.deepsuppression import deepsuppression
 
 
@@ -75,9 +76,9 @@ def launch_procs_base(self):
 
             launch_commands_to_run_on_host[ procinfo.host ].append("set +C")  
             launch_commands_to_run_on_host[ procinfo.host ].append("echo > %s" % (self.launch_attempt_file))
-            launch_commands_to_run_on_host[ procinfo.host ].append(". %s/setup >> %s 2>&1 " % (self.productsdir, self.launch_attempt_file))
+            launch_commands_to_run_on_host[ procinfo.host ].append("export PRODUCTS=\"%s\"; . %s/setup >> %s 2>&1 " % (self.productsdir,upsproddir_from_productsdir(self.productsdir),self.launch_attempt_file))
             launch_commands_to_run_on_host[ procinfo.host ].append( bash_unsetup_command )
-            launch_commands_to_run_on_host[ procinfo.host ].append("source %s >> %s 2>&1 " % (self.daq_setup_script, self.launch_attempt_file ))
+            launch_commands_to_run_on_host[ procinfo.host ].append("source %s for_running >> %s 2>&1 " % (self.daq_setup_script, self.launch_attempt_file ))
             launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_ROOT=%s" % (self.log_directory))
             if self.have_artdaq_mfextensions():
                 launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))

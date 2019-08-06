@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 
 import os
 import re
@@ -620,6 +621,15 @@ udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THI
 
     return processed_messagefacility_fhicl_filename
 
+def upsproddir_from_productsdir( productsdir ):
+    for pp in productsdir.split(':'):
+        upsproddir=''                  # may not find what we're looking for
+        tt=pp.rstrip('/')+'/'          # make sure it ends with _single_ '/'
+        if os.path.isdir(tt) and os.path.isfile( tt+'setup') and os.path.isdir(tt+'.upsfiles') and os.path.isdir(tt+'ups'):
+            upsproddir=pp.rstrip('/')  # make sure it does not end with '/'
+            break
+    return upsproddir
+
 
 def main():
 
@@ -653,6 +663,15 @@ def main():
             print "Error: problem getting the commit info from \"%s\"" % (gitrepo)
             sys.exit(5)
         
+        sys.exit(0)
+
+    elif len(sys.argv) > 1 and sys.argv[1] == "upsproddir_from_productsdir":
+        if len(sys.argv) != 3:
+            print make_paragraph("Error: expected 1 argument to upsproddir_from_productsdir: PRODUCTS_list")
+            sys.exit(1)
+
+        productsdir = sys.argv[2]
+        print( upsproddir_from_productsdir(productsdir) )
         sys.exit(0)
 
     paragraphed_string_test = False
