@@ -3,6 +3,7 @@ if [[ -n $1 ]]; then
     if [[ "$1" == "-h" || "$1" == "--help" ]]; then
 	. $ARTDAQ_DAQINTERFACE_DIR/bin/help.sh
 	return
+    fi
 fi
 
 
