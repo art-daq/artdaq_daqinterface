@@ -128,7 +128,7 @@ fi
 
 . $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
 
-alias DAQInterface="source $ARTDAQ_DAQINTERFACE_DIR/bin/DAQInterface.sh"
+alias DAQInterface="$ARTDAQ_DAQINTERFACE_DIR/bin/DAQInterface.sh"
 
 
 export PATH=$ARTDAQ_DAQINTERFACE_DIR/bin:$PATH
