@@ -3,10 +3,6 @@ if [[ -n $1 ]]; then
     if [[ "$1" == "-h" || "$1" == "--help" ]]; then
 	. $ARTDAQ_DAQINTERFACE_DIR/bin/help.sh
 	return
-    else
-	echo "Unknown option passed to DAQInterface!"
-	return
-    fi
 fi
 
 
