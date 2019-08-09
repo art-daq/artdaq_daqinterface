@@ -12,6 +12,7 @@ from rc.control.utilities import enclosing_table_name
 from rc.control.utilities import commit_check_throws_if_failure
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import fhicl_writes_root_file
+from rc.control.utilities import get_private_networks
 
 def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
@@ -499,9 +500,21 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     # "associated with" translates to "what subsystem do we use when
     # bookkeeping")
 
+    # JCF, Aug-9-2019
+
+    # First, let's figure out which private networks the various processes can see
+
+    private_networks_seen = {}
+    for host in set([procinfo.host for procinfo in self.procinfos]):
+        private_networks = get_private_networks(host)
+        for procinfo in self.procinfos:
+            if procinfo.host == host:
+                private_networks_seen[procinfo.label] = private_networks
+
     table_update_addresses = {}
     routing_base_ports = {}
     router_process_hostnames = {}
+    router_process_private_networks = {}
 
     for subsystem_id, subsystem in self.subsystems.items():
 
@@ -519,6 +532,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         if len(router_process_for_subsystem_as_list) == 0:
             continue
+        elif len(router_process_for_subsystem_as_list) > 1:
+            raise Exception(make_paragraph("DAQInterface has found more than one router process (RoutingMaster, DFO, etc.) associated with subsystem %s requested in the boot file %s; this isn't currently supported" % (subsystem_id, self.boot_filename)))
         elif len(router_process_for_subsystem_as_list) == 1:
             router_process_for_subsystem = router_process_for_subsystem_as_list[0]
             
@@ -526,11 +541,22 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                                         int(subsystem_id) + 128)
             routing_base_ports[ subsystem_id ] = int(os.environ["ARTDAQ_BASE_PORT"]) + 10 + \
                                                  int(os.environ["ARTDAQ_PORTS_PER_PARTITION"])*self.partition_number + int(subsystem_id)
+
             router_process_hostnames[ subsystem_id ] = router_process_for_subsystem.host
             if router_process_hostnames[ subsystem_id ] == "localhost":
                 router_process_hostnames[ subsystem_id ] = os.environ["HOSTNAME"]
-        elif len(router_process_for_subsystem_as_list) > 1:
-            raise Exception(make_paragraph("DAQInterface has found more than one router process (RoutingMaster, DFO, etc.) associated with subsystem %s requested in the boot file %s; this isn't currently supported" % (subsystem_id, self.boot_filename)))
+
+            router_process_private_networks[ subsystem_id ] = None
+            for router_process_private_network in private_networks_seen[router_process_for_subsystem.label]:
+                network_seen_by_relevant_processes = True
+                for procinfo in self.procinfos:
+                    if "BoardReader" in procinfo.name and procinfo.subsystem == subsystem_id and \
+                       procinfo.label not in nonsending_boardreaders:
+                        if router_process_private_network not in private_networks_seen[procinfo.label]:
+                            network_seen_by_relevant_processes = False
+                if network_seen_by_relevant_processes:
+                    router_process_private_networks[ subsystem_id ] = router_process_private_network
+                    break
 
     # JCF, Apr-18-2019
 
@@ -561,12 +587,24 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         table_to_bookkeep = re.sub("table_acknowledge_port\s*:\s*[0-9]+", 
                                       "table_acknowledge_port: %d" % (routing_base_ports[router_process_subsystem] + 20), 
                                       table_to_bookkeep)
-        table_to_bookkeep = re.sub("routing_master_hostname\s*:\s*\S+",
-                                      "routing_master_hostname: \"%s\"" % (router_process_hostnames[router_process_subsystem].strip("\"")),
-                                      table_to_bookkeep)
         table_to_bookkeep = re.sub("routing_token_port\s*:\s*[0-9]+", 
                                       "routing_token_port: %d" % (routing_base_ports[router_process_subsystem]), 
                                       table_to_bookkeep)
+
+        router_process_network_to_use = router_process_hostnames[router_process_subsystem].strip("\"")
+
+        # If we can use a shared private network rather than the public host the router process is on, so much the better...
+        for private_network_seen in private_networks_seen[self.procinfos[i_proc].label]:
+            if private_network_seen == router_process_private_networks[router_process_subsystem]:
+                router_process_network_to_use = router_process_private_networks[router_process_subsystem]
+
+        table_to_bookkeep = re.sub("routing_master_hostname\s*:\s*\S+",
+                                   "routing_master_hostname: \"%s\"" % (router_process_network_to_use.strip()),
+                                   table_to_bookkeep)
+
+        table_to_bookkeep = re.sub("table_update_multicast_interface\s*:\s*\S+",
+                                   "table_update_multicast_interface: \"%s\"" % (router_process_network_to_use.strip()),
+                                   table_to_bookkeep)
 
         self.procinfos[i_proc].fhicl_used = self.procinfos[i_proc].fhicl_used[:table_start] + \
                             "\n" + table_to_bookkeep + "\n" + \

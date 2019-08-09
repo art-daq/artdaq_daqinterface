@@ -620,6 +620,15 @@ udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THI
 
     return processed_messagefacility_fhicl_filename
 
+def get_private_networks(host):
+    cmd = "/usr/sbin/ifconfig | sed -r -n \"s/^\s*inet\s+(192\.168\.\S+)\s+.*/\\1/p\""
+
+    if host != "localhost" and host != os.environ["HOSTNAME"]:
+        cmd = "ssh -x %s '%s'" % (host, cmd)
+
+    print cmd
+    return Popen(cmd, shell=True, stdout=subprocess.PIPE ).stdout.readlines()
+    
 
 def main():
 
@@ -662,7 +671,8 @@ def main():
     bash_unsetup_test = False
     get_commit_info_test = False
     get_build_info_test = False
-    table_range_test = True
+    table_range_test = False
+    get_private_networks_test = True
 
     if paragraphed_string_test:
         sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
@@ -744,6 +754,13 @@ def main():
             (table_start, table_end) = table_range( inf_contents, "art" )
             print "Contents of table: "
             print inf_contents[table_start:table_end]
+
+    if get_private_networks_test:
+        hosts = ["localhost", "sbnd-daq33.fnal.gov", "sbnd-daq34"]
+
+        for host in hosts:
+            private_networks = get_private_networks(host)
+            print "%s: %s" % (host, " ".join([network.strip() for network in private_networks]))
 
 def kill_tail_f():
     tail_pids = get_pids("%s.*tail -f %s" % 
