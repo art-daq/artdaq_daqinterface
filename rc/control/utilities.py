@@ -626,9 +626,19 @@ def get_private_networks(host):
     if host != "localhost" and host != os.environ["HOSTNAME"]:
         cmd = "ssh -x %s '%s'" % (host, cmd)
 
-    print cmd
-    return Popen(cmd, shell=True, stdout=subprocess.PIPE ).stdout.readlines()
-    
+    lines = Popen(cmd, shell=True, stdout=subprocess.PIPE ).stdout.readlines() 
+    networks = []
+
+    for line in lines:
+        network = line.strip()
+        res = re.search(r"^([0-9]+\.[0-9]+\.[0-9]+\.)[0-9]+", network)
+        if res:
+            network = res.group(1) + "0"
+        else:
+            raise Exception("Unexpected result from command \"%s\"; line \"%s\" doesn't appear to be an address" % (cmd, network))
+        networks.append(network)
+
+    return networks
 
 def main():
 
