@@ -557,6 +557,54 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 if network_seen_by_relevant_processes:
                     router_process_private_networks[ subsystem_id ] = router_process_private_network
                     break
+        
+        # While we're looping on subsystems, let's also bookkeep the
+        # multicast_interface_ip parameter used for request sending, by 
+        # figuring out whether or not all the request-receiving boardreaders 
+        # and eventbuilders in the subsystem see the same private network
+
+        boardreaders_involved_in_requests = []
+        eventbuilders_involved_in_requests = []
+        
+        for procinfo in [procinfo for procinfo in self.procinfos if procinfo.subsystem == subsystem_id]:
+            if "BoardReader" in procinfo.name and procinfo.label not in nonsending_boardreaders:
+                for token in ["[Ww]indow", "[Ss]ingle", "[Bb]uffer"]:
+                    res = re.search(r"\n\s*request_mode\s*:\s*\"%s\"" % (token), procinfo.fhicl_used)
+                    if res:
+                        boardreaders_involved_in_requests.append(procinfo.label)
+                        break
+
+            if "EventBuilder" in procinfo.name:
+                res = re.search(r"\n\s*send_requests\s*:\s*true", procinfo.fhicl_used)
+                if res:
+                    eventbuilders_involved_in_requests.append(procinfo.label)
+
+        #print "BoardReaders involved in requests for subsystem %s: " % (str(subsystem_id))
+        #print " ".join(boardreaders_involved_in_requests)
+
+        #print "EventBuilders involved in requests for subsystem %s: " % (str(subsystem_id))
+        #print " ".join(eventbuilders_involved_in_requests)
+        
+        processes_involved_in_requests = [process for process_list in \
+                                          [boardreaders_involved_in_requests, eventbuilders_involved_in_requests] \
+                                          for process in process_list ]
+        
+        if len(processes_involved_in_requests) > 0:
+            private_networks_seen_by_processes_involved_in_requests = set( private_networks_seen[processes_involved_in_requests[0]] )
+            for i_proc in range(1, len(processes_involved_in_requests)):
+                private_networks_seen_by_processes_involved_in_requests = private_networks_seen_by_processes_involved_in_requests.intersection(set( private_networks_seen[processes_involved_in_requests[i_proc]] ))
+
+        # JCF, Aug-12-2019
+        # Don't yet have a "tiebreaker" if there's more than one private network visible to all processes...
+
+        if len(list(private_networks_seen_by_processes_involved_in_requests)) > 0:
+            multicast_interface_ip = list(private_networks_seen_by_processes_involved_in_requests)[0]
+            for process_involved_in_request in processes_involved_in_requests:
+                for i_proc in range(len(self.procinfos)):
+                    if self.procinfos[i_proc].label == process_involved_in_request:
+                        self.procinfos[i_proc].fhicl_used = re.sub("multicast_interface_ip\s*:\s*\S+", \
+                                                                   "multicast_interface_ip: \"%s\"" % (multicast_interface_ip), \
+                                                                   self.procinfos[i_proc].fhicl_used)
 
     # JCF, Apr-18-2019
 
