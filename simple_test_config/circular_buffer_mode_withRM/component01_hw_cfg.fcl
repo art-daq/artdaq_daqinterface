@@ -48,6 +48,7 @@ timestamp_scale_factor: 10
        
            ## Host that acknowledgements should be sent to
            routing_master_hostname: "localhost"  # default
+            table_update_multicast_interface: "0.0.0.0"
        
            ## Time to wait (in ms) for a routing table update if the table is exhausted
            routing_timeout_ms: 2000  # default 1000
