@@ -12,7 +12,7 @@ Subsystem destination: 2
 Subsystem id: 2
 Subsystem source: 1
 
-EventBuilder host: mu2edaq10
+EventBuilder host: mu2edaq14
 EventBuilder label: DFO
 EventBuilder subsystem: 1
 
@@ -24,7 +24,7 @@ EventBuilder host: mu2edaq12
 EventBuilder label: EventBuilder2
 EventBuilder subsystem: 2
 
-EventBuilder host: mu2edaq10
+EventBuilder host: mu2edaq14
 EventBuilder label: EventBuilder3
 EventBuilder subsystem: 2
 
@@ -36,6 +36,6 @@ Dispatcher host: mu2edaq12
 Dispatcher label: Dispatcher1
 Dispatcher subsystem: 2
 
-RoutingMaster host: mu2edaq10
+RoutingMaster host: mu2edaq14
 RoutingMaster label: RoutingMaster1
 RoutingMaster subsystem: 2

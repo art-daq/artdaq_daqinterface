@@ -6,7 +6,7 @@ PMT host: localhost
 # debug level can range from 0 to 3 (increasing order of verbosity)
 debug level: 1
 
-EventBuilder host: mu2edaq10
+EventBuilder host: mu2edaq14
 EventBuilder label: EventBuilder1
 
 EventBuilder host: mu2edaq11
@@ -15,7 +15,7 @@ EventBuilder label: EventBuilder2
 DataLogger host: mu2edaq12
 DataLogger label: DataLogger1
 
-# DataLogger host: mu2edaq10
+# DataLogger host: mu2edaq14
 # DataLogger label: DataLogger2
 
 # DataLogger host: mu2edaq11
@@ -24,5 +24,5 @@ DataLogger label: DataLogger1
 # DataLogger host: mu2edaq12
 # DataLogger label: DataLogger4
 
-Dispatcher host: mu2edaq10
+Dispatcher host: mu2edaq14
 Dispatcher label: Dispatcher1
