@@ -632,13 +632,16 @@ def get_private_networks(host):
     for line in lines:
         network = line.strip()
         res = re.search(r"^([0-9]+\.[0-9]+\.[0-9]+\.)[0-9]+", network)
-        if res:
-            network = res.group(1) + "0"
-        else:
+        if not res:
             raise Exception("Unexpected result from command \"%s\"; line \"%s\" doesn't appear to be an address" % (cmd, network))
         networks.append(network)
 
     return networks
+
+def zero_out_last_subnet(network):
+    res = re.search(r"^([0-9]+\.[0-9]+\.[0-9]+\.)[0-9]+", network)
+    assert res, "Developer error: proper address not passed to \"zero_out_last_subnet\""
+    return "%s0" % (res.group(1))
 
 def main():
 

@@ -13,6 +13,7 @@ from rc.control.utilities import commit_check_throws_if_failure
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import fhicl_writes_root_file
 from rc.control.utilities import get_private_networks
+from rc.control.utilities import zero_out_last_subnet
 
 def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
@@ -547,15 +548,16 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 router_process_hostnames[ subsystem_id ] = os.environ["HOSTNAME"]
 
             router_process_private_networks[ subsystem_id ] = None
-            for router_process_private_network in private_networks_seen[router_process_for_subsystem.label]:
+            for router_process_private_network_candidate in private_networks_seen[router_process_for_subsystem.label]:
                 network_seen_by_relevant_processes = True
                 for procinfo in self.procinfos:
                     if "BoardReader" in procinfo.name and procinfo.subsystem == subsystem_id and \
                        procinfo.label not in nonsending_boardreaders:
-                        if router_process_private_network not in private_networks_seen[procinfo.label]:
+                        if zero_out_last_subnet(router_process_private_network_candidate) not in \
+                           [zero_out_last_subnet(ntwrk) for ntwrk in private_networks_seen[procinfo.label]]:
                             network_seen_by_relevant_processes = False
                 if network_seen_by_relevant_processes:
-                    router_process_private_networks[ subsystem_id ] = router_process_private_network
+                    router_process_private_networks[ subsystem_id ] = router_process_private_network_candidate
                     break
         
         # While we're looping on subsystems, let's also bookkeep the
@@ -590,9 +592,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                           for process in process_list ]
         
         if len(processes_involved_in_requests) > 0:
-            private_networks_seen_by_processes_involved_in_requests = set( private_networks_seen[processes_involved_in_requests[0]] )
+            private_networks_seen_by_processes_involved_in_requests = set( [zero_out_last_subnet(ntwrk) for ntwrk in private_networks_seen[processes_involved_in_requests[0]]] )
             for i_proc in range(1, len(processes_involved_in_requests)):
-                private_networks_seen_by_processes_involved_in_requests = private_networks_seen_by_processes_involved_in_requests.intersection(set( private_networks_seen[processes_involved_in_requests[i_proc]] ))
+                private_networks_seen_by_processes_involved_in_requests = private_networks_seen_by_processes_involved_in_requests.intersection(set( [zero_out_last_subnet(ntwrk) for ntwrk in private_networks_seen[processes_involved_in_requests[i_proc]]] ))
 
         # JCF, Aug-12-2019
         # Don't yet have a "tiebreaker" if there's more than one private network visible to all processes...
@@ -639,20 +641,36 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                       "routing_token_port: %d" % (routing_base_ports[router_process_subsystem]), 
                                       table_to_bookkeep)
 
-        router_process_network_to_use = router_process_hostnames[router_process_subsystem].strip("\"")
-
-        # If we can use a shared private network rather than the public host the router process is on, so much the better...
-        for private_network_seen in private_networks_seen[self.procinfos[i_proc].label]:
-            if private_network_seen == router_process_private_networks[router_process_subsystem]:
-                router_process_network_to_use = router_process_private_networks[router_process_subsystem]
-
         table_to_bookkeep = re.sub("routing_master_hostname\s*:\s*\S+",
-                                   "routing_master_hostname: \"%s\"" % (router_process_network_to_use.strip()),
+                                   "routing_master_hostname: \"%s\"" % (router_process_hostnames[router_process_subsystem].strip("\"")),
                                    table_to_bookkeep)
 
         table_to_bookkeep = re.sub("table_update_multicast_interface\s*:\s*\S+",
-                                   "table_update_multicast_interface: \"%s\"" % (router_process_network_to_use.strip()),
+                                   "table_update_multicast_interface: \"%s\"" % (router_process_hostnames[router_process_subsystem].strip("\"")),
                                    table_to_bookkeep)
+
+        # So far in this function we've just set
+        # routing_master_hostname and table_update_multicast_interface
+        # to the router process hostname from the boot file, but let's
+        # see if we can use a shared private network...
+
+        for private_network_seen in private_networks_seen[self.procinfos[i_proc].label]:
+
+            if zero_out_last_subnet(private_network_seen) == zero_out_last_subnet(router_process_private_networks[router_process_subsystem]):
+
+                routing_master_hostname_value = router_process_private_networks[router_process_subsystem]
+                table_update_multicast_interface_value = zero_out_last_subnet(private_network_seen)
+
+                print "Trying to sub in routing_master_hostname == %s" % (routing_master_hostname_value)
+                table_to_bookkeep = re.sub("routing_master_hostname\s*:\s*\S+",
+                                           "routing_master_hostname: \"%s\"" % (routing_master_hostname_value),
+                                           table_to_bookkeep)
+
+                print "Trying to sub in table_update_multicast_interface == %s" % (table_update_multicast_interface_value)
+                table_to_bookkeep = re.sub("table_update_multicast_interface\s*:\s*\S+",
+                                           "table_update_multicast_interface: \"%s\"" % (table_update_multicast_interface_value),
+                                           table_to_bookkeep)
+                break
 
         self.procinfos[i_proc].fhicl_used = self.procinfos[i_proc].fhicl_used[:table_start] + \
                             "\n" + table_to_bookkeep + "\n" + \
