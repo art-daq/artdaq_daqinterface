@@ -21,7 +21,7 @@ EventBuilder host: localhost
 EventBuilder port: 5237
 EventBuilder label: EventBuilder3
 
-DataLogger host: mu2edaq10
+DataLogger host: mu2edaq14
 DataLogger port: 5265
 DataLogger label: DataLogger1
 
