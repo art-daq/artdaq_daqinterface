@@ -501,16 +501,27 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     # "associated with" translates to "what subsystem do we use when
     # bookkeeping")
 
-    # JCF, Aug-9-2019
+    # JCF, Aug-15-2019
 
-    # First, let's figure out which private networks the various processes can see
+    # First, let's figure out which private networks the various
+    # processes can see, assuming the user hasn't disabled private
+    # network bookkeeping. Note to developers: if, for whatever
+    # reason, you decide it's a good idea to fill the
+    # private_networks_seen dictionary even if the disabling's
+    # occured, you'll want to revisit the logic later in this function
+    # that assumes nonempty private_networks_seen dictionary <=> the
+    # user wants private network bookkeeping
 
     private_networks_seen = {}
-    for host in set([procinfo.host for procinfo in self.procinfos]):
-        private_networks = get_private_networks(host)
-        for procinfo in self.procinfos:
-            if procinfo.host == host:
-                private_networks_seen[procinfo.label] = private_networks
+    if not self.disable_private_network_bookkeeping:
+        for host in set([procinfo.host for procinfo in self.procinfos]):
+            private_networks = get_private_networks(host)
+            for procinfo in self.procinfos:
+                if procinfo.host == host:
+                    private_networks_seen[procinfo.label] = private_networks
+
+    assert not self.disable_private_network_bookkeeping or len(private_networks_seen) == 0, \
+        "See Aug-15-2019 comment in bookkeeping.py"
 
     table_update_addresses = {}
     routing_base_ports = {}
@@ -547,66 +558,85 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             if router_process_hostnames[ subsystem_id ] == "localhost":
                 router_process_hostnames[ subsystem_id ] = os.environ["HOSTNAME"]
 
-            router_process_private_networks[ subsystem_id ] = None
-            for router_process_private_network_candidate in private_networks_seen[router_process_for_subsystem.label]:
-                network_seen_by_relevant_processes = True
+            if not self.disable_private_network_bookkeeping:
+
+                # To-do: Tiebreaker needed in case the process group can see more than one private network...
+                router_process_private_networks[ subsystem_id ] = None
+
+                relevant_processes = []
                 for procinfo in self.procinfos:
                     if "BoardReader" in procinfo.name and procinfo.subsystem == subsystem_id and \
                        procinfo.label not in nonsending_boardreaders:
+                        relevant_processes.append(procinfo.label)
+
+                for router_process_private_network_candidate in private_networks_seen[router_process_for_subsystem.label]:
+                    network_seen_by_relevant_processes = True
+
+                    for relevant_process in relevant_processes:
                         if zero_out_last_subnet(router_process_private_network_candidate) not in \
-                           [zero_out_last_subnet(ntwrk) for ntwrk in private_networks_seen[procinfo.label]]:
-                            network_seen_by_relevant_processes = False
-                if network_seen_by_relevant_processes:
-                    router_process_private_networks[ subsystem_id ] = router_process_private_network_candidate
-                    break
+                           [zero_out_last_subnet(ntwrk) for ntwrk in private_networks_seen[relevant_process]]:
+                                network_seen_by_relevant_processes = False
+
+                    if network_seen_by_relevant_processes:
+                        router_process_private_networks[ subsystem_id ] = router_process_private_network_candidate
+                        break
+
+                if router_process_private_networks[ subsystem_id ] is None:
+                    self.print_log("w", make_paragraph("Warning: disable_private_network_bookkeeping isn't set to true in the DAQInterface settings file \"%s\" -- it defaults to false if unset -- but no private network was found visible to the routing process %s and the processes the routing process works with (%s)" % \
+                                                       (os.environ["DAQINTERFACE_SETTINGS"], router_process_for_subsystem.label, ", ".join(relevant_processes))))
         
         # While we're looping on subsystems, let's also bookkeep the
         # multicast_interface_ip parameter used for request sending, by 
         # figuring out whether or not all the request-receiving boardreaders 
         # and eventbuilders in the subsystem see the same private network
 
-        boardreaders_involved_in_requests = []
-        eventbuilders_involved_in_requests = []
-        
-        for procinfo in [procinfo for procinfo in self.procinfos if procinfo.subsystem == subsystem_id]:
-            if "BoardReader" in procinfo.name and procinfo.label not in nonsending_boardreaders:
-                for token in ["[Ww]indow", "[Ss]ingle", "[Bb]uffer"]:
-                    res = re.search(r"\n\s*request_mode\s*:\s*\"%s\"" % (token), procinfo.fhicl_used)
+        if not self.disable_private_network_bookkeeping:
+            boardreaders_involved_in_requests = []
+            eventbuilders_involved_in_requests = []
+
+            for procinfo in [procinfo for procinfo in self.procinfos if procinfo.subsystem == subsystem_id]:
+                if "BoardReader" in procinfo.name and procinfo.label not in nonsending_boardreaders:
+                    for token in ["[Ww]indow", "[Ss]ingle", "[Bb]uffer"]:
+                        res = re.search(r"\n\s*request_mode\s*:\s*\"%s\"" % (token), procinfo.fhicl_used)
+                        if res:
+                            boardreaders_involved_in_requests.append(procinfo.label)
+                            break
+
+                if "EventBuilder" in procinfo.name:
+                    res = re.search(r"\n\s*send_requests\s*:\s*true", procinfo.fhicl_used)
                     if res:
-                        boardreaders_involved_in_requests.append(procinfo.label)
-                        break
+                        eventbuilders_involved_in_requests.append(procinfo.label)
 
-            if "EventBuilder" in procinfo.name:
-                res = re.search(r"\n\s*send_requests\s*:\s*true", procinfo.fhicl_used)
-                if res:
-                    eventbuilders_involved_in_requests.append(procinfo.label)
+            #self.print_log("i", "BoardReaders involved in requests for subsystem %s: " % (str(subsystem_id)))
+            #self.print_log("i", " ".join(boardreaders_involved_in_requests))
 
-        #print "BoardReaders involved in requests for subsystem %s: " % (str(subsystem_id))
-        #print " ".join(boardreaders_involved_in_requests)
+            #self.print_log("i", "EventBuilders involved in requests for subsystem %s: " % (str(subsystem_id)))
+            #self.print_log("i", print " ".join(eventbuilders_involved_in_requests))
 
-        #print "EventBuilders involved in requests for subsystem %s: " % (str(subsystem_id))
-        #print " ".join(eventbuilders_involved_in_requests)
+            processes_involved_in_requests = [process for process_list in \
+                                              [boardreaders_involved_in_requests, eventbuilders_involved_in_requests] \
+                                              for process in process_list ]
+
+            if len(processes_involved_in_requests) > 0:
+                private_networks_seen_by_processes_involved_in_requests = set( [zero_out_last_subnet(ntwrk) for ntwrk in private_networks_seen[processes_involved_in_requests[0]]] )
+                for i_proc in range(1, len(processes_involved_in_requests)):
+                    private_networks_seen_by_processes_involved_in_requests = private_networks_seen_by_processes_involved_in_requests.intersection(set( [zero_out_last_subnet(ntwrk) for ntwrk in private_networks_seen[processes_involved_in_requests[i_proc]]] ))
+
+            # JCF, Aug-12-2019
+            # Don't yet have a "tiebreaker" if there's more than one private network visible to all processes...
+
+            if len(list(private_networks_seen_by_processes_involved_in_requests)) > 0:
+                multicast_interface_ip = list(private_networks_seen_by_processes_involved_in_requests)[0]
+                for process_involved_in_request in processes_involved_in_requests:
+                    for i_proc in range(len(self.procinfos)):
+                        if self.procinfos[i_proc].label == process_involved_in_request:
+                            self.procinfos[i_proc].fhicl_used = re.sub("multicast_interface_ip\s*:\s*\S+", \
+                                                                       "multicast_interface_ip: \"%s\"" % \
+                                                                       (multicast_interface_ip), \
+                                                                       self.procinfos[i_proc].fhicl_used)
+            else:
+                self.print_log("w", make_paragraph("Warning: disable_private_network_bookkeeping isn't set to true in the DAQInterface settings file \"%s\" -- it defaults to false if unset -- but no private network was found visible to the processes involved in data requests for subsystem %s: %s" % (os.environ["DAQINTERFACE_SETTINGS"], str(subsystem_id), ", ".join(processes_involved_in_requests) )))
         
-        processes_involved_in_requests = [process for process_list in \
-                                          [boardreaders_involved_in_requests, eventbuilders_involved_in_requests] \
-                                          for process in process_list ]
-        
-        if len(processes_involved_in_requests) > 0:
-            private_networks_seen_by_processes_involved_in_requests = set( [zero_out_last_subnet(ntwrk) for ntwrk in private_networks_seen[processes_involved_in_requests[0]]] )
-            for i_proc in range(1, len(processes_involved_in_requests)):
-                private_networks_seen_by_processes_involved_in_requests = private_networks_seen_by_processes_involved_in_requests.intersection(set( [zero_out_last_subnet(ntwrk) for ntwrk in private_networks_seen[processes_involved_in_requests[i_proc]]] ))
-
-        # JCF, Aug-12-2019
-        # Don't yet have a "tiebreaker" if there's more than one private network visible to all processes...
-
-        if len(list(private_networks_seen_by_processes_involved_in_requests)) > 0:
-            multicast_interface_ip = list(private_networks_seen_by_processes_involved_in_requests)[0]
-            for process_involved_in_request in processes_involved_in_requests:
-                for i_proc in range(len(self.procinfos)):
-                    if self.procinfos[i_proc].label == process_involved_in_request:
-                        self.procinfos[i_proc].fhicl_used = re.sub("multicast_interface_ip\s*:\s*\S+", \
-                                                                   "multicast_interface_ip: \"%s\"" % (multicast_interface_ip), \
-                                                                   self.procinfos[i_proc].fhicl_used)
 
     # JCF, Apr-18-2019
 
@@ -654,23 +684,22 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         # to the router process hostname from the boot file, but let's
         # see if we can use a shared private network...
 
-        for private_network_seen in private_networks_seen[self.procinfos[i_proc].label]:
+        if not self.disable_private_network_bookkeeping:
+            for private_network_seen in private_networks_seen[self.procinfos[i_proc].label]:
 
-            if zero_out_last_subnet(private_network_seen) == zero_out_last_subnet(router_process_private_networks[router_process_subsystem]):
+                if zero_out_last_subnet(private_network_seen) == zero_out_last_subnet(router_process_private_networks[router_process_subsystem]):
 
-                routing_master_hostname_value = router_process_private_networks[router_process_subsystem]
-                table_update_multicast_interface_value = zero_out_last_subnet(private_network_seen)
+                    routing_master_hostname_value = router_process_private_networks[router_process_subsystem]
+                    table_update_multicast_interface_value = zero_out_last_subnet(private_network_seen)
 
-                print "Trying to sub in routing_master_hostname == %s" % (routing_master_hostname_value)
-                table_to_bookkeep = re.sub("routing_master_hostname\s*:\s*\S+",
-                                           "routing_master_hostname: \"%s\"" % (routing_master_hostname_value),
-                                           table_to_bookkeep)
+                    table_to_bookkeep = re.sub("routing_master_hostname\s*:\s*\S+",
+                                               "routing_master_hostname: \"%s\"" % (routing_master_hostname_value),
+                                               table_to_bookkeep)
 
-                print "Trying to sub in table_update_multicast_interface == %s" % (table_update_multicast_interface_value)
-                table_to_bookkeep = re.sub("table_update_multicast_interface\s*:\s*\S+",
-                                           "table_update_multicast_interface: \"%s\"" % (table_update_multicast_interface_value),
-                                           table_to_bookkeep)
-                break
+                    table_to_bookkeep = re.sub("table_update_multicast_interface\s*:\s*\S+",
+                                               "table_update_multicast_interface: \"%s\"" % (table_update_multicast_interface_value),
+                                               table_to_bookkeep)
+                    break
 
         self.procinfos[i_proc].fhicl_used = self.procinfos[i_proc].fhicl_used[:table_start] + \
                             "\n" + table_to_bookkeep + "\n" + \

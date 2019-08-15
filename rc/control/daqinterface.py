@@ -517,6 +517,7 @@ class DAQInterface(Component):
         self.data_directory_override = None
         self.max_configurations_to_list = 1000000
         self.disable_unique_rootfile_labels = False
+        self.disable_private_network_bookkeeping = False
         self.allowed_processors = None
 
         self.productsdir = None
@@ -586,7 +587,15 @@ class DAQInterface(Component):
                 elif "false" in token or "False" in token:
                     self.disable_unique_rootfile_labels = False
                 else:
-                    raise Exception("disable_unique_rootfile_labels must be set to either [Tt]rue or [Ff]alse")
+                    raise Exception("disable_unique_rootfile_labels must be set to either [Tt]rue or [Ff]alse in settings file \"%s\"" % (os.environ["DAQINTERFACE_SETTINGS"]))
+            elif "disable_private_network_bookkeeping" in line or "disable private network bookkeeping" in line:
+                token = line.split()[-1].strip()
+                if "true" in token or "True" in token:
+                    self.disable_private_network_bookkeeping = True
+                elif "false" in token or "False" in token:
+                    self.disable_private_network_bookkeeping = False
+                else:
+                    raise Exception("disable_private_network_bookkeeping must be set to either [Tt]rue or [Ff]alse in settings file \"%s\"" % (os.environ["DAQINTERFACE_SETTINGS"]))
             elif "use_messageviewer" in line or "use messageviewer" in line:
                 token = line.split()[-1].strip()
                 
