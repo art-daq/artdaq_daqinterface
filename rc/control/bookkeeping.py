@@ -636,7 +636,11 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                                        self.procinfos[i_proc].fhicl_used)
             else:
                 self.print_log("w", make_paragraph("Warning: disable_private_network_bookkeeping isn't set to true in the DAQInterface settings file \"%s\" -- it defaults to false if unset -- but no private network was found visible to the processes involved in data requests for subsystem %s: %s" % (os.environ["DAQINTERFACE_SETTINGS"], str(subsystem_id), ", ".join(processes_involved_in_requests) )))
-        
+        else:  # self.disable_private_network_bookkeeping == True
+            for i_proc in range(len(self.procinfos)):
+                self.procinfos[i_proc].fhicl_used = re.sub("multicast_interface_ip\s*:\s*\S+", \
+                                                           "multicast_interface_ip: \"0.0.0.0\"", \
+                                                           self.procinfos[i_proc].fhicl_used)
 
     # JCF, Apr-18-2019
 
@@ -676,7 +680,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                    table_to_bookkeep)
 
         table_to_bookkeep = re.sub("table_update_multicast_interface\s*:\s*\S+",
-                                   "table_update_multicast_interface: \"%s\"" % (router_process_hostnames[router_process_subsystem].strip("\"")),
+                                   "table_update_multicast_interface: \"localhost\"",
                                    table_to_bookkeep)
 
         # So far in this function we've just set
