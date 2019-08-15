@@ -568,6 +568,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     if "BoardReader" in procinfo.name and procinfo.subsystem == subsystem_id and \
                        procinfo.label not in nonsending_boardreaders:
                         relevant_processes.append(procinfo.label)
+                    elif "EventBuilder" in procinfo.name and self.subsystems[procinfo.subsystem].destination == subsystem_id and not get_router_process_identifier(procinfo) == "DFO":
+                        relevant_processes.append(procinfo.label)
+                       
 
                 for router_process_private_network_candidate in private_networks_seen[router_process_for_subsystem.label]:
                     network_seen_by_relevant_processes = True
@@ -582,7 +585,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                         break
 
                 if router_process_private_networks[ subsystem_id ] is None:
-                    self.print_log("w", make_paragraph("Warning: disable_private_network_bookkeeping isn't set to true in the DAQInterface settings file \"%s\" -- it defaults to false if unset -- but no private network was found visible to the routing process %s and the processes the routing process works with (%s)" % \
+                    self.print_log("w", make_paragraph("Warning: disable_private_network_bookkeeping isn't set to true in the DAQInterface settings file \"%s\" -- it defaults to false if unset -- but no private network was found visible both to the routing process %s and the all the processes the routing process works with (%s)" % \
                                                        (os.environ["DAQINTERFACE_SETTINGS"], router_process_for_subsystem.label, ", ".join(relevant_processes))))
         
         # While we're looping on subsystems, let's also bookkeep the
@@ -635,7 +638,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                                        (multicast_interface_ip), \
                                                                        self.procinfos[i_proc].fhicl_used)
             else:
-                self.print_log("w", make_paragraph("Warning: disable_private_network_bookkeeping isn't set to true in the DAQInterface settings file \"%s\" -- it defaults to false if unset -- but no private network was found visible to the processes involved in data requests for subsystem %s: %s" % (os.environ["DAQINTERFACE_SETTINGS"], str(subsystem_id), ", ".join(processes_involved_in_requests) )))
+                self.print_log("w", make_paragraph("Warning: disable_private_network_bookkeeping isn't set to true in the DAQInterface settings file \"%s\" -- it defaults to false if unset -- but no private network was found visible to all the processes involved in data requests for subsystem %s: %s" % (os.environ["DAQINTERFACE_SETTINGS"], str(subsystem_id), ", ".join(processes_involved_in_requests) )))
         else:  # self.disable_private_network_bookkeeping == True
             for i_proc in range(len(self.procinfos)):
                 self.procinfos[i_proc].fhicl_used = re.sub("multicast_interface_ip\s*:\s*\S+", \
@@ -688,7 +691,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         # to the router process hostname from the boot file, but let's
         # see if we can use a shared private network...
 
-        if not self.disable_private_network_bookkeeping:
+        if not self.disable_private_network_bookkeeping and router_process_private_networks[router_process_subsystem] is not None:
             for private_network_seen in private_networks_seen[self.procinfos[i_proc].label]:
 
                 if zero_out_last_subnet(private_network_seen) == zero_out_last_subnet(router_process_private_networks[router_process_subsystem]):
