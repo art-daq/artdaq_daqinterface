@@ -26,8 +26,8 @@ import shutil
 
 from rc.control.utilities import expand_environment_variable_in_string
 from conftool import exportConfiguration
-from conftool import getListOfAvailableRunConfigurationPrefixes
 from conftool import getListOfAvailableRunConfigurations
+from conftool import getListOfAvailableRunConfigurationsSubtractMasked
 from conftool import archiveRunConfiguration
 from conftool import updateArchivedRunConfiguration
 
@@ -46,7 +46,17 @@ def get_config_info_base(self):
     Popen("mkdir -p %s" % tmpdir, shell=True).wait()
     os.chdir( tmpdir )
 
+    tmpflagsfile = "%s/flags.fcl" % (tmpdir)
+    with open(tmpflagsfile, "w") as outf:
+        outf.write("flag_inactive:true\n")
+
     for subconfig in self.subconfigs_for_run:
+
+        if subconfig not in getListOfAvailableRunConfigurations():
+            raise Exception(make_paragraph("Error: (sub)config \"%s\" was not found in a call to conftool.getListOfAvailableRunConfigurations" % (subconfig)))
+        elif subconfig not in getListOfAvailableRunConfigurationsSubtractMasked():
+            raise Exception(make_paragraph("Error: (sub)config \"%s\" appears to have been masked off (i.e., it doesn't appear in a call to conftool.getListOfAvailableRunConfigurationsSubtractMasked given the flags file %s)" % (subconfig, tmpflagsfile)))
+
         subconfigdir = "%s/%s" % (tmpdir, subconfig)
         os.mkdir( subconfigdir )
         os.chdir( subconfigdir )
@@ -69,6 +79,7 @@ def get_config_info_base(self):
             if "schema.fcl" in filenames:
                 os.unlink("%s/schema.fcl" % (dirname))
 
+    os.unlink(tmpflagsfile)
     os.chdir( basedir )
     return tmpdir, ffp
 
