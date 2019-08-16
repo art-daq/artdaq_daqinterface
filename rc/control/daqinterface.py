@@ -30,7 +30,11 @@ from rc.control.all_functions_noop import start_datataking_base
 from rc.control.all_functions_noop import stop_datataking_base
 from rc.control.all_functions_noop import do_enable_base
 from rc.control.all_functions_noop import do_disable_base
-from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v3_base
+
+if "DAQINTERFACE_DISABLE_BOOKKEEPING" in os.environ and not os.environ["DAQINTERFACE_DISABLE_BOOKKEEPING"] == "false" :
+    from rc.control.all_functions_noop import bookkeeping_for_fhicl_documents_artdaq_v3_base
+else:
+    from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v3_base
 
 from rc.control.online_monitoring import launch_art_procs_base
 from rc.control.online_monitoring import kill_art_procs_base
