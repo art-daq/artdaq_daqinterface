@@ -567,7 +567,11 @@ class DAQInterface(Component):
             elif "dispatcher_timeout" in line or "dispatcher timeout" in line:
                 self.dispatcher_timeout = int( line.split()[-1].strip() )
             elif "boardreader_priorities" in line or "boardreader priorities" in line:
-                self.boardreader_priorities = [regexp.strip() for regexp in line.split()[2:] if ":" not in regexp]
+                res = re.search(r"^\s*boardreader[ _]priorities\s*:\s*(.*)", line)
+                if res:
+                    self.boardreader_priorities = [regexp.strip() for regexp in res.group(1).split()]
+                else:
+                    raise Exception("Incorrectly formatted line \"%s\" in %s" % (line.strip(), os.environ["DAQINTERFACE_SETTINGS"]))
             elif "max_fragment_size_bytes" in line or "max fragment size bytes" in line:
                 max_fragment_size_bytes_token = line.split()[-1].strip()
 
