@@ -40,6 +40,7 @@ from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_pids
 from rc.control.utilities import is_msgviewer_running
 from rc.control.utilities import date_and_time
+from rc.control.utilities import date_and_time_more_precision
 from rc.control.utilities import construct_checked_command
 from rc.control.utilities import reformat_fhicl_documents
 from rc.control.utilities import fhicl_writes_root_file
@@ -566,10 +567,17 @@ class DAQInterface(Component):
                 self.datalogger_timeout = int( line.split()[-1].strip() )
             elif "dispatcher_timeout" in line or "dispatcher timeout" in line:
                 self.dispatcher_timeout = int( line.split()[-1].strip() )
-            elif "boardreader_priorities" in line or "boardreader priorities" in line:
-                res = re.search(r"^\s*boardreader[ _]priorities\s*:\s*(.*)", line)
+            elif "boardreader_priorities:" in line or "boardreader priorities:" in line:
+                res = re.search(r"^\s*boardreader[ _]priorities:\s*(.*)", line)
                 if res:
                     self.boardreader_priorities = [regexp.strip() for regexp in res.group(1).split()]
+                else:
+                    raise Exception("Incorrectly formatted line \"%s\" in %s" % (line.strip(), os.environ["DAQINTERFACE_SETTINGS"]))
+            elif "boardreader_priorities_on_stop:" in line or "boardreader priorities on stop:" in line:
+                res = re.search(r"^\s*boardreader[ _]priorities[ _]on[ _]stop:\s*(.*)", line)
+                if res:
+                    self.boardreader_priorities_on_stop = [regexp.strip() for regexp in res.group(1).split()]
+                    print self.boardreader_priorities_on_stop
                 else:
                     raise Exception("Incorrectly formatted line \"%s\" in %s" % (line.strip(), os.environ["DAQINTERFACE_SETTINGS"]))
             elif "max_fragment_size_bytes" in line or "max fragment size bytes" in line:
@@ -1181,6 +1189,7 @@ class DAQInterface(Component):
                 return
 
             try:
+                print "%s: Sending transition to %s" % (date_and_time_more_precision(), self.procinfos[procinfo_index].label)
 
                 if command == "Init":
                     self.procinfos[procinfo_index].lastreturned = \
@@ -2064,6 +2073,17 @@ class DAQInterface(Component):
                 self.alert_and_recover(make_paragraph("Problem copying /tmp/info_to_archive_partition%d.txt into %s/rc_info_stop.txt; does original file exist?" % (self.partition_number, run_record_directory)))
 
         if self.manage_processes:
+
+            for i_proc in range(len(self.procinfos)):
+                if "BoardReader" in self.procinfos[i_proc].name:
+                    try:
+                        for priority, regexp in enumerate(self.boardreader_priorities_on_stop):
+                            print "%d %s" % (priority, regexp)
+                            if re.search(regexp, self.procinfos[i_proc].label):
+                                self.procinfos[i_proc].priority = priority
+
+                    except Exception:
+                        pass  # It's not an error if there were no boardreader priorities read in from $DAQINTERFACE_SETTINGS
 
             try:
                 self.do_command("Stop")
