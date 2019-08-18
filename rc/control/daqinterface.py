@@ -490,6 +490,8 @@ class DAQInterface(Component):
         alertmsg += "\n" + make_paragraph("DAQInterface has set the DAQ back in the \"Stopped\" state; you may need to scroll above the Recover transition output to find messages which could help you provide any necessary adjustments.")
         self.print_log("e",  alertmsg )
         print
+        self.print_log("e", make_paragraph("Details on how to examine the artdaq process logfiles can be found in the \"Examining your output\" section of the DAQInterface manual, https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Artdaq-daqinterface#Examining-your-output"))
+        print
 
     def read_settings(self):
         if not os.path.exists( os.environ["DAQINTERFACE_SETTINGS"]):
