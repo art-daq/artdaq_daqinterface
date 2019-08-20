@@ -6,6 +6,7 @@ import subprocess
 from subprocess import Popen
 import traceback
 import shutil
+import string
 
 from rc.control.deepsuppression import deepsuppression
 
@@ -115,6 +116,7 @@ def save_run_record_base(self):
 
     buildinfo_packages = [pkg for pkg in self.package_hashes_to_save]  # Directly assigning would make buildinfo_packages a reference, not a copy
     buildinfo_packages.append("artdaq_daqinterface")
+
     package_buildinfo_dict = get_build_info(buildinfo_packages, self.daq_setup_script)
 
     with deepsuppression(self.debug_level < 3):
@@ -127,11 +129,13 @@ def save_run_record_base(self):
                 outf.write("%s" % (get_commit_info("DAQInterface", os.environ["ARTDAQ_DAQINTERFACE_DIR"])))
         except Exception:
             # Not an exception in a bad sense as the throw just means we're using DAQInterface as a ups product
-            outf.write("DAQInterface commit/version: %s" % ( self.get_package_version("artdaq_daqinterface") ))
+            self.fill_package_versions(["artdaq_daqinterface"])
+            outf.write("DAQInterface commit/version: %s" % ( self.package_versions["artdaq_daqinterface"] ))
             
         outf.write(" %s\n\n" % (package_buildinfo_dict["artdaq_daqinterface"]))
 
     package_commit_dict = {}
+    packages_whose_versions_we_need = []
 
     for pkgname in self.package_hashes_to_save:
         
@@ -150,7 +154,13 @@ def save_run_record_base(self):
                 self.alert_and_recover("An exception was thrown in get_commit_info; see traceback above for more info")
                 return
         else:
-            package_commit_dict[pkgname] = "%s commit/version: %s" % (pkgname, self.get_package_version( pkgname.replace("-", "_")))
+            # We'll throw this on the list of packages whose actual versions we need to figure out in real-time
+            packages_whose_versions_we_need.append(pkgname)
+
+    self.fill_package_versions( [ string.replace(pkg, "-", "_") for pkg in packages_whose_versions_we_need ] )
+        
+    for pkgname in packages_whose_versions_we_need:
+        package_commit_dict[pkgname] = "%s commit/version: %s" % (pkgname, self.package_versions[string.replace(pkgname, "-","_")])
 
     for pkg in sorted(package_commit_dict.keys()):
         outf.write("%s" % (package_commit_dict[pkg]))
