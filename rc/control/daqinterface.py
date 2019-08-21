@@ -2307,6 +2307,11 @@ class DAQInterface(Component):
 
         self.print_log("i", "\n%s: RECOVER transition complete" % (date_and_time()))
 
+    def state_with_side_effects(self, name):
+        for procinfo in self.procinfos:
+            print "%s: %s" % (procinfo.label, procinfo.lastreturned)
+        return self.state(name)
+
     # Override of the parent class Component's runner function. As of
     # 5/30/14, called every 1s by control.py
 

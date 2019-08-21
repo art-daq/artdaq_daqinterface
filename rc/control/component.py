@@ -36,6 +36,7 @@ class Component(ContextObject):
             ("rpc_server",
              rpc_server(port=self.__rpc_port,
                         funcs={"state": self.state,
+                               "state_with_side_effects": self.state_with_side_effects,
                                "state_change": self.state_change,
                                "setdaqcomps": self.setdaqcomps,
                                "listdaqcomps": self.listdaqcomps,
@@ -73,6 +74,9 @@ class Component(ContextObject):
         if name != self.name:
             return "unknown"
         return self.__state
+
+    def state_with_side_effects(self, name):
+        raise NotImplementedError()
 
     def complete_state_change(self, name, requested):
         if name != self.name:
