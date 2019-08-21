@@ -1198,7 +1198,7 @@ class DAQInterface(Component):
                 self.print_log("d", "self.exception set to true at some point, won't send %s command to %s" % \
                                (command, self.procinfos[procinfo_index].label), 2)
                 return
-
+                
             try:
 
                 if command == "Init":
@@ -2126,6 +2126,7 @@ class DAQInterface(Component):
                 else:
                     self.print_log("i", "%s at %s:%s, returned string is:\n%s\n" % \
                                    (procinfo.label, procinfo.host, procinfo.port, procinfo.lastreturned), 1)
+
             try:
                 self.kill_procs()
             except Exception:
@@ -2174,21 +2175,21 @@ class DAQInterface(Component):
                 return
 
             def send_recover_command(command):
-                
+
                 try:
                     if command == "stop":
-                        lastreturned=procinfo.server.daq.stop()
+                        procinfo.lastreturned=procinfo.server.daq.stop()
                     elif command == "shutdown":
-                        lastreturned=procinfo.server.daq.shutdown()
+                        procinfo.lastreturned=procinfo.server.daq.shutdown()
                     else:
                         assert False
 
                     self.print_log("d", "Called %s on %s at %s:%s without an exception; returned string was \"%s\"" % \
-                                       (command, procinfo.label, procinfo.host, procinfo.port, lastreturned), 2)
+                                       (command, procinfo.label, procinfo.host, procinfo.port, procinfo.lastreturned), 2)
                 except Exception:
                     raise
 
-                if lastreturned == "Success":
+                if procinfo.lastreturned == "Success":
                     self.print_log("d", "Successful %s sent to %s at %s:%s" % \
                                        (command, procinfo.label, procinfo.host, procinfo.port), 2)
                 else:
@@ -2196,10 +2197,10 @@ class DAQInterface(Component):
                                                      "Attempted %s sent to artdaq process %s " % (command, procinfo.label) + \
                                 "at %s:%s during recovery procedure" % (procinfo.host, procinfo.port) + \
                                 " returned \"%s\"" % \
-                                (lastreturned)))
+                                (procinfo.lastreturned)))
 
             try:
-                procstatus = procinfo.server.daq.status()
+                procinfo.lastreturned = procinfo.server.daq.status()
             except Exception:
                 msg = "Unable to determine state of artdaq process %s at %s:%s; will not be able to complete its stop-and-shutdown" % \
                                    (procinfo.label, procinfo.host, procinfo.port)
@@ -2210,7 +2211,7 @@ class DAQInterface(Component):
     
                 return
 
-            if procstatus == "Running":
+            if procinfo.lastreturned == "Running":
 
                 try:
                     send_recover_command("stop")
@@ -2225,13 +2226,13 @@ class DAQInterface(Component):
                     return
                     
                 try:
-                    procstatus = procinfo.server.daq.status()
+                    procinfo.lastreturned = procinfo.server.daq.status()
                 except Exception:
                     self.print_log("e", "Unable to determine state of artdaq process %s at %s:%s; will not be able to complete its stop-and-shutdown" % \
                                        (procinfo.label, procinfo.host, procinfo.port))
                     return
 
-            if procstatus == "Ready":
+            if procinfo.lastreturned == "Ready":
 
                 try:
                     send_recover_command("shutdown")
