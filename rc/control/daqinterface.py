@@ -187,6 +187,7 @@ class DAQInterface(Component):
             self.lastreturned = "DAQInterface: ARTDAQ PROCESS NOT YET CALLED"
             self.socketstring = "http://" + self.host + ":" + self.port \
                 + "/RPC2"
+            self.state = "nonexistent"
 
         def update_fhicl(self, fhicl):
             self.fhicl = fhicl
@@ -396,6 +397,9 @@ class DAQInterface(Component):
         self.__do_recover = False
         self.__do_enable = False
         self.__do_disable = False
+
+        self.target_states = {"Init":"Ready", "Start":"Running", "Pause":"Paused", "Resume":"Running",
+                     "Stop":"Ready", "Shutdown":"Stopped"}
 
         try:
             self.read_settings()
@@ -688,6 +692,7 @@ class DAQInterface(Component):
                     sleep(1)
                     if procinfo.lastreturned  == "Success" or procinfo.lastreturned == target_state:
                         redeemed=True
+                        procinfo.state = target_state
 
                 if redeemed:
                     successmsg = "After " + str(retry_counter) + " checks, process " + \
@@ -809,8 +814,10 @@ class DAQInterface(Component):
                     (procinfo.label, procinfo.host, procinfo.port))              
                 self.print_log("e", exceptstring)
                 continue
+            else:
+                procinfo.state = procinfo.lastreturned
 
-            if procinfo.lastreturned == "Error":
+            if procinfo.state == "Error":
 
                 errmsg = "%s: \"Error\" state found to have been returned by process %s at %s:%s; please check MessageViewer if up and/or the process logfile, %s" % \
                          (date_and_time(), procinfo.label, procinfo.host, procinfo.port, self.determine_logfilename(procinfo) )
@@ -1227,6 +1234,9 @@ class DAQInterface(Component):
                     self.procinfos[procinfo_index].lastreturned = self.procinfos[procinfo_index].lastreturned[0:200] + \
                         " // REMAINDER TRUNCATED BY DAQINTERFACE, SEE %s FOR FULL FHiCL DOCUMENT" % (self.tmp_run_record)
 
+                if self.procinfos[procinfo_index].lastreturned == "Success" or self.procinfos[procinfo_index].lastreturned == self.target_states[ command ]:
+                    self.procinfos[procinfo_index].state = self.target_states[ command ]
+
             except Exception:
                 self.exception = True
 
@@ -1289,12 +1299,8 @@ class DAQInterface(Component):
                 self.print_log("i", "%s at %s:%s, returned string is:\n%s\n" % \
                     (procinfo.label, procinfo.host, procinfo.port, procinfo.lastreturned))
 
-
-        target_states = {"Init":"Ready", "Start":"Running", "Pause":"Paused", "Resume":"Running",
-                         "Stop":"Ready", "Shutdown":"Stopped"}
-
         try:
-            self.check_proc_transition( target_states[ command ] )
+            self.check_proc_transition( self.target_states[ command ] )
         except Exception:
             raise Exception(make_paragraph("An exception was thrown during the %s transition as at least one of the artdaq processes didn't achieve its desired state." % (command)))
 
@@ -2126,6 +2132,8 @@ class DAQInterface(Component):
                 else:
                     self.print_log("i", "%s at %s:%s, returned string is:\n%s\n" % \
                                    (procinfo.label, procinfo.host, procinfo.port, procinfo.lastreturned), 1)
+                    if procinfo.lastreturned == "Success" or procinfo.lastreturned == self.target_states["Shutdown"]:
+                        procinfo.state = self.target_states["Shutdown"]
 
             try:
                 self.kill_procs()
@@ -2189,9 +2197,10 @@ class DAQInterface(Component):
                 except Exception:
                     raise
 
-                if procinfo.lastreturned == "Success":
+                if procinfo.lastreturned == "Success" or procinfo.lastreturned == self.target_states[command]:
                     self.print_log("d", "Successful %s sent to %s at %s:%s" % \
                                        (command, procinfo.label, procinfo.host, procinfo.port), 2)
+                    procinfo.state = self.target_states[command]
                 else:
                     raise Exception( make_paragraph( \
                                                      "Attempted %s sent to artdaq process %s " % (command, procinfo.label) + \
@@ -2210,8 +2219,10 @@ class DAQInterface(Component):
                     self.print_log("d", make_paragraph(msg), 2)
     
                 return
+            else:
+                procinfo.state = procinfo.lastreturned
 
-            if procinfo.lastreturned == "Running":
+            if procinfo.state == "Running":
 
                 try:
                     send_recover_command("stop")
@@ -2231,8 +2242,10 @@ class DAQInterface(Component):
                     self.print_log("e", "Unable to determine state of artdaq process %s at %s:%s; will not be able to complete its stop-and-shutdown" % \
                                        (procinfo.label, procinfo.host, procinfo.port))
                     return
+                else:
+                    procinfo.state = procinfo.lastreturned
 
-            if procinfo.lastreturned == "Ready":
+            if procinfo.state == "Ready":
 
                 try:
                     send_recover_command("shutdown")
@@ -2308,8 +2321,12 @@ class DAQInterface(Component):
         self.print_log("i", "\n%s: RECOVER transition complete" % (date_and_time()))
 
     def state_with_side_effects(self, name):
+        if len(self.procinfos) > 0:
+            print
         for procinfo in self.procinfos:
-            print "%s: %s" % (procinfo.label, procinfo.lastreturned)
+            print "%s: %s" % (procinfo.label, procinfo.state)
+        if len(self.procinfos) > 0:
+            print
         return self.state(name)
 
     # Override of the parent class Component's runner function. As of
