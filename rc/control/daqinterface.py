@@ -398,8 +398,11 @@ class DAQInterface(Component):
         self.__do_enable = False
         self.__do_disable = False
 
+        # Here, states refers to individual artdaq process states, not the DAQInterface state
         self.target_states = {"Init":"Ready", "Start":"Running", "Pause":"Paused", "Resume":"Running",
                      "Stop":"Ready", "Shutdown":"Stopped"}
+        self.verbing_to_states = {"Init":"Configuring", "Start":"Starting", "Pause":"Pausing", "Resume":"Resuming",
+                                  "Stop":"Stopping", "Shutdown":"Shutting down"}
 
         try:
             self.read_settings()
@@ -1205,6 +1208,8 @@ class DAQInterface(Component):
                 self.print_log("d", "self.exception set to true at some point, won't send %s command to %s" % \
                                (command, self.procinfos[procinfo_index].label), 2)
                 return
+
+            self.procinfos[procinfo_index].state = self.verbing_to_states[command]
                 
             try:
 
@@ -2116,6 +2121,8 @@ class DAQInterface(Component):
 
             for procinfo in self.procinfos:
 
+                procinfo.state = self.verbing_to_states["Shutdown"]
+
                 try:
                     procinfo.lastreturned = procinfo.server.daq.shutdown()
                 except Exception:
@@ -2184,10 +2191,11 @@ class DAQInterface(Component):
 
             def send_recover_command(command):
 
+                procinfo.state = self.verbing_to_states[command]
                 try:
-                    if command == "stop":
+                    if command == "Stop":
                         procinfo.lastreturned=procinfo.server.daq.stop()
-                    elif command == "shutdown":
+                    elif command == "Shutdown":
                         procinfo.lastreturned=procinfo.server.daq.shutdown()
                     else:
                         assert False
@@ -2225,7 +2233,7 @@ class DAQInterface(Component):
             if procinfo.state == "Running":
 
                 try:
-                    send_recover_command("stop")
+                    send_recover_command("Stop")
                 except Exception:
                     if "ProtocolError" not in traceback.format_exc():
                         self.print_log("e", traceback.format_exc())
@@ -2248,7 +2256,7 @@ class DAQInterface(Component):
             if procinfo.state == "Ready":
 
                 try:
-                    send_recover_command("shutdown")
+                    send_recover_command("Shutdown")
                 except Exception:
                     if "ProtocolError" not in traceback.format_exc():
                         self.print_log("e", traceback.format_exc())
@@ -2321,12 +2329,23 @@ class DAQInterface(Component):
         self.print_log("i", "\n%s: RECOVER transition complete" % (date_and_time()))
 
     def state_with_side_effects(self, name):
-        if len(self.procinfos) > 0:
-            print
-        for procinfo in self.procinfos:
-            print "%s: %s" % (procinfo.label, procinfo.state)
-        if len(self.procinfos) > 0:
-            print
+
+        try:
+            self.procinfos
+        except:
+            return self.state(name)   # OK if we haven't yet created the list of Procinfo structures
+        else:
+            tmpfile = "/tmp/artdaq_process_states_%s_partition%s" % (os.environ["USER"], 
+                                                                     os.environ["DAQINTERFACE_PARTITION_NUMBER"])
+            statusstring = ""
+            for procinfo in self.procinfos:
+                statusstring += "%s %s\n" % (procinfo.label, procinfo.state)
+
+            with open(tmpfile, "w") as outf:
+                outf.write(statusstring)
+
+            self.print_log("d", statusstring, 5) 
+
         return self.state(name)
 
     # Override of the parent class Component's runner function. As of
