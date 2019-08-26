@@ -490,6 +490,8 @@ class DAQInterface(Component):
         alertmsg += "\n" + make_paragraph("DAQInterface has set the DAQ back in the \"Stopped\" state; you may need to scroll above the Recover transition output to find messages which could help you provide any necessary adjustments.")
         self.print_log("e",  alertmsg )
         print
+        self.print_log("e", make_paragraph("Details on how to examine the artdaq process logfiles can be found in the \"Examining your output\" section of the DAQInterface manual, https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Artdaq-daqinterface#Examining-your-output"))
+        print
 
     def read_settings(self):
         if not os.path.exists( os.environ["DAQINTERFACE_SETTINGS"]):
@@ -503,6 +505,7 @@ class DAQInterface(Component):
         self.record_directory = None
         self.daq_setup_script = None
         self.package_hashes_to_save = []
+        self.package_versions = {}
         self.productsdir_for_bash_scripts = None
         self.max_fragment_size_bytes = None
 
@@ -567,7 +570,11 @@ class DAQInterface(Component):
             elif "dispatcher_timeout" in line or "dispatcher timeout" in line:
                 self.dispatcher_timeout = int( line.split()[-1].strip() )
             elif "boardreader_priorities" in line or "boardreader priorities" in line:
-                self.boardreader_priorities = [regexp.strip() for regexp in line.split()[2:] if ":" not in regexp]
+                res = re.search(r"^\s*boardreader[ _]priorities\s*:\s*(.*)", line)
+                if res:
+                    self.boardreader_priorities = [regexp.strip() for regexp in res.group(1).split()]
+                else:
+                    raise Exception("Incorrectly formatted line \"%s\" in %s" % (line.strip(), os.environ["DAQINTERFACE_SETTINGS"]))
             elif "max_fragment_size_bytes" in line or "max fragment size bytes" in line:
                 max_fragment_size_bytes_token = line.split()[-1].strip()
 
@@ -915,8 +922,10 @@ class DAQInterface(Component):
     def determine_logfilename(self, procinfo):
         loglists = [ self.boardreader_log_filenames, self.eventbuilder_log_filenames, self.datalogger_log_filenames, \
                      self.dispatcher_log_filenames, self.routingmaster_log_filenames ]
-        logfilename_in_list_form = [ logfilename for loglist in loglists for logfilename in loglist if "/%s-" % (procinfo.label) in logfilename ]
-        assert len(logfilename_in_list_form) <= 1, "Incorrect assumption made by DAQInterface about the format of the logfilenames; please contact John Freeman at jcfree@fnal.gov"
+        all_logfilenames = [ logfilename for loglist in loglists for logfilename in loglist ]
+        logfilename_in_list_form = [ logfilename for logfilename in all_logfilenames if "/%s-" % (procinfo.label) in logfilename ]
+        assert len(logfilename_in_list_form) <= 1, make_paragraph("Unable to locate logfile for process \"%s\" out of the following list of candidates: [%s]; this may be due to incorrect assumptions made by DAQInterface about the format of the logfilenames. Please contact John Freeman at jcfree@fnal.gov" % (procinfo.label, ", ".join(all_logfilenames)))
+
         if len(logfilename_in_list_form) == 1:
             return logfilename_in_list_form[0]
         else:
@@ -1069,38 +1078,53 @@ class DAQInterface(Component):
             if status != 0:
                 self.print_log("w", "WARNING: failure in performing user-friendly softlinks to logfiles on host %s" % (host))
 
-    def get_package_version(self, package):    
+    def fill_package_versions(self, packages):    
 
-        if package != "artdaq_daqinterface":
-            cmd = "%s ; . %s; ups active | sed -r -n '/^%s\\s+/s/^%s\\s+(\\S+).*/\\1/p'" % \
-                  (bash_unsetup_command, self.daq_setup_script, package, package)
-        else:
+        if "artdaq_daqinterface" in packages:
+            assert len(packages) == 1, "Note to developer: you'll probably need to refactor save_run_records.py if you want to get the version of other packages alongside the version of DAQInterface"
             cmd = "ups active | sed -r -n '/^%s\\s+/s/^%s\\s+(\\S+).*/\\1/p'" % \
                   (package, package)
-            
-        proc =  Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        else:
+            ored_packages = []
+            for package in packages:
+                if package in self.package_versions:
+                    continue
+                else:
+                    ored_packages.append(package)
 
-        stdoutlines = proc.stdout.readlines()
-        stderrlines = proc.stderr.readlines()
+            if len(ored_packages) > 0:
+                cmd = "%s ; . %s; ups active | sed -r -n 's/^(%s)\\s+(\\S+).*/\\1 \\2/p'" % \
+                      (bash_unsetup_command, self.daq_setup_script, "|".join(ored_packages))
 
-        if len(stderrlines) > 0:
-            if len(stderrlines) == 1 and "type: unsetup: not found" in stderrlines[0]:
-                self.print_log("w", stderrlines[0])
-            else:
-                raise Exception("Error in %s: the command \"%s\" yields output to stderr:\n\"%s\"" % \
-                                (self.get_package_version.__name__, cmd, "".join(stderrlines)))
+                proc =  Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        if len(stdoutlines) == 0:
-            print traceback.format_exc()
-            raise Exception("Error in %s: the command \"%s\" yields no output to stdout" % \
-                            (self.get_package_version.__name__, cmd))
-            
-        version = stdoutlines[-1].strip()
+                stdoutlines = proc.stdout.readlines()
+                stderrlines = proc.stderr.readlines()
 
-        if not re.search(r"v[0-9]+_[0-9]+_[0-9]+.*", version):
-            raise Exception(make_paragraph("Error in %s: the version of the package \"%s\" this function has determined, \"%s\", is not the expected v<int>_<int>_<int>optionalextension format" % (self.get_package_version.__name__, package, version)))
-        
-        return version
+                if len(stderrlines) > 0:
+                    if len(stderrlines) == 1 and "type: unsetup: not found" in stderrlines[0]:
+                        self.print_log("w", stderrlines[0])
+                    else:
+                        raise Exception("Error in %s: the command \"%s\" yields output to stderr:\n\"%s\"" % \
+                                        (self.get_package_version.__name__, cmd, "".join(stderrlines)))
+
+                if len(stdoutlines) == 0:
+                    print traceback.format_exc()
+                    raise Exception("Error in %s: the command \"%s\" yields no output to stdout" % \
+                                    (self.get_package_version.__name__, cmd))
+
+                for line in stdoutlines:
+                    if re.search(r"^(%s)\s+" % ("|".join(ored_packages)), line):
+                        (package, version) = line.split()
+
+                        if not re.search(r"v[0-9]+_[0-9]+_[0-9]+.*", version):
+                            raise Exception(make_paragraph("Error in %s: the version of the package \"%s\" this function has determined, \"%s\", is not the expected v<int>_<int>_<int>optionalextension format" % (self.get_package_version.__name__, package, version)))
+
+                        self.package_versions[package] = version
+
+            for package in packages:
+                if package not in self.package_versions:
+                    self.print_log("w", "Warning: there was a problem trying to determine the version of package \"%s\"" % (package))
 
     def execute_trace_script(self, transition):
 

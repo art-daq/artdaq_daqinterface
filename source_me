@@ -219,7 +219,7 @@ cat<<EOF
 * To launch, just type "DAQInterface &" (excluding quotes, ampersand optional)
 * Output will be logged in ${DAQINTERFACE_LOGDIR}/DAQInterface_partition<N>.log, where <N> 
   is the partition the DAQInterface instance is on
-* Help is available at https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Artdaq-daqinterface
+* You're encouraged to read the DAQInterface Manual at https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Artdaq-daqinterface
 EOF
  
 echo
