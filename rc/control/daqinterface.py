@@ -1092,34 +1092,35 @@ class DAQInterface(Component):
                 else:
                     ored_packages.append(package)
 
-            cmd = "%s ; . %s; ups active | sed -r -n 's/^(%s)\\s+(\\S+).*/\\1 \\2/p'" % \
-                  (bash_unsetup_command, self.daq_setup_script, "|".join(ored_packages))
+            if len(ored_packages) > 0:
+                cmd = "%s ; . %s; ups active | sed -r -n 's/^(%s)\\s+(\\S+).*/\\1 \\2/p'" % \
+                      (bash_unsetup_command, self.daq_setup_script, "|".join(ored_packages))
 
-            proc =  Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                proc =  Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-            stdoutlines = proc.stdout.readlines()
-            stderrlines = proc.stderr.readlines()
+                stdoutlines = proc.stdout.readlines()
+                stderrlines = proc.stderr.readlines()
 
-            if len(stderrlines) > 0:
-                if len(stderrlines) == 1 and "type: unsetup: not found" in stderrlines[0]:
-                    self.print_log("w", stderrlines[0])
-                else:
-                    raise Exception("Error in %s: the command \"%s\" yields output to stderr:\n\"%s\"" % \
-                                    (self.get_package_version.__name__, cmd, "".join(stderrlines)))
+                if len(stderrlines) > 0:
+                    if len(stderrlines) == 1 and "type: unsetup: not found" in stderrlines[0]:
+                        self.print_log("w", stderrlines[0])
+                    else:
+                        raise Exception("Error in %s: the command \"%s\" yields output to stderr:\n\"%s\"" % \
+                                        (self.get_package_version.__name__, cmd, "".join(stderrlines)))
 
-            if len(stdoutlines) == 0:
-                print traceback.format_exc()
-                raise Exception("Error in %s: the command \"%s\" yields no output to stdout" % \
-                                (self.get_package_version.__name__, cmd))
+                if len(stdoutlines) == 0:
+                    print traceback.format_exc()
+                    raise Exception("Error in %s: the command \"%s\" yields no output to stdout" % \
+                                    (self.get_package_version.__name__, cmd))
 
-            for line in stdoutlines:
-                if re.search(r"^(%s)\s+" % ("|".join(ored_packages)), line):
-                    (package, version) = line.split()
+                for line in stdoutlines:
+                    if re.search(r"^(%s)\s+" % ("|".join(ored_packages)), line):
+                        (package, version) = line.split()
 
-                    if not re.search(r"v[0-9]+_[0-9]+_[0-9]+.*", version):
-                        raise Exception(make_paragraph("Error in %s: the version of the package \"%s\" this function has determined, \"%s\", is not the expected v<int>_<int>_<int>optionalextension format" % (self.get_package_version.__name__, package, version)))
+                        if not re.search(r"v[0-9]+_[0-9]+_[0-9]+.*", version):
+                            raise Exception(make_paragraph("Error in %s: the version of the package \"%s\" this function has determined, \"%s\", is not the expected v<int>_<int>_<int>optionalextension format" % (self.get_package_version.__name__, package, version)))
 
-                    self.package_versions[package] = version
+                        self.package_versions[package] = version
 
             for package in packages:
                 if package not in self.package_versions:
