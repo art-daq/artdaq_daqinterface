@@ -25,4 +25,7 @@ elif [[ "$DAQINTERFACE_FHICL_DIRECTORY" == "IGNORED" ]]; then
  
 fi
 
+printenv DAQINTERFACE_LOGDIR >/dev/null \
+||export DAQINTERFACE_LOGDIR=/tmp/daqinterface_${USER}
+
 export DAQINTERFACE_USER_SOURCEFILE_ERRNO=0
