@@ -38,6 +38,45 @@
 
 ######################################################################
 
+
+
+###############TESTS WHICH CAN BE RUN ON THIS SCRIPT##################
+
+# Tests DAQInterface developers can run on this script include:
+
+# -Make sure this script can't be edited without changing its permissions
+
+# -Make sure you can't source this script again in the same environment
+# after it's been successfully sourced
+
+# -Make sure DAQINTERFACE_PROCESS_MANAGEMENT_METHOD,
+# DAQINTERFACE_LOGDIR, DAQINTERFACE_PARTITION_NUMBER and
+# DAQINTERFACE_SETUP_FHICLCPP all have reasonable defaults
+
+# -And that if users in their $DAQINTERFACE_USER_SOURCEFILE script
+# override these variables, that these variables get picked up
+
+# -Make sure that typing "DAQInterface" after a successful sourcing of
+# this script launches DAQInterface, and that it uses the environment
+# variable values you expect
+
+# -Make sure that this script forces users to define
+# DAQINTERFACE_USER_SOURCEFILE, where they have to set it to IGNORED
+# if they don't want this script to source an experiment-specific sourcefile
+
+# -Make sure this script fails if the owner of
+# $DAQINTERFACE_USER_SOURCEFILE isn't the current user
+
+# -Make sure this script fails if DAQINTERFACE_USER_SOURCEFILE isn't
+# set to "IGNORED" and its value isn't the name of an existing
+# file
+
+# -Make sure this script doesn't set up the DAQInterface environment if
+# $DAQINTERFACE_USER_SOURCEFILE doesn't set an environment variable
+# DAQINTERFACE_USER_SOURCEFILE_ERRNO to 0
+
+#########################END OF LIST OF TESTS#########################
+
 # JCF, Aug-2-2019
 # Guard against attempts to edit this file
 chmod 444 $ARTDAQ_DAQINTERFACE_DIR/source_me
@@ -66,7 +105,7 @@ if [[ -n $ARTDAQ_DAQINTERFACE_VERSION ]] ; then
 
 else
 
-    echo "DAQInterface does not appear to have been set up as a ups product"
+    echo "DAQInterface does not appear to have been set up as a ups product; will do nothing"
     return 1
 fi
 
@@ -75,9 +114,9 @@ fi
 
 if [[ -z $HOSTNAME ]]; then
    echo
-   echo "HOSTNAME not defined, will define it here"
+   echo -n "HOSTNAME not defined, will define it here as "
    export HOSTNAME=$( hostname )
-   echo "HOSTNAME is now set to $HOSTNAME"
+   echo "\"$HOSTNAME\""
    echo
 fi
 
@@ -98,9 +137,10 @@ fi
 
 mkdir -p $DAQINTERFACE_LOGDIR
 
-# If you change the format of DAQINTERFACE_LOGFILE, make sure this
-# change is reflected in the information message that appears after
-# source-ing this script 
+# If you (the developer, otherwise you shouldn't be editing this file)
+# change the format of DAQINTERFACE_LOGFILE, make sure this change is
+# reflected in the information message that appears after source-ing
+# this script
 
 export DAQINTERFACE_LOGFILE=$DAQINTERFACE_LOGDIR/DAQInterface_partition\${DAQINTERFACE_PARTITION_NUMBER}.log
 
@@ -191,7 +231,11 @@ cat<<heredoc
 
       ERROR: the DAQINTERFACE_USER_SOURCEFILE_ERRNO environment
       variable doesn't exist; this needs to be set in the user script
-      referred to by the DAQINTERFACE_USER_SOURCEFILE environment variable
+      referred to by the DAQINTERFACE_USER_SOURCEFILE environment
+      variable. Setting the variable to "0" in
+      $DAQINTERFACE_USER_SOURCEFILE implies success, anything else
+      implies a failure and this script will consequently *not* set up
+      the DAQInterface environment.
 
 heredoc
 
