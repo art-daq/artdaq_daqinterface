@@ -1082,8 +1082,7 @@ class DAQInterface(Component):
 
         if "artdaq_daqinterface" in packages:
             assert len(packages) == 1, "Note to developer: you'll probably need to refactor save_run_records.py if you want to get the version of other packages alongside the version of DAQInterface"
-            cmd = "ups active | sed -r -n '/^%s\\s+/s/^%s\\s+(\\S+).*/\\1/p'" % \
-                  (package, package)
+            cmd = "ups active | sed -r -n '/^artdaq_daqinterface\\s+/s/^artdaq_daqinterface\\s+(\\S+).*/\\1/p'"
         else:
             ored_packages = []
             for package in packages:
