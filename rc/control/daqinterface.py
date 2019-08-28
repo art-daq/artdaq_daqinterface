@@ -1080,50 +1080,55 @@ class DAQInterface(Component):
 
     def fill_package_versions(self, packages):    
 
+        cmd = ""
+        needed_packages = []
+
+        for package in packages:
+            if package in self.package_versions:
+                continue
+            else:
+                needed_packages.append(package)
+
+        if len(needed_packages) == 0:
+            return
+
         if "artdaq_daqinterface" in packages:
             assert len(packages) == 1, "Note to developer: you'll probably need to refactor save_run_records.py if you want to get the version of other packages alongside the version of DAQInterface"
-            cmd = "ups active | sed -r -n '/^artdaq_daqinterface\\s+/s/^artdaq_daqinterface\\s+(\\S+).*/\\1/p'"
+            cmd = "ups active | sed -r -n 's/^artdaq_daqinterface\\s+(\\S+).*/artdaq_daqinterface \\1/p'"
         else:
-            ored_packages = []
-            for package in packages:
-                if package in self.package_versions:
-                    continue
+            cmd = "%s ; . %s; ups active | sed -r -n 's/^(%s)\\s+(\\S+).*/\\1 \\2/p'" % \
+                  (bash_unsetup_command, self.daq_setup_script, "|".join(needed_packages))
+
+        if cmd != "":
+            proc =  Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            stdoutlines = proc.stdout.readlines()
+            stderrlines = proc.stderr.readlines()
+
+            if len(stderrlines) > 0:
+                if len(stderrlines) == 1 and "type: unsetup: not found" in stderrlines[0]:
+                    self.print_log("w", stderrlines[0])
                 else:
-                    ored_packages.append(package)
+                    raise Exception("Error in %s: the command \"%s\" yields output to stderr:\n\"%s\"" % \
+                                    (self.get_package_version.__name__, cmd, "".join(stderrlines)))
 
-            if len(ored_packages) > 0:
-                cmd = "%s ; . %s; ups active | sed -r -n 's/^(%s)\\s+(\\S+).*/\\1 \\2/p'" % \
-                      (bash_unsetup_command, self.daq_setup_script, "|".join(ored_packages))
+            if len(stdoutlines) == 0:
+                print traceback.format_exc()
+                raise Exception("Error in %s: the command \"%s\" yields no output to stdout" % \
+                                (self.get_package_version.__name__, cmd))
 
-                proc =  Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            for line in stdoutlines:
+                if re.search(r"^(%s)\s+" % ("|".join(needed_packages)), line):
+                    (package, version) = line.split()
 
-                stdoutlines = proc.stdout.readlines()
-                stderrlines = proc.stderr.readlines()
+                    if not re.search(r"v[0-9]+_[0-9]+_[0-9]+.*", version):
+                        raise Exception(make_paragraph("Error in %s: the version of the package \"%s\" this function has determined, \"%s\", is not the expected v<int>_<int>_<int>optionalextension format" % (self.get_package_version.__name__, package, version)))
 
-                if len(stderrlines) > 0:
-                    if len(stderrlines) == 1 and "type: unsetup: not found" in stderrlines[0]:
-                        self.print_log("w", stderrlines[0])
-                    else:
-                        raise Exception("Error in %s: the command \"%s\" yields output to stderr:\n\"%s\"" % \
-                                        (self.get_package_version.__name__, cmd, "".join(stderrlines)))
+                    self.package_versions[package] = version
 
-                if len(stdoutlines) == 0:
-                    print traceback.format_exc()
-                    raise Exception("Error in %s: the command \"%s\" yields no output to stdout" % \
-                                    (self.get_package_version.__name__, cmd))
-
-                for line in stdoutlines:
-                    if re.search(r"^(%s)\s+" % ("|".join(ored_packages)), line):
-                        (package, version) = line.split()
-
-                        if not re.search(r"v[0-9]+_[0-9]+_[0-9]+.*", version):
-                            raise Exception(make_paragraph("Error in %s: the version of the package \"%s\" this function has determined, \"%s\", is not the expected v<int>_<int>_<int>optionalextension format" % (self.get_package_version.__name__, package, version)))
-
-                        self.package_versions[package] = version
-
-            for package in packages:
-                if package not in self.package_versions:
-                    self.print_log("w", "Warning: there was a problem trying to determine the version of package \"%s\"" % (package))
+        for package in packages:
+            if package not in self.package_versions:
+                self.print_log("w", "Warning: there was a problem trying to determine the version of package \"%s\"" % (package))
 
     def execute_trace_script(self, transition):
 
