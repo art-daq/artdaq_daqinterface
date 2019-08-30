@@ -25,9 +25,25 @@ import string
 import shutil
 
 from rc.control.utilities import expand_environment_variable_in_string
+
+def version_to_integer(version):
+    res = re.search(r"v([0-9])_([0-9][0-9])_([0-9][0-9]).*", version)
+    assert res, make_paragraph("Developer error: unexpected artdaq_database version format \"%s\". Please contact John Freeman at jcfree@fnal.gov" % (version))
+    majornum = int(res.group(1))
+    minornum = int(res.group(2))
+    patchnum = int(res.group(3))
+
+    return patchnum + 100*minornum + 10000*majornum
+
+if version_to_integer(os.environ["ARTDAQ_DATABASE_VERSION"]) >= version_to_integer("v1_04_75"):
+    from conftool import getListOfAvailableRunConfigurationsSubtractMasked
+else:
+    print
+    print make_paragraph("WARNING: you appear to be using an artdaq_database version older than v1_04_75 (%s), on the config transition DAQInterface will accept a configuration even if it's been masked off" % (os.environ["ARTDAQ_DATABASE_VERSION"]))
+    print
+
 from conftool import exportConfiguration
 from conftool import getListOfAvailableRunConfigurations
-from conftool import getListOfAvailableRunConfigurationsSubtractMasked
 from conftool import archiveRunConfiguration
 from conftool import updateArchivedRunConfiguration
 
@@ -54,8 +70,12 @@ def get_config_info_base(self):
 
         if subconfig not in getListOfAvailableRunConfigurations():
             raise Exception(make_paragraph("Error: (sub)config \"%s\" was not found in a call to conftool.getListOfAvailableRunConfigurations" % (subconfig)))
-        elif subconfig not in getListOfAvailableRunConfigurationsSubtractMasked():
-            raise Exception(make_paragraph("Error: (sub)config \"%s\" appears to have been masked off (i.e., it doesn't appear in a call to conftool.getListOfAvailableRunConfigurationsSubtractMasked given the flags file %s)" % (subconfig, tmpflagsfile)))
+        else:
+            try:
+                if subconfig not in getListOfAvailableRunConfigurationsSubtractMasked():
+                            raise Exception(make_paragraph("Error: (sub)config \"%s\" appears to have been masked off (i.e., it doesn't appear in a call to conftool.getListOfAvailableRunConfigurationsSubtractMasked given the flags file %s)" % (subconfig, tmpflagsfile)))
+            except NameError:
+                pass
 
         subconfigdir = "%s/%s" % (tmpdir, subconfig)
         os.mkdir( subconfigdir )
