@@ -83,6 +83,7 @@ def launch_procs_base(self):
             if self.have_artdaq_mfextensions():
                 launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))
             launch_commands_to_run_on_host[ procinfo.host ].append("which boardreader >> %s 2>&1 " % (self.launch_attempt_file)) # Assume if this works, eventbuilder, etc. are also there
+            launch_commands_to_run_on_host[ procinfo.host ].append("%s/bin/mopup_shmem.sh %s --force >> %s 2>&1" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"], os.environ["DAQINTERFACE_PARTITION_NUMBER"], self.launch_attempt_file))
             #launch_commands_to_run_on_host[ procinfo.host ].append("setup valgrind v3_13_0")
 	    #launch_commands_to_run_on_host[ procinfo.host ].append("export LD_PRELOAD=libasan.so")
 	    #launch_commands_to_run_on_host[ procinfo.host ].append("export ASAN_OPTIONS=alloc_dealloc_mismatch=0")

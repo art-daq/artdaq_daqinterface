@@ -18,10 +18,9 @@ if ! [[ "$partition" =~ [0-9]+ ]]; then
     exit 1
 fi
 
-. $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
-. $ARTDAQ_DAQINTERFACE_DIR/bin/daqutils.sh
-
 if ! $force_cleanup; then
+
+. $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
 
 if [[ -n $( listdaqinterfaces.sh | grep -E "\s+[Pp]artition\s+$partition\s+" ) ]]; then
 
