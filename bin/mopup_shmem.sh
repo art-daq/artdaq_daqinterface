@@ -89,11 +89,52 @@ EOF
     retval=10
 fi
 
-for shmid in $( ipcs | grep -E "^0xee${hextoken}|^0xbb${hextoken}|^0x${hextoken}00" | grep $USER | awk '{print $2}' ); do
-ipcrm -m $shmid
+function get_shmids() {
+    ipcs | grep -E "^0xee${hextoken}|^0xbb${hextoken}|^0x${hextoken}00" | grep $USER | awk '{print $2}'
+}
+
+owner_pids=""
+
+for shmid in $( get_shmids ); do
+    nattached=$( ipcs | awk '{ if ("'$shmid'" == $2) { print $6 } }' )
+
+    if ! [[ "$nattached" =~ ^[0-9]+$ ]]; then
+	echo "Surprising error - attempt to determine number of attached processes to shared memory block with id $shmid did not yield an integer" >&2
+	exit 1
+    fi
+
+    if (( nattached > 0 )); then
+    	owner_pid=$( ipcs -mp | awk '{ if ("'$shmid'" == $1) { print $4 } }' )
+	
+    	if [[ "$owner_pid" =~ ^[0-9]+$ ]]; then
+	    if ! [[ "$owner_pids" =~ " $owner_pid " ]]; then
+		owner_pids=" $owner_pid $owner_pids"
+	    fi
+    	else
+    	    echo "Unable to get integer pid for owner of shared memory block with id $shmid" >&2
+    	    exit 1
+    	fi
+    fi
 done
 
-num_owned_blocks_after=$( ipcs | grep -E "^0xee${hextoken}|^0xbb${hextoken}|^0x${hextoken}00" | grep $USER | wc -l )
+for owner_pid in $owner_pids; do
+    echo "Will try to kill the following process since it owns at least one shared memory block:"
+    ps aux | grep -E "^\S+\s+$owner_pid\s+"
+    kill $owner_pid
+done
+
+ipcs
+
+for shmid in $( get_shmids ); do
+
+    echo "Removing shared memory block with id $shmid"
+    ipcrm -m $shmid
+done
+    
+num_owned_blocks_after=0
+for shmid in $( get_shmids ); do
+    num_owned_blocks_after=$(( num_owned_blocks_after + 1 ))
+done
 
 if (( $num_owned_blocks_after != 0 )); then
     retval=11
