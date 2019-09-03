@@ -30,6 +30,17 @@ from rc.control.deepsuppression import deepsuppression
 
 def launch_procs_base(self):
 
+    # JCF, Sep-3-2019
+
+    # First, as per Issue #22372, mop up any stale shared memory segments on the hosts we'll be running on
+    
+    with deepsuppression(self.debug_level < 4):
+        for host in set([procinfo.host for procinfo in self.procinfos]):
+            cmd = "%s/bin/mopup_shmem.sh %s --force" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"], os.environ["DAQINTERFACE_PARTITION_NUMBER"])
+            if host != os.environ["HOSTNAME"] and host != "localhost":
+                cmd = "ssh -f " + host + " '" + cmd + "'"
+                Popen(cmd, shell=True)
+
     greptoken = "pmt.rb -p " + self.pmt_port
     pids = get_pids(greptoken, self.pmt_host)
 
