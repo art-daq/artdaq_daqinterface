@@ -1206,7 +1206,7 @@ class DAQInterface(Component):
                 return
 
             try:
-                print "%s: Sending transition to %s" % (date_and_time_more_precision(), self.procinfos[procinfo_index].label)
+                self.print_log("d", "%s: Sending transition to %s" % (date_and_time_more_precision(), self.procinfos[procinfo_index].label), 3)
 
                 if command == "Init":
                     self.procinfos[procinfo_index].lastreturned = \
