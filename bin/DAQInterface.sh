@@ -1,3 +1,15 @@
+#!/bin/bash
+
+if [[ -n $1 ]]; then
+    if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+	. $ARTDAQ_DAQINTERFACE_DIR/bin/help.sh
+	exit 0
+    else
+       echo "Unknown option passed to DAQInterface!"
+       exit 1
+    fi 
+fi
+
 
 # In the code below:
 # -The "nohup" is there so DAQInterface can wind down cleanly if users close its terminal

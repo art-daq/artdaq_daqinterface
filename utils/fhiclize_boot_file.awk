@@ -23,7 +23,6 @@
 
 	sub("^\\s*","", secondpart);
 	sub("\\s*$","", secondpart);
-	gsub("\\s+", "_", secondpart);
 
 
 	process_names["BoardReader"] = "now defined"
@@ -52,7 +51,7 @@
 	    }
 	}
 
-	if ((secondpart !~ /^[0-9.]+$/ || gsub("\\.", ".", secondpart) > 1) && (secondpart !~ /^\".*\"$/)) {
+	if ((secondpart !~ /^[0-9.]+$/ || gsub("\\.", ".", secondpart) > 1) && (secondpart !~ /^\".*\"$/) && (secondpart !~ /^\[.*\]$/)) {
 	    print firstpart ": \"" secondpart "\"";
 	} else {
 	    print firstpart ": " secondpart

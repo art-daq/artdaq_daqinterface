@@ -44,11 +44,13 @@ from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_pids
 from rc.control.utilities import is_msgviewer_running
 from rc.control.utilities import date_and_time
+from rc.control.utilities import date_and_time_more_precision
 from rc.control.utilities import construct_checked_command
 from rc.control.utilities import reformat_fhicl_documents
 from rc.control.utilities import fhicl_writes_root_file
 from rc.control.utilities import bash_unsetup_command
 from rc.control.utilities import kill_tail_f
+from rc.control.utilities import upsproddir_from_productsdir
 
 from rc.control.config_functions_local import get_boot_info_base
 from rc.control.config_functions_local import listdaqcomps_base
@@ -493,6 +495,8 @@ class DAQInterface(Component):
         alertmsg += "\n" + make_paragraph("DAQInterface has set the DAQ back in the \"Stopped\" state; you may need to scroll above the Recover transition output to find messages which could help you provide any necessary adjustments.")
         self.print_log("e",  alertmsg )
         print
+        self.print_log("e", make_paragraph("Details on how to examine the artdaq process logfiles can be found in the \"Examining your output\" section of the DAQInterface manual, https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Artdaq-daqinterface#Examining-your-output"))
+        print
 
     def read_settings(self):
         if not os.path.exists( os.environ["DAQINTERFACE_SETTINGS"]):
@@ -506,6 +510,7 @@ class DAQInterface(Component):
         self.record_directory = None
         self.daq_setup_script = None
         self.package_hashes_to_save = []
+        self.package_versions = {}
         self.productsdir_for_bash_scripts = None
         self.max_fragment_size_bytes = None
 
@@ -571,7 +576,11 @@ class DAQInterface(Component):
             elif "dispatcher_timeout" in line or "dispatcher timeout" in line:
                 self.dispatcher_timeout = int( line.split()[-1].strip() )
             elif "boardreader_priorities" in line or "boardreader priorities" in line:
-                self.boardreader_priorities = [regexp.strip() for regexp in line.split()[2:] if ":" not in regexp]
+                res = re.search(r"^\s*boardreader[ _]priorities\s*:\s*(.*)", line)
+                if res:
+                    self.boardreader_priorities = [regexp.strip() for regexp in res.group(1).split()]
+                else:
+                    raise Exception("Incorrectly formatted line \"%s\" in %s" % (line.strip(), os.environ["DAQINTERFACE_SETTINGS"]))
             elif "max_fragment_size_bytes" in line or "max fragment size bytes" in line:
                 max_fragment_size_bytes_token = line.split()[-1].strip()
 
@@ -745,7 +754,7 @@ class DAQInterface(Component):
 
         cmds = []
         cmds.append(bash_unsetup_command)
-        cmds.append(". %s" % (self.daq_setup_script))
+        cmds.append(". %s for_running" % (self.daq_setup_script))
         cmds.append('if test -n "$SETUP_ARTDAQ_MFEXTENSIONS" -o -d "$ARTDAQ_MFEXTENSIONS_DIR"; then true; else false; fi')
 
         checked_cmd = construct_checked_command( cmds )
@@ -764,7 +773,7 @@ class DAQInterface(Component):
 
         cmds = []
         cmds.append(bash_unsetup_command)
-        cmds.append(". %s" % (self.daq_setup_script))
+        cmds.append(". %s for_running" % (self.daq_setup_script))
         cmds.append('if [ -n "$SETUP_ARTDAQ_MFEXTENSIONS" ]; then printenv SETUP_ARTDAQ_MFEXTENSIONS; else echo "artdaq_mfextensions $ARTDAQ_MFEXTENSIONS_VERSION $MRB_QUALS";fi')
 
         proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -927,8 +936,10 @@ class DAQInterface(Component):
     def determine_logfilename(self, procinfo):
         loglists = [ self.boardreader_log_filenames, self.eventbuilder_log_filenames, self.datalogger_log_filenames, \
                      self.dispatcher_log_filenames, self.routingmaster_log_filenames ]
-        logfilename_in_list_form = [ logfilename for loglist in loglists for logfilename in loglist if "/%s-" % (procinfo.label) in logfilename ]
-        assert len(logfilename_in_list_form) <= 1, "Incorrect assumption made by DAQInterface about the format of the logfilenames; please contact John Freeman at jcfree@fnal.gov"
+        all_logfilenames = [ logfilename for loglist in loglists for logfilename in loglist ]
+        logfilename_in_list_form = [ logfilename for logfilename in all_logfilenames if "/%s-" % (procinfo.label) in logfilename ]
+        assert len(logfilename_in_list_form) <= 1, make_paragraph("Unable to locate logfile for process \"%s\" out of the following list of candidates: [%s]; this may be due to incorrect assumptions made by DAQInterface about the format of the logfilenames. Please contact John Freeman at jcfree@fnal.gov" % (procinfo.label, ", ".join(all_logfilenames)))
+
         if len(logfilename_in_list_form) == 1:
             return logfilename_in_list_form[0]
         else:
@@ -1081,38 +1092,57 @@ class DAQInterface(Component):
             if status != 0:
                 self.print_log("w", "WARNING: failure in performing user-friendly softlinks to logfiles on host %s" % (host))
 
-    def get_package_version(self, package):    
+    def fill_package_versions(self, packages):    
 
-        if package != "artdaq_daqinterface":
-            cmd = "%s ; . %s; ups active | sed -r -n '/^%s\\s+/s/^%s\\s+(\\S+).*/\\1/p'" % \
-                  (bash_unsetup_command, self.daq_setup_script, package, package)
-        else:
-            cmd = "ups active | sed -r -n '/^%s\\s+/s/^%s\\s+(\\S+).*/\\1/p'" % \
-                  (package, package)
-            
-        proc =  Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        cmd = ""
+        needed_packages = []
 
-        stdoutlines = proc.stdout.readlines()
-        stderrlines = proc.stderr.readlines()
-
-        if len(stderrlines) > 0:
-            if len(stderrlines) == 1 and "type: unsetup: not found" in stderrlines[0]:
-                self.print_log("w", stderrlines[0])
+        for package in packages:
+            if package in self.package_versions:
+                continue
             else:
-                raise Exception("Error in %s: the command \"%s\" yields output to stderr:\n\"%s\"" % \
-                                (self.get_package_version.__name__, cmd, "".join(stderrlines)))
+                needed_packages.append(package)
 
-        if len(stdoutlines) == 0:
-            print traceback.format_exc()
-            raise Exception("Error in %s: the command \"%s\" yields no output to stdout" % \
-                            (self.get_package_version.__name__, cmd))
-            
-        version = stdoutlines[-1].strip()
+        if len(needed_packages) == 0:
+            return
 
-        if not re.search(r"v[0-9]+_[0-9]+_[0-9]+.*", version):
-            raise Exception(make_paragraph("Error in %s: the version of the package \"%s\" this function has determined, \"%s\", is not the expected v<int>_<int>_<int>optionalextension format" % (self.get_package_version.__name__, package, version)))
-        
-        return version
+        if "artdaq_daqinterface" in packages:
+            assert len(packages) == 1, "Note to developer: you'll probably need to refactor save_run_records.py if you want to get the version of other packages alongside the version of DAQInterface"
+            cmd = "ups active | sed -r -n 's/^artdaq_daqinterface\\s+(\\S+).*/artdaq_daqinterface \\1/p'"
+        else:
+            cmd = "%s ; . %s; ups active | sed -r -n 's/^(%s)\\s+(\\S+).*/\\1 \\2/p'" % \
+                  (bash_unsetup_command, self.daq_setup_script, "|".join(needed_packages))
+
+        if cmd != "":
+            proc =  Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            stdoutlines = proc.stdout.readlines()
+            stderrlines = proc.stderr.readlines()
+
+            if len(stderrlines) > 0:
+                if len(stderrlines) == 1 and "type: unsetup: not found" in stderrlines[0]:
+                    self.print_log("w", stderrlines[0])
+                else:
+                    raise Exception("Error in %s: the command \"%s\" yields output to stderr:\n\"%s\"" % \
+                                    (self.get_package_version.__name__, cmd, "".join(stderrlines)))
+
+            if len(stdoutlines) == 0:
+                print traceback.format_exc()
+                raise Exception("Error in %s: the command \"%s\" yields no output to stdout" % \
+                                (self.get_package_version.__name__, cmd))
+
+            for line in stdoutlines:
+                if re.search(r"^(%s)\s+" % ("|".join(needed_packages)), line):
+                    (package, version) = line.split()
+
+                    if not re.search(r"v[0-9]+_[0-9]+_[0-9]+.*", version):
+                        raise Exception(make_paragraph("Error in %s: the version of the package \"%s\" this function has determined, \"%s\", is not the expected v<int>_<int>_<int>optionalextension format" % (self.get_package_version.__name__, package, version)))
+
+                    self.package_versions[package] = version
+
+        for package in packages:
+            if package not in self.package_versions:
+                self.print_log("w", "Warning: there was a problem trying to determine the version of package \"%s\"" % (package))
 
     def execute_trace_script(self, transition):
 
@@ -1189,6 +1219,7 @@ class DAQInterface(Component):
                 return
 
             try:
+                self.print_log("d", "%s: Sending transition to %s" % (date_and_time_more_precision(), self.procinfos[procinfo_index].label), 3)
 
                 if command == "Init":
                     self.procinfos[procinfo_index].lastreturned = \
@@ -1490,7 +1521,7 @@ class DAQInterface(Component):
                            (random_host, self.daq_setup_script), 1, False)
 
             with deepsuppression(self.debug_level < 3):
-                cmd = "%s ; . %s" % (bash_unsetup_command, self.daq_setup_script)
+                cmd = "%s ; . %s for_running" % (bash_unsetup_command, self.daq_setup_script)
 
                 if random_host != "localhost" and random_host != os.environ["HOSTNAME"]:
                     cmd = "ssh %s '%s'" % (random_host, cmd)
@@ -1669,7 +1700,7 @@ class DAQInterface(Component):
                     port_to_replace = 30000
                     msgviewer_fhicl = "/tmp/msgviewer_partition%d_%s.fcl" % (self.partition_number, os.environ["USER"])
                     cmds.append(bash_unsetup_command)
-                    cmds.append(". %s" % (self.daq_setup_script))
+                    cmds.append(". %s for_running" % (self.daq_setup_script))
                     cmds.append("which msgviewer")
                     cmds.append("cp $ARTDAQ_MFEXTENSIONS_DIR/fcl/msgviewer.fcl %s" % (msgviewer_fhicl))
                     cmds.append("res=$( grep -l \"port: %d\" %s )" % (port_to_replace, msgviewer_fhicl))
@@ -1852,9 +1883,9 @@ class DAQInterface(Component):
         if not os.path.exists(os.environ["DAQINTERFACE_SETUP_FHICLCPP"]):
             self.print_log("w", make_paragraph("File \"%s\", needed for formatting FHiCL configurations, does not appear to exist; will attempt to auto-generate one..." % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"])))
             with open( os.environ["DAQINTERFACE_SETUP_FHICLCPP"], "w") as outf:
-                outf.write("source %s/setup\n" % (self.productsdir))
+                outf.write("export PRODUCTS=\"%s\"; . %s/setup\n" % (self.productsdir,upsproddir_from_productsdir(self.productsdir)))
                 outf.write( bash_unsetup_command + "\n" )
-                lines = Popen("export PRODUCTS= ; source %s/setup; ups list -aK+ fhiclcpp | sort -n" % (self.productsdir), 
+                lines = Popen("export PRODUCTS=\"%s\"; . %s/setup; ups list -aK+ fhiclcpp | sort -n" % (self.productsdir,upsproddir_from_productsdir(self.productsdir)), 
                                                shell=True, stdout=subprocess.PIPE).stdout.readlines()
                 if len(lines) > 0:
                     fhiclcpp_to_setup_line = lines[-1]
@@ -2072,6 +2103,17 @@ class DAQInterface(Component):
                 self.alert_and_recover(make_paragraph("Problem copying /tmp/info_to_archive_partition%d.txt into %s/rc_info_stop.txt; does original file exist?" % (self.partition_number, run_record_directory)))
 
         if self.manage_processes:
+
+            for i_proc in range(len(self.procinfos)):
+                if "BoardReader" in self.procinfos[i_proc].name:
+                    try:
+                        for priority, regexp in enumerate(self.boardreader_priorities_on_stop):
+                            print "%d %s" % (priority, regexp)
+                            if re.search(regexp, self.procinfos[i_proc].label):
+                                self.procinfos[i_proc].priority = priority
+
+                    except Exception:
+                        pass  # It's not an error if there were no boardreader priorities read in from $DAQINTERFACE_SETTINGS
 
             try:
                 self.do_command("Stop")

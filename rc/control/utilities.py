@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 
 import os
 import re
@@ -291,6 +292,9 @@ def execute_command_in_xterm(home, cmd):
 
 def date_and_time():
     return Popen("LC_ALL=\"en_US.UTF-8\" date", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+
+def date_and_time_more_precision():
+    return Popen("date +%a_%b_%d_%H:%M:%S.%N", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
 
 def construct_checked_command(cmds):
 
@@ -643,6 +647,15 @@ def zero_out_last_subnet(network):
     assert res, "Developer error: proper address not passed to \"zero_out_last_subnet\""
     return "%s0" % (res.group(1))
 
+def upsproddir_from_productsdir( productsdir ):
+    for pp in productsdir.split(':'):
+        upsproddir=''                  # may not find what we're looking for
+        tt=pp.rstrip('/')+'/'          # make sure it ends with _single_ '/'
+        if os.path.isdir(tt) and os.path.isfile( tt+'setup') and os.path.isdir(tt+'.upsfiles') and os.path.isdir(tt+'ups'):
+            upsproddir=pp.rstrip('/')  # make sure it does not end with '/'
+            break
+    return upsproddir
+
 def main():
 
     if len(sys.argv) > 1 and sys.argv[1] == "get_commit_info":
@@ -675,6 +688,15 @@ def main():
             print "Error: problem getting the commit info from \"%s\"" % (gitrepo)
             sys.exit(5)
         
+        sys.exit(0)
+
+    elif len(sys.argv) > 1 and sys.argv[1] == "upsproddir_from_productsdir":
+        if len(sys.argv) != 3:
+            print make_paragraph("Error: expected 1 argument to upsproddir_from_productsdir: PRODUCTS_list")
+            sys.exit(1)
+
+        productsdir = sys.argv[2]
+        print( upsproddir_from_productsdir(productsdir) )
         sys.exit(0)
 
     paragraphed_string_test = False
