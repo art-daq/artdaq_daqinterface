@@ -34,6 +34,7 @@
 	process_tokens["host"] = "now defined"
 	process_tokens["port"] = "now defined"
 	process_tokens["label"] = "now defined"
+	process_tokens["subsystem"] = "now defined"
 
 	for (process_name in process_names) {
 	    for (process_token in process_tokens) {
