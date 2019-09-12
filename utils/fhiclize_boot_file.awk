@@ -1,10 +1,55 @@
 #!/bin/env awk
 
+BEGIN {
+
+    name = "not set"
+    label = "not set"
+    host = "not set"
+    port = "not set"
+    subsystem = "not set"
+
+    process_names["BoardReader"] = "now defined"
+    process_names["EventBuilder"] = "now defined"
+    process_names["DataLogger"] = "now defined"
+    process_names["Dispatcher"] = "now defined"
+    process_names["RoutingMaster"] = "now defined"
+
+    process_tokens["host"] = "now defined"
+    process_tokens["port"] = "now defined"
+    process_tokens["label"] = "now defined"
+    process_tokens["subsystem"] = "now defined"
+}
 
 {
     match($0, "^\\s*#")  # Skip commented lines
     if (RSTART != 0) {
        next
+    }
+
+   # And blank lines, also interpreting them as the delimiter for a given 
+   # process's collection of info
+
+    match($0, "^\\s*$")  
+    if (RSTART != 0) {
+	if (label != "not set") {
+	    procinfos[label] = sprintf("{ name: \"%s\" label: \"%s\" host: \"%s\" ", name, label, host)
+	    if (port != "not set") {
+		procinfos[label] = sprintf("%s port: %d ", procinfos[label], port)
+	    }
+
+	    if (subsystem != "not set") {
+		procinfos[label] = sprintf("%s subsystem: \"%s\" ", procinfos[label], subsystem)
+	    }
+
+	    procinfos[label] = sprintf("%s }", procinfos[label])
+
+	    name = "not set"
+	    label = "not set"
+	    host = "not set"
+	    port = "not set"
+	    subsystem = "not set"
+	}
+	next
     }
 
     # Get the key / value pair; if there isn't one, then just continue
@@ -24,27 +69,21 @@
 	sub("^\\s*","", secondpart);
 	sub("\\s*$","", secondpart);
 
-
-	process_names["BoardReader"] = "now defined"
-	process_names["EventBuilder"] = "now defined"
-	process_names["DataLogger"] = "now defined"
-	process_names["Dispatcher"] = "now defined"
-	process_names["RoutingMaster"] = "now defined"
-
-	process_tokens["host"] = "now defined"
-	process_tokens["port"] = "now defined"
-	process_tokens["label"] = "now defined"
-	process_tokens["subsystem"] = "now defined"
-
 	for (process_name in process_names) {
 	    for (process_token in process_tokens) {
 		keymatch = sprintf("%s_%s", process_name, process_token)
 
 		if (firstpart ~ keymatch) {
-		    if (process_token != "port") {
-			lists[ firstpart ] = sprintf("%s \"%s\",", lists[firstpart], secondpart);
-		    } else {
-			lists[ firstpart ] = sprintf("%s %s,", lists[firstpart], secondpart);
+		    name = process_name
+
+		    if (process_token == "label") {
+			label = secondpart
+		    } else if (process_token == "host" ) {
+			host = secondpart 
+		    } else if ( process_token == "port" ) {
+			port = secondpart
+		    } else if ( process_token == "subsystem" ) {
+			subsystem = secondpart
 		    }
 
 		    next
@@ -62,10 +101,15 @@
 
 END {
 
-    for (list in lists) {
-	sub("^\\s+", "", lists[list])
-	sub("\\s+$", "", lists[list])
-	sub(",$","", lists[list])
-	printf("\n%ss: [%s]", list, lists[list])
+    printf("\nartdaq_processes: [ ")
+    cntr = 1
+    nprocs = length(procinfos)
+    for (label in procinfos) {
+	printf("%s", procinfos[label])
+	if (cntr < length(procinfos)) {
+	    printf(", ")
+	}
+	cntr++
     }
+    printf("]\n")
 }
