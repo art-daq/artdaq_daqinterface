@@ -2,6 +2,16 @@
 
 BEGIN {
 
+    # Subsystem variables
+    id = "not set"
+    source = "not set"
+    destination = "not set"
+
+    subsystem_tokens["id"] = "now defined"
+    subsystem_tokens["source"] = "now defined"
+    subsystem_tokens["destination"] = "now defined"
+
+    # Process variables
     name = "not set"
     label = "not set"
     host = "not set"
@@ -31,7 +41,7 @@ BEGIN {
 
     match($0, "^\\s*$")  
     if (RSTART != 0) {
-	if (label != "not set") {
+	if (label != "not set") {   # Shorthand for "we've got info for a process"
 	    procinfos[label] = sprintf("{ name: \"%s\" label: \"%s\" host: \"%s\" ", name, label, host)
 	    if (port != "not set") {
 		procinfos[label] = sprintf("%s port: %d ", procinfos[label], port)
@@ -48,6 +58,22 @@ BEGIN {
 	    host = "not set"
 	    port = "not set"
 	    subsystem = "not set"
+
+	} else if (id != "not set" ) { # Shorthand for "we've got info for a subsystem"
+
+	    subsystems[id] = sprintf("{ id: \"%s\" ", id)
+	    if (source != "not set") {
+		subsystems[id] = sprintf("%s source: \"%s\" ", subsystems[id], source)
+	    }
+	    if (destination != "not set") {
+		subsystems[id] = sprintf("%s destination: \"%s\" ", subsystems[id], destination)
+	    }
+
+	    subsystems[id] = sprintf("%s }", subsystems[id])
+
+	    id = "not set"
+	    source = "not set"
+	    destination = "not set"
 	}
 	next
     }
@@ -68,6 +94,21 @@ BEGIN {
 
 	sub("^\\s*","", secondpart);
 	sub("\\s*$","", secondpart);
+
+	for (subsystem_token in subsystem_tokens) {
+	    keymatch = sprintf("Subsystem_%s", subsystem_token)
+	    
+	    if (firstpart ~ keymatch) {
+		if (subsystem_token == "id") {
+		    id = secondpart
+		} else if (subsystem_token == "source") {
+		    source = secondpart
+		} else if (subsystem_token == "destination") {
+		    destination = secondpart
+		}
+		next
+	    }
+	}
 
 	for (process_name in process_names) {
 	    for (process_token in process_tokens) {
@@ -101,9 +142,21 @@ BEGIN {
 
 END {
 
+    if (length(subsystems) > 0) {
+	printf("\nsubsystems: [ ")
+	cntr = 1
+	for (id in subsystems) {
+	    printf("%s", subsystems[id])
+	    if (cntr < length(subsystems)) {
+		printf(", ")
+	    }
+	    cntr++
+	}
+	printf("]\n")
+    }
+
     printf("\nartdaq_processes: [ ")
     cntr = 1
-    nprocs = length(procinfos)
     for (label in procinfos) {
 	printf("%s", procinfos[label])
 	if (cntr < length(procinfos)) {
