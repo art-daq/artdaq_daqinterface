@@ -143,7 +143,7 @@ BEGIN {
 END {
 
     if (length(subsystems) > 0) {
-	printf("\nsubsystems: [ ")
+	printf("\nsubsystem_settings: [ ")
 	cntr = 1
 	for (id in subsystems) {
 	    printf("%s", subsystems[id])
@@ -155,7 +155,7 @@ END {
 	printf("]\n")
     }
 
-    printf("\nartdaq_processes: [ ")
+    printf("\nartdaq_process_settings: [ ")
     cntr = 1
     for (label in procinfos) {
 	printf("%s", procinfos[label])

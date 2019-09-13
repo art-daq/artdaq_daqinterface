@@ -147,48 +147,29 @@ def put_config_info_base(self):
                 
                 ignore_line = False
 
-                for procname in ["EventBuilder", "DataLogger", "Dispatcher", "RoutingMaster"] :
-                    res = re.search(r"^\s*%s_" % (procname), line)
+                if line == "":
+                    ignore_line = True
+
+                for keyname in ["artdaq_process_settings", "debug_level"] :
+                    res = re.search(r"^\s*%s\s*:" % (keyname), line)
                     if res:
                         ignore_line = True
                         break
 
-                if "debug_level" in line or line == "":
-                    ignore_line = True
-
                 if not ignore_line:
+                    if "subsystem_settings" in line:
+                        line = line.replace("subsystem_settings", "subsystem_values")
                     dataflow_file.write("\n" + line)
 
-        proc_attrs = ["host", "port", "label", "rank"]
-        proc_types = ["BoardReader", "EventBuilder", "DataLogger", "Dispatcher", "RoutingMaster"]
+        dataflow_file.write("\nartdaq_process_values: [ ")
 
-        proc_line = {}
+        for i_p, procinfo in enumerate(self.procinfos):
+            dataflow_file.write("{ name: \"%s\" label: \"%s\" host: \"%s\" port: %d subsystem: \"%s\" rank: %d } " % \
+                                (procinfo.name, procinfo.label, procinfo.host, int(procinfo.port), procinfo.subsystem, int(procinfo.rank)))
+            if i_p < len(self.procinfos) - 1:
+                dataflow_file.write(", ")
 
-        with open("%s/ranks.txt" % (runrecord)) as ranksfile:
-            for line in ranksfile.readlines():
-                res = re.search(r"^\s*(\S+)\s+([0-9]+)\s+(\S+)\s+([0-9]+)\s*$", line)
-                if res:
-                    host, port, label, rank = res.group(1), res.group(2), res.group(3), res.group(4)
-                    
-                    for procinfo in self.procinfos:
-                        if label == procinfo.label:
-                            assert host == procinfo.host or (procinfo.host == "localhost" and host == os.environ["HOSTNAME"])
-                            assert port == procinfo.port
-
-                            # "host" used for the check, but could just as well be "port", "label" or "rank"
-                            if "%s_host" % (procinfo.name) not in proc_line.keys():
-                                for proc_attr in proc_attrs:
-                                    proc_line["%s_%s" % (procinfo.name, proc_attr)] = "%s_%ss: [" % (procinfo.name, proc_attr)
-                            
-                            proc_line["%s_host" % (procinfo.name)] += "\"%s\"," % (procinfo.host)
-                            proc_line["%s_port" % (procinfo.name)] += "\"%s\"," % (procinfo.port)
-                            proc_line["%s_label" % (procinfo.name)] += "\"%s\"," % (procinfo.label)
-                            proc_line["%s_rank" % (procinfo.name)] += "\"%s\"," % (rank)
-
-        for proc_line_key, proc_line_value in proc_line.items():
-            proc_line_value = proc_line_value[:-1] # Strip the trailing comma
-            proc_line[ proc_line_key ] = proc_line_value + "]"
-            dataflow_file.write("\n" + proc_line[ proc_line_key ] )
+        dataflow_file.write(" ]\n")
 
         with open( "%s/%s/metadata.fcl" % (tmpdir, runnum) ) as metadata_file:
             for line in metadata_file.readlines():
