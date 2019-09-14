@@ -230,10 +230,6 @@ def put_config_info_base(self):
 
 def put_config_info_on_stop_base(self):
 
-    if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] != "external_run_control" or \
-       not os.path.exists("/tmp/info_to_archive_partition%d.txt" % (self.partition_number)):
-        return
-
     runnum = str(self.run_number)
     tmpdir = "/tmp/" + Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
     os.mkdir(tmpdir)
@@ -242,7 +238,36 @@ def put_config_info_on_stop_base(self):
 
 
     with open( "%s/%s/RunHistory2.fcl" % (tmpdir, runnum), "w" ) as runhistory_file:
-        runhistory_file.write( fhiclize_document( "/tmp/info_to_archive_partition%d.txt" % (self.partition_number ) ))
+
+        metadata_filename = "%s/%s/metadata.txt" % (self.record_directory, str(self.run_number))
+        
+        if os.path.exists(metadata_filename):
+            found_start_time = False
+            found_stop_time = False
+            
+            with open(metadata_filename) as metadata_file:
+                for line in metadata_file:
+                    res = re.search(r"^DAQInterface start time:\s+(.*)", line)
+                    if res:
+                        runhistory_file.write("\nDAQInterface_start_time: \"%s\"\n" % (res.group(1)))
+                        found_start_time = True
+                        continue
+                    res = re.search(r"^DAQInterface stop time:\s+(.*)", line)
+                    if res:
+                        runhistory_file.write("\nDAQInterface_stop_time: \"%s\"\n" % (res.group(1)))
+                        found_stop_time = True
+            
+            if not found_start_time:
+                self.print_log("w", "WARNING: unable to find DAQInterface start time in %s; will not save this info into the database" % (metadata_filename))
+            if not found_stop_time:
+                self.print_log("w", "WARNING: unable to find DAQInterface stop time in %s; will not save this info into the database" % (metadata_filename))
+                
+        else:
+            self.print_log("w", "Expected file %s wasn't found! Will not save start/stop times of run in the database" % (metadata_filename))
+
+        if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "external_run_control" and \
+           os.path.exists("/tmp/info_to_archive_partition%d.txt" % (self.partition_number)):
+            runhistory_file.write( fhiclize_document( "/tmp/info_to_archive_partition%d.txt" % (self.partition_number ) ))
 
     copyfile("%s/schema.fcl" % (os.environ["ARTDAQ_DATABASE_CONFDIR"]), "%s/schema.fcl" % (tmpdir))
 
