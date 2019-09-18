@@ -25,12 +25,6 @@ else
 fi
 
 if [[ "$nevents" =~ ^[0-9]+$ ]]; then
-
-    if (( $nevents > 0 )); then
-	echo "Error: support for showing >0 events not yet implemented; exiting..." >&2
-	exit 1
-    fi
-
     echo "Will show the first $nevents events from the root file(s) (if any) produced in the run"
 else
     echo "Error: number of events to display \"$nevents\" isn't an integer; exiting..." >&2
@@ -69,14 +63,38 @@ elif (( $nmatches == 1 )); then
 
     if [[ -e $recorddir/$runnum/ranks.txt ]]; then
 	prochost=$( sed -r -n 's/^(\S+)\s+([0-9]+)\s+'$proclabel'.*/\1/p' $recorddir/$runnum/ranks.txt )
-	
+
 	if [[ -n $prochost ]]; then
-	    echo ${prochost}:
-	    if [[ "$prochost" != "$HOSTNAME" ]]; then
-		ssh $prochost "ls -l $file_format" 
-	    else
-		ls -l $file_format
+	    cmd="ls -l $file_format"
+	    
+	    if (( $nevents > 0 )); then
+		cmd="if [[ -z \$( type rawEventDump 2>/dev/null ) ]]; then \
+if [[ \"$( grep -El "^\s*alias rawEventDump" $recorddir/$runnum/setup.txt )\" != \"\" ]] ; then \
+  echo Using the rawEventDump alias found in $recorddir/$runnum/setup.txt ; \
+  . $recorddir/$runnum/setup.txt > /dev/null ; \
+  eval \$( alias | sed -r -n \"s/^alias rawEventDump=.(.*).$/\1/p\" ) $file_format -n $nevents ; \
+else \
+  echo An alias for rawEventDump is not found in $recorddir/$runnum/setup.txt, will not show the $nevents events requested ; \
+fi ; \
+                     else \
+echo Using the rawEventDump which is already available, if a rawEventDump alias exists in $recorddir/$runnum/setup.txt it will be ignored ; \
+rawEventDump $file_format -n $nevents ; \
+                     fi ; \
+$cmd "
 	    fi
+
+	    echo
+	    echo
+	    echo
+	    echo =======================================${prochost}=======================================
+	    if [[ "$prochost" != "$HOSTNAME" ]]; then
+		cmd="ssh $prochost '"$cmd"' "
+	    fi
+	    #echo "About to execute:"
+	    #echo $cmd
+	    eval $cmd
+
+	    echo ==============================================================================================
 	else
 	    cat<<EOF >&2
 
