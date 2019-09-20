@@ -41,13 +41,48 @@ BEGIN {
 		    continue
 		}
 
-		printf("\n%s %s: %s", procinfo_vars["name"], procinfo_var, procinfo_vars[ procinfo_var ] )
+		if (procinfo_vars[ procinfo_var ] != "not set") {
+		    printf("\n%s %s: %s", procinfo_vars["name"], procinfo_var, procinfo_vars[ procinfo_var ] )
+		}
 	    }
 
 	    print "\n"
 	    for (procinfo_var in procinfo_vars) {
 		procinfo_vars[ procinfo_var ] = "not set"
 	    } 
+
+	    if ($0 ~ /\}\]/) {
+		in_artdaq_process_settings = 0
+	    }
+	}
+    }
+
+
+    if (firstpart == "subsystem_settings" ) {
+	in_subsystem_settings = 1
+	next
+    }
+
+    if (in_subsystem_settings) {
+	if ( $0 !~ /\}, \{/ && $0 !~ /\}\]/ ) {
+	    gsub("\"", "", secondpart)
+	    subsysteminfo_vars[firstpart] = secondpart
+	} else {
+	
+	    for (subsysteminfo_var in subsysteminfo_vars) {
+		if (subsysteminfo_vars[ subsysteminfo_var ] != "not set") {
+		    printf("\nSubsystem %s: %s", subsysteminfo_var, subsysteminfo_vars[ subsysteminfo_var ] )
+		}
+	    }
+
+	    print "\n"
+	    for (subsysteminfo_var in subsysteminfo_vars) {
+		subsysteminfo_vars[ subsysteminfo_var ] = "not set"
+	    } 
+
+	    if ($0 ~ /\}\]/) {
+		in_subsystem_settings = 0
+	    }
 	}
     }
 }
