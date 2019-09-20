@@ -103,10 +103,13 @@ BEGIN {
 	if (firstpart == vars_to_defhiclize[var_index]) {
 	    gsub("_", " ", firstpart)
 	    gsub("\"", "", secondpart)
-	    printf("\n%s: %s", firstpart, secondpart);
+	    printf("\n%s: %s\n", firstpart, secondpart);
 	    next
 	}
     }
+
+    # Printing the line as-is will handle bespoke FHiCL parameter overrides
+    print
 }
 
 
