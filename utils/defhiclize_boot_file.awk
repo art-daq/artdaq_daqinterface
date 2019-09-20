@@ -3,6 +3,15 @@ BEGIN {
     
     in_artdaq_process_settings = 0
     in_subsystem_settings = 0
+
+    # JCF, Sep-20-2019
+
+    # Note that since request_address and table_update_address are
+    # meant to have underscores even in the standard boot file
+    # formate, and bookkeeping strips them of any surrounding quotes
+    # they might have, that they don't need to be de-FHiCLized
+
+    split("DAQ_setup_script debug_level PMT_host PMT_port disable_recovery manage_processes", vars_to_defhiclize, " ")
 }
 
 {
@@ -27,6 +36,7 @@ BEGIN {
 
     if (firstpart == "artdaq_process_settings" ) {
 	in_artdaq_process_settings = 1
+	print "\n"
 	next
     }
 
@@ -55,11 +65,13 @@ BEGIN {
 		in_artdaq_process_settings = 0
 	    }
 	}
+	next
     }
 
 
     if (firstpart == "subsystem_settings" ) {
 	in_subsystem_settings = 1
+	print "\n"
 	next
     }
 
@@ -83,6 +95,16 @@ BEGIN {
 	    if ($0 ~ /\}\]/) {
 		in_subsystem_settings = 0
 	    }
+	}
+	next
+    }
+
+    for ( var_index in vars_to_defhiclize ) {
+	if (firstpart == vars_to_defhiclize[var_index]) {
+	    gsub("_", " ", firstpart)
+	    gsub("\"", "", secondpart)
+	    printf("\n%s: %s", firstpart, secondpart);
+	    next
 	}
     }
 }
