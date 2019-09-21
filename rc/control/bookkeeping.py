@@ -39,7 +39,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         other_allowed_versions = ["v3_02_01a"]
 
-        version = self.get_package_version("artdaq")
+        self.fill_package_versions(["artdaq"])
+        version = self.package_versions["artdaq"]
 
         res = re.search(r"v([0-9]+)_([0-9]+)_([0-9]+)(.*)", version)    
 
@@ -578,7 +579,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         if get_router_process_identifier(self.procinfos[i_proc]) == "RoutingMaster":
             bookkeep_table_for_router_process(i_proc, self.procinfos[i_proc].subsystem, "daq")
         elif get_router_process_identifier(self.procinfos[i_proc]) == "DFO":
-            bookkeep_table_for_router_process(i_proc, self.subsystems[self.procinfos[i_proc].subsystem].destination, "outputs")
+            bookkeep_table_for_router_process(i_proc, self.subsystems[self.procinfos[i_proc].subsystem].destination, "art")
         elif "BoardReader" in self.procinfos[i_proc].name:
             br_subsystem = self.procinfos[i_proc].subsystem
             router_process_subsystem = br_subsystem
@@ -654,27 +655,3 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 def bookkeeping_for_fhicl_documents_artdaq_v4_base(self):
     pass
 
-def main():
-    
-    test_table_range = True
-
-    if test_table_range:
-
-        filename = "%s/simple_test_config/multiple_dispatchers/Aggregator2.fcl" % os.getcwd()
-
-        inf = open( filename )
-        
-        inf_contents = inf.read()
-
-        print "From file " + filename
-
-        for tablename in ["sources", "destinations"]:
-            (table_start, table_end) = table_range( inf_contents, tablename )
-            
-            print "Seven characters centered on table_start: \"" + inf_contents[(table_start - 3):(table_start+4)] + "\""
-            print "Seven characters centered on table_end: \"" + inf_contents[(table_end - 3):(table_end+4)] + "\""
-            print "The table_start: \"" + inf_contents[(table_start):(table_start+1)] + "\""
-            print "The table_end: \"" + inf_contents[(table_end ):(table_end+1)] + "\""
-
-if __name__ == "__main__":
-    main()

@@ -35,9 +35,16 @@ daq: {
       metricPluginType: "file"
       level: 4
       fileName: "aggregator/agg_%UID%_metrics.log"
-         absolute_file_path: false
+      absolute_file_path: false
       uniquify: true
     }
+    #ganglia: {
+    #  metricPluginType: "ganglia"
+    #  level: 4
+    #  reporting_interval: 15.0
+    #  configFile: "/etc/ganglia/gmond.conf"
+    #  group: "ARTDAQ"
+    #}
   }
 
 }

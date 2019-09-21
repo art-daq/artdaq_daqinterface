@@ -14,7 +14,6 @@ daq: {
   aggregator: {
     expected_fragments_per_event: 1
     max_event_size_bytes: 16777216
-    print_event_store_stats: true
     buffer_count: 20
     event_queue_wait_time: 5
     onmon_event_prescale: 1

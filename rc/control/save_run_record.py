@@ -6,6 +6,7 @@ import subprocess
 from subprocess import Popen
 import traceback
 import shutil
+import string
 
 from rc.control.deepsuppression import deepsuppression
 
@@ -115,6 +116,7 @@ def save_run_record_base(self):
 
     buildinfo_packages = [pkg for pkg in self.package_hashes_to_save]  # Directly assigning would make buildinfo_packages a reference, not a copy
     buildinfo_packages.append("artdaq_daqinterface")
+
     package_buildinfo_dict = get_build_info(buildinfo_packages, self.daq_setup_script)
 
     with deepsuppression(self.debug_level < 3):
@@ -127,11 +129,13 @@ def save_run_record_base(self):
                 outf.write("%s" % (get_commit_info("DAQInterface", os.environ["ARTDAQ_DAQINTERFACE_DIR"])))
         except Exception:
             # Not an exception in a bad sense as the throw just means we're using DAQInterface as a ups product
-            outf.write("DAQInterface commit/version: %s" % ( self.get_package_version("artdaq_daqinterface") ))
+            self.fill_package_versions(["artdaq_daqinterface"])
+            outf.write("DAQInterface commit/version: %s" % ( self.package_versions["artdaq_daqinterface"] ))
             
         outf.write(" %s\n\n" % (package_buildinfo_dict["artdaq_daqinterface"]))
 
     package_commit_dict = {}
+    packages_whose_versions_we_need = []
 
     for pkgname in self.package_hashes_to_save:
         
@@ -150,7 +154,13 @@ def save_run_record_base(self):
                 self.alert_and_recover("An exception was thrown in get_commit_info; see traceback above for more info")
                 return
         else:
-            package_commit_dict[pkgname] = "%s commit/version: %s" % (pkgname, self.get_package_version( pkgname.replace("-", "_")))
+            # We'll throw this on the list of packages whose actual versions we need to figure out in real-time
+            packages_whose_versions_we_need.append(pkgname)
+
+    self.fill_package_versions( [ string.replace(pkg, "-", "_") for pkg in packages_whose_versions_we_need ] )
+        
+    for pkgname in packages_whose_versions_we_need:
+        package_commit_dict[pkgname] = "%s commit/version: %s" % (pkgname, self.package_versions[string.replace(pkgname, "-","_")])
 
     for pkg in sorted(package_commit_dict.keys()):
         outf.write("%s" % (package_commit_dict[pkg]))
@@ -191,91 +201,27 @@ def save_run_record_base(self):
                 host = os.environ["HOSTNAME"]
             ranksfile.write("%s\t%s\t%s\t%d\n" % (host, procinfo.port, procinfo.label, procinfo.rank))            
 
+    for (recorddir, dummy, recordfiles) in os.walk(self.tmp_run_record):
+        for recordfile in recordfiles:
+            os.chmod("%s/%s" % (recorddir, recordfile), 0o444)
     
     try:
         shutil.copytree(self.tmp_run_record, self.semipermanent_run_record)
     except:
         self.print_log("w", traceback.format_exc())
         self.print_log("w", make_paragraph("Attempt to copy temporary run record \"%s\" into \"%s\" didn't work; keep in mind that %s will be clobbered next time you run on this partition" % (self.tmp_run_record, self.semipermanent_run_record, self.tmp_run_record)))
-    
 
     if self.debug_level >= 2:
         print "Saved run configuration records in %s" % \
             (outdir)
         print
 
-def total_events_in_run_base(self):
-
-    # JCF, Apr-19-2018
-    # This function will need to be rewritten to work, thus the assert False
-    
-    assert False
-
-    data_logger_filenames = []
-    
-    if len(self.aggregator_log_filenames) > 0:
-
-        for log_filename in self.aggregator_log_filenames:
-            host, filename = log_filename.split(":")
-        
-            cmd = "grep -l \"is_data_logger\s*=\s*1\" " +  filename
-
-            if host != "localhost" and host != os.environ["HOSTNAME"]:
-                cmd = "ssh -f " + host + " '" + cmd + "'"
-            
-            proc = Popen(cmd, shell=True, stdout=subprocess.PIPE)
-            proclines = proc.stdout.readlines()
-            
-            if len(proclines) != 0:
-                assert len(proclines) == 1, "%s\n%s\nETC." % (proclines[0], proclines[1])
-                assert proclines[0].strip() == filename, "%s not the same as %s" % (proclines[0].strip(), filename)
-            else:
-                continue
-                
-            data_logger_filenames.append( log_filename )
-    else:
-        data_logger_filenames = self.eventbuilder_log_filenames
-
-    total = 0
-    fail_value = -999
-
-    for log_filename in data_logger_filenames:
-        host, filename = log_filename.split(":")
-
-        cmd = "sed -r -n '/Subrun [0-9]+ in run " + str(self.run_number) + " has ended/s/.*There were ([0-9]+) events in this subrun.*/\\1/p' " + log_filename.split(":")[1]
-
-        if host != "localhost" and host != os.environ["HOSTNAME"]:
-            cmd = "ssh -f " + host + " \"" + cmd + "\""
-
-        proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        proclines = proc.stdout.readlines()
-
-        proclines = [ line.strip() for line in proclines ]
-
-        warning_msg = "WARNING: unable to deduce the number of events in run " + \
-            str(self.run_number) + " by running the following command: \"" + \
-            cmd + "\""
-
-        if len(proclines) == 0:
-            print warning_msg
-            return fail_value
-
-        for line in proclines:
-            if not re.search(r"^[0-9]+$", line):
-                print warning_msg
-                return fail_value
-
-        for line in proclines:
-            total += int(line)
-        
-    return total
-
 def save_metadata_value_base(self, key, value):
 
-    outdir = "%s/%s" % (self.record_directory, str(self.run_number))
-    assert os.path.exists(outdir + "/metadata.txt")
+    metadata_filename = "%s/%s/metadata.txt" % (self.record_directory, str(self.run_number))
+    assert os.path.exists(metadata_filename)
 
-    outf = open(outdir + "/metadata.txt", "a")
-
-    outf.write("\n%s: %s\n" % (key, value))
-
+    os.chmod(metadata_filename, 0o644)
+    with open(metadata_filename, "a") as metadata_file:
+        metadata_file.write("\n%s: %s\n" % (key, value))
+    os.chmod(metadata_filename, 0o444)
