@@ -1418,8 +1418,24 @@ class DAQInterface(Component):
         if not boot_filename:
             boot_filename = self.run_params["boot_filename"]
 
-        self.boot_filename = boot_filename
+        if not os.path.exists(boot_filename):
+            raise Exception(make_paragraph("Error: boot file requested on boot transition, \"%s\", does not appear to exist" % (boot_filename)))
 
+        dummy, file_extension = os.path.splitext( boot_filename )
+        
+        if file_extension != ".fcl":
+            self.boot_filename = boot_filename
+        else:
+            self.boot_filename = "/tmp/boot_%s_partition%s.txt" % (os.environ["USER"], \
+                                                                   os.environ["DAQINTERFACE_PARTITION_NUMBER"])
+            if os.path.exists(self.boot_filename):
+                os.unlink(self.boot_filename)
+
+            Popen("cat %s | awk -f %s/utils/defhiclize_boot_file.awk > %s" % (boot_filename, \
+                                                                              os.environ["ARTDAQ_DAQINTERFACE_DIR"], \
+                                                                              self.boot_filename),
+                  shell=True).wait()
+            
         try:
             self.get_boot_info( self.boot_filename )
             self.check_boot_info()
