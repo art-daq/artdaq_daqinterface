@@ -48,8 +48,17 @@ if (( $nmatches == 0 )); then
     continue
 elif (( $nmatches == 1 )); then
 
+    tablename=$( cat $file | grep -vE "^\s*#" | tr "\n" " " | sed -r 's/^.*\s+(\S+)\s*:\s*\{[^}]*fileName[^}]*\.root.*/\1/' )
+    echo "tablename is $tablename in $proclabel"
+
+    modules_grep_result=$( cat $file | tr "\n" " " | sed -r -n '/.*my_output_modules\s*:\s*\[[^]]*'$tablename'/p' )
+    if [[ -n $modules_grep_result ]]; then
+	echo "Found $tablename in my_output_modules"
+    else
+	echo "Didn't find $tablename in my_output_modules"
+    fi
+
     file_format=$( sed -r -n $sedline $file )
-    #echo "Initial file format is $file_format"
 
     runnum_format=$( echo $file_format | sed -r 's/.*(%0[0-9])r.*/\1d/' )
 
