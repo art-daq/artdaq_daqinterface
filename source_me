@@ -84,7 +84,7 @@
 
 # JCF, Aug-2-2019
 # Guard against attempts to edit this file
-chmod 444 $ARTDAQ_DAQINTERFACE_DIR/source_me
+chmod 444 $ARTDAQ_DAQINTERFACE_DIR/source_me > /dev/null 2>&1
 
 function cleanup() {
     
