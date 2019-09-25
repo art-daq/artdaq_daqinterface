@@ -49,7 +49,7 @@ if (( $nmatches == 0 )); then
 elif (( $nmatches == 1 )); then
 
     tablename=$( cat $file | grep -vE "^\s*#" | tr "\n" " " | sed -r 's/^.*\s+(\S+)\s*:\s*\{[^}]*fileName[^}]*\.root.*/\1/' )
-    echo "tablename is $tablename in $proclabel"
+    #echo "tablename is $tablename in $proclabel"
 
     modules_grep_result=$( cat $file | tr "\n" " " | sed -r -n '/.*my_output_modules\s*:\s*\[[^]]*'$tablename'/p' )
 
@@ -83,7 +83,9 @@ if [[ \"$( grep -El "^\s*alias rawEventDump" $recorddir/$runnum/setup.txt )\" !=
   . $recorddir/$runnum/setup.txt > /dev/null ; \
   eval \$( alias | sed -r -n \"s/^alias rawEventDump=.(.*).$/\1/p\" ) $file_format -n $nevents ; \
 else \
-  echo An alias for rawEventDump is not found in $recorddir/$runnum/setup.txt, will not show the $nevents events requested ; \
+  echo An alias for rawEventDump is not found in $recorddir/$runnum/setup.txt, will instead run a generic, experiment-independent version of the command ; \
+  . $recorddir/$runnum/setup.txt > /dev/null ; \
+  art -c $ARTDAQ_DAQINTERFACE_DIR/docs/rawEventDump.fcl $file_format -n $nevents  ; \
 fi ; \
                      else \
 echo Using the rawEventDump which is already available, if a rawEventDump alias exists in $recorddir/$runnum/setup.txt it will be ignored ; \
