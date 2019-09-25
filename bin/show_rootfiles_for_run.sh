@@ -52,19 +52,19 @@ elif (( $nmatches == 1 )); then
     echo "tablename is $tablename in $proclabel"
 
     modules_grep_result=$( cat $file | tr "\n" " " | sed -r -n '/.*my_output_modules\s*:\s*\[[^]]*'$tablename'/p' )
-    if [[ -n $modules_grep_result ]]; then
-	echo "Found $tablename in my_output_modules"
-    else
-	echo "Didn't find $tablename in my_output_modules"
-    fi
 
     file_format=$( sed -r -n $sedline $file )
 
-    runnum_format=$( echo $file_format | sed -r 's/.*(%0[0-9])r.*/\1d/' )
+    runnum_format=$( echo $file_format | sed -r -n 's/.*(%0[0-9])[rR].*/\1d/p' )
+
+    if [[ -z $runnum_format ]]; then
+	runnum_format=$( echo $file_format | sed -r -n 's/.*(%)[rR].*/\1d/p' )
+    fi
 
     if [[ -n $runnum_format ]]; then
 	runnum_token=$( printf $runnum_format $runnum )
-	file_format=$( echo $file_format | sed -r 's/%0[0-9]r/'$runnum_token'/' )
+	file_format=$( echo $file_format | sed -r 's/%0[0-9][rR]/'$runnum_token'/' )
+	file_format=$( echo $file_format | sed -r 's/%[rR]/'$runnum_token'/' )
     fi
 
     file_format=$( echo $file_format | sed -r 's/%[^_\.]+/\*/g' )
@@ -99,10 +99,22 @@ $cmd "
 	    if [[ "$prochost" != "$HOSTNAME" ]]; then
 		cmd="ssh $prochost '"$cmd"' "
 	    fi
-	    #echo "About to execute:"
-	    #echo $cmd
 	    eval $cmd
 
+	    if [[ "$?" != "0" ]]; then
+
+		cat <<EOF
+
+The command 
+"$cmd" 
+returned nonzero; this almost certainly means you
+won't get the info you want about the root file, if any, written by
+the $proclabel process on $prochost for run $runnum.
+
+EOF
+
+	    fi
+	    
 	    echo ==============================================================================================
 	else
 	    cat<<EOF >&2
