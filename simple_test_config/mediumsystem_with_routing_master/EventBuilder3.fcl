@@ -26,7 +26,7 @@ daq: {
 	send_requests: true
 	request_port: 3001
 	request_address: "227.128.12.26"
-	multicast_interface_ip: "localhost"
+	multicast_interface_ip: "0.0.0.0"
 	expected_art_event_processing_time_us: 2000000
 
     routing_token_config: {
