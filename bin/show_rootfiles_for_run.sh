@@ -81,7 +81,7 @@ elif (( $nmatches == 1 )); then
 	    cmd="ls -l $file_format"
 	    
 	    if (( $nevents > 0 )); then
-		cmd="if [[ -z \$( type rawEventDump 2>/dev/null ) ]]; then \
+		cmd="$cmd ; echo ; if [[ -z \$( type rawEventDump 2>/dev/null ) ]]; then \
 if [[ \"$( grep -El "^\s*alias rawEventDump" $recorddir/$runnum/setup.txt )\" != \"\" ]] ; then \
   echo Using the rawEventDump alias found in $recorddir/$runnum/setup.txt ; \
   . $recorddir/$runnum/setup.txt > /dev/null ; \
