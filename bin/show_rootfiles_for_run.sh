@@ -53,6 +53,10 @@ elif (( $nmatches == 1 )); then
 
     modules_grep_result=$( cat $file | tr "\n" " " | sed -r -n '/.*my_output_modules\s*:\s*\[[^]]*'$tablename'/p' )
 
+    if [[ -z $modules_grep_result ]]; then
+	continue
+    fi
+
     file_format=$( sed -r -n $sedline $file )
 
     runnum_format=$( echo $file_format | sed -r -n 's/.*(%0[0-9])[rR].*/\1d/p' )
@@ -83,8 +87,10 @@ if [[ \"$( grep -El "^\s*alias rawEventDump" $recorddir/$runnum/setup.txt )\" !=
   . $recorddir/$runnum/setup.txt > /dev/null ; \
   eval \$( alias | sed -r -n \"s/^alias rawEventDump=.(.*).$/\1/p\" ) $file_format -n $nevents ; \
 else \
-  echo An alias for rawEventDump is not found in $recorddir/$runnum/setup.txt, will instead run a generic, experiment-independent version of the command ; \
-  . $recorddir/$runnum/setup.txt > /dev/null ; \
+  echo -An alias for rawEventDump is not found in $recorddir/$runnum/setup.txt or in the environment ; \
+  echo -Will try to run a generic, experiment-independent version of rawEventDump ; \
+  echo -Will source the DAQ setup script in order to set up art \($recorddir/$runnum/setup.txt\) ; \
+  . $recorddir/$runnum/setup.txt ; \
   art -c $ARTDAQ_DAQINTERFACE_DIR/docs/rawEventDump.fcl $file_format -n $nevents  ; \
 fi ; \
                      else \
