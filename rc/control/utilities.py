@@ -625,7 +625,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THI
     return processed_messagefacility_fhicl_filename
 
 def get_private_networks(host):
-    cmd = "/usr/sbin/ifconfig | sed -r -n \"s/^\s*inet\s+(192\.168\.\S+)\s+.*/\\1/p\""
+    cmd = "/usr/sbin/ifconfig | sed -r -n \"s/^\s*inet\s+(192\.168\.\S+|10\.\S+)\s+.*/\\1/p\""
 
     if host != "localhost" and host != os.environ["HOSTNAME"]:
         cmd = "ssh -x %s '%s'" % (host, cmd)
@@ -791,11 +791,12 @@ def main():
             print inf_contents[table_start:table_end]
 
     if get_private_networks_test:
-        hosts = ["localhost", "sbnd-daq33.fnal.gov", "sbnd-daq34"]
+        hosts = ["localhost"]
 
         for host in hosts:
             private_networks = get_private_networks(host)
-            print "%s: %s" % (host, " ".join([network.strip() for network in private_networks]))
+            print "%s: " % (host)
+            print [network.strip() for network in private_networks]
 
 def kill_tail_f():
     tail_pids = get_pids("%s.*tail -f %s" % 
