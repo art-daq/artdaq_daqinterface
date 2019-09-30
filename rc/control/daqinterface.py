@@ -992,12 +992,17 @@ class DAQInterface(Component):
             proctypes = []
 
             cmds.append('short_hostname=$( hostname | sed -r "s/([^.]+).*/\\1/" )')
-            for procinfo in procinfos_for_host:
+            for i_p, procinfo in enumerate(procinfos_for_host):
 
-                cmds.append( "ls -tr1 %s/%s-$short_hostname-%s/%s-$short_hostname-%s*.log | tail -1" % \
-                             (self.log_directory,
-                              procinfo.label, procinfo.port,
+                output_logdir = "%s/%s-$short_hostname-%s" % (self.log_directory, procinfo.label, procinfo.port)
+                cmds.append( "filename_%s=$( ls -tr1 %s/%s-$short_hostname-%s*.log | tail -1 )" % \
+                             (i_p, output_logdir,
                               procinfo.label, procinfo.port) )
+                cmds.append( "if [[ -z $filename_%s ]]; then echo No logfile found for process %s on %s after looking in %s >&2 ; exit 1; fi" % \
+                             (i_p, procinfo.label, procinfo.host, output_logdir))
+                cmds.append("timestamp_%s=$( stat -c %%Y $filename_%s )" % (i_p, i_p))
+                cmds.append("if (( $( echo \"$timestamp_%s < %f\" | bc -l ) )); then echo Most recent logfile found in expected output directory for process %s on %s, $filename_%s, is too old to be the logfile for the process in this run >&2 ; exit 1; fi" % (i_p, self.launch_procs_time, procinfo.label, procinfo.host, i_p))
+                cmds.append("echo Logfile for process %s on %s is $filename_%s" % (procinfo.label, procinfo.host, i_p))
                 proctypes.append( procinfo.name )
 
             cmd = "; ".join( cmds )
@@ -1007,21 +1012,25 @@ class DAQInterface(Component):
 
             proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             proclines = proc.stdout.readlines()
+            proclines_err = proc.stderr.readlines()
 
-            if len(proclines) != len(proctypes):
-                self.print_log("w", "Problem associating logfiles with the artdaq processes!")
+            if len( [ line for line in proclines if re.search(r"\.log$", line) ]) != len(proctypes):
+                self.print_log("e", "Problem associating logfiles with the artdaq processes. Output is as follows:")
+                self.print_log("e", "\nSTDOUT:\n======================================================================\n%s\n======================================================================\n" % ("".join(proclines)))
+                self.print_log("e", "STDERR:\n======================================================================\n%s\n======================================================================\n" % ("".join(proclines_err)))
+                raise Exception(make_paragraph("Error: there was a problem identifying the logfiles for at least some of the artdaq processes. This may be the result of you not having write access to the directories where the logfiles are meant to be written. Please scroll up to see further output."))
                 
             for i_p in range(len(proclines)):
                 if "BoardReader" in proctypes[i_p]:
-                    self.boardreader_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip()))
+                    self.boardreader_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip().split()[-1]))
                 elif "EventBuilder" in proctypes[i_p]:
-                    self.eventbuilder_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip()))
+                    self.eventbuilder_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip().split()[-1]))
                 elif "DataLogger" in proctypes[i_p]:
-                    self.datalogger_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip()))
+                    self.datalogger_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip().split()[-1]))
                 elif "Dispatcher" in proctypes[i_p]:
-                    self.dispatcher_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip()))
+                    self.dispatcher_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip().split()[-1]))
                 elif "RoutingMaster" in proctypes[i_p]:
-                    self.routingmaster_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip()))
+                    self.routingmaster_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip().split()[-1]))
                 else:
                     assert False, "Unknown process type found in procinfos list"
 
@@ -1585,6 +1594,7 @@ class DAQInterface(Component):
 
             self.print_log("i", "Launching the artdaq processes")
             self.called_launch_procs = True
+            self.launch_procs_time = time()   # Will be used when checking logfile's timestamps
 
             try:
                 launch_procs_actions = self.launch_procs()
