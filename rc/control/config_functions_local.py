@@ -98,12 +98,6 @@ def get_boot_info_base(self, boot_filename):
             self.table_update_address = res.group(1)
             continue
 
-        res = re.search(r"^\s*routing_base_port\s*:\s*(\S+)",
-                        line)
-        if res:
-            self.routing_base_port = res.group(1)
-            continue
-
         res = re.search(r"^\s*debug level\s*:\s*(\S+)",
                         line)
         if res:
