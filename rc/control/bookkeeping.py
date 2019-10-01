@@ -674,9 +674,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                       "routing_token_port: %d" % (routing_base_ports[router_process_subsystem]), 
                                       table_to_bookkeep)
 
-        table_to_bookkeep = re.sub("routing_master_hostname\s*:\s*\S+",
-                                   "routing_master_hostname: \"%s\"" % (router_process_hostnames[router_process_subsystem].strip("\"")),
-                                   table_to_bookkeep)
+        if "RoutingMaster" not in self.procinfos[i_proc].name or not self.disable_private_network_bookkeeping:
+            table_to_bookkeep = re.sub("routing_master_hostname\s*:\s*\S+",
+                                       "routing_master_hostname: \"%s\"" % (router_process_hostnames[router_process_subsystem].strip("\"")),
+                                       table_to_bookkeep)
 
         # So far in this function we've just set
         # routing_master_hostname to the router process hostname from
