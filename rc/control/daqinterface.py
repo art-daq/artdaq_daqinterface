@@ -360,8 +360,6 @@ class DAQInterface(Component):
 
         self.debug_level = 10000
         self.request_address = None
-        self.table_update_address = None
-        self.routing_base_port = None
         self.partition_number = partition_number
         self.transfer = "Autodetect"
         self.rpc_port = rpc_port
