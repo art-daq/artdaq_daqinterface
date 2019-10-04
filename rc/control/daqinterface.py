@@ -362,6 +362,11 @@ class DAQInterface(Component):
         self.transfer = "Autodetect"
         self.rpc_port = rpc_port
 
+        self.boardreader_priorities = None
+        self.boardreader_priorities_on_config = None
+        self.boardreader_priorities_on_start = None
+        self.boardreader_priorities_on_stop = None
+
         self.daqinterface_base_dir = os.getcwd()
             
         # JCF, Nov-17-2015
@@ -573,6 +578,20 @@ class DAQInterface(Component):
                     self.boardreader_priorities = [regexp.strip() for regexp in res.group(1).split()]
                 else:
                     raise Exception("Incorrectly formatted line \"%s\" in %s" % (line.strip(), os.environ["DAQINTERFACE_SETTINGS"]))
+            elif "boardreader_priorities_on_config:" in line or "boardreader priorities on config:" in line:
+                res = re.search(r"^\s*boardreader[ _]priorities[ _]on[ _]config:\s*(.*)", line)
+                if res:
+                    self.boardreader_priorities_on_config = [regexp.strip() for regexp in res.group(1).split()]
+                    print self.boardreader_priorities_on_config
+                else:
+                    raise Exception("Incorrectly formatted line \"%s\" in %s" % (line.strip(), os.environ["DAQINTERFACE_SETTINGS"]))
+            elif "boardreader_priorities_on_start:" in line or "boardreader priorities on start:" in line:
+                res = re.search(r"^\s*boardreader[ _]priorities[ _]on[ _]start:\s*(.*)", line)
+                if res:
+                    self.boardreader_priorities_on_start = [regexp.strip() for regexp in res.group(1).split()]
+                    print self.boardreader_priorities_on_start
+                else:
+                    raise Exception("Incorrectly formatted line \"%s\" in %s" % (line.strip(), os.environ["DAQINTERFACE_SETTINGS"]))
             elif "boardreader_priorities_on_stop:" in line or "boardreader priorities on stop:" in line:
                 res = re.search(r"^\s*boardreader[ _]priorities[ _]on[ _]stop:\s*(.*)", line)
                 if res:
@@ -580,6 +599,7 @@ class DAQInterface(Component):
                     print self.boardreader_priorities_on_stop
                 else:
                     raise Exception("Incorrectly formatted line \"%s\" in %s" % (line.strip(), os.environ["DAQINTERFACE_SETTINGS"]))
+
             elif "max_fragment_size_bytes" in line or "max fragment size bytes" in line:
                 max_fragment_size_bytes_token = line.split()[-1].strip()
 
@@ -660,7 +680,16 @@ class DAQInterface(Component):
             raise Exception(make_paragraph("max_fragment_size_bytes isn't set in the settings file, "
                                            "%s; this needs to be set since advanced_memory_usage isn't set to true" %
                                            os.environ["DAQINTERFACE_SETTINGS"]))
+
+        if self.boardreader_priorities is not None and (self.boardreader_priorities_on_config is not None or \
+                                                        self.boardreader_priorities_on_start is not None or \
+                                                        self.boardreader_priorities_on_stop is not None):
+            raise Exception(make_paragraph("Both \"boardreader_priorities\" and at least one of \"boardreader_priorities_on_config\", \"boardreader_priorities_on_start\", and \"boardreader_priorities_on_stop\" are defined in %s; this is not allowed. For further information, take a look at \"The settings file reference\" in the DAQInterface Manual" % (os.environ["DAQINTERFACE_SETTINGS"])))
         
+        if self.boardreader_priorities is not None:
+            self.boardreader_priorities_on_config = self.boardreader_priorities
+            self.boardreader_priorities_on_start = self.boardreader_priorities
+            self.boardreader_priorities_on_stop = self.boardreader_priorities
                     
 
     def check_proc_transition(self, target_state):
@@ -1260,12 +1289,13 @@ class DAQInterface(Component):
             priority_rankings = sorted(priorities_used.iterkeys())
 
             for priority in priority_rankings:
+                print "On priority ranking %d" % (priority)
                 for i_procinfo, procinfo in enumerate(self.procinfos):
                     if proctype in procinfo.name and priority == procinfo.priority:
                         t = Thread(target=process_command, args=(self, i_procinfo, command))
                         threads.append(t)
                         t.start()
-
+                        
                 for thread in threads:
                     thread.join()
 
@@ -1375,6 +1405,23 @@ class DAQInterface(Component):
                             self.procinfos[i_proc].rank = int(rank)
                     if matched == False:
                         raise Exception("Error: expected to find a process with label %s in the ranks file %s, but none was found" % (procinfo.label, ranksfile))
+
+    def readjust_process_priorities(self, priority_list):
+        for i_proc in range(len(self.procinfos)):
+            if "BoardReader" in self.procinfos[i_proc].name:
+                if priority_list is not None:
+                    found_priority_ranking = False
+                    for priority, regexp in enumerate(priority_list):
+                        if re.search(regexp, self.procinfos[i_proc].label):
+                            print "Matched \"%s\" to %s at priority %d" % (regexp, self.procinfos[i_proc].label, priority)
+                            self.procinfos[i_proc].priority = priority
+                            found_priority_ranking = True
+                            break
+                    if not found_priority_ranking:
+                        raise Exception(make_paragraph("Error: the process label \"%s\" didn't match with any of the regular expressions used to rank transition priorities in the settings file, %s" % (self.procinfos[i_proc].label, os.environ["DAQINTERFACE_SETTINGS"])))
+                else:
+                    self.procinfos[i_proc].priority = 999
+
                     
     # do_boot(), do_config(), do_start_running(), etc., are the
     # functions which get called in the runner() function when a
@@ -1450,14 +1497,6 @@ class DAQInterface(Component):
                                                 boardreader_rank,
                                                 boardreader_host,
                                                 boardreader_port, compname, boardreader_subsystem, boardreader_allowed_processors))
-
-            try:
-                for priority, regexp in enumerate(self.boardreader_priorities):
-                    if re.search(regexp, compname):
-                        self.procinfos[-1].priority = priority
-
-            except Exception:
-                pass  # It's not an error if there were no boardreader priorities read in from $DAQINTERFACE_SETTINGS
 
         # See the Procinfo.__lt__ function for details on sorting
 
@@ -1908,6 +1947,8 @@ class DAQInterface(Component):
 
         if self.manage_processes:
 
+            self.readjust_process_priorities(self.boardreader_priorities_on_config)
+
             try:
                 self.do_command("Init")
             except Exception:
@@ -2010,6 +2051,8 @@ class DAQInterface(Component):
 
         if self.manage_processes:
 
+            self.readjust_process_priorities(self.boardreader_priorities_on_start)
+
             try:
                 self.do_command("Start")
             except Exception:
@@ -2074,16 +2117,7 @@ class DAQInterface(Component):
 
         if self.manage_processes:
 
-            for i_proc in range(len(self.procinfos)):
-                if "BoardReader" in self.procinfos[i_proc].name:
-                    try:
-                        for priority, regexp in enumerate(self.boardreader_priorities_on_stop):
-                            print "%d %s" % (priority, regexp)
-                            if re.search(regexp, self.procinfos[i_proc].label):
-                                self.procinfos[i_proc].priority = priority
-
-                    except Exception:
-                        pass  # It's not an error if there were no boardreader priorities read in from $DAQINTERFACE_SETTINGS
+            self.readjust_process_priorities(self.boardreader_priorities_on_stop)
 
             try:
                 self.do_command("Stop")
