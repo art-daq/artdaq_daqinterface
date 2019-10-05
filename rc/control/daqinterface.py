@@ -1218,7 +1218,7 @@ class DAQInterface(Component):
                 return
 
             try:
-                print "%s: Sending transition to %s" % (date_and_time_more_precision(), self.procinfos[procinfo_index].label)
+                self.print_log("d", "%s: Sending transition to %s" % (date_and_time_more_precision(), self.procinfos[procinfo_index].label), 3)
 
                 if command == "Init":
                     self.procinfos[procinfo_index].lastreturned = \
@@ -1289,7 +1289,6 @@ class DAQInterface(Component):
             priority_rankings = sorted(priorities_used.iterkeys())
 
             for priority in priority_rankings:
-                print "On priority ranking %d" % (priority)
                 for i_procinfo, procinfo in enumerate(self.procinfos):
                     if proctype in procinfo.name and priority == procinfo.priority:
                         t = Thread(target=process_command, args=(self, i_procinfo, command))
@@ -1413,7 +1412,6 @@ class DAQInterface(Component):
                     found_priority_ranking = False
                     for priority, regexp in enumerate(priority_list):
                         if re.search(regexp, self.procinfos[i_proc].label):
-                            print "Matched \"%s\" to %s at priority %d" % (regexp, self.procinfos[i_proc].label, priority)
                             self.procinfos[i_proc].priority = priority
                             found_priority_ranking = True
                             break
