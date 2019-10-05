@@ -2429,16 +2429,6 @@ def get_args():  # no-coverage
 
 def main():  # no-coverage
 
-    one_daqinterface_per_host = False
-
-    greptoken = "python.*daqinterface.py"
-    pids = get_pids(greptoken)
-
-    if len(pids) > 1 and one_daqinterface_per_host:
-        print make_paragraph("Won't launch DAQInterface; it appears an instance is already running on this host according to this command:" )
-        print "\nps aux | grep \"%s\" | grep -v grep\n" % (greptoken)
-        return
-
     if "DAQINTERFACE_STANDARD_SOURCEFILE_SOURCED" not in os.environ.keys():
         print make_paragraph("Won't launch DAQInterface; you first need to run \"source $ARTDAQ_DAQINTERFACE_DIR/source_me\"")
         print
