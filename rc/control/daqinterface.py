@@ -2468,6 +2468,12 @@ def main():  # no-coverage
         print
         return
 
+    if not "HOSTNAME" in os.environ:
+        print
+        print make_paragraph("WARNING: the \"HOSTNAME\" environment variable does not appear to be defined (or, at least, does not appear in the os.environ dictionary). Will internally set it using the system's \"hostname\" command")
+        os.environ["HOSTNAME"] = Popen("hostname", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+        print
+
     args = get_args()
 
     # Make sure the requested partition number is in a desired range,
