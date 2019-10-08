@@ -1122,19 +1122,19 @@ class DAQInterface(Component):
                     self.print_log("w", stderrlines[0])
                 else:
                     raise Exception("Error in %s: the command \"%s\" yields output to stderr:\n\"%s\"" % \
-                                    (self.get_package_version.__name__, cmd, "".join(stderrlines)))
+                                    (self.fill_package_versions.__name__, cmd, "".join(stderrlines)))
 
             if len(stdoutlines) == 0:
                 print traceback.format_exc()
                 raise Exception("Error in %s: the command \"%s\" yields no output to stdout" % \
-                                (self.get_package_version.__name__, cmd))
+                                (self.fill_package_versions.__name__, cmd))
 
             for line in stdoutlines:
                 if re.search(r"^(%s)\s+" % ("|".join(needed_packages)), line):
                     (package, version) = line.split()
 
                     if not re.search(r"v[0-9]+_[0-9]+_[0-9]+.*", version):
-                        raise Exception(make_paragraph("Error in %s: the version of the package \"%s\" this function has determined, \"%s\", is not the expected v<int>_<int>_<int>optionalextension format" % (self.get_package_version.__name__, package, version)))
+                        raise Exception(make_paragraph("Error in %s: the version of the package \"%s\" this function has determined, \"%s\", is not the expected v<int>_<int>_<int>optionalextension format" % (self.fill_package_versions.__name__, package, version)))
 
                     self.package_versions[package] = version
 
