@@ -191,7 +191,7 @@ def save_run_record_base(self):
     ranksfilename = "%s/ranks.txt" % (outdir)
 
     with open(ranksfilename, "w") as ranksfile:
-        ranksfile.write("        host   port         label  rank\n")
+        ranksfile.write("%-30s%-10s%-20s%-15s%-10s\n" % ("host", "port", "label", "subsystem", "rank"))
         ranksfile.write("\n")
 
         procinfos_sorted_by_rank = sorted(self.procinfos, key=lambda procinfo: procinfo.rank)
@@ -199,7 +199,7 @@ def save_run_record_base(self):
             host = procinfo.host
             if host == "localhost":
                 host = os.environ["HOSTNAME"]
-            ranksfile.write("%s\t%s\t%s\t%d\n" % (host, procinfo.port, procinfo.label, procinfo.rank))            
+            ranksfile.write("%-29s %-9s %-19s %-14s %-9d\n" % (host, procinfo.port, procinfo.label, procinfo.subsystem, procinfo.rank))            
 
     for (recorddir, dummy, recordfiles) in os.walk(self.tmp_run_record):
         for recordfile in recordfiles:
