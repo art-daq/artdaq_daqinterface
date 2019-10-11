@@ -624,6 +624,29 @@ udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THI
 
     return processed_messagefacility_fhicl_filename
 
+def get_private_networks(host):
+    cmd = "/usr/sbin/ifconfig | sed -r -n \"s/^\s*inet\s+(192\.168\.\S+|10\.\S+)\s+.*/\\1/p\""
+
+    if host != "localhost" and host != os.environ["HOSTNAME"]:
+        cmd = "ssh -x %s '%s'" % (host, cmd)
+
+    lines = Popen(cmd, shell=True, stdout=subprocess.PIPE ).stdout.readlines() 
+    networks = []
+
+    for line in lines:
+        network = line.strip()
+        res = re.search(r"^([0-9]+\.[0-9]+\.[0-9]+\.)[0-9]+", network)
+        if not res:
+            raise Exception("Unexpected result from command \"%s\"; line \"%s\" doesn't appear to be an address" % (cmd, network))
+        networks.append(network)
+
+    return networks
+
+def zero_out_last_subnet(network):
+    res = re.search(r"^([0-9]+\.[0-9]+\.[0-9]+\.)[0-9]+", network)
+    assert res, "Developer error: proper address not passed to \"zero_out_last_subnet\""
+    return "%s0" % (res.group(1))
+
 def upsproddir_from_productsdir( productsdir ):
     for pp in productsdir.split(':'):
         upsproddir=''                  # may not find what we're looking for
@@ -632,7 +655,6 @@ def upsproddir_from_productsdir( productsdir ):
             upsproddir=pp.rstrip('/')  # make sure it does not end with '/'
             break
     return upsproddir
-
 
 def main():
 
@@ -684,7 +706,8 @@ def main():
     bash_unsetup_test = False
     get_commit_info_test = False
     get_build_info_test = False
-    table_range_test = True
+    table_range_test = False
+    get_private_networks_test = True
 
     if paragraphed_string_test:
         sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
@@ -766,6 +789,14 @@ def main():
             (table_start, table_end) = table_range( inf_contents, "art" )
             print "Contents of table: "
             print inf_contents[table_start:table_end]
+
+    if get_private_networks_test:
+        hosts = ["localhost"]
+
+        for host in hosts:
+            private_networks = get_private_networks(host)
+            print "%s: " % (host)
+            print [network.strip() for network in private_networks]
 
 def kill_tail_f():
     tail_pids = get_pids("%s.*tail -f %s" % 

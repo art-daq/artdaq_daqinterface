@@ -30,7 +30,11 @@ from rc.control.all_functions_noop import start_datataking_base
 from rc.control.all_functions_noop import stop_datataking_base
 from rc.control.all_functions_noop import do_enable_base
 from rc.control.all_functions_noop import do_disable_base
-from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v3_base
+
+if "DAQINTERFACE_DISABLE_BOOKKEEPING" in os.environ and not os.environ["DAQINTERFACE_DISABLE_BOOKKEEPING"] == "false" :
+    from rc.control.all_functions_noop import bookkeeping_for_fhicl_documents_artdaq_v3_base
+else:
+    from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v3_base
 
 from rc.control.online_monitoring import launch_art_procs_base
 from rc.control.online_monitoring import kill_art_procs_base
@@ -311,6 +315,12 @@ class DAQInterface(Component):
         self.heartbeat_failure = False
         self.manage_processes = True
         self.disable_recovery = False
+        self.bootfile_fhicl_overwrites = {}
+        self.called_launch_procs = False
+        self.check_proc_exceptions_number_of_status_failures = 0
+        self.daq_setup_script = None
+        self.debug_level = 10000
+        self.request_address = None
 
         self.reset_process_manager_variables()
 
@@ -356,8 +366,6 @@ class DAQInterface(Component):
 
         self.debug_level = 10000
         self.request_address = None
-        self.table_update_address = None
-        self.routing_base_port = None
         self.partition_number = partition_number
         self.transfer = "Autodetect"
         self.rpc_port = rpc_port
@@ -372,8 +380,6 @@ class DAQInterface(Component):
         # given with an absolute path in the #include .
 
         self.fhicl_file_path = []
-
-        self.bootfile_fhicl_overwrites = {}
 
         # JCF, Nov-7-2015
 
@@ -504,7 +510,6 @@ class DAQInterface(Component):
 
         self.log_directory = None
         self.record_directory = None
-        self.daq_setup_script = None
         self.package_hashes_to_save = []
         self.package_versions = {}
         self.productsdir_for_bash_scripts = None
@@ -522,6 +527,7 @@ class DAQInterface(Component):
         self.data_directory_override = None
         self.max_configurations_to_list = 1000000
         self.disable_unique_rootfile_labels = False
+        self.disable_private_network_bookkeeping = False
         self.allowed_processors = None
 
         self.productsdir = None
@@ -595,7 +601,15 @@ class DAQInterface(Component):
                 elif "false" in token or "False" in token:
                     self.disable_unique_rootfile_labels = False
                 else:
-                    raise Exception("disable_unique_rootfile_labels must be set to either [Tt]rue or [Ff]alse")
+                    raise Exception("disable_unique_rootfile_labels must be set to either [Tt]rue or [Ff]alse in settings file \"%s\"" % (os.environ["DAQINTERFACE_SETTINGS"]))
+            elif "disable_private_network_bookkeeping" in line or "disable private network bookkeeping" in line:
+                token = line.split()[-1].strip()
+                if "true" in token or "True" in token:
+                    self.disable_private_network_bookkeeping = True
+                elif "false" in token or "False" in token:
+                    self.disable_private_network_bookkeeping = False
+                else:
+                    raise Exception("disable_private_network_bookkeeping must be set to either [Tt]rue or [Ff]alse in settings file \"%s\"" % (os.environ["DAQINTERFACE_SETTINGS"]))
             elif "use_messageviewer" in line or "use messageviewer" in line:
                 token = line.split()[-1].strip()
                 
@@ -1111,19 +1125,19 @@ class DAQInterface(Component):
                     self.print_log("w", stderrlines[0])
                 else:
                     raise Exception("Error in %s: the command \"%s\" yields output to stderr:\n\"%s\"" % \
-                                    (self.get_package_version.__name__, cmd, "".join(stderrlines)))
+                                    (self.fill_package_versions.__name__, cmd, "".join(stderrlines)))
 
             if len(stdoutlines) == 0:
                 print traceback.format_exc()
                 raise Exception("Error in %s: the command \"%s\" yields no output to stdout" % \
-                                (self.get_package_version.__name__, cmd))
+                                (self.fill_package_versions.__name__, cmd))
 
             for line in stdoutlines:
                 if re.search(r"^(%s)\s+" % ("|".join(needed_packages)), line):
                     (package, version) = line.split()
 
                     if not re.search(r"v[0-9]+_[0-9]+_[0-9]+.*", version):
-                        raise Exception(make_paragraph("Error in %s: the version of the package \"%s\" this function has determined, \"%s\", is not the expected v<int>_<int>_<int>optionalextension format" % (self.get_package_version.__name__, package, version)))
+                        raise Exception(make_paragraph("Error in %s: the version of the package \"%s\" this function has determined, \"%s\", is not the expected v<int>_<int>_<int>optionalextension format" % (self.fill_package_versions.__name__, package, version)))
 
                     self.package_versions[package] = version
 
@@ -2195,8 +2209,6 @@ class DAQInterface(Component):
             self.print_log("i", "\n%s: RECOVER transition complete" % (date_and_time()))
             return
 
-        self.called_launch_procs = False
-
         def attempted_stop(self, procinfo):
 
             pid = self.get_pid_for_process(procinfo)
@@ -2434,16 +2446,6 @@ def get_args():  # no-coverage
 
 def main():  # no-coverage
 
-    one_daqinterface_per_host = False
-
-    greptoken = "python.*daqinterface.py"
-    pids = get_pids(greptoken)
-
-    if len(pids) > 1 and one_daqinterface_per_host:
-        print make_paragraph("Won't launch DAQInterface; it appears an instance is already running on this host according to this command:" )
-        print "\nps aux | grep \"%s\" | grep -v grep\n" % (greptoken)
-        return
-
     if "DAQINTERFACE_STANDARD_SOURCEFILE_SOURCED" not in os.environ.keys():
         print make_paragraph("Won't launch DAQInterface; you first need to run \"source $ARTDAQ_DAQINTERFACE_DIR/source_me\"")
         print
@@ -2482,6 +2484,12 @@ def main():  # no-coverage
         print make_paragraph("The file referred to by the DAQINTERFACE_KNOWN_BOARDREADERS_LIST environment variable, \"%s\", does not appear to exist" % (os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"]))
         print
         return
+
+    if not "HOSTNAME" in os.environ:
+        print
+        print make_paragraph("WARNING: the \"HOSTNAME\" environment variable does not appear to be defined (or, at least, does not appear in the os.environ dictionary). Will internally set it using the system's \"hostname\" command")
+        os.environ["HOSTNAME"] = Popen("hostname", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+        print
 
     args = get_args()
 

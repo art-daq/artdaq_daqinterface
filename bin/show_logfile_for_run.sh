@@ -2,7 +2,7 @@
 
 
 if [[ $# != 1 && $# != 2 ]] ; then
-     echo "Usage: $0 <run number> (examine)"
+     echo "Usage: $0 <run number> (optional, any second argument will open the logfile)"
      exit 1
 fi
 
