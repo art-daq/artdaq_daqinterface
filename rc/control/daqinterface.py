@@ -315,6 +315,12 @@ class DAQInterface(Component):
         self.heartbeat_failure = False
         self.manage_processes = True
         self.disable_recovery = False
+        self.bootfile_fhicl_overwrites = {}
+        self.called_launch_procs = False
+        self.check_proc_exceptions_number_of_status_failures = 0
+        self.daq_setup_script = None
+        self.debug_level = 10000
+        self.request_address = None
 
         self.reset_process_manager_variables()
 
@@ -374,8 +380,6 @@ class DAQInterface(Component):
         # given with an absolute path in the #include .
 
         self.fhicl_file_path = []
-
-        self.bootfile_fhicl_overwrites = {}
 
         # JCF, Nov-7-2015
 
@@ -506,7 +510,6 @@ class DAQInterface(Component):
 
         self.log_directory = None
         self.record_directory = None
-        self.daq_setup_script = None
         self.package_hashes_to_save = []
         self.package_versions = {}
         self.productsdir_for_bash_scripts = None
@@ -2198,8 +2201,6 @@ class DAQInterface(Component):
             self.complete_state_change(self.name, "recovering")
             self.print_log("i", "\n%s: RECOVER transition complete" % (date_and_time()))
             return
-
-        self.called_launch_procs = False
 
         def attempted_stop(self, procinfo):
 
