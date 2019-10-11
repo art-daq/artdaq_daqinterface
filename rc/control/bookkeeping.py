@@ -626,20 +626,20 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 for i_proc in range(1, len(processes_involved_in_requests)):
                     private_networks_seen_by_processes_involved_in_requests = private_networks_seen_by_processes_involved_in_requests.intersection(set( [zero_out_last_subnet(ntwrk) for ntwrk in private_networks_seen[processes_involved_in_requests[i_proc]]] ))
 
-            # JCF, Aug-12-2019
-            # Don't yet have a "tiebreaker" if there's more than one private network visible to all processes...
+                # JCF, Aug-12-2019
+                # Don't yet have a "tiebreaker" if there's more than one private network visible to all processes...
 
-            if len(list(private_networks_seen_by_processes_involved_in_requests)) > 0:
-                multicast_interface_ip = list(private_networks_seen_by_processes_involved_in_requests)[0]
-                for process_involved_in_request in processes_involved_in_requests:
-                    for i_proc in range(len(self.procinfos)):
-                        if self.procinfos[i_proc].label == process_involved_in_request:
-                            self.procinfos[i_proc].fhicl_used = re.sub("multicast_interface_ip\s*:\s*\S+", \
-                                                                       "multicast_interface_ip: \"%s\"" % \
-                                                                       (multicast_interface_ip), \
-                                                                       self.procinfos[i_proc].fhicl_used)
-            else:
-                self.print_log("w", make_paragraph("Warning: disable_private_network_bookkeeping isn't set to true in the DAQInterface settings file \"%s\" -- it defaults to false if unset -- but no private network was found visible to all the processes involved in data requests for subsystem %s: %s" % (os.environ["DAQINTERFACE_SETTINGS"], str(subsystem_id), ", ".join(processes_involved_in_requests) )))
+                if len(list(private_networks_seen_by_processes_involved_in_requests)) > 0:
+                    multicast_interface_ip = list(private_networks_seen_by_processes_involved_in_requests)[0]
+                    for process_involved_in_request in processes_involved_in_requests:
+                        for i_proc in range(len(self.procinfos)):
+                            if self.procinfos[i_proc].label == process_involved_in_request:
+                                self.procinfos[i_proc].fhicl_used = re.sub("multicast_interface_ip\s*:\s*\S+", \
+                                                                           "multicast_interface_ip: \"%s\"" % \
+                                                                           (multicast_interface_ip), \
+                                                                           self.procinfos[i_proc].fhicl_used)
+                else:
+                    self.print_log("w", make_paragraph("Warning: disable_private_network_bookkeeping isn't set to true in the DAQInterface settings file \"%s\" -- it defaults to false if unset -- but no private network was found visible to all the processes involved in data requests for subsystem %s: %s" % (os.environ["DAQINTERFACE_SETTINGS"], str(subsystem_id), ", ".join(processes_involved_in_requests) )))
 
     # JCF, Apr-18-2019
 
