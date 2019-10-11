@@ -810,6 +810,10 @@ class DAQInterface(Component):
         for procinfo in self.procinfos:
 
             try:
+                # Engineer an error to recreate the Icarus issue described in Issue #23404
+                if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
+                    raise Exception("[Errno 113] No route to host")
+
                 procinfo.lastreturned = procinfo.server.daq.status()
             except Exception:
                 self.check_proc_exceptions_number_of_status_failures += 1
@@ -1218,6 +1222,11 @@ class DAQInterface(Component):
 
             try:
                 self.print_log("d", "%s: Sending transition to %s" % (date_and_time_more_precision(), self.procinfos[procinfo_index].label), 3)
+
+                # Engineer an error to recreate the Icarus issue described in Issue #23404
+                if self.procinfos[procinfo_index].host != "localhost" and self.procinfos[procinfo_index].host != os.environ["HOSTNAME"]:
+                    raise Exception("[Errno 113] No route to host")
+
 
                 if command == "Init":
                     self.procinfos[procinfo_index].lastreturned = \
