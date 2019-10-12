@@ -813,20 +813,28 @@ class DAQInterface(Component):
         for procinfo in self.procinfos:
 
             try:
-                # Engineer an error to recreate the Icarus issue described in Issue #23404
-                if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
-                    raise Exception("[Errno 113] No route to host")
+                # # Engineer an error to recreate the Icarus issue described in Issue #23404
+                # if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
+                #     raise Exception("[Errno 113] No route to host")
 
                 procinfo.lastreturned = procinfo.server.daq.status()
-            except Exception:
+            except Exception as ex:
+
+                self.print_log("w", make_paragraph("Exception caught when querying the status of artdaq process %s at %s:%s; exception type == %s, name == %s" % (procinfo.label, procinfo.host, procinfo.port, type(ex), type(ex).__name__)))
+
+                if "[Errno 111] Connection refused" in traceback.format_exc():
+                    self.print_log("w", make_paragraph("An \"[Errno 111] Connection refused\" exception was thrown when attempting to query artdaq process %s at %s:%s; this likely means the process no longer exists -- try checking logfile %s for details" % (procinfo.label, procinfo.host, procinfo.port, self.determine_logfilename(procinfo))))
+                elif "[Errno 113] No route to host" in traceback.format_exc():
+                    self.print_log("w", make_paragraph("An \"[Errno 113] No route to host\" exception was thrown when attempting to query artdaq process %s at %s:%s; this likely means there's an XML-RPC connection issue between this host and %s" % (procinfo.label, procinfo.host, procinfo.port, procinfo.host)))
+                    
+
                 self.check_proc_exceptions_number_of_status_failures += 1
                 
                 if self.check_proc_exceptions_number_of_status_failures >= 2:
                     self.exception = True
 
-                exceptstring = make_paragraph("Exception caught in DAQInterface attempt to query status of artdaq process %s at %s:%s; most likely reason is process no longer exists" % \
-                    (procinfo.label, procinfo.host, procinfo.port))              
-                self.print_log("e", exceptstring)
+                #print "Number of status failures is %d" % (self.check_proc_exceptions_number_of_status_failures)
+                #print "exception state is %d" % (self.exception)
                 continue
 
             if procinfo.lastreturned == "Error":
@@ -1226,9 +1234,9 @@ class DAQInterface(Component):
             try:
                 self.print_log("d", "%s: Sending transition to %s" % (date_and_time_more_precision(), self.procinfos[procinfo_index].label), 3)
 
-                # Engineer an error to recreate the Icarus issue described in Issue #23404
-                if self.procinfos[procinfo_index].host != "localhost" and self.procinfos[procinfo_index].host != os.environ["HOSTNAME"]:
-                    raise Exception("[Errno 113] No route to host")
+                # # Engineer an error to recreate the Icarus issue described in Issue #23404
+                # if self.procinfos[procinfo_index].host != "localhost" and self.procinfos[procinfo_index].host != os.environ["HOSTNAME"]:
+                #     raise Exception("[Errno 113] No route to host")
 
 
                 if command == "Init":
@@ -2411,7 +2419,7 @@ class DAQInterface(Component):
                 self.do_disable()
 
             elif self.manage_processes and self.state(self.name) != "stopped" and self.state(self.name) != "booting" and self.state(self.name) != "terminating":
-                self.check_proc_heartbeats()
+                #self.check_proc_heartbeats()
                 self.check_proc_exceptions()
 
         except Exception:
