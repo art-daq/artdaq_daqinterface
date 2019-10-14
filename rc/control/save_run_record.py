@@ -99,6 +99,7 @@ def save_run_record_base(self):
         outf.write("Component #%d: %s\n" % (i_comp, component))
 
     outf.write("DAQInterface directory: %s\n" % ( os.getcwd() ))
+    outf.write("DAQInterface logfile: %s:%s\n" % (os.environ["HOSTNAME"], expand_environment_variable_in_string(os.environ["DAQINTERFACE_LOGFILE"])))
 
     # Now save the commit hashes / versions of the packages listed in
     # $DAQINTERFACE_SETTINGS, along with the commit hash for
