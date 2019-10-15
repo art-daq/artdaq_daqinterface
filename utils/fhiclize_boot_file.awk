@@ -30,17 +30,8 @@ BEGIN {
     process_tokens["subsystem"] = "now defined"
 }
 
+function chk_sys_subsys()
 {
-    match($0, "^\\s*#")  # Skip commented lines
-    if (RSTART != 0) {
-       next
-    }
-
-   # And blank lines, also interpreting them as the delimiter for a given 
-   # process's collection of info
-
-    match($0, "^\\s*$")  
-    if (RSTART != 0) {
 	if (label != "not set") {   # Shorthand for "we've got info for a process"
 	    procinfos[label] = sprintf("name: \"%s\"\nlabel: \"%s\"\nhost: \"%s\"", name, label, host)
 	    if (port != "not set") {
@@ -75,6 +66,20 @@ BEGIN {
 	    source = "not set"
 	    destination = "not set"
 	}
+}
+
+{
+    match($0, "^\\s*#")  # Skip commented lines
+    if (RSTART != 0) {
+       next
+    }
+
+   # And blank lines, also interpreting them as the delimiter for a given 
+   # process's collection of info
+
+    match($0, "^\\s*$")  
+    if (RSTART != 0) {
+		chk_sys_subsys()
 	next
     }
 
@@ -141,6 +146,8 @@ BEGIN {
 }
 
 END {
+
+	chk_sys_subsys()
 
     if (length(subsystems) > 0) {
 	printf("\nsubsystem_settings: [{\n")
