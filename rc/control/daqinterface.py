@@ -1476,14 +1476,8 @@ class DAQInterface(Component):
             if os.path.exists(self.boot_filename):
                 os.unlink(self.boot_filename)
 
-            cmds = []
-            cmds.append("if [[ -z $( command -v fhicl-dump ) ]]; then %s; source %s; fi" % \
-                        (bash_unsetup_command, os.environ["DAQINTERFACE_SETUP_FHICLCPP"]))
-            cmds.append("fhicl-dump -l 0 -c %s > deleteme.fcl" % (boot_filename))
-            cmds.append("fhicl-dump -l 0 -c %s | awk -f %s/utils/convert_fhicl_dumped_bootfile_to_traditional_format.awk > %s" % \
-                        (boot_filename, os.environ["ARTDAQ_DAQINTERFACE_DIR"], self.boot_filename))
-
-            Popen(";".join(cmds), shell=True).wait()
+            assert os.path.exists("%s/bin/defhiclize_boot_file.sh" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"]))
+            Popen("%s/bin/defhiclize_boot_file.sh %s > %s" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"], boot_filename, self.boot_filename), shell=True).wait()
             
         try:
             self.get_boot_info( self.boot_filename )
