@@ -2182,6 +2182,14 @@ class DAQInterface(Component):
 
         self.in_recovery = True
 
+        # JCF, Oct-15-2019
+
+        # Make sure that the runner function won't just proceed with a
+        # transition "in the queue" despite DAQInterface being in the
+        # Stopped state after we've finished this recover
+
+        self.__do_boot = self.__do_shutdown = self.__do_config = self.__do_recover = self.__do_start_running = self.__do_stop_running = self.__do_terminate = self.__do_pause_running = self.__do_resume_running = self.__do_enable = self.__do_disable = False
+
         if not self.called_launch_procs:
             self.print_log("i", "DAQInterface does not appear to have gotten to the point of launching the artdaq processes")
 
@@ -2409,6 +2417,7 @@ class DAQInterface(Component):
             self.in_recovery = True
             self.alert_and_recover(traceback.format_exc())
             self.in_recovery = False
+
 
 
 def get_args():  # no-coverage
