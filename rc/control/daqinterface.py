@@ -1998,9 +1998,9 @@ class DAQInterface(Component):
             try:
                 shutil.copytree(self.tmp_run_record, run_record_directory)
             except:
-                self.print_log("w", traceback.format_exc())
-                self.print_log("w", make_paragraph("Attempt to copy temporary run record \"%s\" into permanent run record \"%s\" didn't work; THIS MEANS YOU WON'T HAVE A RUN RECORD FOR THIS RUN" % (self.tmp_run_record, run_record_directory)))
-
+                self.print_log("e", traceback.format_exc())
+                self.alert_and_recover(make_paragraph("Error: Attempt to copy temporary run record \"%s\" into permanent run record \"%s\" didn't work; most likely reason is that you don't have write permission to %s, but it may also mean that your experiment's reusing a run number. Scroll up past the Recover transition output for further troubleshooting information." % (self.tmp_run_record, run_record_directory, self.record_directory)))
+                return
             os.chmod(run_record_directory, 0o555)
 
             assert re.search(r"^/tmp/\S", self.semipermanent_run_record)
