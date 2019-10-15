@@ -106,16 +106,24 @@ BEGIN {
 
     if (secondpart ~ /^\s*\[\s*/ ) {
 	in_user_defined_list = 1  # Because we've already dealt with artdaq_process_settings and subsystem_settings
+	num_interior_square_brackets = 0
 	printf "%s", $0
 	next
     }
 
     if (in_user_defined_list) {
-	if ($0 ~ /^\s*\]\s*/) {
-	    in_user_defined_list=0
-	    printf "]\n\n"
-	    next
+	if ($0 ~ /^\s*\[\s*/) {
+	    num_interior_square_brackets += 1
+	} else if ($0 ~ /^\s*\]\s*/) {
+	    if (num_interior_square_brackets == 0) {
+		in_user_defined_list=0
+		printf "]\n\n"
+		next
+	    } else {
+		num_interior_square_brackets -= 1
+	    }
 	}
+	gsub("^[ \t]+|[ \t]+$","", $0)
 	printf "%s", $0
 	next
     }
