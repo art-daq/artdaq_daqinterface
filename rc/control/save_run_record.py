@@ -200,7 +200,12 @@ def save_run_record_base(self):
             host = procinfo.host
             if host == "localhost":
                 host = os.environ["HOSTNAME"]
-            ranksfile.write("%-29s %-9s %-19s %-14s %-9d\n" % (host, procinfo.port, procinfo.label, procinfo.subsystem, procinfo.rank))            
+            ranksfile.write("%-29s %-9s %-19s %-14s %-9d\n" % (host, procinfo.port, procinfo.label, procinfo.subsystem, procinfo.rank))      
+    environfilename = "%s/environment.txt" % (outdir)
+
+    with open(environfilename, "w") as environfile:
+        for daqinterface_var in sorted( [ varname for varname in os.environ if re.search(r"^DAQINTERFACE_", varname) ] ):
+            environfile.write("export %s=%s\n" % (daqinterface_var, expand_environment_variable_in_string(os.environ[ daqinterface_var ])))
 
     for (recorddir, dummy, recordfiles) in os.walk(self.tmp_run_record):
         for recordfile in recordfiles:
