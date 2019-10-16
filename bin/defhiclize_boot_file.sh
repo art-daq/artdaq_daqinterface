@@ -1,4 +1,4 @@
-OB#!/bin/env bash
+#!/bin/env bash
 
 if [[ "$#" != 1 ]]; then
     echo "Usage: "$( basename $0 )" <boot file in FHiCL format>"
