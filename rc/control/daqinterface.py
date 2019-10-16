@@ -813,9 +813,9 @@ class DAQInterface(Component):
         for procinfo in self.procinfos:
 
             try:
-                # # Engineer an error to recreate the Icarus issue described in Issue #23404
-                # if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
-                #     raise Exception("[Errno 113] No route to host")
+                # Engineer an error to recreate the Icarus issue described in Issue #23404
+                if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
+                    raise Exception("[Errno 113] No route to host")
 
                 procinfo.lastreturned = procinfo.server.daq.status()
             except Exception as ex:
@@ -1234,9 +1234,9 @@ class DAQInterface(Component):
             try:
                 self.print_log("d", "%s: Sending transition to %s" % (date_and_time_more_precision(), self.procinfos[procinfo_index].label), 3)
 
-                # # Engineer an error to recreate the Icarus issue described in Issue #23404
-                # if self.procinfos[procinfo_index].host != "localhost" and self.procinfos[procinfo_index].host != os.environ["HOSTNAME"]:
-                #     raise Exception("[Errno 113] No route to host")
+                # Engineer an error to recreate the Icarus issue described in Issue #23404
+                if self.procinfos[procinfo_index].host != "localhost" and self.procinfos[procinfo_index].host != os.environ["HOSTNAME"]:
+                    raise Exception("[Errno 113] No route to host")
 
 
                 if command == "Init":
@@ -2371,10 +2371,15 @@ class DAQInterface(Component):
         currently 1/sec.
         """
 
+        print "%s: In runner, __do_config == %d" % (date_and_time(), self.__do_config)
+
         try:
 
             if self.in_recovery:
                 pass
+
+            if self.exception:
+                raise Exception("Error: at some point DAQInterface set an exception state")
 
             elif self.__do_boot:
                 self.__do_boot = False
@@ -2428,13 +2433,14 @@ class DAQInterface(Component):
                 self.do_disable()
 
             elif self.manage_processes and self.state(self.name) != "stopped" and self.state(self.name) != "booting" and self.state(self.name) != "terminating":
-                #self.check_proc_heartbeats()
+                self.check_proc_heartbeats()
                 self.check_proc_exceptions()
 
         except Exception:
             self.in_recovery = True
             self.alert_and_recover(traceback.format_exc())
             self.in_recovery = False
+            self.exception = False
 
 
 
