@@ -1477,7 +1477,10 @@ class DAQInterface(Component):
                 os.unlink(self.boot_filename)
 
             assert os.path.exists("%s/bin/defhiclize_boot_file.sh" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"]))
-            Popen("%s/bin/defhiclize_boot_file.sh %s > %s" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"], boot_filename, self.boot_filename), shell=True).wait()
+            cmd = "%s/bin/defhiclize_boot_file.sh %s > %s" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"], boot_filename, self.boot_filename)
+            status = Popen(cmd, shell=True).wait()
+            if status != 0:
+                raise Exception("Error: the command \"%s\" returned nonzero" % cmd)
             
         try:
             self.get_boot_info( self.boot_filename )

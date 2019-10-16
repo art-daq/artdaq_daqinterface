@@ -1,4 +1,4 @@
-#!/bin/env bash
+OB#!/bin/env bash
 
 if [[ "$#" != 1 ]]; then
     echo "Usage: "$( basename $0 )" <boot file in FHiCL format>"
@@ -10,7 +10,7 @@ bootfile=$1
 . $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
 
 if [[ ! -e $bootfile ]]; then
-    cat<<EOF
+    cat<<EOF >&2
 
 Error: the boot file you supplied, "$bootfile", does not appear to
 exist. Exiting...
@@ -21,7 +21,7 @@ exit 1
 fi
 
 if [[ ! -e $DAQINTERFACE_SETUP_FHICLCPP ]]; then
-    cat<<EOF
+    cat<<EOF >&2
 
 Error: the fhiclcpp setup script referred to by
 \$DAQINTERFACE_SETUP_FHICLCPP, "$DAQINTERFACE_SETUP_FHICLCPP", does
@@ -36,7 +36,7 @@ fi
 
 if [[ -z $( ups active | grep fhiclcpp ) ]]; then
 
-    cat<<EOF
+    cat<<EOF >&2
 
 Error: the fhiclcpp setup script "$DAQINTERFACE_SETUP_FHICLCPP" failed
 to set up fhiclcpp correctly when sourced. Exiting...
@@ -49,7 +49,7 @@ tmpfile=$( mktemp )
 fhicl-dump -l 0 -c $bootfile > $tmpfile 
 
 if [[ "$?" != "0" ]]; then
-    cat<<EOF
+    cat<<EOF >&2
 
 Error: fhicl-dump as applied to $bootfile returned nonzero. Illegal
 FHiCL syntax in the file? Exiting...

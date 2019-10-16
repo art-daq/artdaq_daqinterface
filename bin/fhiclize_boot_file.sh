@@ -10,7 +10,7 @@ bootfile=$1
 . $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
 
 if [[ ! -e $bootfile ]]; then
-    cat<<EOF
+    cat<<EOF >&2
 
 Error: the boot file you supplied, "$bootfile", does not appear to
 exist. Exiting...
@@ -21,7 +21,7 @@ exit 1
 fi
 
 if [[ ! -e $DAQINTERFACE_SETUP_FHICLCPP ]]; then
-    cat<<EOF
+    cat<<EOF >&2
 
 Error: the fhiclcpp setup script referred to by
 \$DAQINTERFACE_SETUP_FHICLCPP, "$DAQINTERFACE_SETUP_FHICLCPP", does
@@ -36,7 +36,7 @@ fi
 
 if [[ -z $( ups active | grep fhiclcpp ) ]]; then
 
-    cat<<EOF
+    cat<<EOF >&2
 
 Error: the fhiclcpp setup script "$DAQINTERFACE_SETUP_FHICLCPP" failed
 to set up fhiclcpp correctly when sourced. Exiting...
@@ -51,7 +51,7 @@ cat $bootfile | awk -f $ARTDAQ_DAQINTERFACE_DIR/utils/fhiclize_boot_file.awk > $
 fhicl-dump -l 0 -c $tmpfile 
 
 if [[ "$?" != "0" ]]; then
-    cat<<EOF
+    cat<<EOF >&2
 
 Error: fhicl-dump returned nonzero, so the fhicl printed out above
 should not be used. Perhaps there's a problem with the intermediate
