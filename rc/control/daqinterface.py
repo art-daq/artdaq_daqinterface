@@ -1998,9 +1998,9 @@ class DAQInterface(Component):
             try:
                 shutil.copytree(self.tmp_run_record, run_record_directory)
             except:
-                self.print_log("w", traceback.format_exc())
-                self.print_log("w", make_paragraph("Attempt to copy temporary run record \"%s\" into permanent run record \"%s\" didn't work; THIS MEANS YOU WON'T HAVE A RUN RECORD FOR THIS RUN" % (self.tmp_run_record, run_record_directory)))
-
+                self.print_log("e", traceback.format_exc())
+                self.alert_and_recover(make_paragraph("Error: Attempt to copy temporary run record \"%s\" into permanent run record \"%s\" didn't work; most likely reason is that you don't have write permission to %s, but it may also mean that your experiment's reusing a run number. Scroll up past the Recover transition output for further troubleshooting information." % (self.tmp_run_record, run_record_directory, self.record_directory)))
+                return
             os.chmod(run_record_directory, 0o555)
 
             assert re.search(r"^/tmp/\S", self.semipermanent_run_record)
@@ -2182,6 +2182,7 @@ class DAQInterface(Component):
 
         self.in_recovery = True
 
+
         if not self.called_launch_procs:
             self.print_log("i", "DAQInterface does not appear to have gotten to the point of launching the artdaq processes")
 
@@ -2332,6 +2333,14 @@ class DAQInterface(Component):
 
         self.in_recovery = False
 
+        # JCF, Oct-15-2019
+
+        # Make sure that the runner function won't just proceed with a
+        # transition "in the queue" despite DAQInterface being in the
+        # Stopped state after we've finished this recover
+
+        self.__do_boot = self.__do_shutdown = self.__do_config = self.__do_recover = self.__do_start_running = self.__do_stop_running = self.__do_terminate = self.__do_pause_running = self.__do_resume_running = self.__do_enable = self.__do_disable = False
+
         self.complete_state_change(self.name, "recovering")
 
         self.print_log("i", "\n%s: RECOVER transition complete" % (date_and_time()))
@@ -2409,6 +2418,7 @@ class DAQInterface(Component):
             self.in_recovery = True
             self.alert_and_recover(traceback.format_exc())
             self.in_recovery = False
+
 
 
 def get_args():  # no-coverage
