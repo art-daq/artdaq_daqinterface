@@ -310,7 +310,6 @@ class DAQInterface(Component):
 
     def reset_variables(self):
 
-        self.exception = False
         self.in_recovery = False
         self.heartbeat_failure = False
         self.manage_processes = True
@@ -321,6 +320,15 @@ class DAQInterface(Component):
         self.daq_setup_script = None
         self.debug_level = 10000
         self.request_address = None
+
+        # JCF, Nov-7-2015
+
+        # Now that we're going with a multithreaded (simultaneous)
+        # approach to sending transition commands to artdaq processes,
+        # when an exception is thrown a thread the main thread needs
+        # to know about it somehow - thus this new exception variable
+
+        self.exception = False
 
         self.reset_process_manager_variables()
 
@@ -357,15 +365,8 @@ class DAQInterface(Component):
                            rpc_port=rpc_port,
                            skip_init=False)
 
-        self.manage_processes = True
-        self.disable_recovery = False
+        self.reset_variables()
 
-        self.in_recovery = False
-        self.heartbeat_failure = False
-        self.called_launch_procs = False
-
-        self.debug_level = 10000
-        self.request_address = None
         self.partition_number = partition_number
         self.transfer = "Autodetect"
         self.rpc_port = rpc_port
@@ -380,15 +381,6 @@ class DAQInterface(Component):
         # given with an absolute path in the #include .
 
         self.fhicl_file_path = []
-
-        # JCF, Nov-7-2015
-
-        # Now that we're going with a multithreaded (simultaneous)
-        # approach to sending transition commands to artdaq processes,
-        # when an exception is thrown a thread the main thread needs
-        # to know about it somehow - thus this new exception variable
-
-        self.exception = False
 
         self.check_proc_exceptions_number_of_status_failures = 0
 
