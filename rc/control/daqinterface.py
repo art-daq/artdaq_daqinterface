@@ -317,7 +317,7 @@ class DAQInterface(Component):
         self.disable_recovery = False
         self.bootfile_fhicl_overwrites = {}
         self.called_launch_procs = False
-        self.check_proc_exceptions_number_of_status_failures = 0
+        self.procs_which_already_caused_connection_refused = []
         self.daq_setup_script = None
         self.debug_level = 10000
         self.request_address = None
@@ -390,7 +390,7 @@ class DAQInterface(Component):
 
         self.exception = False
 
-        self.check_proc_exceptions_number_of_status_failures = 0
+        self.procs_which_already_caused_connection_refused = []
 
         self.__do_boot = False
         self.__do_shutdown = False
@@ -813,10 +813,6 @@ class DAQInterface(Component):
         for procinfo in self.procinfos:
 
             try:
-                # Engineer an error to recreate the Icarus issue described in Issue #23404
-                if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
-                    raise Exception("[Errno 113] No route to host")
-
                 procinfo.lastreturned = procinfo.server.daq.status()
             except Exception as ex:
 
@@ -824,17 +820,16 @@ class DAQInterface(Component):
 
                 if "[Errno 111] Connection refused" in traceback.format_exc():
                     self.print_log("w", make_paragraph("An \"[Errno 111] Connection refused\" exception was thrown when attempting to query artdaq process %s at %s:%s; this likely means the process no longer exists -- try checking logfile %s for details" % (procinfo.label, procinfo.host, procinfo.port, self.determine_logfilename(procinfo))))
+                    if procinfo.label in self.procs_which_already_caused_connection_refused:
+                        raise Exception(make_paragraph("Error: artdaq process \"%s\" has repeatedly returned \"[Errno 111] Connection refused\" when queried; this most likely means it's died"))
+                    else:
+                        self.procs_which_already_caused_connection_refused.append(procinfo.label)
+                        
                 elif "[Errno 113] No route to host" in traceback.format_exc():
-                    self.print_log("w", make_paragraph("An \"[Errno 113] No route to host\" exception was thrown when attempting to query artdaq process %s at %s:%s; this likely means there's an XML-RPC connection issue between this host and %s" % (procinfo.label, procinfo.host, procinfo.port, procinfo.host)))
+                    raise Exception(make_paragraph("Error: an \"[Errno 113] No route to host\" exception was thrown when attempting to query artdaq process %s at %s:%s; this likely means there's an XML-RPC connection issue between this host and %s" % (procinfo.label, procinfo.host, procinfo.port, procinfo.host)))
+                else:
+                    raise
                     
-
-                self.check_proc_exceptions_number_of_status_failures += 1
-                
-                if self.check_proc_exceptions_number_of_status_failures >= 2:
-                    self.exception = True
-
-                #print "Number of status failures is %d" % (self.check_proc_exceptions_number_of_status_failures)
-                #print "exception state is %d" % (self.exception)
                 continue
 
             if procinfo.lastreturned == "Error":
@@ -1233,11 +1228,6 @@ class DAQInterface(Component):
 
             try:
                 self.print_log("d", "%s: Sending transition to %s" % (date_and_time_more_precision(), self.procinfos[procinfo_index].label), 3)
-
-                # Engineer an error to recreate the Icarus issue described in Issue #23404
-                if self.procinfos[procinfo_index].host != "localhost" and self.procinfos[procinfo_index].host != os.environ["HOSTNAME"]:
-                    raise Exception("[Errno 113] No route to host")
-
 
                 if command == "Init":
                     self.procinfos[procinfo_index].lastreturned = \
@@ -2370,8 +2360,6 @@ class DAQInterface(Component):
         Component "ops" loop.  Called at threading hearbeat frequency,
         currently 1/sec.
         """
-
-        print "%s: In runner, __do_config == %d" % (date_and_time(), self.__do_config)
 
         try:
 
