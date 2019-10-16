@@ -34,10 +34,8 @@ eventbuilder_art_standard: {
     scheduler: {
       errorOnFailureToPut: false
     }
-    NetMonTransportServiceInterface: {
-      service_provider: NetMonTransportService
-      #broadcast_sends: true
-      destinations: { }
+    ArtdaqSharedMemoryServiceInterface: {
+      service_provider: ArtdaqSharedMemoryService
     }
   }
 
@@ -61,6 +59,8 @@ eventbuilder_art_standard: {
     rootNetOutput: {
       module_type: RootNetOutput
       #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
+      #broadcast_sends: true
+      destinations: { }
     }
   }
   process_name: DAQ

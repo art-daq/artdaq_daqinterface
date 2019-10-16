@@ -28,8 +28,8 @@ outputs: {}
 physics: {}
 process_name: "DAQDISP"
 services: {
-   NetMonTransportServiceInterface: {
-      service_provider: "NetMonTransportService"
+   ArtdaqSharedMemoryServiceInterface: {
+      service_provider: "ArtdaqSharedMemoryService"
    }
    scheduler: {
       errorOnFailureToPut: false

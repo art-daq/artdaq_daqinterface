@@ -2,10 +2,8 @@ services: {
   scheduler: {
     errorOnFailureToPut: false
   }
-  NetMonTransportServiceInterface: {
-    service_provider: NetMonTransportService
-    #broadcast_sends: true
-    #nonblocking_sends: true
+  ArtdaqSharedMemoryServiceInterface: {
+    service_provider: ArtdaqSharedMemoryService
   }
 
   #SimpleMemoryCheck: { }
