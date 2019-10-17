@@ -1509,6 +1509,7 @@ class DAQInterface(Component):
             hosts = [procinfo.host for procinfo in self.procinfos]
             random_host = random.choice( hosts )
 
+            ssh_timeout_in_seconds = 30
             starttime = time()
             self.print_log("i", "\nOn randomly selected node (%s), checking that the setup file %s doesn't return a nonzero value when sourced..." % \
                            (random_host, self.daq_setup_script), 1, False)
@@ -1517,7 +1518,7 @@ class DAQInterface(Component):
                 cmd = "%s ; . %s for_running" % (bash_unsetup_command, self.daq_setup_script)
 
                 if random_host != "localhost" and random_host != os.environ["HOSTNAME"]:
-                    cmd = "ssh %s '%s'" % (random_host, cmd)
+                    cmd = "timeout %d ssh %s '%s'" % (ssh_timeout_in_seconds, random_host, cmd)
 
                 out = Popen(cmd, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
 
@@ -1528,12 +1529,16 @@ class DAQInterface(Component):
                 status = out.returncode
 
             if status != 0:
-                self.print_log("e", "\nNonzero value (%d) returned in attempt to source script %s on host \"%s\"." % \
-                               (status, self.daq_setup_script, random_host))
+                errmsg="Nonzero value (%d) returned in attempt to source script %s on host \"%s\"" % \
+                               (status, self.daq_setup_script, random_host)
+                if status != 124:
+                    errmsg = "%s." % (errmsg)
+                else:
+                    errmsg = "%s; returned value suggests that the ssh call to %s timed out. Perhaps a lack of public/private ssh keys resulted in ssh asking for a password?" % (errmsg, random_host)
+                self.print_log("e", make_paragraph(errmsg))
                 self.print_log("e", "STDOUT: \n%s" % (out_stdout))
                 self.print_log("e", "STDERR: \n%s" % (out_stderr))
-                raise Exception("Nonzero value (%d) returned in attempt to source script %s on host %s." % \
-                                (status, self.daq_setup_script, random_host))
+                raise Exception("Problem source-ing %s on %s" % (self.daq_setup_script, random_host))
             
             endtime = time()
             self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
@@ -1571,17 +1576,19 @@ class DAQInterface(Component):
                 logdircmd = construct_checked_command( logdir_commands_to_run_on_host )
 
                 if host != os.environ["HOSTNAME"] and host != "localhost":
-                    logdircmd = "ssh -f " + host + " '" + logdircmd + "'"
+                    logdircmd = "timeout %d ssh -f %s '%s'" % (ssh_timeout_in_seconds, host, logdircmd)
 
                 with deepsuppression(self.debug_level < 4):
                     proc = Popen(logdircmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     status = proc.wait()
 
                 if status != 0:   
+
                     self.print_log("e", "\nNonzero return value (%d) resulted when trying to run the following on host %s:\n%s\n" % \
                                    (status, host, "\n".join(logdir_commands_to_run_on_host)))
                     self.print_log("e", "STDOUT output: \n%s" % ("\n".join(proc.stdout.readlines())))
                     self.print_log("e", "STDERR output: \n%s" % ("\n".join(proc.stderr.readlines())))
+                    self.print_log("e", make_paragraph("Returned value of %d suggests that the ssh call to %s timed out. Perhaps a lack of public/private ssh keys resulted in ssh asking for a password?" % (status, host)))
                     raise Exception("Problem running mkdir -p for the needed logfile directories on %s" % ( host ) )
 
             self.init_process_requirements() 
