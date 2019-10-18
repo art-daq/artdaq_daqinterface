@@ -508,9 +508,18 @@ def get_build_info(pkgnames, setup_script):
                 #print "Unable to find expected ups source file directory %s, will not be able to save build info for %s in the run record" % (ups_sourcedir, pkgname)
                 continue
 
-            buildinfo_file="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, pkgname)
-            if not os.path.exists(buildinfo_file):
-                print "Unable to find hoped-for %s BuildInfo file %s, will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file, pkgname)
+            buildinfo_file1="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, pkgname)
+            buildinfo_file2="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, string.replace(pkgname, "_", "-"))
+            if os.path.exists(buildinfo_file1):
+                buildinfo_file = buildinfo_file1
+            elif os.path.exists(buildinfo_file2):
+                buildinfo_file = buildinfo_file2
+            else:
+                if buildinfo_file1 != buildinfo_file2:
+                    print "Unable to find hoped-for %s BuildInfo file (%s or %s), will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file1, buildinfo_file2, pkgname)
+                else:
+                    print "Unable to find hoped-for %s BuildInfo file (%s), will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file1, pkgname)
+                    
                 continue
 
             pkg_build_infos[ pkgname ] = parse_buildinfo_file(buildinfo_file)
