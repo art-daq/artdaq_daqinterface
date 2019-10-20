@@ -150,26 +150,26 @@ END {
 	chk_sys_subsys()
 
     if (length(subsystems) > 0) {
-	printf("\nsubsystem_settings: [{\n")
+	printf("\nsubsystem_settings: [\n{\n")
 	cntr = 1
 	for (id in subsystems) {
 	    printf("%s", subsystems[id])
 	    if (cntr < length(subsystems)) {
-		printf("\n}, {\n")
+		printf("\n},\n{\n")
 	    }
 	    cntr++
 	}
-	printf("\n}]\n")
+	printf("\n}\n]\n")
     }
 
-    printf("\nartdaq_process_settings: [{\n")
+    printf("\nartdaq_process_settings: [\n{\n")
     cntr = 1
     for (label in procinfos) {
 	printf("%s", procinfos[label])
 	if (cntr < length(procinfos)) {
-	    printf("}, {\n")
+	    printf("},\n{\n")
 	}
 	cntr++
     }
-    printf("}]\n")
+    printf("}\n]\n")
 }
