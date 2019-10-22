@@ -36,7 +36,7 @@ def version_to_integer(version):
     return patchnum + 100*minornum + 10000*majornum
 
 if version_to_integer(os.environ["ARTDAQ_DATABASE_VERSION"]) >= version_to_integer("v1_04_75"):
-    from conftool import getListOfAvailableRunConfigurationsSubtractMasked
+    from conftool import getListOfMaskedRunConfigurations
 else:
     print
     print make_paragraph("WARNING: you appear to be using an artdaq_database version older than v1_04_75 (%s), on the config transition DAQInterface will accept a configuration even if it's been masked off" % (os.environ["ARTDAQ_DATABASE_VERSION"]))
@@ -46,6 +46,7 @@ from conftool import exportConfiguration
 from conftool import getListOfAvailableRunConfigurations
 from conftool import archiveRunConfiguration
 from conftool import updateArchivedRunConfiguration
+
 
 def config_basedir(self):
     return "/tmp/database/"
@@ -68,19 +69,19 @@ def get_config_info_base(self):
 
     for subconfig in self.subconfigs_for_run:
 
-        if subconfig not in getListOfAvailableRunConfigurations():
+        if subconfig not in getListOfAvailableRunConfigurations(subconfig):
             raise Exception(make_paragraph("Error: (sub)config \"%s\" was not found in a call to conftool.getListOfAvailableRunConfigurations" % (subconfig)))
         else:
             try:
-                if subconfig not in getListOfAvailableRunConfigurationsSubtractMasked():
-                            raise Exception(make_paragraph("Error: (sub)config \"%s\" appears to have been masked off (i.e., it doesn't appear in a call to conftool.getListOfAvailableRunConfigurationsSubtractMasked given the flags file %s)" % (subconfig, tmpflagsfile)))
+                if subconfig in getListOfMaskedRunConfigurations():
+                    raise Exception(make_paragraph("Error: (sub)config \"%s\" has been invalidated (i.e., it appears in a call to conftool.getListOfMaskedRunConfigurations given the flags file %s)" % (subconfig, tmpflagsfile)))
             except NameError:
                 pass
 
         subconfigdir = "%s/%s" % (tmpdir, subconfig)
         os.mkdir( subconfigdir )
         os.chdir( subconfigdir )
-        
+
         with deepsuppression(self.debug_level < 2):
             result = exportConfiguration( subconfig )
 
@@ -297,7 +298,7 @@ def main():
         print "Calling get_config_info_base"
 
         class MockDAQInterface:
-            subconfigs_for_run = [ "ToyComponent_EBwriting00019", "np04_WibsReal_Ssps_BeamTrig_CRT_00001" ]
+            subconfigs_for_run = [ "ToyComponent_EBwriting00025" ]
             debug_level = 2
 
         mydir, mydirs = get_config_info_base( MockDAQInterface() )

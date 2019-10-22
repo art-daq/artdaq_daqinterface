@@ -150,7 +150,7 @@
 	    firstpart ~ "DAQInterface stop time" || firstpart ~ "Total events" ) {
 	    
 	    firstpart = tolower(firstpart)
-	    sub(" ", "_", firstpart)
+	    gsub(" ", "_", firstpart)
 
 	} else if (firstpart ~ /Component #[0-9]/) {
 	    components[++component_cntr] = secondpart
