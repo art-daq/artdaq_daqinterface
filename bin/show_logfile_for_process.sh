@@ -2,7 +2,7 @@
 
 
 if (( $# != 2 && $# != 3)) ; then
-     echo "Usage: $0 <run number> <process label> (examine)"
+     echo "Usage: $0 <run number> <process label> (optional, any third argument will open the logfile)"
      exit 1
 fi
 
@@ -12,6 +12,15 @@ examine=$3
 
 . $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
 . $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
+
+if [[ "$runnum" =~ ^[0-9]+$ ]]; then
+    echo "Run number is $runnum"
+else
+    echo "Error: run number \"$runnum\" isn't an integer; exiting..." >&2
+    exit 1
+fi
+
+echo "artdaq process label is $proclabel"
 
 metadata_file=$recorddir/$runnum/metadata.txt
 

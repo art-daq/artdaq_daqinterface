@@ -24,6 +24,7 @@ component_standard: {
 
 	request_port: 3001
 	request_address: "227.128.12.26" # Multicast request address
+	multicast_interface_ip: "0.0.0.0"
 
 	request_window_offset: 0 # Request message contains tzero. Window will be from tzero - offset to tz-o + width
 	request_window_width: 0 # These settings correspond to "two before, two after"
@@ -54,12 +55,14 @@ hardware_poll_interval_us: 0 # How often, in microseconds, checkHWStatus_() shou
            ## Port that table updates should arrive on
            table_update_port: 35556  # default
        
-           ## Address that table updates should arrive on
+           ## Multicast address that table updates should arrive on
            table_update_address: "227.128.12.28"  # default
-            table_update_multicast_interface: "0.0.0.0"
+       
+           ## Network interface that multicast table updates should arrive on
+           table_update_multicast_interface: "0.0.0.0"
        
            ## Port that acknowledgements should be sent to
-          table_acknowledge_port: 35557  # default
+           table_acknowledge_port: 35557  # default
        
            ## Host that acknowledgements should be sent to
            routing_master_hostname: "localhost"  # default

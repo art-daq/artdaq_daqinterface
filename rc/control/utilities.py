@@ -508,9 +508,18 @@ def get_build_info(pkgnames, setup_script):
                 #print "Unable to find expected ups source file directory %s, will not be able to save build info for %s in the run record" % (ups_sourcedir, pkgname)
                 continue
 
-            buildinfo_file="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, pkgname)
-            if not os.path.exists(buildinfo_file):
-                print "Unable to find hoped-for %s BuildInfo file %s, will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file, pkgname)
+            buildinfo_file1="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, pkgname)
+            buildinfo_file2="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, string.replace(pkgname, "_", "-"))
+            if os.path.exists(buildinfo_file1):
+                buildinfo_file = buildinfo_file1
+            elif os.path.exists(buildinfo_file2):
+                buildinfo_file = buildinfo_file2
+            else:
+                if buildinfo_file1 != buildinfo_file2:
+                    print "Unable to find hoped-for %s BuildInfo file (%s or %s), will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file1, buildinfo_file2, pkgname)
+                else:
+                    print "Unable to find hoped-for %s BuildInfo file (%s), will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file1, pkgname)
+                    
                 continue
 
             pkg_build_infos[ pkgname ] = parse_buildinfo_file(buildinfo_file)
@@ -624,6 +633,29 @@ udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THI
 
     return processed_messagefacility_fhicl_filename
 
+def get_private_networks(host):
+    cmd = "/usr/sbin/ifconfig | sed -r -n \"s/^\s*inet\s+(192\.168\.\S+|10\.\S+)\s+.*/\\1/p\""
+
+    if host != "localhost" and host != os.environ["HOSTNAME"]:
+        cmd = "ssh -x %s '%s'" % (host, cmd)
+
+    lines = Popen(cmd, shell=True, stdout=subprocess.PIPE ).stdout.readlines() 
+    networks = []
+
+    for line in lines:
+        network = line.strip()
+        res = re.search(r"^([0-9]+\.[0-9]+\.[0-9]+\.)[0-9]+", network)
+        if not res:
+            raise Exception("Unexpected result from command \"%s\"; line \"%s\" doesn't appear to be an address" % (cmd, network))
+        networks.append(network)
+
+    return networks
+
+def zero_out_last_subnet(network):
+    res = re.search(r"^([0-9]+\.[0-9]+\.[0-9]+\.)[0-9]+", network)
+    assert res, "Developer error: proper address not passed to \"zero_out_last_subnet\""
+    return "%s0" % (res.group(1))
+
 def upsproddir_from_productsdir( productsdir ):
     for pp in productsdir.split(':'):
         upsproddir=''                  # may not find what we're looking for
@@ -632,7 +664,6 @@ def upsproddir_from_productsdir( productsdir ):
             upsproddir=pp.rstrip('/')  # make sure it does not end with '/'
             break
     return upsproddir
-
 
 def main():
 
@@ -684,7 +715,8 @@ def main():
     bash_unsetup_test = False
     get_commit_info_test = False
     get_build_info_test = False
-    table_range_test = True
+    table_range_test = False
+    get_private_networks_test = True
 
     if paragraphed_string_test:
         sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
@@ -766,6 +798,14 @@ def main():
             (table_start, table_end) = table_range( inf_contents, "art" )
             print "Contents of table: "
             print inf_contents[table_start:table_end]
+
+    if get_private_networks_test:
+        hosts = ["localhost"]
+
+        for host in hosts:
+            private_networks = get_private_networks(host)
+            print "%s: " % (host)
+            print [network.strip() for network in private_networks]
 
 def kill_tail_f():
     tail_pids = get_pids("%s.*tail -f %s" % 
