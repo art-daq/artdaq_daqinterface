@@ -93,6 +93,21 @@ function get_shmids() {
     ipcs | grep -E "^0xee${hextoken}|^0xbb${hextoken}|^0x${hextoken}00" | grep $USER | awk '{print $2}'
 }
 
+function kill_art() {
+    pids=`ps -fu $USER|grep "art -c"|grep "partition_$partition"|awk '{print $2}'`
+    echo "Killing art processes `echo $pids|tr '\n' ' '`"
+    kill $pids
+    sleep 5
+    for pid in $pids; do
+        kill -0 $pid
+        if [ $? -eq 0 ]; then
+            echo "Killing with force: $pid"
+            kill -9 $pid
+        fi
+    done
+}
+kill_art
+
 owner_pids=""
 
 for shmid in $( get_shmids ); do
