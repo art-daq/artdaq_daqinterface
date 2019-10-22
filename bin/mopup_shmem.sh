@@ -20,13 +20,13 @@ fi
 
 if ! $force_cleanup; then
 
-. $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
+	. $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
 
-if [[ -n $( listdaqinterfaces.sh | grep -E "\s+[Pp]artition\s+$partition\s+" ) ]]; then
+	if [[ -n $( listdaqinterfaces.sh | grep -E "\s+[Pp]artition\s+$partition\s+" ) ]]; then
 
-    timeoutsecs=10
+		timeoutsecs=10
 
-    cat<<EOF
+		cat<<EOF
 
 A DAQInterface on partition $partition has been found; will confirm
 that it's in the "stopped" state via a status.sh call with a
@@ -34,15 +34,15 @@ $timeoutsecs second timeout...
 
 EOF
 
-    res=$( timeout $timeoutsecs $ARTDAQ_DAQINTERFACE_DIR/bin/status.sh | tail -1 | tr "'" " " | awk '{print $2}' )
-    
-    if [[ "$res" == "stopped" ]]; then
+		res=$( timeout $timeoutsecs $ARTDAQ_DAQINTERFACE_DIR/bin/status.sh | tail -1 | tr "'" " " | awk '{print $2}' )
+		
+		if [[ "$res" == "stopped" ]]; then
 
-    echo "DAQInterface in \"stopped\" state; will proceed with cleaning up the shared memory blocks"
-    
-    elif [[ "$res" == "" ]]; then
+			echo "DAQInterface in \"stopped\" state; will proceed with cleaning up the shared memory blocks"
+			
+		elif [[ "$res" == "" ]]; then
 
-	cat <<EOF >&2
+			cat <<EOF >&2
 
 No state discovered after calling status.sh, this may be because the
 $timeoutsecs second timeout was activated due to a communication
@@ -52,10 +52,10 @@ added. Exiting...
 
 EOF
 	
-      exit 1
+    exit 1
 
-    elif [[ "$res" != "stopped" ]]; then
-	cat<<EOF >&2
+		elif [[ "$res" != "stopped" ]]; then
+			cat<<EOF >&2
 
 After executing status.sh the DAQInterface instance on partition
 $partition didn't confirm it's in the "stopped" state (result was
@@ -65,8 +65,8 @@ added. Exiting...
 
 EOF
 	exit 1
-    fi
-fi
+		fi
+	fi
 
 fi
 
@@ -99,17 +99,17 @@ for shmid in $( get_shmids ); do
     nattached=$( ipcs | awk '{ if ("'$shmid'" == $2) { print $6 } }' )
 
     if ! [[ "$nattached" =~ ^[0-9]+$ ]]; then
-	echo "Surprising error - attempt to determine number of attached processes to shared memory block with id $shmid did not yield an integer" >&2
-	exit 1
+		echo "Surprising error - attempt to determine number of attached processes to shared memory block with id $shmid did not yield an integer" >&2
+		exit 1
     fi
 
     if (( nattached > 0 )); then
     	owner_pid=$( ipcs -mp | awk '{ if ("'$shmid'" == $1) { print $4 } }' )
-	
+		
     	if [[ "$owner_pid" =~ ^[0-9]+$ ]]; then
-	    if ! [[ "$owner_pids" =~ " $owner_pid " ]]; then
-		owner_pids=" $owner_pid $owner_pids"
-	    fi
+			if ! [[ "$owner_pids" =~ " $owner_pid " ]]; then
+				owner_pids=" $owner_pid $owner_pids"
+			fi
     	else
     	    echo "Unable to get integer pid for owner of shared memory block with id $shmid" >&2
     	    exit 1
@@ -130,7 +130,7 @@ for shmid in $( get_shmids ); do
     echo "Removing shared memory block with id $shmid"
     ipcrm -m $shmid
 done
-    
+
 num_owned_blocks_after=0
 for shmid in $( get_shmids ); do
     num_owned_blocks_after=$(( num_owned_blocks_after + 1 ))
