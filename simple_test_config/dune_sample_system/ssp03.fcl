@@ -58,8 +58,9 @@ routing_table_config: @local::artdaq_BR_routing_table_specification
   metrics: {
 	brFile: {
 	  metricPluginType: "file"
-	  level: 3
-	  fileName: "/tmp/boardreader/br_%UID%_metrics.log"
+	  level: 4
+	  fileName: "boardreader/br_%UID%_metrics.log"
+         absolute_file_path: false
 	  uniquify: true
 	}
   }

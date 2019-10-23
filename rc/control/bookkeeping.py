@@ -12,6 +12,8 @@ from rc.control.utilities import enclosing_table_name
 from rc.control.utilities import commit_check_throws_if_failure
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import fhicl_writes_root_file
+from rc.control.utilities import get_private_networks
+from rc.control.utilities import zero_out_last_subnet
 
 def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
@@ -39,7 +41,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         other_allowed_versions = ["v3_02_01a"]
 
-        version = self.get_package_version("artdaq")
+        self.fill_package_versions(["artdaq"])
+        version = self.package_versions["artdaq"]
 
         res = re.search(r"v([0-9]+)_([0-9]+)_([0-9]+)(.*)", version)    
 
@@ -69,13 +72,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 
         if not passes_requirement:
             raise Exception(make_paragraph("Version of artdaq set up by setup script \"%s\" is v%s_%s_%s%s; need a version at least as recent as v%s_%s_%s" % (self.daq_setup_script, majorver, minorver, minorerver, extension, min_majorver, min_minorver, min_minorerver)))
-
-    for ss in self.subsystems:
-        if self.subsystems[ss].destination != "not set":
-            dest = self.subsystems[ss].destination
-            if self.subsystems[dest] == None or (self.subsystems[dest].source != "not set" and self.subsystems[dest].source != ss):
-                raise Exception(make_paragraph("Inconsistent subsystem configuration detected! Subsystem %d has destination %d, but subsystem %d has source %d!" % (ss, dest, dest, self.subsystems[dest].source)))
-            self.subsystems[dest].source = ss
 
     # Start calculating values (fragment counts, memory sizes, etc.)
     # which will need to appear in the FHiCL
@@ -117,6 +113,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     subsystem_fragment_count = { }
     subsystem_fragment_space = { }
 
+    for ss in self.subsystems:
+        subsystem_fragment_count[ss] = 0
+        subsystem_fragment_space[ss] = 0
+
     for procinfo in self.procinfos:
         if "BoardReader" in procinfo.name:
 
@@ -136,7 +136,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 generated_fragments_per_event = int(res.group(1))
 
             fragments_per_boardreader[ procinfo.label ] = generated_fragments_per_event
-            subsystem_fragment_count[ procinfo.subsystem ] = subsystem_fragment_count.get(procinfo.subsystem, 0) + generated_fragments_per_event
+            subsystem_fragment_count[ procinfo.subsystem ] += generated_fragments_per_event
 
             if self.advanced_memory_usage:
                 list_of_one_fragment_size = [ proctuple[1] for proctuple in max_fragment_sizes if 
@@ -146,7 +146,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             else:
                 fragment_space = self.max_fragment_size_bytes
                 
-            subsystem_fragment_space[ procinfo.subsystem ] = subsystem_fragment_space.get(procinfo.subsystem, 0) + generated_fragments_per_event*fragment_space
+            subsystem_fragment_space[ procinfo.subsystem ] += generated_fragments_per_event*fragment_space
 
     # Now using the per-subsystem info we've gathered, use recursion
     # to determine the *true* number of fragments per event and the
@@ -155,16 +155,16 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     # subsystems upstream whose eventbuilders send fragments down to
     # the subsystem in question
 
-    def calculate_expected_fragments_per_event(ss, subsystem_fragment_count):
-        count = subsystem_fragment_count.get(ss, 0)
+    def calculate_expected_fragments_per_event(ss):
+        count = subsystem_fragment_count[ss]
 
-        if self.subsystems[ss].source != "not set":
-            count += calculate_expected_fragments_per_event(self.subsystems[ss].source, subsystem_fragment_count)
+        for ss_source in self.subsystems[ss].sources:
+            count += calculate_expected_fragments_per_event(ss_source)
 
         return count
 
-    def calculate_max_event_size(ss, subsystem_fragment_space):
-        size = subsystem_fragment_space.get(ss, 0)
+    def calculate_max_event_size(ss):
+        size = subsystem_fragment_space[ss]
 
         if self.advanced_memory_usage:
             memory_scale_factor = 1.1
@@ -174,19 +174,19 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 size += (8 - size % 8)
                 assert size % 8 == 0, "Max event size not divisible by 8"
 
-        if self.subsystems[ss].source != "not set":
-            size += calculate_max_event_size(self.subsystems[ss].source, subsystem_fragment_space)
+        for ss_source in self.subsystems[ss].sources:
+            size += calculate_max_event_size(ss_source)
 
         return size
 
     expected_fragments_per_event = {}  
     for ss in self.subsystems:
-        expected_fragments_per_event[ss] = calculate_expected_fragments_per_event(ss, subsystem_fragment_count)
+        expected_fragments_per_event[ss] = calculate_expected_fragments_per_event(ss)
 
 
     max_event_sizes = {}
     for ss in self.subsystems:
-        max_event_sizes[ss] = calculate_max_event_size(ss, subsystem_fragment_space)
+        max_event_sizes[ss] = calculate_max_event_size(ss)
 
     # If we have advanced memory usage switched on, then make sure the
     # max_event_size_bytes gets set to the value calculated here in
@@ -326,7 +326,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     
         for i_procinfo_for_string, procinfo_for_string in enumerate(procinfos_for_string):
             hms = host_map_string
-            if i_procinfo_for_string != 0 and nodetype == "sources":
+            if i_procinfo_for_string != 0 and (nodetype == "sources" or nodetype == "destinations"):
                 hms = ""
 
             if nodetype == "sources" and "EventBuilder" in procinfo.name:
@@ -502,9 +502,32 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     # "associated with" translates to "what subsystem do we use when
     # bookkeeping")
 
+    # JCF, Aug-15-2019
+
+    # First, let's figure out which private networks the various
+    # processes can see, assuming the user hasn't disabled private
+    # network bookkeeping. Note to developers: if, for whatever
+    # reason, you decide it's a good idea to fill the
+    # private_networks_seen dictionary even if the disabling's
+    # occured, you'll want to revisit the logic later in this function
+    # that assumes nonempty private_networks_seen dictionary <=> the
+    # user wants private network bookkeeping
+
+    private_networks_seen = {}
+    if not self.disable_private_network_bookkeeping:
+        for host in set([procinfo.host for procinfo in self.procinfos]):
+            private_networks = get_private_networks(host)
+            for procinfo in self.procinfos:
+                if procinfo.host == host:
+                    private_networks_seen[procinfo.label] = private_networks
+
+    assert not self.disable_private_network_bookkeeping or len(private_networks_seen) == 0, \
+        "See Aug-15-2019 comment in bookkeeping.py"
+
     table_update_addresses = {}
     routing_base_ports = {}
     router_process_hostnames = {}
+    router_process_private_networks = {}
 
     for subsystem_id, subsystem in self.subsystems.items():
 
@@ -517,11 +540,13 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             
             if router_process_info[ router_process_identifier ]["location"] == "child_subsystem" and procinfo.subsystem == subsystem_id:
                 router_process_for_subsystem_as_list.append( procinfo )
-            elif router_process_info[ router_process_identifier ]["location"] == "parent_subsystem" and procinfo.subsystem == self.subsystems[subsystem_id].source:
+            elif router_process_info[ router_process_identifier ]["location"] == "parent_subsystem" and procinfo.subsystem in self.subsystems[subsystem_id].sources:
                 router_process_for_subsystem_as_list.append( procinfo )
 
         if len(router_process_for_subsystem_as_list) == 0:
             continue
+        elif len(router_process_for_subsystem_as_list) > 1:
+            raise Exception(make_paragraph("DAQInterface has found more than one router process (RoutingMaster, DFO, etc.) associated with subsystem %s requested in the boot file %s; this isn't currently supported" % (subsystem_id, self.boot_filename)))
         elif len(router_process_for_subsystem_as_list) == 1:
             router_process_for_subsystem = router_process_for_subsystem_as_list[0]
             
@@ -529,11 +554,92 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                                         int(subsystem_id) + 128)
             routing_base_ports[ subsystem_id ] = int(os.environ["ARTDAQ_BASE_PORT"]) + 10 + \
                                                  int(os.environ["ARTDAQ_PORTS_PER_PARTITION"])*self.partition_number + int(subsystem_id)
+
             router_process_hostnames[ subsystem_id ] = router_process_for_subsystem.host
             if router_process_hostnames[ subsystem_id ] == "localhost":
                 router_process_hostnames[ subsystem_id ] = os.environ["HOSTNAME"]
-        elif len(router_process_for_subsystem_as_list) > 1:
-            raise Exception(make_paragraph("DAQInterface has found more than one router process (RoutingMaster, DFO, etc.) associated with subsystem %s requested in the boot file %s; this isn't currently supported" % (subsystem_id, self.boot_filename)))
+
+            if not self.disable_private_network_bookkeeping:
+
+                # To-do: Tiebreaker needed in case the process group can see more than one private network...
+                router_process_private_networks[ subsystem_id ] = None
+
+                relevant_processes = []
+                for procinfo in self.procinfos:
+                    if "BoardReader" in procinfo.name and procinfo.subsystem == subsystem_id and \
+                       procinfo.label not in nonsending_boardreaders:
+                        relevant_processes.append(procinfo.label)
+                    elif "EventBuilder" in procinfo.name and self.subsystems[procinfo.subsystem].destination == subsystem_id and not get_router_process_identifier(procinfo) == "DFO":
+                        relevant_processes.append(procinfo.label)
+                       
+
+                for router_process_private_network_candidate in private_networks_seen[router_process_for_subsystem.label]:
+                    network_seen_by_relevant_processes = True
+
+                    for relevant_process in relevant_processes:
+                        if zero_out_last_subnet(router_process_private_network_candidate) not in \
+                           [zero_out_last_subnet(ntwrk) for ntwrk in private_networks_seen[relevant_process]]:
+                                network_seen_by_relevant_processes = False
+
+                    if network_seen_by_relevant_processes:
+                        router_process_private_networks[ subsystem_id ] = router_process_private_network_candidate
+                        break
+
+                if router_process_private_networks[ subsystem_id ] is None:
+                    self.print_log("w", make_paragraph("Warning: disable_private_network_bookkeeping isn't set to true in the DAQInterface settings file \"%s\" -- it defaults to false if unset -- but no private network was found visible both to the routing process %s and the all the processes the routing process works with (%s)" % \
+                                                       (os.environ["DAQINTERFACE_SETTINGS"], router_process_for_subsystem.label, ", ".join(relevant_processes))))
+        
+        # While we're looping on subsystems, let's also bookkeep the
+        # multicast_interface_ip parameter used for request sending, by 
+        # figuring out whether or not all the request-receiving boardreaders 
+        # and eventbuilders in the subsystem see the same private network
+
+        if not self.disable_private_network_bookkeeping:
+            boardreaders_involved_in_requests = []
+            eventbuilders_involved_in_requests = []
+
+            for procinfo in [procinfo for procinfo in self.procinfos if procinfo.subsystem == subsystem_id]:
+                if "BoardReader" in procinfo.name and procinfo.label not in nonsending_boardreaders:
+                    for token in ["[Ww]indow", "[Ss]ingle", "[Bb]uffer"]:
+                        res = re.search(r"\n\s*request_mode\s*:\s*\"?%s\"?" % (token), procinfo.fhicl_used)
+                        if res:
+                            boardreaders_involved_in_requests.append(procinfo.label)
+                            break
+
+                if "EventBuilder" in procinfo.name:
+                    res = re.search(r"\n\s*send_requests\s*:\s*true", procinfo.fhicl_used)
+                    if res:
+                        eventbuilders_involved_in_requests.append(procinfo.label)
+
+            #self.print_log("i", "BoardReaders involved in requests for subsystem %s: " % (str(subsystem_id)))
+            #self.print_log("i", " ".join(boardreaders_involved_in_requests))
+
+            #self.print_log("i", "EventBuilders involved in requests for subsystem %s: " % (str(subsystem_id)))
+            #self.print_log("i", print " ".join(eventbuilders_involved_in_requests))
+
+            processes_involved_in_requests = [process for process_list in \
+                                              [boardreaders_involved_in_requests, eventbuilders_involved_in_requests] \
+                                              for process in process_list ]
+
+            if len(processes_involved_in_requests) > 0:
+                private_networks_seen_by_processes_involved_in_requests = set( [zero_out_last_subnet(ntwrk) for ntwrk in private_networks_seen[processes_involved_in_requests[0]]] )
+                for i_proc in range(1, len(processes_involved_in_requests)):
+                    private_networks_seen_by_processes_involved_in_requests = private_networks_seen_by_processes_involved_in_requests.intersection(set( [zero_out_last_subnet(ntwrk) for ntwrk in private_networks_seen[processes_involved_in_requests[i_proc]]] ))
+
+                # JCF, Aug-12-2019
+                # Don't yet have a "tiebreaker" if there's more than one private network visible to all processes...
+
+                if len(list(private_networks_seen_by_processes_involved_in_requests)) > 0:
+                    multicast_interface_ip = list(private_networks_seen_by_processes_involved_in_requests)[0]
+                    for process_involved_in_request in processes_involved_in_requests:
+                        for i_proc in range(len(self.procinfos)):
+                            if self.procinfos[i_proc].label == process_involved_in_request:
+                                self.procinfos[i_proc].fhicl_used = re.sub("multicast_interface_ip\s*:\s*\S+", \
+                                                                           "multicast_interface_ip: \"%s\"" % \
+                                                                           (multicast_interface_ip), \
+                                                                           self.procinfos[i_proc].fhicl_used)
+                else:
+                    self.print_log("w", make_paragraph("Warning: disable_private_network_bookkeeping isn't set to true in the DAQInterface settings file \"%s\" -- it defaults to false if unset -- but no private network was found visible to all the processes involved in data requests for subsystem %s: %s" % (os.environ["DAQINTERFACE_SETTINGS"], str(subsystem_id), ", ".join(processes_involved_in_requests) )))
 
     # JCF, Apr-18-2019
 
@@ -564,12 +670,37 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         table_to_bookkeep = re.sub("table_acknowledge_port\s*:\s*[0-9]+", 
                                       "table_acknowledge_port: %d" % (routing_base_ports[router_process_subsystem] + 20), 
                                       table_to_bookkeep)
-        table_to_bookkeep = re.sub("routing_master_hostname\s*:\s*\S+",
-                                      "routing_master_hostname: \"%s\"" % (router_process_hostnames[router_process_subsystem].strip("\"")),
-                                      table_to_bookkeep)
         table_to_bookkeep = re.sub("routing_token_port\s*:\s*[0-9]+", 
                                       "routing_token_port: %d" % (routing_base_ports[router_process_subsystem]), 
                                       table_to_bookkeep)
+
+        if "RoutingMaster" not in self.procinfos[i_proc].name or not self.disable_private_network_bookkeeping:
+            table_to_bookkeep = re.sub("routing_master_hostname\s*:\s*\S+",
+                                       "routing_master_hostname: \"%s\"" % (router_process_hostnames[router_process_subsystem].strip("\"")),
+                                       table_to_bookkeep)
+
+        # So far in this function we've just set
+        # routing_master_hostname to the router process hostname from
+        # the boot file and left table_update_multicast_interface
+        # untouched, but let's see if we can use a shared private
+        # network...
+
+        if not self.disable_private_network_bookkeeping and router_process_private_networks[router_process_subsystem] is not None:
+            for private_network_seen in private_networks_seen[self.procinfos[i_proc].label]:
+
+                if zero_out_last_subnet(private_network_seen) == zero_out_last_subnet(router_process_private_networks[router_process_subsystem]):
+
+                    routing_master_hostname_value = router_process_private_networks[router_process_subsystem]
+                    table_update_multicast_interface_value = zero_out_last_subnet(private_network_seen)
+
+                    table_to_bookkeep = re.sub("routing_master_hostname\s*:\s*\S+",
+                                               "routing_master_hostname: \"%s\"" % (routing_master_hostname_value),
+                                               table_to_bookkeep)
+
+                    table_to_bookkeep = re.sub("table_update_multicast_interface\s*:\s*\S+",
+                                               "table_update_multicast_interface: \"%s\"" % (table_update_multicast_interface_value),
+                                               table_to_bookkeep)
+                    break
 
         self.procinfos[i_proc].fhicl_used = self.procinfos[i_proc].fhicl_used[:table_start] + \
                             "\n" + table_to_bookkeep + "\n" + \
@@ -599,8 +730,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             if eb_subsystem in router_process_hostnames: 
                 bookkeep_table_for_router_process(i_proc, eb_subsystem, "routing_token_config")
 
-            parents_of_subsystems_with_routing_masters = [self.subsystems[subsystem_id].source for subsystem_id in self.subsystems if self.subsystems[subsystem_id].source != "not set" and subsystem_id in router_process_hostnames.keys()]
-                
+            unflattened_parents_of_subsystems_with_routing_masters = [self.subsystems[subsystem_id].sources for subsystem_id in self.subsystems if subsystem_id in [rm.subsystem for rm in self.procinfos if get_router_process_identifier(rm) == "RoutingMaster"] ]
+            parents_of_subsystems_with_routing_masters = [subsystem_id for parents in unflattened_parents_of_subsystems_with_routing_masters for subsystem_id in parents]
+
             if eb_subsystem in parents_of_subsystems_with_routing_masters:
                 bookkeep_table_for_router_process(i_proc, self.subsystems[eb_subsystem].destination, "routing_table_config")
 
@@ -656,27 +788,3 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 def bookkeeping_for_fhicl_documents_artdaq_v4_base(self):
     pass
 
-def main():
-    
-    test_table_range = True
-
-    if test_table_range:
-
-        filename = "%s/simple_test_config/multiple_dispatchers/Aggregator2.fcl" % os.getcwd()
-
-        inf = open( filename )
-        
-        inf_contents = inf.read()
-
-        print "From file " + filename
-
-        for tablename in ["sources", "destinations"]:
-            (table_start, table_end) = table_range( inf_contents, tablename )
-            
-            print "Seven characters centered on table_start: \"" + inf_contents[(table_start - 3):(table_start+4)] + "\""
-            print "Seven characters centered on table_end: \"" + inf_contents[(table_end - 3):(table_end+4)] + "\""
-            print "The table_start: \"" + inf_contents[(table_start):(table_start+1)] + "\""
-            print "The table_end: \"" + inf_contents[(table_end ):(table_end+1)] + "\""
-
-if __name__ == "__main__":
-    main()

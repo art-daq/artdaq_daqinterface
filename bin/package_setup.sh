@@ -24,9 +24,12 @@ if [[ ! -e $DAQINTERFACE_SETTINGS ]]; then
     echo "Unable to find DAQInterface settings file \"$DAQINTERFACE_SETTINGS\"" >&2
     return 30
 fi
+test -z "${ARTDAQ_DAQINTERFACE_DIR-}" && { echo "Error: artdaq_daqinterface not setup"; return 40; }
 
 proddir=$( sed -r -n 's/^\s*productsdir[_ ]for[_ ]bash[_ ]scripts\s*:\s*(\S+).*/\1/p' $DAQINTERFACE_SETTINGS )
-proddir=$( echo $( eval echo $proddir ) )  # Expand environ variables in string
+export PRODUCTS
+eval "PRODUCTS=\"$proddir\"" # Expand environ variables in string
+proddir=`$ARTDAQ_DAQINTERFACE_DIR/rc/control/utilities.py upsproddir_from_productsdir "$PRODUCTS"`
 
 if [[ -n $proddir ]]; then
 

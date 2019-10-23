@@ -17,6 +17,7 @@ from rc.control.utilities import date_and_time
 from rc.control.utilities import construct_checked_command
 from rc.control.utilities import obtain_messagefacility_fhicl
 from rc.control.utilities import make_paragraph
+from rc.control.utilities import upsproddir_from_productsdir
 from rc.control.deepsuppression import deepsuppression
 
 
@@ -47,17 +48,16 @@ def bootfile_name_to_execname(bootfile_name):
 
 def launch_procs_base(self):
 
-    if self.have_artdaq_mfextensions():
-        messagefacility_fhicl_filename = obtain_messagefacility_fhicl()
 
-        for host in set([procinfo.host for procinfo in self.procinfos]):
-            if host != "localhost" and host != os.environ["HOSTNAME"]:
-                cmd = "scp -p %s %s:%s" % (messagefacility_fhicl_filename, host, messagefacility_fhicl_filename)
-                status = Popen(cmd, shell=True).wait()
+    messagefacility_fhicl_filename = obtain_messagefacility_fhicl(self.have_artdaq_mfextensions())
 
-                if status != 0:
-                    raise Exception("Status error raised in %s executing \"%s\"" % (launch_procs_base.__name__, cmd))
+    for host in set([procinfo.host for procinfo in self.procinfos]):
+        if host != "localhost" and host != os.environ["HOSTNAME"]:
+            cmd = "scp -p %s %s:%s" % (messagefacility_fhicl_filename, host, messagefacility_fhicl_filename)
+            status = Popen(cmd, shell=True).wait()
 
+            if status != 0:
+                raise Exception("Status error raised in %s executing \"%s\"" % (launch_procs_base.__name__, cmd))
 
     launch_commands_to_run_on_host = {}
     launch_commands_to_run_on_host_background = {}  # Need to run artdaq processes in the background so they're persistent outside of this function's Popen calls
@@ -75,12 +75,11 @@ def launch_procs_base(self):
 
             launch_commands_to_run_on_host[ procinfo.host ].append("set +C")  
             launch_commands_to_run_on_host[ procinfo.host ].append("echo > %s" % (self.launch_attempt_file))
-            launch_commands_to_run_on_host[ procinfo.host ].append(". %s/setup >> %s 2>&1 " % (self.productsdir, self.launch_attempt_file))
+            launch_commands_to_run_on_host[ procinfo.host ].append("export PRODUCTS=\"%s\"; . %s/setup >> %s 2>&1 " % (self.productsdir,upsproddir_from_productsdir(self.productsdir),self.launch_attempt_file))
             launch_commands_to_run_on_host[ procinfo.host ].append( bash_unsetup_command )
-            launch_commands_to_run_on_host[ procinfo.host ].append("source %s >> %s 2>&1 " % (self.daq_setup_script, self.launch_attempt_file ))
+            launch_commands_to_run_on_host[ procinfo.host ].append("source %s for_running >> %s 2>&1 " % (self.daq_setup_script, self.launch_attempt_file ))
             launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_ROOT=%s" % (self.log_directory))
-            if self.have_artdaq_mfextensions():
-                launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))
+            launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))
             launch_commands_to_run_on_host[ procinfo.host ].append("which boardreader >> %s 2>&1 " % (self.launch_attempt_file)) # Assume if this works, eventbuilder, etc. are also there
             #launch_commands_to_run_on_host[ procinfo.host ].append("setup valgrind v3_13_0")
 	    #launch_commands_to_run_on_host[ procinfo.host ].append("export LD_PRELOAD=libasan.so")
@@ -334,14 +333,13 @@ def get_pids_and_labels_on_host(host, procinfos):
     
     for procinfo in [pi for pi in procinfos if pi.host == host]:
         greptokens.append( "[0-9]:[0-9][0-9]\s\+" + bootfile_name_to_execname(procinfo.name) + " -c .*" + procinfo.port + ".*" ) 
+    greptoken = "[0-9]:[0-9][0-9]\s\+\(%s\).*application_name.*partition_number:\s*%s" % \
+                ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])), \
+                 os.environ["DAQINTERFACE_PARTITION_NUMBER"])
 
-    greptoken = "\|".join(greptokens)
-    
-    greptoken = "[0-9]:[0-9][0-9]\s\+\(%s\).*application_name.*partition_number" % \
-                ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])))
-
-    #greptoken = "[0-9]:[0-9][0-9]\s\+valgrind.*\(%s\).*application_name.*partition_number" % \
-    #            ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])))
+    #greptoken = "[0-9]:[0-9][0-9]\s\+valgrind.*\(%s\).*application_name.*partition_number:\s*%s" % \
+    #            ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])), \
+    # os.environ["DAQINTERFACE_PARTITION_NUMBER"])
 
 
     grepped_lines = []

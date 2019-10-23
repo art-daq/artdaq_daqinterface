@@ -7,6 +7,7 @@ fi
 
 runnum=$1
 
+. $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
 . $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
 if [[ ! -d $recorddir/$runnum ]]; then
@@ -29,8 +30,11 @@ awk '/commit\/version/ ' $recorddir/$runnum/metadata.txt | while read line; do
     package_underscored=$( echo $package | sed -r 's/-/_/g' )
     
     hash_or_version=$( echo $line | awk '{print $3}' )
-    
+    locs_added=$( echo $line | awk '{print $4}' )
+    locs_subtracted=$( echo $line | awk '{print $5}' )
+
     if [[ ${#hash_or_version} == 40 ]]; then
+
 	repo_dir=""
 
 	if [[ -e $daq_dir/srcs/$package ]]; then
@@ -40,6 +44,19 @@ awk '/commit\/version/ ' $recorddir/$runnum/metadata.txt | while read line; do
 	else
 	    echo "Unable to find repository for $package in installation located in $daq_dir" >&2
 	fi
+
+	if [[ "$locs_added" != "0" || "$locs_subtracted" != "0" ]]; then
+
+	    cat<<EOF
+
+It's not possible to compare the current code in $repo_dir with the
+code used in run $runnum since according to the run record the code
+wasn't fully committed at the time of the run.
+
+EOF
+	fi
+
+
 	
 	cd $repo_dir
 	hash_and_comment=$( git log --pretty=oneline -1 )
