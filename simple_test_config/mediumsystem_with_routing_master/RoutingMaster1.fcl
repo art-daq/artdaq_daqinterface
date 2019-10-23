@@ -18,7 +18,7 @@
     }
 
     ## Hostname or IP of RoutingMaster
-    routing_master_hostname: "localhost"  # default
+    routing_master_hostname: "0.0.0.0"
 
     ## Port that table updates should arrive on
     table_update_port: 35556  # default

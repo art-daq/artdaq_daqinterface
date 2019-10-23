@@ -30,7 +30,11 @@ from rc.control.all_functions_noop import start_datataking_base
 from rc.control.all_functions_noop import stop_datataking_base
 from rc.control.all_functions_noop import do_enable_base
 from rc.control.all_functions_noop import do_disable_base
-from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v3_base
+
+if "DAQINTERFACE_DISABLE_BOOKKEEPING" in os.environ and not os.environ["DAQINTERFACE_DISABLE_BOOKKEEPING"] == "false" :
+    from rc.control.all_functions_noop import bookkeeping_for_fhicl_documents_artdaq_v3_base
+else:
+    from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v3_base
 
 from rc.control.online_monitoring import launch_art_procs_base
 from rc.control.online_monitoring import kill_art_procs_base
@@ -40,6 +44,7 @@ from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_pids
 from rc.control.utilities import is_msgviewer_running
 from rc.control.utilities import date_and_time
+from rc.control.utilities import date_and_time_more_precision
 from rc.control.utilities import construct_checked_command
 from rc.control.utilities import reformat_fhicl_documents
 from rc.control.utilities import fhicl_writes_root_file
@@ -305,11 +310,25 @@ class DAQInterface(Component):
 
     def reset_variables(self):
 
-        self.exception = False
         self.in_recovery = False
         self.heartbeat_failure = False
         self.manage_processes = True
         self.disable_recovery = False
+        self.bootfile_fhicl_overwrites = {}
+        self.called_launch_procs = False
+        self.check_proc_exceptions_number_of_status_failures = 0
+        self.daq_setup_script = None
+        self.debug_level = 10000
+        self.request_address = None
+
+        # JCF, Nov-7-2015
+
+        # Now that we're going with a multithreaded (simultaneous)
+        # approach to sending transition commands to artdaq processes,
+        # when an exception is thrown a thread the main thread needs
+        # to know about it somehow - thus this new exception variable
+
+        self.exception = False
 
         self.reset_process_manager_variables()
 
@@ -346,17 +365,8 @@ class DAQInterface(Component):
                            rpc_port=rpc_port,
                            skip_init=False)
 
-        self.manage_processes = True
-        self.disable_recovery = False
+        self.reset_variables()
 
-        self.in_recovery = False
-        self.heartbeat_failure = False
-        self.called_launch_procs = False
-
-        self.debug_level = 10000
-        self.request_address = None
-        self.table_update_address = None
-        self.routing_base_port = None
         self.partition_number = partition_number
         self.transfer = "Autodetect"
         self.rpc_port = rpc_port
@@ -371,17 +381,6 @@ class DAQInterface(Component):
         # given with an absolute path in the #include .
 
         self.fhicl_file_path = []
-
-        self.bootfile_fhicl_overwrites = {}
-
-        # JCF, Nov-7-2015
-
-        # Now that we're going with a multithreaded (simultaneous)
-        # approach to sending transition commands to artdaq processes,
-        # when an exception is thrown a thread the main thread needs
-        # to know about it somehow - thus this new exception variable
-
-        self.exception = False
 
         self.check_proc_exceptions_number_of_status_failures = 0
 
@@ -503,7 +502,6 @@ class DAQInterface(Component):
 
         self.log_directory = None
         self.record_directory = None
-        self.daq_setup_script = None
         self.package_hashes_to_save = []
         self.package_versions = {}
         self.productsdir_for_bash_scripts = None
@@ -521,6 +519,7 @@ class DAQInterface(Component):
         self.data_directory_override = None
         self.max_configurations_to_list = 1000000
         self.disable_unique_rootfile_labels = False
+        self.disable_private_network_bookkeeping = False
         self.allowed_processors = None
 
         self.productsdir = None
@@ -594,7 +593,15 @@ class DAQInterface(Component):
                 elif "false" in token or "False" in token:
                     self.disable_unique_rootfile_labels = False
                 else:
-                    raise Exception("disable_unique_rootfile_labels must be set to either [Tt]rue or [Ff]alse")
+                    raise Exception("disable_unique_rootfile_labels must be set to either [Tt]rue or [Ff]alse in settings file \"%s\"" % (os.environ["DAQINTERFACE_SETTINGS"]))
+            elif "disable_private_network_bookkeeping" in line or "disable private network bookkeeping" in line:
+                token = line.split()[-1].strip()
+                if "true" in token or "True" in token:
+                    self.disable_private_network_bookkeeping = True
+                elif "false" in token or "False" in token:
+                    self.disable_private_network_bookkeeping = False
+                else:
+                    raise Exception("disable_private_network_bookkeeping must be set to either [Tt]rue or [Ff]alse in settings file \"%s\"" % (os.environ["DAQINTERFACE_SETTINGS"]))
             elif "use_messageviewer" in line or "use messageviewer" in line:
                 token = line.split()[-1].strip()
                 
@@ -991,12 +998,17 @@ class DAQInterface(Component):
             proctypes = []
 
             cmds.append('short_hostname=$( hostname | sed -r "s/([^.]+).*/\\1/" )')
-            for procinfo in procinfos_for_host:
+            for i_p, procinfo in enumerate(procinfos_for_host):
 
-                cmds.append( "ls -tr1 %s/%s-$short_hostname-%s/%s-$short_hostname-%s*.log | tail -1" % \
-                             (self.log_directory,
-                              procinfo.label, procinfo.port,
+                output_logdir = "%s/%s-$short_hostname-%s" % (self.log_directory, procinfo.label, procinfo.port)
+                cmds.append( "filename_%s=$( ls -tr1 %s/%s-$short_hostname-%s*.log | tail -1 )" % \
+                             (i_p, output_logdir,
                               procinfo.label, procinfo.port) )
+                cmds.append( "if [[ -z $filename_%s ]]; then echo No logfile found for process %s on %s after looking in %s >&2 ; exit 1; fi" % \
+                             (i_p, procinfo.label, procinfo.host, output_logdir))
+                cmds.append("timestamp_%s=$( stat -c %%Y $filename_%s )" % (i_p, i_p))
+                cmds.append("if (( $( echo \"$timestamp_%s < %f\" | bc -l ) )); then echo Most recent logfile found in expected output directory for process %s on %s, $filename_%s, is too old to be the logfile for the process in this run >&2 ; exit 1; fi" % (i_p, self.launch_procs_time, procinfo.label, procinfo.host, i_p))
+                cmds.append("echo Logfile for process %s on %s is $filename_%s" % (procinfo.label, procinfo.host, i_p))
                 proctypes.append( procinfo.name )
 
             cmd = "; ".join( cmds )
@@ -1006,21 +1018,25 @@ class DAQInterface(Component):
 
             proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             proclines = proc.stdout.readlines()
+            proclines_err = proc.stderr.readlines()
 
-            if len(proclines) != len(proctypes):
-                self.print_log("w", "Problem associating logfiles with the artdaq processes!")
+            if len( [ line for line in proclines if re.search(r"\.log$", line) ]) != len(proctypes):
+                self.print_log("e", "\nProblem associating logfiles with the artdaq processes. Output is as follows:")
+                self.print_log("e", "\nSTDOUT:\n======================================================================\n%s\n======================================================================\n" % ("".join(proclines)))
+                self.print_log("e", "STDERR:\n======================================================================\n%s\n======================================================================\n" % ("".join(proclines_err)))
+                raise Exception(make_paragraph("Error: there was a problem identifying the logfiles for at least some of the artdaq processes. This may be the result of you not having write access to the directories where the logfiles are meant to be written. Please scroll up to see further output."))
                 
             for i_p in range(len(proclines)):
                 if "BoardReader" in proctypes[i_p]:
-                    self.boardreader_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip()))
+                    self.boardreader_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip().split()[-1]))
                 elif "EventBuilder" in proctypes[i_p]:
-                    self.eventbuilder_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip()))
+                    self.eventbuilder_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip().split()[-1]))
                 elif "DataLogger" in proctypes[i_p]:
-                    self.datalogger_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip()))
+                    self.datalogger_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip().split()[-1]))
                 elif "Dispatcher" in proctypes[i_p]:
-                    self.dispatcher_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip()))
+                    self.dispatcher_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip().split()[-1]))
                 elif "RoutingMaster" in proctypes[i_p]:
-                    self.routingmaster_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip()))
+                    self.routingmaster_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip().split()[-1]))
                 else:
                     assert False, "Unknown process type found in procinfos list"
 
@@ -1110,19 +1126,19 @@ class DAQInterface(Component):
                     self.print_log("w", stderrlines[0])
                 else:
                     raise Exception("Error in %s: the command \"%s\" yields output to stderr:\n\"%s\"" % \
-                                    (self.get_package_version.__name__, cmd, "".join(stderrlines)))
+                                    (self.fill_package_versions.__name__, cmd, "".join(stderrlines)))
 
             if len(stdoutlines) == 0:
                 print traceback.format_exc()
                 raise Exception("Error in %s: the command \"%s\" yields no output to stdout" % \
-                                (self.get_package_version.__name__, cmd))
+                                (self.fill_package_versions.__name__, cmd))
 
             for line in stdoutlines:
                 if re.search(r"^(%s)\s+" % ("|".join(needed_packages)), line):
                     (package, version) = line.split()
 
                     if not re.search(r"v[0-9]+_[0-9]+_[0-9]+.*", version):
-                        raise Exception(make_paragraph("Error in %s: the version of the package \"%s\" this function has determined, \"%s\", is not the expected v<int>_<int>_<int>optionalextension format" % (self.get_package_version.__name__, package, version)))
+                        raise Exception(make_paragraph("Error in %s: the version of the package \"%s\" this function has determined, \"%s\", is not the expected v<int>_<int>_<int>optionalextension format" % (self.fill_package_versions.__name__, package, version)))
 
                     self.package_versions[package] = version
 
@@ -1205,6 +1221,7 @@ class DAQInterface(Component):
                 return
 
             try:
+                self.print_log("d", "%s: Sending transition to %s" % (date_and_time_more_precision(), self.procinfos[procinfo_index].label), 3)
 
                 if command == "Init":
                     self.procinfos[procinfo_index].lastreturned = \
@@ -1501,6 +1518,7 @@ class DAQInterface(Component):
             hosts = [procinfo.host for procinfo in self.procinfos]
             random_host = random.choice( hosts )
 
+            ssh_timeout_in_seconds = 30
             starttime = time()
             self.print_log("i", "\nOn randomly selected node (%s), checking that the setup file %s doesn't return a nonzero value when sourced..." % \
                            (random_host, self.daq_setup_script), 1, False)
@@ -1509,7 +1527,7 @@ class DAQInterface(Component):
                 cmd = "%s ; . %s for_running" % (bash_unsetup_command, self.daq_setup_script)
 
                 if random_host != "localhost" and random_host != os.environ["HOSTNAME"]:
-                    cmd = "ssh %s '%s'" % (random_host, cmd)
+                    cmd = "timeout %d ssh %s '%s'" % (ssh_timeout_in_seconds, random_host, cmd)
 
                 out = Popen(cmd, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
 
@@ -1520,12 +1538,16 @@ class DAQInterface(Component):
                 status = out.returncode
 
             if status != 0:
-                self.print_log("e", "\nNonzero value (%d) returned in attempt to source script %s on host \"%s\"." % \
-                               (status, self.daq_setup_script, random_host))
+                errmsg="Nonzero value (%d) returned in attempt to source script %s on host \"%s\"" % \
+                               (status, self.daq_setup_script, random_host)
+                if status != 124:
+                    errmsg = "%s." % (errmsg)
+                else:
+                    errmsg = "%s; returned value suggests that the ssh call to %s timed out. Perhaps a lack of public/private ssh keys resulted in ssh asking for a password?" % (errmsg, random_host)
+                self.print_log("e", make_paragraph(errmsg))
                 self.print_log("e", "STDOUT: \n%s" % (out_stdout))
                 self.print_log("e", "STDERR: \n%s" % (out_stderr))
-                raise Exception("Nonzero value (%d) returned in attempt to source script %s on host %s." % \
-                                (status, self.daq_setup_script, random_host))
+                raise Exception("Problem source-ing %s on %s" % (self.daq_setup_script, random_host))
             
             endtime = time()
             self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
@@ -1563,17 +1585,19 @@ class DAQInterface(Component):
                 logdircmd = construct_checked_command( logdir_commands_to_run_on_host )
 
                 if host != os.environ["HOSTNAME"] and host != "localhost":
-                    logdircmd = "ssh -f " + host + " '" + logdircmd + "'"
+                    logdircmd = "timeout %d ssh -f %s '%s'" % (ssh_timeout_in_seconds, host, logdircmd)
 
                 with deepsuppression(self.debug_level < 4):
                     proc = Popen(logdircmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     status = proc.wait()
 
                 if status != 0:   
+
                     self.print_log("e", "\nNonzero return value (%d) resulted when trying to run the following on host %s:\n%s\n" % \
                                    (status, host, "\n".join(logdir_commands_to_run_on_host)))
                     self.print_log("e", "STDOUT output: \n%s" % ("\n".join(proc.stdout.readlines())))
                     self.print_log("e", "STDERR output: \n%s" % ("\n".join(proc.stderr.readlines())))
+                    self.print_log("e", make_paragraph("Returned value of %d suggests that the ssh call to %s timed out. Perhaps a lack of public/private ssh keys resulted in ssh asking for a password?" % (status, host)))
                     raise Exception("Problem running mkdir -p for the needed logfile directories on %s" % ( host ) )
 
             self.init_process_requirements() 
@@ -1583,6 +1607,7 @@ class DAQInterface(Component):
 
             self.print_log("i", "Launching the artdaq processes")
             self.called_launch_procs = True
+            self.launch_procs_time = time()   # Will be used when checking logfile's timestamps
 
             try:
                 launch_procs_actions = self.launch_procs()
@@ -1732,7 +1757,7 @@ class DAQInterface(Component):
 
             except Exception:
                 self.print_log("e", traceback.format_exc())
-                self.alert_and_recover("Problem obtaining logfile name(s)")
+                self.alert_and_recover("Unable to find logfiles for the processes")
                 return
             endtime = time()
             self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
@@ -1982,9 +2007,9 @@ class DAQInterface(Component):
             try:
                 shutil.copytree(self.tmp_run_record, run_record_directory)
             except:
-                self.print_log("w", traceback.format_exc())
-                self.print_log("w", make_paragraph("Attempt to copy temporary run record \"%s\" into permanent run record \"%s\" didn't work; THIS MEANS YOU WON'T HAVE A RUN RECORD FOR THIS RUN" % (self.tmp_run_record, run_record_directory)))
-
+                self.print_log("e", traceback.format_exc())
+                self.alert_and_recover(make_paragraph("Error: Attempt to copy temporary run record \"%s\" into permanent run record \"%s\" didn't work; most likely reason is that you don't have write permission to %s, but it may also mean that your experiment's reusing a run number. Scroll up past the Recover transition output for further troubleshooting information." % (self.tmp_run_record, run_record_directory, self.record_directory)))
+                return
             os.chmod(run_record_directory, 0o555)
 
             assert re.search(r"^/tmp/\S", self.semipermanent_run_record)
@@ -2089,6 +2114,17 @@ class DAQInterface(Component):
 
         if self.manage_processes:
 
+            for i_proc in range(len(self.procinfos)):
+                if "BoardReader" in self.procinfos[i_proc].name:
+                    try:
+                        for priority, regexp in enumerate(self.boardreader_priorities_on_stop):
+                            print "%d %s" % (priority, regexp)
+                            if re.search(regexp, self.procinfos[i_proc].label):
+                                self.procinfos[i_proc].priority = priority
+
+                    except Exception:
+                        pass  # It's not an error if there were no boardreader priorities read in from $DAQINTERFACE_SETTINGS
+
             try:
                 self.do_command("Stop")
             except Exception:
@@ -2155,6 +2191,7 @@ class DAQInterface(Component):
 
         self.in_recovery = True
 
+
         if not self.called_launch_procs:
             self.print_log("i", "DAQInterface does not appear to have gotten to the point of launching the artdaq processes")
 
@@ -2165,8 +2202,6 @@ class DAQInterface(Component):
             self.complete_state_change(self.name, "recovering")
             self.print_log("i", "\n%s: RECOVER transition complete" % (date_and_time()))
             return
-
-        self.called_launch_procs = False
 
         def attempted_stop(self, procinfo):
 
@@ -2307,6 +2342,14 @@ class DAQInterface(Component):
 
         self.in_recovery = False
 
+        # JCF, Oct-15-2019
+
+        # Make sure that the runner function won't just proceed with a
+        # transition "in the queue" despite DAQInterface being in the
+        # Stopped state after we've finished this recover
+
+        self.__do_boot = self.__do_shutdown = self.__do_config = self.__do_recover = self.__do_start_running = self.__do_stop_running = self.__do_terminate = self.__do_pause_running = self.__do_resume_running = self.__do_enable = self.__do_disable = False
+
         self.complete_state_change(self.name, "recovering")
 
         self.print_log("i", "\n%s: RECOVER transition complete" % (date_and_time()))
@@ -2386,6 +2429,7 @@ class DAQInterface(Component):
             self.in_recovery = False
 
 
+
 def get_args():  # no-coverage
     parser = argparse.ArgumentParser(
         description="DAQInterface")
@@ -2404,16 +2448,6 @@ def get_args():  # no-coverage
 
 
 def main():  # no-coverage
-
-    one_daqinterface_per_host = False
-
-    greptoken = "python.*daqinterface.py"
-    pids = get_pids(greptoken)
-
-    if len(pids) > 1 and one_daqinterface_per_host:
-        print make_paragraph("Won't launch DAQInterface; it appears an instance is already running on this host according to this command:" )
-        print "\nps aux | grep \"%s\" | grep -v grep\n" % (greptoken)
-        return
 
     if "DAQINTERFACE_STANDARD_SOURCEFILE_SOURCED" not in os.environ.keys():
         print make_paragraph("Won't launch DAQInterface; you first need to run \"source $ARTDAQ_DAQINTERFACE_DIR/source_me\"")
@@ -2453,6 +2487,12 @@ def main():  # no-coverage
         print make_paragraph("The file referred to by the DAQINTERFACE_KNOWN_BOARDREADERS_LIST environment variable, \"%s\", does not appear to exist" % (os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"]))
         print
         return
+
+    if not "HOSTNAME" in os.environ:
+        print
+        print make_paragraph("WARNING: the \"HOSTNAME\" environment variable does not appear to be defined (or, at least, does not appear in the os.environ dictionary). Will internally set it using the system's \"hostname\" command")
+        os.environ["HOSTNAME"] = Popen("hostname", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+        print
 
     args = get_args()
 

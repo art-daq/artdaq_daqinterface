@@ -36,7 +36,7 @@ def version_to_integer(version):
     return patchnum + 100*minornum + 10000*majornum
 
 if version_to_integer(os.environ["ARTDAQ_DATABASE_VERSION"]) >= version_to_integer("v1_04_75"):
-    from conftool import getListOfAvailableRunConfigurationsSubtractMasked
+    from conftool import getListOfMaskedRunConfigurations
 else:
     print
     print make_paragraph("WARNING: you appear to be using an artdaq_database version older than v1_04_75 (%s), on the config transition DAQInterface will accept a configuration even if it's been masked off" % (os.environ["ARTDAQ_DATABASE_VERSION"]))
@@ -46,6 +46,7 @@ from conftool import exportConfiguration
 from conftool import getListOfAvailableRunConfigurations
 from conftool import archiveRunConfiguration
 from conftool import updateArchivedRunConfiguration
+
 
 def config_basedir(self):
     return "/tmp/database/"
@@ -68,19 +69,19 @@ def get_config_info_base(self):
 
     for subconfig in self.subconfigs_for_run:
 
-        if subconfig not in getListOfAvailableRunConfigurations():
+        if subconfig not in getListOfAvailableRunConfigurations(subconfig):
             raise Exception(make_paragraph("Error: (sub)config \"%s\" was not found in a call to conftool.getListOfAvailableRunConfigurations" % (subconfig)))
         else:
             try:
-                if subconfig not in getListOfAvailableRunConfigurationsSubtractMasked():
-                            raise Exception(make_paragraph("Error: (sub)config \"%s\" appears to have been masked off (i.e., it doesn't appear in a call to conftool.getListOfAvailableRunConfigurationsSubtractMasked given the flags file %s)" % (subconfig, tmpflagsfile)))
+                if subconfig in getListOfMaskedRunConfigurations():
+                    raise Exception(make_paragraph("Error: (sub)config \"%s\" has been invalidated (i.e., it appears in a call to conftool.getListOfMaskedRunConfigurations given the flags file %s)" % (subconfig, tmpflagsfile)))
             except NameError:
                 pass
 
         subconfigdir = "%s/%s" % (tmpdir, subconfig)
         os.mkdir( subconfigdir )
         os.chdir( subconfigdir )
-        
+
         with deepsuppression(self.debug_level < 2):
             result = exportConfiguration( subconfig )
 
@@ -147,48 +148,29 @@ def put_config_info_base(self):
                 
                 ignore_line = False
 
-                for procname in ["EventBuilder", "DataLogger", "Dispatcher", "RoutingMaster"] :
-                    res = re.search(r"^\s*%s_" % (procname), line)
+                if line == "":
+                    ignore_line = True
+
+                for keyname in ["artdaq_process_settings", "debug_level"] :
+                    res = re.search(r"^\s*%s\s*:" % (keyname), line)
                     if res:
                         ignore_line = True
                         break
 
-                if "debug_level" in line or line == "":
-                    ignore_line = True
-
                 if not ignore_line:
+                    if "subsystem_settings" in line:
+                        line = line.replace("subsystem_settings", "subsystem_values")
                     dataflow_file.write("\n" + line)
 
-        proc_attrs = ["host", "port", "label", "rank"]
-        proc_types = ["BoardReader", "EventBuilder", "DataLogger", "Dispatcher", "RoutingMaster"]
+        dataflow_file.write("\nartdaq_process_values: [ ")
 
-        proc_line = {}
+        for i_p, procinfo in enumerate(self.procinfos):
+            dataflow_file.write("{ name: \"%s\" label: \"%s\" host: \"%s\" port: %d subsystem: \"%s\" rank: %d } " % \
+                                (procinfo.name, procinfo.label, procinfo.host, int(procinfo.port), procinfo.subsystem, int(procinfo.rank)))
+            if i_p < len(self.procinfos) - 1:
+                dataflow_file.write(", ")
 
-        with open("%s/ranks.txt" % (runrecord)) as ranksfile:
-            for line in ranksfile.readlines():
-                res = re.search(r"^\s*(\S+)\s+([0-9]+)\s+(\S+)\s+([0-9]+)\s*$", line)
-                if res:
-                    host, port, label, rank = res.group(1), res.group(2), res.group(3), res.group(4)
-                    
-                    for procinfo in self.procinfos:
-                        if label == procinfo.label:
-                            assert host == procinfo.host or (procinfo.host == "localhost" and host == os.environ["HOSTNAME"])
-                            assert port == procinfo.port
-
-                            # "host" used for the check, but could just as well be "port", "label" or "rank"
-                            if "%s_host" % (procinfo.name) not in proc_line.keys():
-                                for proc_attr in proc_attrs:
-                                    proc_line["%s_%s" % (procinfo.name, proc_attr)] = "%s_%ss: [" % (procinfo.name, proc_attr)
-                            
-                            proc_line["%s_host" % (procinfo.name)] += "\"%s\"," % (procinfo.host)
-                            proc_line["%s_port" % (procinfo.name)] += "\"%s\"," % (procinfo.port)
-                            proc_line["%s_label" % (procinfo.name)] += "\"%s\"," % (procinfo.label)
-                            proc_line["%s_rank" % (procinfo.name)] += "\"%s\"," % (rank)
-
-        for proc_line_key, proc_line_value in proc_line.items():
-            proc_line_value = proc_line_value[:-1] # Strip the trailing comma
-            proc_line[ proc_line_key ] = proc_line_value + "]"
-            dataflow_file.write("\n" + proc_line[ proc_line_key ] )
+        dataflow_file.write(" ]\n")
 
         with open( "%s/%s/metadata.fcl" % (tmpdir, runnum) ) as metadata_file:
             for line in metadata_file.readlines():
@@ -230,10 +212,6 @@ def put_config_info_base(self):
 
 def put_config_info_on_stop_base(self):
 
-    if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] != "external_run_control" or \
-       not os.path.exists("/tmp/info_to_archive_partition%d.txt" % (self.partition_number)):
-        return
-
     runnum = str(self.run_number)
     tmpdir = "/tmp/" + Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
     os.mkdir(tmpdir)
@@ -242,7 +220,36 @@ def put_config_info_on_stop_base(self):
 
 
     with open( "%s/%s/RunHistory2.fcl" % (tmpdir, runnum), "w" ) as runhistory_file:
-        runhistory_file.write( fhiclize_document( "/tmp/info_to_archive_partition%d.txt" % (self.partition_number ) ))
+
+        metadata_filename = "%s/%s/metadata.txt" % (self.record_directory, str(self.run_number))
+        
+        if os.path.exists(metadata_filename):
+            found_start_time = False
+            found_stop_time = False
+            
+            with open(metadata_filename) as metadata_file:
+                for line in metadata_file:
+                    res = re.search(r"^DAQInterface start time:\s+(.*)", line)
+                    if res:
+                        runhistory_file.write("\nDAQInterface_start_time: \"%s\"\n" % (res.group(1)))
+                        found_start_time = True
+                        continue
+                    res = re.search(r"^DAQInterface stop time:\s+(.*)", line)
+                    if res:
+                        runhistory_file.write("\nDAQInterface_stop_time: \"%s\"\n" % (res.group(1)))
+                        found_stop_time = True
+            
+            if not found_start_time:
+                self.print_log("w", "WARNING: unable to find DAQInterface start time in %s; will not save this info into the database" % (metadata_filename))
+            if not found_stop_time:
+                self.print_log("w", "WARNING: unable to find DAQInterface stop time in %s; will not save this info into the database" % (metadata_filename))
+                
+        else:
+            self.print_log("w", "Expected file %s wasn't found! Will not save start/stop times of run in the database" % (metadata_filename))
+
+        if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "external_run_control" and \
+           os.path.exists("/tmp/info_to_archive_partition%d.txt" % (self.partition_number)):
+            runhistory_file.write( fhiclize_document( "/tmp/info_to_archive_partition%d.txt" % (self.partition_number ) ))
 
     copyfile("%s/schema.fcl" % (os.environ["ARTDAQ_DATABASE_CONFDIR"]), "%s/schema.fcl" % (tmpdir))
 
@@ -291,7 +298,7 @@ def main():
         print "Calling get_config_info_base"
 
         class MockDAQInterface:
-            subconfigs_for_run = [ "ToyComponent_EBwriting00019", "np04_WibsReal_Ssps_BeamTrig_CRT_00001" ]
+            subconfigs_for_run = [ "ToyComponent_EBwriting00025" ]
             debug_level = 2
 
         mydir, mydirs = get_config_info_base( MockDAQInterface() )
