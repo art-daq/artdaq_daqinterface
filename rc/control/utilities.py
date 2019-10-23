@@ -586,7 +586,7 @@ def fhiclize_document(filename):
     return "\n".join( fhiclized_lines )
 
 
-def obtain_messagefacility_fhicl():
+def obtain_messagefacility_fhicl(have_artdaq_mfextensions):
 
     if "DAQINTERFACE_MESSAGEFACILITY_FHICL" in os.environ.keys():
         messagefacility_fhicl_filename = os.environ["DAQINTERFACE_MESSAGEFACILITY_FHICL"]
@@ -628,8 +628,10 @@ udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THI
                 res = re.search(r"^\s*udp", line)
                 if not res:
                     outf_mf.write(line)
-                else:
+                elif have_artdaq_mfextensions:
                     outf_mf.write( re.sub("port\s*:\s*\S+", "port: %d" % (10005 + int(os.environ["DAQINTERFACE_PARTITION_NUMBER"])*1000), line) )
+                else:  # Note that a completely-empty (i.e., free even of comments) messagefacility fhicl filename will cause an error...
+                    outf_mf.write( "\n# udp table for MsgViewer not used since artdaq_mfextensions not available\n" )
 
     return processed_messagefacility_fhicl_filename
 
