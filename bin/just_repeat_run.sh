@@ -19,32 +19,28 @@ if ! [[ "$runnum" =~ ^[0-9]+$ ]] ; then
     exit 1
 fi
 
-if [[ -z $ARTDAQ_DAQINTERFACE_DIR ]]; then
-    cat >&2 <<EOF 
-
-The ARTDAQ_DAQINTERFACE_DIR environment variable isn't set; you
-need to have set up the DAQInterface environment to run this
-script. See the DAQInterface wiki for details,
-https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Artdaq-daqinterface
-
-EOF
-
-exit 1
-    
+if ! [[ "$seconds_to_run" =~ ^[0-9]+$ ]] ; then 
+    echo "seconds-to-run argument \"$seconds_to_run\" does not appear to be an integer; exiting..." >&2
+    exit 1
 fi
 
+. $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
 . $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
 if $nostrict ; then
     
     cat<<EOF
 
-The "--nostrict" option has been requested; will ignore code
-differences between run $runnum and the run about to be performed
+The "--nostrict" option has been requested; will ignore the following:
+
+-Potential differences in the code used for run $runnum and the run about to be performed
+-Potential differences in the known boardreaders list used for run $runnum and the run about to be performed
+-A potential difference between the host DAQInterface was on for run $runnum and the host you're currently on
 
 EOF
 fi
 
+echo
 if [[ -d $recorddir ]]; then
     echo "Will look in record directory \"$recorddir\" for run $runnum"
 else
@@ -70,49 +66,94 @@ EOF
     exit 1
 fi
 
-if ! $nostrict ; then
-    res=$( check_code_changes_since_run.sh $runnum )
-    
-    if [[ -n $res ]]; then
-	
-	check_code_changes_since_run.sh $runnum
-	
-	cat<<EOF 
+deviation_found=false
 
-Since the code in the installation area which was used for run $runnum
-appears to have changed (details above), this attempt to repeat run
-$runnum will not proceed. To override this refusal because the change
-in code is irrelevant to your reasons for repeating run $runnum,
-re-run the command with the --nostrict option added at the end. Exiting...
+echo
+echo -n "Checking that code is the same as was used in run $runnum..."
+res=$( check_code_changes_since_run.sh $runnum )
+   
+if [[ -n $res ]]; then
+	
+    check_code_changes_since_run.sh $runnum
+	
+    cat<<EOF >&2
+
+The code in the installation area which was used for run $runnum
+either wasn't found or appears to have changed (details above). Unless
+you're running this script with the --nostrict option, this attempt to
+repeat run $runnum will not proceed.
 
 EOF
 
-	exit 1
-    fi
+    deviation_found=true
+else
+    echo "done."
+fi
 
-    if [[ -n $( diff $DAQINTERFACE_KNOWN_BOARDREADERS_LIST $recorddir/$runnum/known_boardreaders_list.txt ) ]]; then
-	cat <<EOF
+echo
+echo -n "Checking that the known boardreaders list pointed to by DAQINTERFACE_KNOWN_BOARDREADERS_LIST is the same as was used in run $runnum..."
+
+if [[ -n $( diff $DAQINTERFACE_KNOWN_BOARDREADERS_LIST $recorddir/$runnum/known_boardreaders_list.txt ) ]]; then
+    cat <<EOF >&2
 
 A difference was found in the contents of the file currently pointed
 to by the DAQINTERFACE_KNOWN_BOARDREADERS_LIST environment variable
 ("$DAQINTERFACE_KNOWN_BOARDREADERS_LIST") and the file that was used
-during run $runnum; you can ignore this by re-running the command with
-the --nostrict option, or you can kill the current instance of
-DAQInterface on your partition, and execute the following two commands:
+during run $runnum; unless you're running this script with the
+--nostrict option, this attempt to repeat run $runnum will not
+proceed. To address this warning, you can kill the current instance of
+DAQInterface on your partition and execute the following two commands:
 
 cp $recorddir/$runnum/known_boardreaders_list.txt /tmp/known_boardreaders_list.txt
 export DAQINTERFACE_KNOWN_BOARDREADERS_LIST=/tmp/known_boardreaders_list.txt
 
-After executing these commands, relaunch DAQInterface before re-running
-this script.
+and then relaunch DAQInterface. 
+
+EOF
+
+    deviation_found=true
+else
+    echo "done."
+fi
+
+echo
+echo -n "Checking that DAQInterface is being run on the same host as was used for run $runnum..."
+daqinterface_host_from_run=$( sed -r -n 's/DAQInterface directory: ([^:]+).*/\1/p' $recorddir/$runnum/metadata.txt)
+current_daqinterface_host=$( hostname )
+
+if [[ $current_daqinterface_host != $daqinterface_host_from_run ]]; then
+	
+    cat<<EOF >&2
+
+A difference was found between the host DAQInterface was run on for
+run $runnum ($daqinterface_host_from_run) and the host you're
+currently on ($current_daqinterface_host). Consequently, any artdaq
+process specified to run on "localhost" in either the boot file or the
+known boardreaders list won't run on $daqinterface_host_from_run,
+unlike run $runnum. Unless you're running this script with the
+--nostrict option, this attempt to repeat run $runnum will not
+proceed.
+
+EOF
+	
+    deviation_found=true
+else
+    echo "done."
+    echo
+fi
+
+if ! $nostrict && $deviation_found ; then
+
+cat<<EOF >&2
 
 Exiting...
 
 EOF
 
-       exit 1
-    fi
+exit 1
+
 fi
+
 
 config=$( sed -r -n 's/^Config name: ([^#]+).*/\1/p' $recorddir/$runnum/metadata.txt )
 comps=$( awk '/^Component/ { printf("%s ", $NF); }' $recorddir/$runnum/metadata.txt )

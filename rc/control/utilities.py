@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 
 import os
 import re
@@ -14,7 +15,7 @@ from time import time
 
 from multiprocessing.pool import ThreadPool
 
-bash_unsetup_command="upsname=$( which ups ); if [[ -n $upsname ]]; then unsetup() { . `$upsname unsetup \"$@\"` ; }; for pp in `printenv | sed -ne \"/^SETUP_/{s/SETUP_//;s/=.*//;p}\"`; do test $pp = UPS && continue; prod=`echo $pp | tr \"A-Z\" \"a-z\"`; unsetup -j $prod; done; echo \"After bash unsetup, products active (should be nothing but ups listed):\"; ups active; else echo \"ups does not appear to be set up; will not unsetup any products\"; fi"
+bash_unsetup_command="upsname=$( which ups 2>/dev/null ); if [[ -n $upsname ]]; then unsetup() { . `$upsname unsetup \"$@\"` ; }; for pp in `printenv | sed -ne \"/^SETUP_/{s/SETUP_//;s/=.*//;p}\"`; do test $pp = UPS && continue; prod=`echo $pp | tr \"A-Z\" \"a-z\"`; unsetup -j $prod; done; echo \"After bash unsetup, products active (should be nothing but ups listed):\"; ups active; else echo \"ups does not appear to be set up; will not unsetup any products\"; fi"
 
 def expand_environment_variable_in_string(line):
 
@@ -127,6 +128,20 @@ def table_range(fhiclstring, tablename, startingloc=0):
     if res:
         original_table_name = res.group(1)
         return table_range(fhiclstring, original_table_name)
+
+    # JCF, Aug-1-2019
+
+    # Check that what we have is actually a table - this is prompted
+    # by an email Kurt sent on June 26, 12:46 PM. If it's not, then
+    # keep searching further on in the FHiCL blob.
+
+    res = re.search(r"^%s\s*:\s*{" % tablename, fhiclstring[loc:])
+    if not res:
+        (offset_start, offset_end) = table_range(fhiclstring[loc+1:], tablename)
+        if (offset_start, offset_end) != (-1, -1):
+            return (loc + 1 + offset_start, loc + 1 + offset_end)
+        else:
+            return (-1, -1)
 
     open_brace_loc = string.index(fhiclstring[loc:], "{")
 
@@ -277,6 +292,9 @@ def execute_command_in_xterm(home, cmd):
 
 def date_and_time():
     return Popen("LC_ALL=\"en_US.UTF-8\" date", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+
+def date_and_time_more_precision():
+    return Popen("date +%a_%b_%d_%H:%M:%S.%N", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
 
 def construct_checked_command(cmds):
 
@@ -490,9 +508,18 @@ def get_build_info(pkgnames, setup_script):
                 #print "Unable to find expected ups source file directory %s, will not be able to save build info for %s in the run record" % (ups_sourcedir, pkgname)
                 continue
 
-            buildinfo_file="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, pkgname)
-            if not os.path.exists(buildinfo_file):
-                print "Unable to find hoped-for %s BuildInfo file %s, will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file, pkgname)
+            buildinfo_file1="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, pkgname)
+            buildinfo_file2="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, string.replace(pkgname, "_", "-"))
+            if os.path.exists(buildinfo_file1):
+                buildinfo_file = buildinfo_file1
+            elif os.path.exists(buildinfo_file2):
+                buildinfo_file = buildinfo_file2
+            else:
+                if buildinfo_file1 != buildinfo_file2:
+                    print "Unable to find hoped-for %s BuildInfo file (%s or %s), will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file1, buildinfo_file2, pkgname)
+                else:
+                    print "Unable to find hoped-for %s BuildInfo file (%s), will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file1, pkgname)
+                    
                 continue
 
             pkg_build_infos[ pkgname ] = parse_buildinfo_file(buildinfo_file)
@@ -559,7 +586,7 @@ def fhiclize_document(filename):
     return "\n".join( fhiclized_lines )
 
 
-def obtain_messagefacility_fhicl():
+def obtain_messagefacility_fhicl(have_artdaq_mfextensions):
 
     if "DAQINTERFACE_MESSAGEFACILITY_FHICL" in os.environ.keys():
         messagefacility_fhicl_filename = os.environ["DAQINTERFACE_MESSAGEFACILITY_FHICL"]
@@ -601,11 +628,44 @@ udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THI
                 res = re.search(r"^\s*udp", line)
                 if not res:
                     outf_mf.write(line)
-                else:
+                elif have_artdaq_mfextensions:
                     outf_mf.write( re.sub("port\s*:\s*\S+", "port: %d" % (10005 + int(os.environ["DAQINTERFACE_PARTITION_NUMBER"])*1000), line) )
+                else:  # Note that a completely-empty (i.e., free even of comments) messagefacility fhicl filename will cause an error...
+                    outf_mf.write( "\n# udp table for MsgViewer not used since artdaq_mfextensions not available\n" )
 
     return processed_messagefacility_fhicl_filename
 
+def get_private_networks(host):
+    cmd = "/usr/sbin/ifconfig | sed -r -n \"s/^\s*inet\s+(192\.168\.\S+|10\.\S+)\s+.*/\\1/p\""
+
+    if host != "localhost" and host != os.environ["HOSTNAME"]:
+        cmd = "ssh -x %s '%s'" % (host, cmd)
+
+    lines = Popen(cmd, shell=True, stdout=subprocess.PIPE ).stdout.readlines() 
+    networks = []
+
+    for line in lines:
+        network = line.strip()
+        res = re.search(r"^([0-9]+\.[0-9]+\.[0-9]+\.)[0-9]+", network)
+        if not res:
+            raise Exception("Unexpected result from command \"%s\"; line \"%s\" doesn't appear to be an address" % (cmd, network))
+        networks.append(network)
+
+    return networks
+
+def zero_out_last_subnet(network):
+    res = re.search(r"^([0-9]+\.[0-9]+\.[0-9]+\.)[0-9]+", network)
+    assert res, "Developer error: proper address not passed to \"zero_out_last_subnet\""
+    return "%s0" % (res.group(1))
+
+def upsproddir_from_productsdir( productsdir ):
+    for pp in productsdir.split(':'):
+        upsproddir=''                  # may not find what we're looking for
+        tt=pp.rstrip('/')+'/'          # make sure it ends with _single_ '/'
+        if os.path.isdir(tt) and os.path.isfile( tt+'setup') and os.path.isdir(tt+'.upsfiles') and os.path.isdir(tt+'ups'):
+            upsproddir=pp.rstrip('/')  # make sure it does not end with '/'
+            break
+    return upsproddir
 
 def main():
 
@@ -641,13 +701,24 @@ def main():
         
         sys.exit(0)
 
+    elif len(sys.argv) > 1 and sys.argv[1] == "upsproddir_from_productsdir":
+        if len(sys.argv) != 3:
+            print make_paragraph("Error: expected 1 argument to upsproddir_from_productsdir: PRODUCTS_list")
+            sys.exit(1)
+
+        productsdir = sys.argv[2]
+        print( upsproddir_from_productsdir(productsdir) )
+        sys.exit(0)
+
     paragraphed_string_test = False
     msgviewer_check_test = False
     execute_command_in_xterm_test = False
     reformat_fhicl_document_test = False
     bash_unsetup_test = False
     get_commit_info_test = False
-    get_build_info_test = True
+    get_build_info_test = False
+    table_range_test = False
+    get_private_networks_test = True
 
     if paragraphed_string_test:
         sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
@@ -716,7 +787,27 @@ def main():
         pkg_build_infos_dict = get_build_info(pkgnames, daq_setup_script)
         for pkg, buildinfo in pkg_build_infos_dict.items():
             print "%s: %s" % (pkg, buildinfo)
-            
+
+    if table_range_test:
+
+        assert "ARTDAQ_DAQINTERFACE_DIR" in os.environ, "Need to have DAQInterface environment sourced for table_range test"
+        filename = "%s/simple_test_config/pdune_swtrig_noRM/DFO.fcl" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"])
+        print "From file %s:" % (filename)
+
+        with open( filename ) as inf:
+            inf_contents = inf.read()
+
+            (table_start, table_end) = table_range( inf_contents, "art" )
+            print "Contents of table: "
+            print inf_contents[table_start:table_end]
+
+    if get_private_networks_test:
+        hosts = ["localhost"]
+
+        for host in hosts:
+            private_networks = get_private_networks(host)
+            print "%s: " % (host)
+            print [network.strip() for network in private_networks]
 
 def kill_tail_f():
     tail_pids = get_pids("%s.*tail -f %s" % 

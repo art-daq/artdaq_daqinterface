@@ -56,9 +56,10 @@
 		if (i != length(boardreaders)) {
 		    printf "\"%s\", ", boardreaders[i]
 		} else {
-		    printf "\"%s\"]\n", boardreaders[i]
+		    printf "\"%s\"", boardreaders[i]
 		}
 	    }
+	    printf "]\n"
 	    boardreader_section_active = 0
 	}
     }
@@ -149,7 +150,7 @@
 	    firstpart ~ "DAQInterface stop time" || firstpart ~ "Total events" ) {
 	    
 	    firstpart = tolower(firstpart)
-	    sub(" ", "_", firstpart)
+	    gsub(" ", "_", firstpart)
 
 	} else if (firstpart ~ /Component #[0-9]/) {
 	    components[++component_cntr] = secondpart

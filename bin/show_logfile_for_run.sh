@@ -2,13 +2,14 @@
 
 
 if [[ $# != 1 && $# != 2 ]] ; then
-     echo "Usage: $0 <run number> (examine)"
+     echo "Usage: $0 <run number> (optional, any second argument will open the logfile)"
      exit 1
 fi
 
 runnum=$1
 examine=$2
 
+. $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
 . $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
 metadata_file=$recorddir/$runnum/metadata.txt

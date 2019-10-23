@@ -25,7 +25,7 @@ Subsystem id: 5
 Subsystem destination: 4
 
 
-EventBuilder host: mu2edaq10
+EventBuilder host: mu2edaq14
 EventBuilder label: TrigCand
 EventBuilder subsystem: 1
 
@@ -37,7 +37,7 @@ EventBuilder host: mu2edaq12
 EventBuilder label: DFO
 EventBuilder subsystem: 3
 
-EventBuilder host: mu2edaq10
+EventBuilder host: mu2edaq14
 EventBuilder label: EventBuilder1
 EventBuilder subsystem: 4
 
@@ -49,7 +49,7 @@ EventBuilder host: mu2edaq12
 EventBuilder label: EventBuilder3
 EventBuilder subsystem: 4
 
-EventBuilder host: mu2edaq10
+EventBuilder host: mu2edaq14
 EventBuilder label: EventBuilder4
 EventBuilder subsystem: 5
 
@@ -61,6 +61,6 @@ Dispatcher host: mu2edaq12
 Dispatcher label: Dispatcher1
 Dispatcher subsystem: 4
 
-RoutingMaster host: mu2edaq10
+RoutingMaster host: mu2edaq14
 RoutingMaster label: RoutingMaster1
 RoutingMaster subsystem: 4

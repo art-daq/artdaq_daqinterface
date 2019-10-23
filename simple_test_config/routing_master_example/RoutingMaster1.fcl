@@ -44,14 +44,14 @@
          absolute_file_path: false
 	  uniquify: true
 	}
-	 ganglia: {
-	   metricPluginType: "ganglia"
-	   level: 4
-	   reporting_interval: 15.0
-	 
-	   configFile: "/etc/ganglia/gmond.conf"
-	   group: "ARTDAQ"
-	 }
+	# ganglia: {
+	#   metricPluginType: "ganglia"
+	#   level: 4
+	#   reporting_interval: 15.0
+	# 
+	 #  configFile: "/etc/ganglia/gmond.conf"
+	#   group: "ARTDAQ"
+	# }
 	# msgfac: {
 	#    level: %{mf_level}
 	#    metricPluginType: "msgFacility"
