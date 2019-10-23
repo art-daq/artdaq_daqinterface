@@ -573,7 +573,7 @@ class DAQInterface(Component):
                 self.datalogger_timeout = int( line.split()[-1].strip() )
             elif "dispatcher_timeout" in line or "dispatcher timeout" in line:
                 self.dispatcher_timeout = int( line.split()[-1].strip() )
-            elif "boardreader_priorities" in line or "boardreader priorities" in line:
+            elif "boardreader_priorities:" in line or "boardreader priorities:" in line:
                 res = re.search(r"^\s*boardreader[ _]priorities\s*:\s*(.*)", line)
                 if res:
                     self.boardreader_priorities = [regexp.strip() for regexp in res.group(1).split()]
@@ -583,21 +583,21 @@ class DAQInterface(Component):
                 res = re.search(r"^\s*boardreader[ _]priorities[ _]on[ _]config:\s*(.*)", line)
                 if res:
                     self.boardreader_priorities_on_config = [regexp.strip() for regexp in res.group(1).split()]
-                    print self.boardreader_priorities_on_config
+                    #print self.boardreader_priorities_on_config
                 else:
                     raise Exception("Incorrectly formatted line \"%s\" in %s" % (line.strip(), os.environ["DAQINTERFACE_SETTINGS"]))
             elif "boardreader_priorities_on_start:" in line or "boardreader priorities on start:" in line:
                 res = re.search(r"^\s*boardreader[ _]priorities[ _]on[ _]start:\s*(.*)", line)
                 if res:
                     self.boardreader_priorities_on_start = [regexp.strip() for regexp in res.group(1).split()]
-                    print self.boardreader_priorities_on_start
+                    #print self.boardreader_priorities_on_start
                 else:
                     raise Exception("Incorrectly formatted line \"%s\" in %s" % (line.strip(), os.environ["DAQINTERFACE_SETTINGS"]))
             elif "boardreader_priorities_on_stop:" in line or "boardreader priorities on stop:" in line:
                 res = re.search(r"^\s*boardreader[ _]priorities[ _]on[ _]stop:\s*(.*)", line)
                 if res:
                     self.boardreader_priorities_on_stop = [regexp.strip() for regexp in res.group(1).split()]
-                    print self.boardreader_priorities_on_stop
+                    #print self.boardreader_priorities_on_stop
                 else:
                     raise Exception("Incorrectly formatted line \"%s\" in %s" % (line.strip(), os.environ["DAQINTERFACE_SETTINGS"]))
 
