@@ -80,6 +80,7 @@
        
            ## Host that acknowledgements should be sent to
            routing_master_hostname: "localhost"  # default
+           table_update_multicast_interface: "0.0.0.0"
        
            ## Time to wait (in ms) for a routing table update if the table is exhausted
            routing_timeout_ms: 1000  # default
@@ -92,8 +93,9 @@
   metrics: {
 	brFile: {
 	  metricPluginType: "file"
-	  level: 3
-	  fileName: "/tmp/boardreader/br_%UID%_metrics.log"
+	  level: 4
+	  fileName: "boardreader/br_%UID%_metrics.log"
+         absolute_file_path: false
 	  uniquify: true
 	}
   }

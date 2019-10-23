@@ -1,12 +1,3 @@
-services: {
-  scheduler: {
-    errorOnFailureToPut: false
-  }
-  NetMonTransportServiceInterface: {
-    service_provider: NetMonTransportService
-  }
-}
-
 daq: {
   aggregator: {
     expected_events_per_bunch: 1
@@ -31,13 +22,24 @@ daq: {
   metrics: {
     aggFile: {
       metricPluginType: "file"
-      level: 3
-      fileName: "/tmp/aggregator/agg_%UID%_metrics.log"
+      level: 4
+      fileName: "aggregator/agg_%UID%_metrics.log"
+         absolute_file_path: false
       uniquify: true
     }
   }
 
 }
+art: {
+services: {
+  scheduler: {
+    errorOnFailureToPut: false
+  }
+  NetMonTransportServiceInterface: {
+    service_provider: NetMonTransportService
+  }
+}
+
 
 source: {
   module_type: NetMonInput
@@ -51,3 +53,4 @@ physics: {
 
 }
 process_name: DAQDP
+}

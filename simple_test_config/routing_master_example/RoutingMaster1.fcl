@@ -13,7 +13,9 @@
     use_routing_master: true
 
     ## Port to send tokens on
-    routing_token_port: 35555  # default
+    token_receiver: {
+        routing_token_port: 35555  # default
+    }
 
     ## Hostname or IP of RoutingMaster
     routing_master_hostname: "localhost"  # default
@@ -37,18 +39,19 @@
   metrics: {
 	rmFile: {
 	  metricPluginType: "file"
-	  level: 3
-	  fileName: "/tmp/RoutingMaster/rm_%UID%_metrics.log"
+	  level: 4
+	  fileName: "RoutingMaster/rm_%UID%_metrics.log"
+         absolute_file_path: false
 	  uniquify: true
 	}
-	 ganglia: {
-	   metricPluginType: "ganglia"
-	   level: 3
-	   reporting_interval: 15.0
-	 
-	   configFile: "/etc/ganglia/gmond.conf"
-	   group: "ARTDAQ"
-	 }
+	# ganglia: {
+	#   metricPluginType: "ganglia"
+	#   level: 4
+	#   reporting_interval: 15.0
+	# 
+	 #  configFile: "/etc/ganglia/gmond.conf"
+	#   group: "ARTDAQ"
+	# }
 	# msgfac: {
 	#    level: %{mf_level}
 	#    metricPluginType: "msgFacility"

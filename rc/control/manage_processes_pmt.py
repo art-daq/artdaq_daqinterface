@@ -13,6 +13,7 @@ from rc.control.utilities import bash_unsetup_command
 from rc.control.utilities import date_and_time
 from rc.control.utilities import construct_checked_command
 from rc.control.utilities import obtain_messagefacility_fhicl
+from rc.control.utilities import upsproddir_from_productsdir
 from rc.control.deepsuppression import deepsuppression
 
 # JCF, 8/11/14
@@ -75,9 +76,9 @@ def launch_procs_base(self):
                             self.pmtconfigname + " to " + self.pmt_host + ":/tmp")
 
     self.launch_cmds = []
-    self.launch_cmds.append(". %s/setup" % self.productsdir)  
+    self.launch_cmds.append("export PRODUCTS=\"%s\"; . %s/setup"%(self.productsdir,upsproddir_from_productsdir(self.productsdir)))  
     self.launch_cmds.append( bash_unsetup_command )
-    self.launch_cmds.append("source " + self.daq_setup_script )
+    self.launch_cmds.append("source %s for_running"%(self.daq_setup_script,) )
     self.launch_cmds.append("which pmt.rb")  # Sanity check capable of returning nonzero
 
     # 30-Jan-2017, KAB: increased the amount of time that pmt.rb provides daqinterface
@@ -109,7 +110,7 @@ def launch_procs_base(self):
     self.print_log("d", "PROCESS LAUNCH COMMANDS: \n" + "\n".join( self.launch_cmds ), 2)
 
     with deepsuppression(self.debug_level < 4):
-        status = Popen(launchcmd, shell=True).wait()
+        status = Popen(launchcmd, shell=True, preexec_fn=os.setpgrp).wait()
 
     if status != 0:   
         raise Exception("Status error raised; commands were \"\n%s\n\n\". For more information, you can check to see if a pmt (process management tool) logfile was produced during the failure in the directory %s/pmt on %s. Also try again with \"debug level\" set to 4 in the boot file, or even running the above commands interactively on %s after performing a clean login and source-ing the DAQInterface environment." %

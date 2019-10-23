@@ -33,7 +33,7 @@ def launch_art_procs_base(self, filename):
             num_art_attempts = 2
 
             cmds = []
-            cmds.append(". %s" % (self.daq_setup_script))
+            cmds.append(". %s for_running" % (self.daq_setup_script))
             cmds.append("art -c %s" % (res.group(1)))
             
             # There will be max_checks*check_period seconds for the art

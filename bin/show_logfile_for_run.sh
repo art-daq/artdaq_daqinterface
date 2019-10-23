@@ -2,13 +2,14 @@
 
 
 if [[ $# != 1 && $# != 2 ]] ; then
-     echo "Usage: $0 <run number> (examine)"
+     echo "Usage: $0 <run number> (optional, any second argument will open the logfile)"
      exit 1
 fi
 
 runnum=$1
 examine=$2
 
+. $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
 . $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
 metadata_file=$recorddir/$runnum/metadata.txt
@@ -20,7 +21,7 @@ fi
 
 method=$( sed -r -n 's/^process management method: (\S+).*/\1/p' $metadata_file)
 
-files=$( sed -n '/^process manager logfile/,/^\s*$/p' $RUNRECORDS/$runnum/metadata.txt | sed '1d;$d' )
+files=$( sed -n '/^process manager logfile/,/^\s*$/p' $recorddir/$runnum/metadata.txt | sed '1d;$d' )
 
 if [[ "$method" == "pmt" && -n $files ]]; then
 
@@ -62,9 +63,12 @@ else
     cat>&2<<EOF
 
     Unable to find the process manager logfile for run $runnum; this
-    is because according to the metadata file "$metadata_file" the 
-    DAQINTERFACE_PROCESS_MANAGEMENT_METHOD environment
-    variable was set to "$method" instead of "pmt" during that run
+    may be because the DAQINTERFACE_PROCESS_MANAGEMENT_METHOD
+    environment variable was set to something other than "pmt" before
+    the launching of the DAQInterface instance used in the run. You
+    can confirm this by executing:
+
+    grep -1 "process management method" $metadata_file
 
 EOF
 

@@ -44,9 +44,12 @@ def get_config_info_base(self):
 
     return tmpdir, ffp
 
-# put_config_info_base should be a no-op 
+# put_config_info_base and put_config_info_on_stop_base should be no-ops
 
 def put_config_info_base(self):
+    pass
+
+def put_config_info_on_stop_base(self):
     pass
 
 def get_boot_info_base(self, boot_filename):
@@ -59,7 +62,7 @@ def get_boot_info_base(self, boot_filename):
                             "unable to locate configuration file \"" +
                             boot_filename + "\""))
 
-    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set"}
+    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set", "allowed_processors": "not set"}
     subsystemDict = {"id": None, "source": "not set", "destination": "not set"}
 
     num_expected_processes = 0
@@ -83,39 +86,11 @@ def get_boot_info_base(self, boot_filename):
             self.daq_dir = os.path.dirname( self.daq_setup_script ) + "/"
             continue
 
-        res = re.search(r"^\s*tcp_base_port\s*:\s*(\S+)",
-                        line)
-        if res:
-            raise Exception(make_paragraph("Jun-29-2018: the variable \"tcp_base_port\" was found in the boot file %s; this use is deprecated as tcp port values are now set internally in artdaq since artdaq commit d338b810c589a177ff1a34d82fa82a459cc1704b" % (boot_filename)))
-
-        res = re.search(r"^\s*request_port\s*:\s*(\S+)",
-                        line)
-        if res:
-            self.request_port = int( res.group(1) )
-            continue
-
         res = re.search(r"^\s*request_address\s*:\s*(\S+)",
                         line)
         if res:
             self.request_address = res.group(1)
             continue
-
-        res = re.search(r"^\s*table_update_address\s*:\s*(\S+)",
-                        line)
-        if res:
-            self.table_update_address = res.group(1)
-            continue
-
-        res = re.search(r"^\s*routing_base_port\s*:\s*(\S+)",
-                        line)
-        if res:
-            self.routing_base_port = res.group(1)
-            continue
-
-        res = re.search(r"^\s*partition_number\s*:\s*(\S+)",
-                        line)
-        if res:
-            raise Exception(make_paragraph("Jun-24-2018: the variable \"partition_number\" was found in the boot file %s; this use is deprecated as \"partition_number\" is now set by the DAQINTERFACE_PARTITION_NUMBER environment variable" % (boot_filename)))
 
         res = re.search(r"^\s*debug level\s*:\s*(\S+)",
                         line)
@@ -156,7 +131,12 @@ def get_boot_info_base(self, boot_filename):
                                 "problem parsing " + boot_filename +
                                 " at line \"" + line + "\"")
 
-            subsystemDict[res.group(2)] = res.group(3)
+            subsystem_key = res.group(2)
+
+            if subsystem_key != "source" or subsystemDict[ "source" ] == "not set":
+                subsystemDict[subsystem_key] = res.group(3)
+            else:
+                subsystemDict[subsystem_key] += " %s" % (res.group(3))
 
 
         if "EventBuilder" in line or \
@@ -171,6 +151,20 @@ def get_boot_info_base(self, boot_filename):
 
                 if res.group(2) == "host":
                     num_expected_processes += 1
+
+        # JCF, Mar-29-2019
+
+        # In light of the experience at ProtoDUNE, it appears
+        # necessary to allow experiments the ability to overwrite
+        # FHiCL parameters at will in the boot file. A use case that
+        # came up was that a fragment generator had a parameter whose
+        # value needed to be a function of the partition, but the
+        # fragment generator had no direct knowledge of what partition
+        # it was on
+
+        res = re.search(r"^\s*(\S+)\s*:\s*(\S+)", line)
+        if res:
+            self.bootfile_fhicl_overwrites[ res.group(1) ] = res.group(2)
 
         # Taken from Eric: if a line is blank or a comment or we've
         # reached the last line in the boot file, check to see if
@@ -194,7 +188,16 @@ def get_boot_info_base(self, boot_filename):
 
             if filled_subsystem_info:
                 
-                self.subsystems[subsystemDict["id"]] = self.Subsystem(subsystemDict["source"], subsystemDict["destination"])
+                sources = []
+                if subsystemDict["source"] != "not set":
+                    sources = [ source.strip() for source in subsystemDict["source"].split() ] 
+                
+                destination = None
+                if subsystemDict["destination"] != "not set":
+                    destination = subsystemDict["destination"]
+
+                self.subsystems[subsystemDict["id"]] = self.Subsystem(sources, destination)
+
                 subsystemDict["id"] = None
                 subsystemDict["source"] = "not set"
                 subsystemDict["destination"] = "not set"
@@ -217,16 +220,20 @@ def get_boot_info_base(self, boot_filename):
                                               self.partition_number*int(os.environ["ARTDAQ_PORTS_PER_PARTITION"]) + \
                                               rank )
 
+                if memberDict["allowed_processors"] == "not set":
+                    memberDict["allowed_processors"] = None  # Where None actually means "allow all processors"
+
                 self.procinfos.append(self.Procinfo(memberDict["name"],
                                                     rank,
                                                     memberDict["host"],
                                                     memberDict["port"],
                                                     memberDict["label"],
-                                                    memberDict["subsystem"]
+                                                    memberDict["subsystem"],
+                                                    memberDict["allowed_processors"]
                                                     ))
 
                 for varname in memberDict.keys():
-                    if varname != "port" and varname != "subsystem":
+                    if varname != "port" and varname != "subsystem" and varname != "allowed_processors":
                         memberDict[varname] = None
                     else:
                         memberDict[varname] = "not set"
@@ -237,7 +244,7 @@ def get_boot_info_base(self, boot_filename):
     # doesn't have any source subsystems or any destination subsystems
 
     if len(self.subsystems) == 0:
-        self.subsystems["1"] = self.Subsystem("not set", "not set")
+        self.subsystems["1"] = self.Subsystem()
 
     self.set_process_manager_default_variables()
 
@@ -259,7 +266,7 @@ def listdaqcomps_base(self):
     count = len(lines)
 
     for line in lines:
-        if re.search(r"^\s*#", line):
+        if re.search(r"^\s*#", line) or re.search(r"^\s*$", line):
             count = count - 1
 
     print
@@ -267,7 +274,7 @@ def listdaqcomps_base(self):
 
     lines.sort()
     for line in lines:
-        if re.search(r"^\s*#", line):
+        if re.search(r"^\s*#", line) or re.search(r"^\s*$", line):
             continue
         component = line.split()[0].strip()
         host = line.split()[1].strip()

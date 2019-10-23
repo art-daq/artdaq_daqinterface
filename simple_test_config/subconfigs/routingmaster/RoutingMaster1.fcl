@@ -16,7 +16,9 @@ daq: {
    routing_timeout_ms: 1000
 
    # Don't touch this; DAQInterface will set it
-   routing_token_port: 999
+   token_receiver: {
+      routing_token_port: 999
+   }
    sender_ranks: [ ]
 
    # table_ack_retry_count is the number of times the table will be resent while waiting for acknowledgements

@@ -15,6 +15,7 @@ fi
 
 components=$@
 
+. $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
 . $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
 daqinterface_preamble
 
@@ -55,12 +56,18 @@ for comp in $components; do
 	host=$( echo $comp_line | awk '{print $2}' )
 	port=$( echo $comp_line | awk '{print $3}' )
 	subsystem=$( echo $comp_line | awk '{print $4}' )
+	allowed_processors=$( echo $comp_line | awk '{print $5}' )
 
 	#defaults
 	port=${port:-"-1"}
 	subsystem=${subsystem:-"1"}
+	
+	if [[ -n $allowed_processors ]]; then
+	    xmlrpc_arg=${xmlrpc_arg}${comp}":array/(s/"${host}","${port}","${subsystem}","${allowed_processors}")"
+	else
+	    xmlrpc_arg=${xmlrpc_arg}${comp}":array/(s/"${host}","${port}","${subsystem}")"
+	fi
 
-	xmlrpc_arg=${xmlrpc_arg}${comp}":array/(s/"${host}","${port}","${subsystem}")"
 	test $comp_cntr != $num_components && xmlrpc_arg=${xmlrpc_arg}","
     else
 	
