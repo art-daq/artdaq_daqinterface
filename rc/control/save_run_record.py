@@ -6,6 +6,7 @@ import subprocess
 from subprocess import Popen
 import traceback
 import shutil
+import string
 
 from rc.control.deepsuppression import deepsuppression
 
@@ -97,7 +98,8 @@ def save_run_record_base(self):
             enumerate(sorted(self.daq_comp_list)):
         outf.write("Component #%d: %s\n" % (i_comp, component))
 
-    outf.write("DAQInterface directory: %s\n" % ( os.getcwd() ))
+    outf.write("DAQInterface directory: %s:%s\n" % (os.environ["HOSTNAME"], os.getcwd() ))
+    outf.write("DAQInterface logfile: %s:%s\n" % (os.environ["HOSTNAME"], expand_environment_variable_in_string(os.environ["DAQINTERFACE_LOGFILE"])))
 
     # Now save the commit hashes / versions of the packages listed in
     # $DAQINTERFACE_SETTINGS, along with the commit hash for
@@ -115,6 +117,7 @@ def save_run_record_base(self):
 
     buildinfo_packages = [pkg for pkg in self.package_hashes_to_save]  # Directly assigning would make buildinfo_packages a reference, not a copy
     buildinfo_packages.append("artdaq_daqinterface")
+
     package_buildinfo_dict = get_build_info(buildinfo_packages, self.daq_setup_script)
 
     with deepsuppression(self.debug_level < 3):
@@ -127,11 +130,13 @@ def save_run_record_base(self):
                 outf.write("%s" % (get_commit_info("DAQInterface", os.environ["ARTDAQ_DAQINTERFACE_DIR"])))
         except Exception:
             # Not an exception in a bad sense as the throw just means we're using DAQInterface as a ups product
-            outf.write("DAQInterface commit/version: %s" % ( self.get_package_version("artdaq_daqinterface") ))
+            self.fill_package_versions(["artdaq_daqinterface"])
+            outf.write("DAQInterface commit/version: %s" % ( self.package_versions["artdaq_daqinterface"] ))
             
         outf.write(" %s\n\n" % (package_buildinfo_dict["artdaq_daqinterface"]))
 
     package_commit_dict = {}
+    packages_whose_versions_we_need = []
 
     for pkgname in self.package_hashes_to_save:
         
@@ -150,7 +155,13 @@ def save_run_record_base(self):
                 self.alert_and_recover("An exception was thrown in get_commit_info; see traceback above for more info")
                 return
         else:
-            package_commit_dict[pkgname] = "%s commit/version: %s" % (pkgname, self.get_package_version( pkgname.replace("-", "_")))
+            # We'll throw this on the list of packages whose actual versions we need to figure out in real-time
+            packages_whose_versions_we_need.append(pkgname)
+
+    self.fill_package_versions( [ string.replace(pkg, "-", "_") for pkg in packages_whose_versions_we_need ] )
+        
+    for pkgname in packages_whose_versions_we_need:
+        package_commit_dict[pkgname] = "%s commit/version: %s" % (pkgname, self.package_versions[string.replace(pkgname, "-","_")])
 
     for pkg in sorted(package_commit_dict.keys()):
         outf.write("%s" % (package_commit_dict[pkg]))
@@ -181,7 +192,7 @@ def save_run_record_base(self):
     ranksfilename = "%s/ranks.txt" % (outdir)
 
     with open(ranksfilename, "w") as ranksfile:
-        ranksfile.write("        host   port         label  rank\n")
+        ranksfile.write("%-30s%-10s%-20s%-15s%-10s\n" % ("host", "port", "label", "subsystem", "rank"))
         ranksfile.write("\n")
 
         procinfos_sorted_by_rank = sorted(self.procinfos, key=lambda procinfo: procinfo.rank)
@@ -189,7 +200,12 @@ def save_run_record_base(self):
             host = procinfo.host
             if host == "localhost":
                 host = os.environ["HOSTNAME"]
-            ranksfile.write("%s\t%s\t%s\t%d\n" % (host, procinfo.port, procinfo.label, procinfo.rank))            
+            ranksfile.write("%-29s %-9s %-19s %-14s %-9d\n" % (host, procinfo.port, procinfo.label, procinfo.subsystem, procinfo.rank))      
+    environfilename = "%s/environment.txt" % (outdir)
+
+    with open(environfilename, "w") as environfile:
+        for daqinterface_var in sorted( [ varname for varname in os.environ if re.search(r"^DAQINTERFACE_", varname) ] ):
+            environfile.write("export %s=%s\n" % (daqinterface_var, expand_environment_variable_in_string(os.environ[ daqinterface_var ])))
 
     for (recorddir, dummy, recordfiles) in os.walk(self.tmp_run_record):
         for recordfile in recordfiles:
