@@ -456,18 +456,31 @@ def get_commit_info_filename(pkgname):
 def get_build_info(pkgnames, setup_script):
 
     def parse_buildinfo_file(buildinfo_filename):
+
+        buildinfo_version="\"version from BuildInfo undetermined\""
+        buildinfo_time="\"time from BuildInfo undetermined\""
+
+        found_buildinfo_version = False
+        found_buildinfo_time = False
+
         with open(buildinfo_filename) as inf:
             for line in inf.readlines():
 
-                res = re.search(r"setPackageVersion\((.*)\)", line)
+                res = re.search(r"setPackageVersion\s*\(\s*(\".*\")\s*\)", line)
                 if res:
                     buildinfo_version=res.group(1)
+                    found_buildinfo_version = True
                     continue
 
-                res = re.search(r"setBuildTimestamp\((.*)\)", line)
+                res = re.search(r"setBuildTimestamp\s*\(\s*(\".*\")\s*\)", line)
                 if res:
                     buildinfo_time=res.group(1)
+                    found_buildinfo_time = True
                     continue
+
+        if not found_buildinfo_version or not found_buildinfo_time:
+            print "Failed to find one (or both of) buildinfo time and version in %s!" % (buildinfo_filename)
+
         return "%s %s" % (buildinfo_time, buildinfo_version)
 
     pkg_build_infos = {}
