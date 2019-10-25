@@ -1988,7 +1988,7 @@ class DAQInterface(Component):
             self.check_config()
         except Exception:
             self.print_log("w", traceback.format_exc())
-            self.revert_failed_transition("calling experiment-defined function get_config_info()")
+            self.revert_failed_transition("calling experiment-defined function check_config()")
             return
 
         if self.manage_processes:
