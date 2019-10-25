@@ -29,10 +29,6 @@ from rc.control.deepsuppression import deepsuppression
 
 from rc.control.save_run_record import save_run_record_base
 from rc.control.save_run_record import save_metadata_value_base
-from rc.control.all_functions_noop import start_datataking_base
-from rc.control.all_functions_noop import stop_datataking_base
-from rc.control.all_functions_noop import do_enable_base
-from rc.control.all_functions_noop import do_disable_base
 
 if "DAQINTERFACE_DISABLE_BOOKKEEPING" in os.environ and not os.environ["DAQINTERFACE_DISABLE_BOOKKEEPING"] == "false" :
     from rc.control.all_functions_noop import bookkeeping_for_fhicl_documents_artdaq_v3_base
