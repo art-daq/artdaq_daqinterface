@@ -144,23 +144,30 @@ def put_config_info_base(self):
     with open( "%s/%s/DataflowConfiguration.fcl" % (tmpdir, runnum), "w" ) as dataflow_file:
 
         with open( "%s/%s/boot.fcl" % (tmpdir, runnum) ) as boot_file:
+            ignore_until_end_array = False   # flag to allow filtering multi-line fcl array
             for line in boot_file.readlines():
-                
-                ignore_line = False
 
-                if line == "":
-                    ignore_line = True
+                if line == "\n": continue   # can skip/ignore all blank lines
 
+                if ignore_until_end_array:  # check if filtering multi-line fcl array
+                    if re.search(r"\]", line):
+                        ignore_until_end_arry = False
+                    continue
+
+                ignore_this_line = False  # need this for nested for loop:
                 for keyname in ["artdaq_process_settings", "debug_level"] :
-                    res = re.search(r"^\s*%s\s*:" % (keyname), line)
-                    if res:
-                        ignore_line = True
+                    if re.search(r"^\s*%s\s*:" % (keyname), line):
+                        ignore_this_line = True
+                        if re.search(r"\[[^]]*$", line): # if it's a fcl array start "[" without an end "]" (i.e multi-line array)
+                            ignore_until_end_array = True
                         break
+                if ignore_this_line: continue
 
-                if not ignore_line:
-                    if "subsystem_settings" in line:
-                        line = line.replace("subsystem_settings", "subsystem_values")
-                    dataflow_file.write("\n" + line)
+                # at this point in the for loop, lines will be written
+                if "subsystem_settings" in line:
+                    line = line.replace("subsystem_settings", "subsystem_values")
+
+                dataflow_file.write("\n" + line)
 
         dataflow_file.write("\nartdaq_process_values: [ ")
 
