@@ -151,7 +151,7 @@ def put_config_info_base(self):
 
                 if ignore_until_end_array:  # check if filtering multi-line fcl array
                     if re.search(r"\]", line):
-                        ignore_until_end_arry = False
+                        ignore_until_end_array = False
                     continue
 
                 ignore_this_line = False  # need this for nested for loop:
