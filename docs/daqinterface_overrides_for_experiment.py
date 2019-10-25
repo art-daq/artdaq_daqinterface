@@ -1,7 +1,7 @@
 # ELF, 10/23/2019: These are the currently-supported experiment-defined hooks.
 # To override, define these functions in "daqinterface_overrides_for_experiment.py" and
 # then set DAQINTERFACE_OVERRIDES_FOR_EXPERIMENT_MODULE_DIR to the directory containing
-# that file in the user_sourcefile.
+# that file in $DAQINTERFACE_USER_SOURCEFILE .
 
 def perform_periodic_action_base(self):
     pass
