@@ -74,7 +74,7 @@ def get_config_info_base(self):
         else:
             try:
                 if subconfig in getListOfMaskedRunConfigurations():
-                    raise Exception(make_paragraph("Error: (sub)config \"%s\" appears to have been masked off (i.e., it appears in a call to conftool.getListOfMaskedRunConfigurations given the flags file %s)" % (subconfig, tmpflagsfile)))
+                    raise Exception(make_paragraph("Error: (sub)config \"%s\" has been invalidated (i.e., it appears in a call to conftool.getListOfMaskedRunConfigurations given the flags file %s)" % (subconfig, tmpflagsfile)))
             except NameError:
                 pass
 
