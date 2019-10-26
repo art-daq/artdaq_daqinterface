@@ -418,8 +418,6 @@ class DAQInterface(Component):
 
         self.fhicl_file_path = []
 
-        self.check_proc_exceptions_number_of_status_failures = 0
-
         self.__do_boot = False
         self.__do_shutdown = False
         self.__do_config = False
