@@ -57,9 +57,15 @@ art: {
 
       allow_default_round_robin_routing: false
 
-      policy: {
-        policy: "NoOp"
+      policy: {                                                                                                                                        
+        policy: "RoundRobin"
         receiver_ranks: []
+        minimum_participants: -2
+      }
+
+      inhibit_publisher: {
+        publisher: "ZMQ"
+        bind_address: "tcp://*:5599"
       }
 
       sender_ranks: []

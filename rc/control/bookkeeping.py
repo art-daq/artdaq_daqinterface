@@ -601,7 +601,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             for procinfo in [procinfo for procinfo in self.procinfos if procinfo.subsystem == subsystem_id]:
                 if "BoardReader" in procinfo.name and procinfo.label not in nonsending_boardreaders:
                     for token in ["[Ww]indow", "[Ss]ingle", "[Bb]uffer"]:
-                        res = re.search(r"\n\s*request_mode\s*:\s*\"%s\"" % (token), procinfo.fhicl_used)
+                        res = re.search(r"\n\s*request_mode\s*:\s*\"?%s\"?" % (token), procinfo.fhicl_used)
                         if res:
                             boardreaders_involved_in_requests.append(procinfo.label)
                             break

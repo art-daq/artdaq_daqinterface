@@ -456,18 +456,31 @@ def get_commit_info_filename(pkgname):
 def get_build_info(pkgnames, setup_script):
 
     def parse_buildinfo_file(buildinfo_filename):
+
+        buildinfo_version="\"version from BuildInfo undetermined\""
+        buildinfo_time="\"time from BuildInfo undetermined\""
+
+        found_buildinfo_version = False
+        found_buildinfo_time = False
+
         with open(buildinfo_filename) as inf:
             for line in inf.readlines():
 
-                res = re.search(r"setPackageVersion\((.*)\)", line)
+                res = re.search(r"setPackageVersion\s*\(\s*(\".*\")\s*\)", line)
                 if res:
                     buildinfo_version=res.group(1)
+                    found_buildinfo_version = True
                     continue
 
-                res = re.search(r"setBuildTimestamp\((.*)\)", line)
+                res = re.search(r"setBuildTimestamp\s*\(\s*(\".*\")\s*\)", line)
                 if res:
                     buildinfo_time=res.group(1)
+                    found_buildinfo_time = True
                     continue
+
+        if not found_buildinfo_version or not found_buildinfo_time:
+            print "Failed to find one (or both of) buildinfo time and version in %s!" % (buildinfo_filename)
+
         return "%s %s" % (buildinfo_time, buildinfo_version)
 
     pkg_build_infos = {}
@@ -508,9 +521,18 @@ def get_build_info(pkgnames, setup_script):
                 #print "Unable to find expected ups source file directory %s, will not be able to save build info for %s in the run record" % (ups_sourcedir, pkgname)
                 continue
 
-            buildinfo_file="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, pkgname)
-            if not os.path.exists(buildinfo_file):
-                print "Unable to find hoped-for %s BuildInfo file %s, will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file, pkgname)
+            buildinfo_file1="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, pkgname)
+            buildinfo_file2="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, string.replace(pkgname, "_", "-"))
+            if os.path.exists(buildinfo_file1):
+                buildinfo_file = buildinfo_file1
+            elif os.path.exists(buildinfo_file2):
+                buildinfo_file = buildinfo_file2
+            else:
+                if buildinfo_file1 != buildinfo_file2:
+                    print "Unable to find hoped-for %s BuildInfo file (%s or %s), will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file1, buildinfo_file2, pkgname)
+                else:
+                    print "Unable to find hoped-for %s BuildInfo file (%s), will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file1, pkgname)
+                    
                 continue
 
             pkg_build_infos[ pkgname ] = parse_buildinfo_file(buildinfo_file)
@@ -577,7 +599,7 @@ def fhiclize_document(filename):
     return "\n".join( fhiclized_lines )
 
 
-def obtain_messagefacility_fhicl():
+def obtain_messagefacility_fhicl(have_artdaq_mfextensions):
 
     if "DAQINTERFACE_MESSAGEFACILITY_FHICL" in os.environ.keys():
         messagefacility_fhicl_filename = os.environ["DAQINTERFACE_MESSAGEFACILITY_FHICL"]
@@ -619,8 +641,10 @@ udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THI
                 res = re.search(r"^\s*udp", line)
                 if not res:
                     outf_mf.write(line)
-                else:
+                elif have_artdaq_mfextensions:
                     outf_mf.write( re.sub("port\s*:\s*\S+", "port: %d" % (10005 + int(os.environ["DAQINTERFACE_PARTITION_NUMBER"])*1000), line) )
+                else:  # Note that a completely-empty (i.e., free even of comments) messagefacility fhicl filename will cause an error...
+                    outf_mf.write( "\n# udp table for MsgViewer not used since artdaq_mfextensions not available\n" )
 
     return processed_messagefacility_fhicl_filename
 
