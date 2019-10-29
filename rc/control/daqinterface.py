@@ -1158,8 +1158,8 @@ class DAQInterface(Component):
                 if host not in softlink_commands_to_run_on_host:
                     softlink_commands_to_run_on_host[host] = []
 
-                link_logfile_cmd = "mkdir -p %s/%s; ln -s %s %s/%s/run%d-%s.log" % \
-                                   (self.log_directory, subdir, logname, self.log_directory, subdir, self.run_number, label)
+                link_logfile_cmd = "ln -s %s %s/%s/run%d-%s.log" % \
+                                   (logname, self.log_directory, subdir, self.run_number, label)
                 softlink_commands_to_run_on_host[host].append(link_logfile_cmd)
                 
         for host in softlink_commands_to_run_on_host:
@@ -1709,10 +1709,12 @@ class DAQInterface(Component):
             # Ensure the needed log directories are in place
 
             logdir_commands_to_run_on_host = []
+            permissions="0775"
+            logdir_commands_to_run_on_host.append("mkdir -p -m %s %s" % (permissions, self.log_directory))
 
-            for logdir in ["pmt", "boardreader", "eventbuilder",
+            for subdir in ["pmt", "boardreader", "eventbuilder",
                            "dispatcher", "datalogger", "routingmaster"]:
-                logdir_commands_to_run_on_host.append("mkdir -p -m 0777 " + "%s/%s" % (self.log_directory, logdir) )
+                logdir_commands_to_run_on_host.append("mkdir -p -m %s %s/%s" % (permissions, self.log_directory, subdir) )
 
             for host in set([procinfo.host for procinfo in self.procinfos]):
                 logdircmd = construct_checked_command( logdir_commands_to_run_on_host )
@@ -1731,7 +1733,7 @@ class DAQInterface(Component):
                     self.print_log("e", "STDOUT output: \n%s" % ("\n".join(proc.stdout.readlines())))
                     self.print_log("e", "STDERR output: \n%s" % ("\n".join(proc.stderr.readlines())))
                     self.print_log("e", make_paragraph("Returned value of %d suggests that the ssh call to %s timed out. Perhaps a lack of public/private ssh keys resulted in ssh asking for a password?" % (status, host)))
-                    raise Exception("Problem running mkdir -p for the needed logfile directories on %s" % ( host ) )
+                    raise Exception("Problem running mkdir -p for the needed logfile directories on %s; this is likely due either to an ssh issue or a directory permissions issue" % ( host ) )
 
             self.init_process_requirements() 
 
