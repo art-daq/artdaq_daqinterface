@@ -2495,25 +2495,25 @@ class DAQInterface(Component):
 
         self.print_log("i", "\n%s: RECOVER transition complete" % (date_and_time()))
 
-    def state_with_side_effects(self, name):
+    def artdaq_process_info(self, name):
 
         try:
             self.procinfos
         except:
             return self.state(name)   # OK if we haven't yet created the list of Procinfo structures
         else:
-            tmpfile = "/tmp/artdaq_process_states_%s_partition%s" % (os.environ["USER"], 
+            tmpfile = "/tmp/artdaq_process_info_%s_partition%s" % (os.environ["USER"], 
                                                                      os.environ["DAQINTERFACE_PARTITION_NUMBER"])
-            statusstring = ""
+            infostring = ""
             for procinfo in self.procinfos:
-                statusstring += "%s %s\n" % (procinfo.label, procinfo.state)
+                infostring += "%s %s\n" % (procinfo.label, procinfo.state)
 
             with open(tmpfile, "w") as outf:
-                outf.write(statusstring)
+                outf.write(infostring)
 
-            self.print_log("d", statusstring, 5) 
-
-        return self.state(name)
+            self.print_log("d", infostring, 5) 
+            
+        return infostring
 
     # Override of the parent class Component's runner function. As of
     # 5/30/14, called every 1s by control.py

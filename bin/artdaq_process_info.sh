@@ -14,7 +14,7 @@ if [[ "$xmlrpc_retval" != "0" ]]; then
     exit 40
 fi
 
-full_cmd="xmlrpc http://localhost:$DAQINTERFACE_PORT/RPC2 state_with_side_effects daqint"
+full_cmd="xmlrpc http://localhost:$DAQINTERFACE_PORT/RPC2 artdaq_process_info daqint"
 eval $full_cmd
 
 exit 0
