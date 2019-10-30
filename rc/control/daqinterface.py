@@ -2506,7 +2506,10 @@ class DAQInterface(Component):
                                                                      os.environ["DAQINTERFACE_PARTITION_NUMBER"])
             infostring = ""
             for procinfo in self.procinfos:
-                infostring += "%s %s\n" % (procinfo.label, procinfo.state)
+                host = procinfo.host
+                if host == "localhost":
+                    host = os.environ["HOSTNAME"]
+                infostring += "%s at %s:%s (subsystem %s, rank %s): %s\n" % (procinfo.label, host, procinfo.port, procinfo.subsystem, procinfo.rank, procinfo.state)
 
             with open(tmpfile, "w") as outf:
                 outf.write(infostring)
