@@ -42,7 +42,7 @@ elif [[ "$method" == "direct" ]]; then
     
     output=""
     for proclabel in $proclabels ; do
-	output=${output}"@"$( show_logfile_for_process.sh $runnum $proclabel )
+	output=${output}"@"$( show_logfile_for_process.sh $runnum $proclabel | tail -1 )
     done
     output=$( echo $output | tr "@" "\n" )
 else
