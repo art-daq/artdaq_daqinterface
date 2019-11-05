@@ -1543,11 +1543,6 @@ class DAQInterface(Component):
         inode_fullname = "%s/%s" % (self.record_directory, inode_basename)
         if os.path.exists(inode_fullname):
             with open(inode_fullname) as inf:
-                # file_contents = inf.read()
-                # if file_contents.strip() == record_directory_info( self.record_directory ):
-                #     print "Yes"
-                # else:
-                #     print "No"
                 if not inf.read().strip() == record_directory_info( self.record_directory ):
                     preface = make_paragraph("Contents of existing %s file and returned value of call to the %s function don't match. This suggests that since the %s file was created the run records directory has been unexpectedly altered. PLEASE INVESTIGATE WHETHER THERE ARE ANY MISSING RUN RECORDS AS THIS MAY RESULT IN RUN NUMBER DUPLICATION. Then replace the existing %s file by executing: " % (inode_fullname, record_directory_info.__name__, inode_fullname, inode_fullname))
                     self.print_log("e",  preface + "\n\n" + "cd %s\nrm %s\npython %s/rc/control/utilities.py record_directory_info %s > %s\ncd %s\n" % (self.record_directory, inode_fullname, os.environ["ARTDAQ_DAQINTERFACE_DIR"], self.record_directory, inode_fullname, os.getcwd()))
