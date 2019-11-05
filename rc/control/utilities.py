@@ -685,7 +685,7 @@ def record_directory_info(recorddir):
     if not os.path.exists(recorddir):
         raise Exception("Directory \"%s\" doesn't exist, exiting...")
     stats = os.stat(recorddir)
-    return "%s %s" % (stats.st_ino, stats.st_dev)
+    return "inode: %s" % (stats.st_ino)
     
 def main():
 
