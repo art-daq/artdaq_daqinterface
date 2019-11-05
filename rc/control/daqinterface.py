@@ -50,6 +50,7 @@ from rc.control.utilities import fhicl_writes_root_file
 from rc.control.utilities import bash_unsetup_command
 from rc.control.utilities import kill_tail_f
 from rc.control.utilities import upsproddir_from_productsdir
+from rc.control.utilities import record_directory_info
 
 from rc.control.config_functions_local import get_boot_info_base
 from rc.control.config_functions_local import listdaqcomps_base
@@ -1537,6 +1538,30 @@ class DAQInterface(Component):
                 else:
                     self.procinfos[i_proc].priority = 999
                     
+    def check_run_record_integrity(self):
+        inode_basename = ".record_directory_info"
+        inode_fullname = "%s/%s" % (self.record_directory, inode_basename)
+        if os.path.exists(inode_fullname):
+            with open(inode_fullname) as inf:
+                # file_contents = inf.read()
+                # if file_contents.strip() == record_directory_info( self.record_directory ):
+                #     print "Yes"
+                # else:
+                #     print "No"
+                if not inf.read().strip() == record_directory_info( self.record_directory ):
+                    preface = make_paragraph("Contents of existing %s file and returned value of call to the %s function don't match. This suggests that since the %s file was created the run records directory has been unexpectedly altered. PLEASE INVESTIGATE WHETHER THERE ARE ANY MISSING RUN RECORDS AS THIS MAY RESULT IN RUN NUMBER DUPLICATION. Then replace the existing %s file by executing: " % (inode_fullname, record_directory_info.__name__, inode_fullname, inode_fullname))
+                    self.print_log("e",  preface + "\n\n" + "cd %s\nrm %s\npython %s/rc/control/utilities.py record_directory_info %s > %s\ncd %s\n" % (self.record_directory, inode_fullname, os.environ["ARTDAQ_DAQINTERFACE_DIR"], self.record_directory, inode_fullname, os.getcwd()))
+                    raise Exception("Problem during run records check; scroll up for details")
+        else:
+            os.chmod(self.record_directory, 0o775)
+            with open(inode_fullname, "w") as outf:
+                outf.write( record_directory_info( self.record_directory ) )
+            os.chmod(self.record_directory, 0o555)
+            
+            for runrec in glob.glob("%s/*" % (self.record_directory)):
+                if re.search(r"/?[0-9]+$", runrec):
+                    raise Exception( make_paragraph("A run record (%s) was found in %s. This is unexpected as no %s file was found. A %s file has just been created, so the next time you try this you won't see this error - however, this situation suggests that the run records directory has been unexpectedly altered. PLEASE INVESTIGATE WHETHER THERE ARE ANY MISSING RUN RECORDS AS THIS MAY RESULT IN RUN NUMBER DUPLICATION." % (runrec, self.record_directory, inode_fullname, inode_fullname)))
+
     # do_boot(), do_config(), do_start_running(), etc., are the
     # functions which get called in the runner() function when a
     # transition is requested
@@ -2137,10 +2162,13 @@ class DAQInterface(Component):
         self.print_log("i", "\n%s: START transition underway for run %d" % \
                        (date_and_time(), self.run_number))
         
+        self.check_run_record_integrity()
+
         if os.path.exists( self.tmp_run_record ):
             run_record_directory = "%s/%s" % \
                 (self.record_directory, str(self.run_number))
 
+            os.chmod(self.record_directory, 0o775)
             try:
                 shutil.copytree(self.tmp_run_record, run_record_directory)
             except:
@@ -2148,6 +2176,7 @@ class DAQInterface(Component):
                 self.alert_and_recover(make_paragraph("Error: Attempt to copy temporary run record \"%s\" into permanent run record \"%s\" didn't work; most likely reason is that you don't have write permission to %s, but it may also mean that your experiment's reusing a run number. Scroll up past the Recover transition output for further troubleshooting information." % (self.tmp_run_record, run_record_directory, self.record_directory)))
                 return
             os.chmod(run_record_directory, 0o555)
+            os.chmod(self.record_directory, 0o555)
 
             assert re.search(r"^/tmp/\S", self.semipermanent_run_record)
             if os.path.exists( self.semipermanent_run_record ):
