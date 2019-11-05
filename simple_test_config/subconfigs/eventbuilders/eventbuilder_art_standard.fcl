@@ -4,6 +4,10 @@ eventbuilder_art_standard: {
    outputs: {
       rootNetOutput: {
          module_type: "RootNetOutput"
+         destinations: {}
+         routing_table_config: {
+            use_routing_master: false
+         }
       }
    }
    physics: {
@@ -19,12 +23,8 @@ eventbuilder_art_standard: {
    }
    process_name: "DAQ"
    services: {
-      NetMonTransportServiceInterface: {
-         destinations: {}
-         routing_table_config: {
-            use_routing_master: false
-         }
-         service_provider: "NetMonTransportService"
+      ArtdaqSharedMemoryServiceInterface: {
+         service_provider: "ArtdaqSharedMemoryService"
       }
       scheduler: {
          errorOnFailureToPut: false
