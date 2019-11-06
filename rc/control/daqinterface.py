@@ -2162,18 +2162,12 @@ class DAQInterface(Component):
                                    self.tmp_run_record)
             return
 
-        starttime = time()
-        self.print_log("i,", "Attempting to save config info to the database, if in use...", 1, False);
-
         try:
             self.put_config_info()
         except Exception:
             self.print_log("e", traceback.format_exc())
             self.alert_and_recover("An exception was thrown when trying to save configuration info; see traceback above for more info")
             return
-
-        endtime = time()
-        self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
 
         if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "external_run_control" and \
            os.path.exists("/tmp/info_to_archive_partition%d.txt" % (self.partition_number)):
@@ -2227,18 +2221,12 @@ class DAQInterface(Component):
         self.save_metadata_value("DAQInterface stop time", \
                                      Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
 
-        starttime = time()
-        self.print_log("i,", "Attempting to save config info to the database, if in use...", 1, False);
-
         try:
             self.put_config_info_on_stop()
         except Exception:
             self.print_log("e", traceback.format_exc())
             self.alert_and_recover("An exception was thrown when trying to save configuration info; see traceback above for more info")
             return
-
-        endtime = time()
-        self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
 
         self.stop_datataking()
 
