@@ -452,13 +452,6 @@ class DAQInterface(Component):
                     "changes, and restart.") + "\n")
             sys.exit(1)
 
-        try:
-            with open("%s/contact_john_freeman_if_you_ever_see_this" % (self.record_directory), "w") as neverused:
-                pass
-        except IOError:
-            self.print_log("e", make_paragraph("DAQInterface launch failed since it's been determined that you don't have write access to the run records directory \"%s\"" % (self.record_directory)))
-            sys.exit(1)
-
         self.print_log("i", "%s: DAQInterface in partition %s launched and now in \"%s\" state, listening on port %d" % 
                                            (date_and_time(), self.partition_number, self.state(self.name), self.rpc_port))
 
