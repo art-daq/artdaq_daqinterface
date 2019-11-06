@@ -2710,6 +2710,10 @@ def main():  # no-coverage
         kill_tail_f() # Because tail -f is launched before this script is launched
         return
 
+    if not os.access(self.record_directory, os.W_OK | os.X_OK):
+        self.print_log("e", make_paragraph("DAQInterface launch failed since it's been determined that you don't have write access to the run records directory \"%s\"" % (self.record_directory)))
+        sys.exit(1)
+
     def handle_kill_signal(signum, stack):
         daqinterface_instance.print_log("e", "%s: DAQInterface on partition %s caught kill signal %d" % (date_and_time(), partition_number, signum))
         daqinterface_instance.recover()
