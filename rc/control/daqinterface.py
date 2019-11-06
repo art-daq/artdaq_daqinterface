@@ -1548,10 +1548,8 @@ class DAQInterface(Component):
                     self.print_log("e",  preface + "\n\n" + "cd %s\nrm %s\npython %s/rc/control/utilities.py record_directory_info %s > %s\ncd %s\n" % (self.record_directory, inode_fullname, os.environ["ARTDAQ_DAQINTERFACE_DIR"], self.record_directory, inode_fullname, os.getcwd()))
                     raise Exception("Problem during run records check; scroll up for details")
         else:
-            os.chmod(self.record_directory, 0o775)
             with open(inode_fullname, "w") as outf:
                 outf.write( record_directory_info( self.record_directory ) )
-            os.chmod(self.record_directory, 0o555)
             
             for runrec in glob.glob("%s/*" % (self.record_directory)):
                 if re.search(r"/?[0-9]+$", runrec):
@@ -2163,7 +2161,6 @@ class DAQInterface(Component):
             run_record_directory = "%s/%s" % \
                 (self.record_directory, str(self.run_number))
 
-            os.chmod(self.record_directory, 0o775)
             try:
                 shutil.copytree(self.tmp_run_record, run_record_directory)
             except:
@@ -2171,7 +2168,6 @@ class DAQInterface(Component):
                 self.alert_and_recover(make_paragraph("Error: Attempt to copy temporary run record \"%s\" into permanent run record \"%s\" didn't work; most likely reason is that you don't have write permission to %s, but it may also mean that your experiment's reusing a run number. Scroll up past the Recover transition output for further troubleshooting information." % (self.tmp_run_record, run_record_directory, self.record_directory)))
                 return
             os.chmod(run_record_directory, 0o555)
-            os.chmod(self.record_directory, 0o555)
 
             assert re.search(r"^/tmp/\S", self.semipermanent_run_record)
             if os.path.exists( self.semipermanent_run_record ):
