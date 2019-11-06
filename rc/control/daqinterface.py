@@ -2161,6 +2161,9 @@ class DAQInterface(Component):
         
         self.check_run_record_integrity()
 
+        if str(self.run_number) in [ subdir.split("/")[-1] for subdir in glob.glob("%s/[0-9]*" % (self.record_directory)) ]:
+            raise Exception(make_paragraph("Error: requested run number \"%s\" is found to already exist in the run records directory \"%s\"; run duplicates are not allowed." % (str(self.run_number), self.record_directory)))
+
         if os.path.exists( self.tmp_run_record ):
             run_record_directory = "%s/%s" % \
                 (self.record_directory, str(self.run_number))
