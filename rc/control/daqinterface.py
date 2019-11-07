@@ -1676,7 +1676,7 @@ class DAQInterface(Component):
 
             ssh_timeout_in_seconds = 30
             starttime = time()
-            self.print_log("i", "\nOn randomly selected node (%s), checking that the setup file %s doesn't return a nonzero value when sourced..." % \
+            self.print_log("i", "\nOn randomly selected node (%s), checking that the DAQ setup script \n%s\ndoesn't return a nonzero value when sourced..." % \
                            (random_host, self.daq_setup_script), 1, False)
 
             with deepsuppression(self.debug_level < 3):
@@ -1761,7 +1761,7 @@ class DAQInterface(Component):
             # Now, with the info on hand about the processes contained in
             # procinfos, actually launch them
 
-            self.print_log("i", "Launching the artdaq processes")
+            self.print_log("i", "\nLaunching the artdaq processes")
             self.called_launch_procs = True
             self.launch_procs_time = time()   # Will be used when checking logfile's timestamps
 
@@ -1784,7 +1784,7 @@ class DAQInterface(Component):
 
                 num_launch_procs_checks += 1
 
-                self.print_log("i", "Checking that processes are up (check %d of a max of %d)..." % \
+                self.print_log("i", "Checking that processes are up (check %d of a max of %d checks)..." % \
                                (num_launch_procs_checks, max_num_launch_procs_checks), 1, False)
 
                 # "False" here means "don't consider it an error if all

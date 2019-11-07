@@ -163,8 +163,8 @@ def kill_procs_base(self):
 
         artdaq_pids, labels_of_found_processes = get_pids_and_labels_on_host(host, self.procinfos)
         if len(artdaq_pids) > 0:
-            self.print_log("i", "%s: Found the following processes on %s, will attempt to kill them: %s" % \
-                           (date_and_time(), host, " ".join( labels_of_found_processes ) ), 0)
+            self.print_log("d", "%s: Found the following processes on %s, will attempt to kill them: %s" % \
+                           (date_and_time(), host, " ".join( labels_of_found_processes ) ), 2)
 
             cmd = "kill %s" % (" ".join(artdaq_pids))
             if host != "localhost" and host != os.environ["HOSTNAME"]:
