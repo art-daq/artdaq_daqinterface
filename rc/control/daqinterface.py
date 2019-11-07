@@ -35,9 +35,6 @@ if "DAQINTERFACE_DISABLE_BOOKKEEPING" in os.environ and not os.environ["DAQINTER
 else:
     from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v3_base
 
-from rc.control.online_monitoring import launch_art_procs_base
-from rc.control.online_monitoring import kill_art_procs_base
-
 from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_pids
@@ -473,8 +470,6 @@ class DAQInterface(Component):
     start_datataking = start_datataking_base
     stop_datataking = stop_datataking_base
     bookkeeping_for_fhicl_documents = bookkeeping_for_fhicl_documents_artdaq_v3_base
-    launch_art_procs = launch_art_procs_base
-    kill_art_procs = kill_art_procs_base
     do_enable = do_enable_base
     do_disable = do_disable_base
     launch_procs = launch_procs_base
@@ -2095,12 +2090,6 @@ class DAQInterface(Component):
                 self.print_log("d", traceback.format_exc(),2)
                 self.alert_and_recover("An exception was thrown when attempting to send the \"init\" transition to the artdaq processes; see messages above for more info")
                 return
-
-            try:
-                self.launch_art_procs(self.boot_filename)
-            except Exception:
-                self.print_log("w", traceback.format_exc())
-                self.print_log("w", make_paragraph("WARNING: an exception was caught when trying to launch the online monitoring processes; online monitoring won't work though this will not affect actual datataking"))
 
             starttime=time()
             self.print_log("i", "Ensuring FHiCL documents will be archived in the output *.root files...", 1, False)
