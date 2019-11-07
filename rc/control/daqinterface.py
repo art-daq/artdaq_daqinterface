@@ -1378,6 +1378,9 @@ class DAQInterface(Component):
         if command == "Stop" or command == "Pause" or command == "Shutdown":
             proctypes_in_order.reverse()
 
+        starttime=time()
+        self.print_log("i", "Sending %s transition to artdaq processes..." % (command.lower()), 1, False)
+
         for proctype in proctypes_in_order:
 
             threads = []
@@ -1404,10 +1407,15 @@ class DAQInterface(Component):
 
         sleep(1)
 
-        if self.debug_level >= 1:
+        endtime = time()
+        self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
+
+        if self.debug_level >= 2 or len([dummy for procinfo in self.procinfos if procinfo.lastreturned != "Success"]):
             for procinfo in self.procinfos:
                 self.print_log("i", "%s at %s:%s, returned string is:\n%s\n" % \
                     (procinfo.label, procinfo.host, procinfo.port, procinfo.lastreturned))
+        else:
+            self.print_log("i", "\nAll artdaq processes returned \"Success\".\n")
 
         try:
             self.check_proc_transition( self.target_states[ command ] )
@@ -2271,6 +2279,9 @@ class DAQInterface(Component):
 
             self.process_manager_cleanup()
 
+            starttime=time()
+            self.print_log("i", "Sending shutdown transition to artdaq processes...", 1, False)
+            
             for procinfo in self.procinfos:
 
                 procinfo.state = self.verbing_to_states["Shutdown"]
@@ -2289,10 +2300,18 @@ class DAQInterface(Component):
                                            "during the terminate transition")
                     return
                 else:
-                    self.print_log("i", "%s at %s:%s, returned string is:\n%s\n" % \
-                                   (procinfo.label, procinfo.host, procinfo.port, procinfo.lastreturned), 1)
                     if procinfo.lastreturned == "Success" or procinfo.lastreturned == self.target_states["Shutdown"]:
                         procinfo.state = self.target_states["Shutdown"]
+
+            endtime = time()
+            self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
+
+            if self.debug_level >= 2 or len([dummy for procinfo in self.procinfos if procinfo.lastreturned != "Success"]):
+                for procinfo in self.procinfos:
+                    self.print_log("i", "%s at %s:%s, returned string is:\n%s\n" % \
+                        (procinfo.label, procinfo.host, procinfo.port, procinfo.lastreturned))
+            else:
+                self.print_log("i", "\nAll artdaq processes returned \"Success\".\n")
 
             try:
                 self.kill_procs()
