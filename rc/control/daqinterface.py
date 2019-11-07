@@ -1463,7 +1463,7 @@ class DAQInterface(Component):
                     for label, contents in labeled_fhicl_documents:
 
                         self.print_log("d", "Saving FHiCL for %s to %s" % (label,
-                                                                           self.procinfos[procinfo_index].label), 2)
+                                                                           self.procinfos[procinfo_index].label), 3)
                         try:
                             self.procinfos[procinfo_index].lastreturned = self.procinfos[procinfo_index].server.daq.add_config_archive_entry( label, contents )
                         except:
@@ -1943,7 +1943,6 @@ class DAQInterface(Component):
         self.subconfigs_for_run.sort() 
 
         self.print_log("d", "Config name: %s" % ( " ".join(self.subconfigs_for_run) ), 1)
-        self.print_log("d", "Selected DAQ comps: %s" % self.daq_comp_list, 2)
 
         starttime=time()
         self.print_log("i", "\nObtaining FHiCL documents...", 1, False)
@@ -1951,13 +1950,9 @@ class DAQInterface(Component):
         try:
             tmpdir_for_fhicl, self.fhicl_file_path = self.get_config_info()
             assert "/tmp" == tmpdir_for_fhicl[:4]
-            self.print_log("d", "Using temporary fhicl directory %s" % tmpdir_for_fhicl,2)
         except:
             self.revert_failed_transition("calling get_config_info()")
             return
-
-        for ffp_path in self.fhicl_file_path:
-            self.print_log("d", "\tIncluding FHICL FILE PATH %s" % ffp_path,2)
 
         rootfile_cntr = 0 
 
@@ -1992,7 +1987,6 @@ class DAQInterface(Component):
                     if filename in matching_filenames:
                         fcl = "%s/%s" % (dirname, filename)
                         found_fhicl = True
-                        self.print_log("d", "Found FHiCL document for %s called %s" % (self.procinfos[i_proc].label, fcl), 2)
 
             if not found_fhicl:
                 self.print_log("e", make_paragraph("Unable to find a FHiCL document for %s in configuration \"%s\"; either remove the request for %s in the setdaqcomps.sh command (boardreader) or boot file (other artdaq process types) and redo the transitions or choose a new configuration" % \
@@ -2051,8 +2045,7 @@ class DAQInterface(Component):
         except:
             raise
 
-        with deepsuppression(self.debug_level < 2):
-            reformatted_fhicl_documents = reformat_fhicl_documents(os.environ["DAQINTERFACE_SETUP_FHICLCPP"], self.procinfos)
+        reformatted_fhicl_documents = reformat_fhicl_documents(os.environ["DAQINTERFACE_SETUP_FHICLCPP"], self.procinfos)
 
         for i_proc, reformatted_fhicl_document in enumerate(reformatted_fhicl_documents):
             self.procinfos[i_proc].fhicl_used = reformatted_fhicl_document

@@ -342,10 +342,23 @@ def reformat_fhicl_documents(setup_fhiclcpp, procinfos):
     cmds.append("echo About to execute '%s'" % (xargs_cmd))
     cmds.append(xargs_cmd)
     
-    status = Popen("\n".join(cmds), shell=True).wait()
+    out = Popen("\n".join(cmds), shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+
+    out_comm = out.communicate()
+
+    out_stdout = out_comm[0]
+    out_stderr = out_comm[1]
+    status = out.returncode
 
     if status != 0:
-        raise Exception("There was a problem reformatting the FHiCL documents found in %s; to troubleshoot you can set the debug level to 2 or higher in the boot file and try again" % (reformat_indir))
+        
+        if out_stdout is not None:
+            print out_stdout
+
+        if out_stderr is not None:
+            print out_stderr
+        
+        raise Exception("There was a problem reformatting the FHiCL documents found in %s; this is very likely due to illegal FHiCL syntax somewhere. See above for more info." % (reformat_indir))
 
     reformatted_fhicl_strings = []
     for label in [procinfo.label for procinfo in procinfos]:

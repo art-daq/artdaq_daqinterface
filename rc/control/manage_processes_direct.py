@@ -138,7 +138,7 @@ def launch_procs_base(self):
         if host != os.environ["HOSTNAME"] and host != "localhost":
             launchcmd = "ssh -f " + host + " '" + launchcmd + "'"
 
-        self.print_log("d", "PROCESS LAUNCH COMMANDS TO EXECUTE ON %s:\n%s\n" % (host, "\n".join(launch_commands_on_host_to_show_user[host])), 2)
+        self.print_log("d", "PROCESS LAUNCH COMMANDS TO EXECUTE ON %s:\n%s\n" % (host, "\n".join(launch_commands_on_host_to_show_user[host])), 3)
         
         with deepsuppression(self.debug_level < 4):
             status = Popen(launchcmd, shell=True, preexec_fn=os.setpgrp).wait()
