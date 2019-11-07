@@ -1104,15 +1104,27 @@ class DAQInterface(Component):
             if host != os.environ["HOSTNAME"] and host != "localhost":
                 cmd = "ssh -f " + host + " '" + cmd + "'"
 
-            proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            proclines = proc.stdout.readlines()
-            proclines_err = proc.stderr.readlines()
+            num_logfile_checks = 0
+            max_num_logfile_checks = 5
 
-            if len( [ line for line in proclines if re.search(r"\.log$", line) ]) != len(proctypes):
-                self.print_log("e", "\nProblem associating logfiles with the artdaq processes. Output is as follows:")
-                self.print_log("e", "\nSTDOUT:\n======================================================================\n%s\n======================================================================\n" % ("".join(proclines)))
-                self.print_log("e", "STDERR:\n======================================================================\n%s\n======================================================================\n" % ("".join(proclines_err)))
-                raise Exception(make_paragraph("Error: there was a problem identifying the logfiles for at least some of the artdaq processes. This may be the result of you not having write access to the directories where the logfiles are meant to be written. Please scroll up to see further output."))
+            while True:
+                
+                num_logfile_checks += 1
+
+                proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                proclines = proc.stdout.readlines()
+                proclines_err = proc.stderr.readlines()
+
+                if len( [ line for line in proclines if re.search(r"\.log$", line) ]) == len(proctypes):
+                    break   # Success
+                else:
+                    if num_logfile_checks == max_num_logfile_checks:
+                        self.print_log("e", "\nProblem associating logfiles with the artdaq processes. Output is as follows:")
+                        self.print_log("e", "\nSTDOUT:\n======================================================================\n%s\n======================================================================\n" % ("".join(proclines)))
+                        self.print_log("e", "STDERR:\n======================================================================\n%s\n======================================================================\n" % ("".join(proclines_err)))
+                        raise Exception(make_paragraph("Error: there was a problem identifying the logfiles for at least some of the artdaq processes. This may be the result of you not having write access to the directories where the logfiles are meant to be written. Please scroll up to see further output."))
+                    else:
+                        sleep(2)  # Give the logfiles a bit of time to appear before the next check
                 
             for i_p in range(len(proclines)):
                 if "BoardReader" in proctypes[i_p]:
@@ -1899,8 +1911,7 @@ class DAQInterface(Component):
                 self.get_artdaq_log_filenames()
 
             except Exception:
-                self.print_log("e", traceback.format_exc())
-                self.alert_and_recover("Unable to find logfiles for the processes")
+                self.alert_and_recover("Unable to find logfiles for at least some of the artdaq processes")
                 return
             endtime = time()
             self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
