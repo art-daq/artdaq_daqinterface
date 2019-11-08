@@ -1133,11 +1133,17 @@ class DAQInterface(Component):
                 else:
                     assert False, "Unknown process type found in procinfos list"
 
+        print 
+        for procinfo in self.procinfos:
+            self.print_log("d", "%-20s %s" % (procinfo.label + ":", self.determine_logfilename(procinfo)), 2)
+        print
+
     def softlink_logfiles(self):
         
         self.softlink_process_manager_logfiles()
 
         softlink_commands_to_run_on_host = {}
+        links_printed_to_output = []
 
         for loglist in [ self.boardreader_log_filenames,
                          self.eventbuilder_log_filenames, 
@@ -1172,10 +1178,12 @@ class DAQInterface(Component):
                 if host not in softlink_commands_to_run_on_host:
                     softlink_commands_to_run_on_host[host] = []
 
-                link_logfile_cmd = "mkdir -p %s/%s; ln -s %s %s/%s/run%d-%s.log" % \
-                                   (self.log_directory, subdir, logname, self.log_directory, subdir, self.run_number, label)
+                softlink = "%s/%s/run%d-%s.log" % (self.log_directory, subdir, self.run_number, label)
+                link_logfile_cmd = "mkdir -p %s/%s; ln -s %s %s" % \
+                                   (self.log_directory, subdir, logname, softlink)
                 softlink_commands_to_run_on_host[host].append(link_logfile_cmd)
-                
+                links_printed_to_output.append("%-20s %s:%s" % (label+":", host, softlink))
+
         for host in softlink_commands_to_run_on_host:
             link_logfile_cmd = "; ".join( softlink_commands_to_run_on_host[host] )
 
@@ -1184,7 +1192,9 @@ class DAQInterface(Component):
 
             status = Popen(link_logfile_cmd, shell=True).wait()
             
-            if status != 0:
+            if status == 0:
+                self.print_log("d", "\n" + "\n".join( links_printed_to_output ), 2)
+            else:
                 self.print_log("w", "WARNING: failure in performing user-friendly softlinks to logfiles on host %s" % (host))
 
     def fill_package_versions(self, packages):    
@@ -2202,7 +2212,7 @@ class DAQInterface(Component):
 
         if self.manage_processes:
             starttime=time()
-            self.print_log("i,", "Attempting to provide run-numbered softlinks to the logfiles...", 1, False);
+            self.print_log("i,", "\nAttempting to provide run-numbered softlinks to the logfiles...", 1, False);
             self.softlink_logfiles()
             endtime=time()
             self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
