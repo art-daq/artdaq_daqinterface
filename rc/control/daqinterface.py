@@ -1133,10 +1133,10 @@ class DAQInterface(Component):
                 else:
                     assert False, "Unknown process type found in procinfos list"
 
-        print 
+        self.print_log("d", "\n", 2)
         for procinfo in self.procinfos:
             self.print_log("d", "%-20s %s" % (procinfo.label + ":", self.determine_logfilename(procinfo)), 2)
-        print
+        self.print_log("d", "\n", 2)
 
     def softlink_logfiles(self):
         
@@ -1718,26 +1718,26 @@ class DAQInterface(Component):
             endtime = time()
             self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
 
-        if self.manage_processes:
-            
-            for ss in self.subsystems:
+        for ss in self.subsystems:
 
-                subsystem_line = "Subsystem %s: " % (ss)
+            subsystem_line = "\nSubsystem %s: " % (ss)
 
-                if len(self.subsystems[ss].sources) == 0:
-                    subsystem_line += "subsystem source(s): None"
-                else:
-                    subsystem_line += "subsystem source(s): %s" % ([", ".join(self.subsystems[ss].sources)])
+            if len(self.subsystems[ss].sources) == 0:
+                subsystem_line += "subsystem source(s): None"
+            else:
+                subsystem_line += "subsystem source(s): %s" % ([", ".join(self.subsystems[ss].sources)])
 
-                if self.subsystems[ss].destination is None:
-                    subsystem_line += ", subsystem destination: None"
-                else:
-                    subsystem_line += ", subsystem destination: %s" % (self.subsystems[ss].destination)
+            if self.subsystems[ss].destination is None:
+                subsystem_line += ", subsystem destination: None"
+            else:
+                subsystem_line += ", subsystem destination: %s" % (self.subsystems[ss].destination)
 
-                self.print_log("d", subsystem_line, 2)
+            self.print_log("d", subsystem_line + "\n", 2)
 
-            for procinfo in self.procinfos:
-                self.print_log("d", "%s at %s:%s, part of subsystem %s, has rank %d" % (procinfo.label, procinfo.host, procinfo.port, procinfo.subsystem, procinfo.rank), 2)
+            for subsystem in sorted(self.subsystems):
+                for procinfo in self.procinfos:
+                    if procinfo.subsystem == subsystem:
+                        self.print_log("d", "%-20s at %s:%s, part of subsystem %s, has rank %d" % (procinfo.label, procinfo.host, procinfo.port, procinfo.subsystem, procinfo.rank), 2)
  
             # Ensure the needed log directories are in place
 
