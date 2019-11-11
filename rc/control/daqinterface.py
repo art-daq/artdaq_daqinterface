@@ -836,7 +836,7 @@ class DAQInterface(Component):
 
         checked_cmd = construct_checked_command( cmds )
         
-        with deepsuppression(self.debug_level < 3):
+        with deepsuppression(self.debug_level < 5):
             status = Popen(checked_cmd, shell = True).wait()
 
         if status == 0:
