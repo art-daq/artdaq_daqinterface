@@ -112,7 +112,8 @@ def launch_procs_base(self):
     print
     for host in launch_commands_to_run_on_host:
 
-        self.print_log("d", "Trying to launch processes on %s" % (host), 2)
+        executing_commands_debug_level = 2
+        self.print_log("d", "Executing commands to launch processes on %s" % (host), executing_commands_debug_level, False)
 
         # Before we try launching the processes, let's make sure there
         # aren't any pre-existing processes listening on the same
@@ -148,6 +149,8 @@ def launch_procs_base(self):
             self.print_log("i", make_paragraph("You can also try running again with the \"debug level\" in the boot file set to 4. Otherwise, you can recreate what DAQInterface did by performing a clean login to %s, source-ing the DAQInterface environment and executing the following:" % (host)))
             self.print_log("i", "\n" + "\n".join(launch_commands_on_host_to_show_user[host]) + "\n")
             raise Exception("Status error raised attempting to launch processes on %s; scroll up for more detail" % (host))
+        else:
+            self.print_log("d", "...done.", executing_commands_debug_level)
 
     return launch_commands_on_host_to_show_user
 

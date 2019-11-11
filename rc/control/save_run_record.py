@@ -217,7 +217,7 @@ def save_run_record_base(self):
         self.print_log("w", traceback.format_exc())
         self.print_log("w", make_paragraph("Attempt to copy temporary run record \"%s\" into \"%s\" didn't work; keep in mind that %s will be clobbered next time you run on this partition" % (self.tmp_run_record, self.semipermanent_run_record, self.tmp_run_record)))
 
-    self.print_log("d", "\nSaved run configuration records in %s" % (outdir), 2)
+    self.print_log("d", "\nSaved run configuration record in %s" % (outdir), 2)
 
 def save_metadata_value_base(self, key, value):
 

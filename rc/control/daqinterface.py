@@ -1686,7 +1686,7 @@ class DAQInterface(Component):
 
             ssh_timeout_in_seconds = 30
             starttime = time()
-            self.print_log("i", "\nOn randomly selected node (%s), checking that the DAQ setup script \n%s\ndoesn't return a nonzero value when sourced..." % \
+            self.print_log("i", "\nOn randomly selected node (%s), will confirm that the DAQ setup script \n%s\ndoesn't return a nonzero value when sourced..." % \
                            (random_host, self.daq_setup_script), 1, False)
 
             with deepsuppression(self.debug_level < 3):
