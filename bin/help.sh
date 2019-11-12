@@ -36,7 +36,7 @@ wouldn't do what you'd think it would do)
 DAQINTERFACE_PARTITION_NUMBER: The partition DAQInterface will run on. Defaults to 0.
 
 DAQINTERFACE_PROCESS_MANAGEMENT_METHOD: The method DAQInterface uses
-to control processes. Options are "pmt", "direct", and
+to control processes. Options are "direct", "pmt", and
 "external_run_control". 
 
 DAQINTERFACE_PROCESS_REQUIREMENTS_LIST: The (optional) file users can
