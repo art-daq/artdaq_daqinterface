@@ -73,7 +73,6 @@ def launch_procs_base(self):
             launch_commands_to_run_on_host_background[ procinfo.host ] = []
             launch_commands_on_host_to_show_user[ procinfo.host ] = []
 
-            launch_commands_to_run_on_host[ procinfo.host ].append("echo For artdaq process launch on %s, will only see the output to stderr on screen, please look at %s:%s for full output >&2 " % (procinfo.host, procinfo.host, self.launch_attempt_file))
             launch_commands_to_run_on_host[ procinfo.host ].append("set +C")  
             launch_commands_to_run_on_host[ procinfo.host ].append("echo > %s" % (self.launch_attempt_file))
             launch_commands_to_run_on_host[ procinfo.host ].append("export PRODUCTS=\"%s\"; . %s/setup >> %s 2>&1 " % (self.productsdir,upsproddir_from_productsdir(self.productsdir),self.launch_attempt_file))

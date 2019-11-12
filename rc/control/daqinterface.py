@@ -1049,10 +1049,10 @@ class DAQInterface(Component):
             undefined_var = "debug level"
 
         if undefined_var != "":
-            errmsg = "Error: \"%s\" undefined in " \
-                "DAQInterface config file" % \
-                (undefined_var)
-            raise Exception(make_paragraph(errmsg))
+            raise Exception(make_paragraph("Error: \"%s\" undefined in DAQInterface boot file" % (undefined_var)))
+
+        if self.debug_level == 0:
+            self.print_log("w", make_paragraph("\"debug level\" is set to %d in the boot file, %s; while this isn't an error due to reasons of backwards compatibility, use of this debug level is highly discouraged" % (self.debug_level, self.boot_filename)))
 
         if not os.path.exists(self.daq_setup_script ):
             raise Exception(self.daq_setup_script + " script not found")
@@ -1143,7 +1143,7 @@ class DAQInterface(Component):
         self.softlink_process_manager_logfiles()
 
         softlink_commands_to_run_on_host = {}
-        links_printed_to_output = []
+        links_printed_to_output = {}
 
         for loglist in [ self.boardreader_log_filenames,
                          self.eventbuilder_log_filenames, 
@@ -1176,13 +1176,15 @@ class DAQInterface(Component):
                     assert False, "Unknown process type \"%s\" found when soflinking logfiles" % (proctype)
 
                 if host not in softlink_commands_to_run_on_host:
+                    assert host not in links_printed_to_output
                     softlink_commands_to_run_on_host[host] = []
+                    links_printed_to_output[host] = []
 
                 softlink = "%s/%s/run%d-%s.log" % (self.log_directory, subdir, self.run_number, label)
                 link_logfile_cmd = "mkdir -p %s/%s; ln -s %s %s" % \
                                    (self.log_directory, subdir, logname, softlink)
                 softlink_commands_to_run_on_host[host].append(link_logfile_cmd)
-                links_printed_to_output.append("%-20s %s:%s" % (label+":", host, softlink))
+                links_printed_to_output[host].append("%-20s %s:%s" % (label+":", host, softlink))
 
         for host in softlink_commands_to_run_on_host:
             link_logfile_cmd = "; ".join( softlink_commands_to_run_on_host[host] )
@@ -1193,9 +1195,11 @@ class DAQInterface(Component):
             status = Popen(link_logfile_cmd, shell=True).wait()
             
             if status == 0:
-                self.print_log("d", "\n" + "\n".join( links_printed_to_output ), 2)
+                self.print_log("d", "\n".join( links_printed_to_output[host] ), 2)
             else:
                 self.print_log("w", "WARNING: failure in performing user-friendly softlinks to logfiles on host %s" % (host))
+
+
 
     def fill_package_versions(self, packages):    
 
@@ -1389,7 +1393,9 @@ class DAQInterface(Component):
             proctypes_in_order.reverse()
 
         starttime=time()
-        self.print_log("i", "Sending %s transition to artdaq processes..." % (command.lower()), 1, False)
+        
+        self.print_log("i", "\nSending %s transition to artdaq processes..." % (command.lower()), 1, False)
+        self.print_log("d", "", 3) 
 
         for proctype in proctypes_in_order:
 
@@ -1418,7 +1424,7 @@ class DAQInterface(Component):
         sleep(1)
 
         endtime = time()
-        self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
+        self.print_log("i", "done (%.1f seconds).\n" % (endtime - starttime))
 
         if self.debug_level >= 2 or len([dummy for procinfo in self.procinfos if procinfo.lastreturned != "Success"]):
             for procinfo in self.procinfos:
@@ -1686,10 +1692,12 @@ class DAQInterface(Component):
 
             ssh_timeout_in_seconds = 30
             starttime = time()
+            random_node_source_debug_level = 3
+                
             self.print_log("i", "\nOn randomly selected node (%s), will confirm that the DAQ setup script \n%s\ndoesn't return a nonzero value when sourced..." % \
                            (random_host, self.daq_setup_script), 1, False)
+            #self.print_log("d", "\n", random_node_source_debug_level)
 
-            random_node_source_debug_level = 3
             with deepsuppression(self.debug_level < random_node_source_debug_level):
                 cmd = "%s ; . %s for_running" % (bash_unsetup_command, self.daq_setup_script)
 
@@ -1704,12 +1712,12 @@ class DAQInterface(Component):
                 out_stderr = out_comm[1]
                 status = out.returncode
 
-                self.print_log("d", "STDOUT: \n%s" % (out_stdout), random_node_source_debug_level)
+                self.print_log("d", "\nSTDOUT: \n%s" % (out_stdout), random_node_source_debug_level)
                 self.print_log("d", "STDERR: \n%s" % (out_stderr), random_node_source_debug_level)
 
 
             if status != 0:
-                errmsg="Nonzero value (%d) returned in attempt to source script %s on host \"%s\"" % \
+                errmsg="\nNonzero value (%d) returned in attempt to source script %s on host \"%s\"" % \
                                (status, self.daq_setup_script, random_host)
                 if status != 124:
                     errmsg = "%s." % (errmsg)
@@ -2083,6 +2091,7 @@ class DAQInterface(Component):
 
         starttime = time()
         self.print_log("i", "Saving the run record...", 1, False)
+        #self.print_log("d", "\n", 2)
 
         try:
             self.save_run_record()            
@@ -2119,7 +2128,9 @@ class DAQInterface(Component):
                 self.print_log("w", make_paragraph("WARNING: an exception was caught when trying to launch the online monitoring processes; online monitoring won't work though this will not affect actual datataking"))
 
             starttime=time()
+
             self.print_log("i", "Ensuring FHiCL documents will be archived in the output *.root files...", 1, False)
+            self.print_log("d", "\n", 3)
 
             labeled_fhicl_documents = []
 
@@ -2218,6 +2229,7 @@ class DAQInterface(Component):
         if self.manage_processes:
             starttime=time()
             self.print_log("i,", "\nAttempting to provide run-numbered softlinks to the logfiles...", 1, False);
+            self.print_log("d", "", 2)
             self.softlink_logfiles()
             endtime=time()
             self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
