@@ -73,6 +73,7 @@ def launch_procs_base(self):
             launch_commands_to_run_on_host_background[ procinfo.host ] = []
             launch_commands_on_host_to_show_user[ procinfo.host ] = []
 
+            launch_commands_to_run_on_host[ procinfo.host ].append("echo For artdaq process launch on %s, will only see the output to stderr on screen, please look at %s:%s for full output >&2 " % (procinfo.host, procinfo.host, self.launch_attempt_file))
             launch_commands_to_run_on_host[ procinfo.host ].append("set +C")  
             launch_commands_to_run_on_host[ procinfo.host ].append("echo > %s" % (self.launch_attempt_file))
             launch_commands_to_run_on_host[ procinfo.host ].append("export PRODUCTS=\"%s\"; . %s/setup >> %s 2>&1 " % (self.productsdir,upsproddir_from_productsdir(self.productsdir),self.launch_attempt_file))
@@ -80,6 +81,7 @@ def launch_procs_base(self):
             launch_commands_to_run_on_host[ procinfo.host ].append("source %s for_running >> %s 2>&1 " % (self.daq_setup_script, self.launch_attempt_file ))
             launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_ROOT=%s" % (self.log_directory))
             launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))
+
             launch_commands_to_run_on_host[ procinfo.host ].append("which boardreader >> %s 2>&1 " % (self.launch_attempt_file)) # Assume if this works, eventbuilder, etc. are also there
             launch_commands_to_run_on_host[ procinfo.host ].append("%s/bin/mopup_shmem.sh %s --force >> %s 2>&1" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"], os.environ["DAQINTERFACE_PARTITION_NUMBER"], self.launch_attempt_file))
             #launch_commands_to_run_on_host[ procinfo.host ].append("setup valgrind v3_13_0")

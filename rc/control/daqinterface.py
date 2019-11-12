@@ -1689,7 +1689,8 @@ class DAQInterface(Component):
             self.print_log("i", "\nOn randomly selected node (%s), will confirm that the DAQ setup script \n%s\ndoesn't return a nonzero value when sourced..." % \
                            (random_host, self.daq_setup_script), 1, False)
 
-            with deepsuppression(self.debug_level < 3):
+            random_node_source_debug_level = 3
+            with deepsuppression(self.debug_level < random_node_source_debug_level):
                 cmd = "%s ; . %s for_running" % (bash_unsetup_command, self.daq_setup_script)
 
                 if random_host != "localhost" and random_host != os.environ["HOSTNAME"]:
@@ -1702,6 +1703,10 @@ class DAQInterface(Component):
                 out_stdout = out_comm[0]
                 out_stderr = out_comm[1]
                 status = out.returncode
+
+                self.print_log("d", "STDOUT: \n%s" % (out_stdout), random_node_source_debug_level)
+                self.print_log("d", "STDERR: \n%s" % (out_stderr), random_node_source_debug_level)
+
 
             if status != 0:
                 errmsg="Nonzero value (%d) returned in attempt to source script %s on host \"%s\"" % \
@@ -1886,7 +1891,7 @@ class DAQInterface(Component):
 
                     msgviewercmd = construct_checked_command( cmds )
 
-                    with deepsuppression(self.debug_level < 3):
+                    with deepsuppression(self.debug_level < 4):
                         status = Popen(msgviewercmd, shell=True).wait()
 
                     if status != 0:

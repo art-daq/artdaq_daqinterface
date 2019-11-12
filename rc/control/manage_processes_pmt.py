@@ -120,7 +120,7 @@ def launch_procs_base(self):
 
     self.print_log("d", "PROCESS LAUNCH COMMANDS: \n" + "\n".join( self.launch_cmds ), 3)
 
-    with deepsuppression(self.debug_level < 4):
+    with deepsuppression(self.debug_level < 5):
         status = Popen(launchcmd, shell=True, preexec_fn=os.setpgrp).wait()
 
     if status != 0:   
