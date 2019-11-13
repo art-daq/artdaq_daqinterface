@@ -76,7 +76,7 @@ def launch_procs_base(self):
             launch_commands_to_run_on_host[ procinfo.host ].append("set +C")  
             launch_commands_to_run_on_host[ procinfo.host ].append("echo > %s" % (self.launch_attempt_file))
             launch_commands_to_run_on_host[ procinfo.host ].append("export PRODUCTS=\"%s\"; . %s/setup >> %s 2>&1 " % (self.productsdir,upsproddir_from_productsdir(self.productsdir),self.launch_attempt_file))
-            launch_commands_to_run_on_host[ procinfo.host ].append( bash_unsetup_command )
+            launch_commands_to_run_on_host[ procinfo.host ].append( bash_unsetup_command + " > /dev/null 2>&1 " )
             launch_commands_to_run_on_host[ procinfo.host ].append("source %s for_running >> %s 2>&1 " % (self.daq_setup_script, self.launch_attempt_file ))
             launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_ROOT=%s" % (self.log_directory))
             launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))
@@ -142,7 +142,7 @@ def launch_procs_base(self):
 
         self.print_log("d", "\nartdaq process launch commands to execute on %s (output will be in %s:%s):\n%s\n" % (host, host, self.launch_attempt_file, "\n".join(launch_commands_on_host_to_show_user[host])), 3)
         
-        with deepsuppression(self.debug_level < 4):
+        with deepsuppression(self.debug_level < 5):
             status = Popen(launchcmd, shell=True, preexec_fn=os.setpgrp).wait()
 
         if status != 0:   
