@@ -3,6 +3,7 @@ BEGIN {
     
     in_artdaq_process_settings = 0
     in_subsystem_settings = 0
+    in_user_defined_list = 0   # Need to account for users using lists as FHiCL overrides
 
     # JCF, Sep-20-2019
 
@@ -41,11 +42,12 @@ BEGIN {
     }
 
     if (in_artdaq_process_settings) {
-	if ( $0 !~ /\}, \{/ && $0 !~ /\}\]/ ) {
-	    gsub("\"", "", secondpart)
-	    procinfo_vars[firstpart] = secondpart
-	} else {
-	
+	if ($0 ~ /^\s*\]\s*$/ ) {
+	    in_artdaq_process_settings = 0
+	    next
+	} else if ($0 ~ /^\s*\{\s*$/) {  
+              # Ignore "{"
+	} else if ( $0 ~ /^\s*\},?\s*$/ ) {   # "}" or "}," means process info ready
 	    for (procinfo_var in procinfo_vars) {
 		if (procinfo_var == "name") {
 		    continue
@@ -54,20 +56,20 @@ BEGIN {
 		if (procinfo_vars[ procinfo_var ] != "not set") {
 		    printf("\n%s %s: %s", procinfo_vars["name"], procinfo_var, procinfo_vars[ procinfo_var ] )
 		}
-	    }
+	    } 
 
 	    print "\n"
 	    for (procinfo_var in procinfo_vars) {
 		procinfo_vars[ procinfo_var ] = "not set"
-	    } 
-
-	    if ($0 ~ /\}\]/) {
-		in_artdaq_process_settings = 0
+		
 	    }
-	}
+	} else {    # Expect this line to contain a process variable (host, label, etc.)
+	    gsub("\"", "", secondpart)
+	    procinfo_vars[firstpart] = secondpart
+	} 
+	
 	next
     }
-
 
     if (firstpart == "subsystem_settings" ) {
 	in_subsystem_settings = 1
@@ -76,26 +78,53 @@ BEGIN {
     }
 
     if (in_subsystem_settings) {
-	if ( $0 !~ /\}, \{/ && $0 !~ /\}\]/ ) {
-	    gsub("\"", "", secondpart)
-	    subsysteminfo_vars[firstpart] = secondpart
-	} else {
-	
+	if ($0 ~ /^\s*\]\s*$/ ) {
+	    in_subsystem_settings = 0
+	    next
+	} else if ($0 ~ /^\s*\{\s*$/) {  
+              # Ignore "{"
+	} else if ( $0 ~ /^\s*\},?\s*$/ ) {   # "}" or "}," means process info ready
 	    for (subsysteminfo_var in subsysteminfo_vars) {
+
 		if (subsysteminfo_vars[ subsysteminfo_var ] != "not set") {
 		    printf("\nSubsystem %s: %s", subsysteminfo_var, subsysteminfo_vars[ subsysteminfo_var ] )
 		}
-	    }
+	    } 
 
 	    print "\n"
 	    for (subsysteminfo_var in subsysteminfo_vars) {
 		subsysteminfo_vars[ subsysteminfo_var ] = "not set"
-	    } 
+		
+	    }
+	} else {    # Expect this line to contain a process variable (host, label, etc.)
+	    gsub("\"", "", secondpart)
+	    subsysteminfo_vars[firstpart] = secondpart
+	} 
+	
+	next
+    }
 
-	    if ($0 ~ /\}\]/) {
-		in_subsystem_settings = 0
+    if (secondpart ~ /^\s*\[\s*/ ) {
+	in_user_defined_list = 1  # Because we've already dealt with artdaq_process_settings and subsystem_settings
+	num_interior_square_brackets = 0
+	printf "%s", $0
+	next
+    }
+
+    if (in_user_defined_list) {
+	if ($0 ~ /^\s*\[\s*/) {
+	    num_interior_square_brackets += 1
+	} else if ($0 ~ /^\s*\]\s*/) {
+	    if (num_interior_square_brackets == 0) {
+		in_user_defined_list=0
+		printf "]\n\n"
+		next
+	    } else {
+		num_interior_square_brackets -= 1
 	    }
 	}
+	gsub("^[ \t]+|[ \t]+$","", $0)
+	printf "%s", $0
 	next
     }
 

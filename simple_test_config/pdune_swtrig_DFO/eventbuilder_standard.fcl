@@ -46,12 +46,19 @@ eventbuilder_art_standard: {
   }
 
   physics: {
-    analyzers: { }
+    analyzers: {
+      fragmentwatcher: {
+        module_type: FragmentWatcher 
+        metrics_reporting_level: 1 
+        mode_bitmask: 0x7 
+      }
+    }
 
     producers: { }
 
     filters: { }
 
+    a1: [ fragmentwatcher ]
     my_output_modules: [ rootNetOutput ]
   }
 

@@ -58,7 +58,7 @@ art: {
   outputs: {
     normalOutput: {
       module_type: RootDAQOut
-      fileName: "/tmp/artdaq350Demo_r%06r_sr%02s_%#_dl${OneBasedRelativeRank}_%tc.root"
+      fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%#_dl${OneBasedRelativeRank}_%tc.root"
       fileProperties: { maxSubRuns: 1 maxRuns: 1 maxSize: 2000000 maxEvents: 1000 }
       fastCloning: false
       compressionLevel: 0

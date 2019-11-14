@@ -1,3 +1,0 @@
-#include "felix_standard.fcl"
-
-daq: @local::felix02_daq_standard

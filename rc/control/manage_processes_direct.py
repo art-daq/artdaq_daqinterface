@@ -48,17 +48,16 @@ def bootfile_name_to_execname(bootfile_name):
 
 def launch_procs_base(self):
 
-    if self.have_artdaq_mfextensions():
-        messagefacility_fhicl_filename = obtain_messagefacility_fhicl()
 
-        for host in set([procinfo.host for procinfo in self.procinfos]):
-            if host != "localhost" and host != os.environ["HOSTNAME"]:
-                cmd = "scp -p %s %s:%s" % (messagefacility_fhicl_filename, host, messagefacility_fhicl_filename)
-                status = Popen(cmd, shell=True).wait()
+    messagefacility_fhicl_filename = obtain_messagefacility_fhicl(self.have_artdaq_mfextensions())
 
-                if status != 0:
-                    raise Exception("Status error raised in %s executing \"%s\"" % (launch_procs_base.__name__, cmd))
+    for host in set([procinfo.host for procinfo in self.procinfos]):
+        if host != "localhost" and host != os.environ["HOSTNAME"]:
+            cmd = "scp -p %s %s:%s" % (messagefacility_fhicl_filename, host, messagefacility_fhicl_filename)
+            status = Popen(cmd, shell=True).wait()
 
+            if status != 0:
+                raise Exception("Status error raised in %s executing \"%s\"" % (launch_procs_base.__name__, cmd))
 
     launch_commands_to_run_on_host = {}
     launch_commands_to_run_on_host_background = {}  # Need to run artdaq processes in the background so they're persistent outside of this function's Popen calls
@@ -80,9 +79,9 @@ def launch_procs_base(self):
             launch_commands_to_run_on_host[ procinfo.host ].append( bash_unsetup_command )
             launch_commands_to_run_on_host[ procinfo.host ].append("source %s for_running >> %s 2>&1 " % (self.daq_setup_script, self.launch_attempt_file ))
             launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_ROOT=%s" % (self.log_directory))
-            if self.have_artdaq_mfextensions():
-                launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))
+            launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))
             launch_commands_to_run_on_host[ procinfo.host ].append("which boardreader >> %s 2>&1 " % (self.launch_attempt_file)) # Assume if this works, eventbuilder, etc. are also there
+            launch_commands_to_run_on_host[ procinfo.host ].append("%s/bin/mopup_shmem.sh %s --force >> %s 2>&1" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"], os.environ["DAQINTERFACE_PARTITION_NUMBER"], self.launch_attempt_file))
             #launch_commands_to_run_on_host[ procinfo.host ].append("setup valgrind v3_13_0")
 	    #launch_commands_to_run_on_host[ procinfo.host ].append("export LD_PRELOAD=libasan.so")
 	    #launch_commands_to_run_on_host[ procinfo.host ].append("export ASAN_OPTIONS=alloc_dealloc_mismatch=0")

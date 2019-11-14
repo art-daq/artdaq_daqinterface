@@ -1,8 +1,4 @@
-#include "routing_master_parameters.fcl"
-
-BEGIN_PROLOG
-
-eventbuilder_daq_standard: {
+daq: {
   event_builder: {
     expected_fragments_per_event: 0  # Will be set by DAQInterface
     max_event_size_bytes: 16777216
@@ -10,14 +6,11 @@ eventbuilder_daq_standard: {
     buffer_count: 5
     max_incomplete_events: 75 # Same as boardreader sync interval
     verbose: true
-    send_requests: true
-    request_port: 3001
-    request_address: "227.128.12.26" # Multicast request address
-
-    routing_token_config: @local::subsystem2_routing_token_specification
+    send_requests: false
 
     sources: { }
   }
+
   metrics: {
     evbFile: {
       metricPluginType: "file"
@@ -29,7 +22,7 @@ eventbuilder_daq_standard: {
   }
 } 
 
-eventbuilder_art_standard: {
+art: {
   services: {
     scheduler: {
       errorOnFailureToPut: false
@@ -52,18 +45,34 @@ eventbuilder_art_standard: {
 
     filters: { }
 
-    my_output_modules: [ rootNetOutput ]
+    my_output_modules: [ routingNetOutput ]
   }
 
   outputs: {
-    rootNetOutput: {
-      module_type: RootNetOutput
-      #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
-      #broadcast_sends: true
-      destinations: { }
+    routingNetOutput: {
+      module_type: RoutingNetOutput
+      destinations: {}
+
+      allow_default_round_robin_routing: false
+
+      policy: {                                                                                                                                        
+        policy: "RoundRobin"
+        receiver_ranks: []
+        minimum_participants: -2
+      }
+
+      inhibit_publisher: {
+        publisher: "ZMQ"
+        bind_address: "tcp://*:5599"
+      }
+
+      sender_ranks: []
+
+      token_receiver: {
+          routing_token_port: 35555  # default
+      }
     }
   }
+
   process_name: DAQ
 }
-
-END_PROLOG

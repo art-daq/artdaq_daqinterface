@@ -1,5 +1,0 @@
- #include "eventbuilder_standard.fcl" 
-
-daq: @local::eventbuilder_daq_standard 
-
-art: @local::eventbuilder_art_standard 
