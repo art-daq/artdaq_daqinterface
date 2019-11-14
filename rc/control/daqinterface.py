@@ -824,6 +824,18 @@ class DAQInterface(Component):
 
     def have_artdaq_mfextensions(self):
 
+        try:
+            self.artdaq_mfextensions_booleans
+        except:
+            self.artdaq_mfextensions_booleans = {}  
+
+        try:
+            self.artdaq_mfextensions_booleans[self.daq_setup_script]
+        except:
+            pass
+        else:
+            return self.artdaq_mfextensions_booleans[self.daq_setup_script]
+
         cmds = []
         cmds.append(bash_unsetup_command)
         cmds.append(". %s for_running" % (self.daq_setup_script))
@@ -835,9 +847,11 @@ class DAQInterface(Component):
             status = Popen(checked_cmd, shell = True).wait()
 
         if status == 0:
-            return True
+            self.artdaq_mfextensions_booleans[self.daq_setup_script] = True
         else:
-            return False
+            self.artdaq_mfextensions_booleans[self.daq_setup_script] = False
+
+        return self.artdaq_mfextensions_booleans[self.daq_setup_script]
 
     def artdaq_mfextensions_info(self):
 
