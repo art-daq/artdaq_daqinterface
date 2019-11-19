@@ -3,14 +3,8 @@ services: {
   scheduler: {
     errorOnFailureToPut: false
   }
-  NetMonTransportServiceInterface: {
-    service_provider: NetMonTransportService
-    #broadcast_sends: true
-	destinations: {	}
-
-	routing_table_config: {
-	    use_routing_master: false
-	}
+  ArtdaqSharedMemoryServiceInterface: {
+    service_provider: ArtdaqSharedMemoryService
   }
 }
 
@@ -48,6 +42,12 @@ outputs: {
   rootNetOutput: {
     module_type: RootNetOutput
     #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
+    #broadcast_sends: true
+	destinations: {	}
+
+	routing_table_config: {
+	    use_routing_master: false
+	}
   }
   #normalOutput: {
   #  module_type: RootDAQOut

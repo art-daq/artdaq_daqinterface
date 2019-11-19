@@ -20,6 +20,10 @@ outputs: {
    }
    rootNetOutput: {
       module_type: "RootNetOutput"
+      broadcast_sends: true
+      nonblocking_sends: true
+
+      destinations: {}
    }
 }
 physics: {
@@ -42,12 +46,8 @@ physics: {
 }
 process_name: "DAQDL"
 services: {
-   NetMonTransportServiceInterface: {
-      broadcast_sends: true
-      nonblocking_sends: true
-      service_provider: "NetMonTransportService"
-
-      destinations: {}
+   ArtdaqSharedMemoryServiceInterface: {
+      service_provider: "ArtdaqSharedMemoryService"
 }
    scheduler: {
       errorOnFailureToPut: false  # Don't change this
