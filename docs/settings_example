@@ -27,6 +27,7 @@ boardreader timeout: 60
 eventbuilder timeout: 30
 datalogger timeout: 30
 dispatcher timeout: 30
+routing_master timeout: 30
 
 # As of Nov-17-2018, the largest fragments are found in
 # mediumsystem_with_routing_master and subconfigs/component_pull, each

@@ -1,5 +1,3 @@
-#include "routing_master_parameters.fcl"
-
 daq: {
   event_builder: {
     expected_fragments_per_event: 0  # Will be set by DAQInterface
@@ -9,10 +7,6 @@ daq: {
     max_incomplete_events: 75 # Same as boardreader sync interval
     verbose: true
     send_requests: false
-
-    routing_token_config: {
-        use_routing_master: false
-    }
 
     sources: { }
   }
@@ -33,10 +27,8 @@ art: {
     scheduler: {
       errorOnFailureToPut: false
     }
-    NetMonTransportServiceInterface: {
-      service_provider: NetMonTransportService
-      #broadcast_sends: true
-      destinations: {}
+    ArtdaqSharedMemoryServiceInterface: {
+      service_provider: ArtdaqSharedMemoryService
     }
   }
 
@@ -53,15 +45,32 @@ art: {
 
     filters: { }
 
-    my_output_modules: [ binaryNetOutput ]
+    my_output_modules: [ routingNetOutput ]
   }
 
   outputs: {
-    binaryNetOutput: {
-      module_type: BinaryNetOutput
+    routingNetOutput: {
+      module_type: RoutingNetOutput
       destinations: {}
 
-      routing_table_config: @local::subsystem2_routing_table_specification
+      allow_default_round_robin_routing: false
+
+      policy: {                                                                                                                                        
+        policy: "RoundRobin"
+        receiver_ranks: []
+        minimum_participants: -2
+      }
+
+      inhibit_publisher: {
+        publisher: "ZMQ"
+        bind_address: "tcp://*:5599"
+      }
+
+      sender_ranks: []
+
+      token_receiver: {
+          routing_token_port: 35555  # default
+      }
     }
   }
 

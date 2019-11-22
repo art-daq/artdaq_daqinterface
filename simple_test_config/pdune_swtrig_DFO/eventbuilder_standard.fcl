@@ -34,10 +34,8 @@ eventbuilder_art_standard: {
     scheduler: {
       errorOnFailureToPut: false
     }
-    NetMonTransportServiceInterface: {
-      service_provider: NetMonTransportService
-      #broadcast_sends: true
-      destinations: { }
+    ArtdaqSharedMemoryServiceInterface: {
+      service_provider: ArtdaqSharedMemoryService
     }
   }
 
@@ -48,12 +46,19 @@ eventbuilder_art_standard: {
   }
 
   physics: {
-    analyzers: { }
+    analyzers: {
+      fragmentwatcher: {
+        module_type: FragmentWatcher 
+        metrics_reporting_level: 1 
+        mode_bitmask: 0x7 
+      }
+    }
 
     producers: { }
 
     filters: { }
 
+    a1: [ fragmentwatcher ]
     my_output_modules: [ rootNetOutput ]
   }
 
@@ -61,6 +66,8 @@ eventbuilder_art_standard: {
     rootNetOutput: {
       module_type: RootNetOutput
       #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
+      #broadcast_sends: true
+      destinations: { }
     }
   }
   process_name: DAQ

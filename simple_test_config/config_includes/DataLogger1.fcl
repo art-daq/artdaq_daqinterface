@@ -27,7 +27,7 @@ services: {
   scheduler: {
     errorOnFailureToPut: false
   }
-  NetMonTransportServiceInterface: @local::artdaq_DL_art_service_for_sending_events
+  ArtdaqSharedMemoryServiceInterface: @local::art_service_for_shared_memory
 }
 
 source: @local::artdaq_DL_art_source_specification

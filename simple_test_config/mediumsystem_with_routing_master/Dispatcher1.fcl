@@ -31,9 +31,9 @@ art: {
     scheduler: {
       errorOnFailureToPut: false
     }
-    NetMonTransportServiceInterface: {
-      service_provider: NetMonTransportService
-    }
+  ArtdaqSharedMemoryServiceInterface: {
+   service_provider: ArtdaqSharedMemoryService
+  }
   }
   source: {
     module_type: NetMonInput
