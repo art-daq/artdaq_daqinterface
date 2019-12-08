@@ -2,11 +2,8 @@ services: {
   scheduler: {
     errorOnFailureToPut: false
   }
-  NetMonTransportServiceInterface: {
-    service_provider: NetMonTransportService
-    broadcast_sends: true
-    nonblocking_sends: true
-	destinations: { }
+  ArtdaqSharedMemoryServiceInterface: {
+    service_provider: ArtdaqSharedMemoryService
   }
 }
 
@@ -46,10 +43,13 @@ outputs: {
   rootNetOutput: {
     module_type: RootNetOutput
     #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
+    broadcast_sends: true
+    nonblocking_sends: true
+	destinations: { }
   }
 
   normalOutput: {
-    module_type: RootOutput
+    module_type: RootDAQOut
     fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%to_%#.root"
     fileProperties: { maxSubRuns: 1 maxRuns: 1 maxSize: 8192000 }
     fastCloning: false

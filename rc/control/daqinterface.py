@@ -35,9 +35,6 @@ if "DAQINTERFACE_DISABLE_BOOKKEEPING" in os.environ and not os.environ["DAQINTER
 else:
     from rc.control.bookkeeping import bookkeeping_for_fhicl_documents_artdaq_v3_base
 
-from rc.control.online_monitoring import launch_art_procs_base
-from rc.control.online_monitoring import kill_art_procs_base
-
 from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_pids
@@ -473,8 +470,6 @@ class DAQInterface(Component):
     start_datataking = start_datataking_base
     stop_datataking = stop_datataking_base
     bookkeeping_for_fhicl_documents = bookkeeping_for_fhicl_documents_artdaq_v3_base
-    launch_art_procs = launch_art_procs_base
-    kill_art_procs = kill_art_procs_base
     do_enable = do_enable_base
     do_disable = do_disable_base
     launch_procs = launch_procs_base
@@ -620,6 +615,8 @@ class DAQInterface(Component):
                 self.datalogger_timeout = int( line.split()[-1].strip() )
             elif "dispatcher_timeout" in line or "dispatcher timeout" in line:
                 self.dispatcher_timeout = int( line.split()[-1].strip() )
+            elif re.search(r"^\s*routing_?master[ _]timeout", line):
+                self.routingmaster_timeout = int( line.split()[-1].strip() )
             elif "boardreader_priorities:" in line or "boardreader priorities:" in line:
                 res = re.search(r"^\s*boardreader[ _]priorities\s*:\s*(.*)", line)
                 if res:
@@ -829,6 +826,18 @@ class DAQInterface(Component):
 
     def have_artdaq_mfextensions(self):
 
+        try:
+            self.artdaq_mfextensions_booleans
+        except:
+            self.artdaq_mfextensions_booleans = {}  
+
+        try:
+            self.artdaq_mfextensions_booleans[self.daq_setup_script]
+        except:
+            pass
+        else:
+            return self.artdaq_mfextensions_booleans[self.daq_setup_script]
+
         cmds = []
         cmds.append(bash_unsetup_command)
         cmds.append(". %s for_running" % (self.daq_setup_script))
@@ -840,9 +849,11 @@ class DAQInterface(Component):
             status = Popen(checked_cmd, shell = True).wait()
 
         if status == 0:
-            return True
+            self.artdaq_mfextensions_booleans[self.daq_setup_script] = True
         else:
-            return False
+            self.artdaq_mfextensions_booleans[self.daq_setup_script] = False
+
+        return self.artdaq_mfextensions_booleans[self.daq_setup_script]
 
     def artdaq_mfextensions_info(self):
 
@@ -1109,15 +1120,27 @@ class DAQInterface(Component):
             if host != os.environ["HOSTNAME"] and host != "localhost":
                 cmd = "ssh -f " + host + " '" + cmd + "'"
 
-            proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            proclines = proc.stdout.readlines()
-            proclines_err = proc.stderr.readlines()
+            num_logfile_checks = 0
+            max_num_logfile_checks = 5
 
-            if len( [ line for line in proclines if re.search(r"\.log$", line) ]) != len(proctypes):
-                self.print_log("e", "\nProblem associating logfiles with the artdaq processes. Output is as follows:")
-                self.print_log("e", "\nSTDOUT:\n======================================================================\n%s\n======================================================================\n" % ("".join(proclines)))
-                self.print_log("e", "STDERR:\n======================================================================\n%s\n======================================================================\n" % ("".join(proclines_err)))
-                raise Exception(make_paragraph("Error: there was a problem identifying the logfiles for at least some of the artdaq processes. This may be the result of you not having write access to the directories where the logfiles are meant to be written. Please scroll up to see further output."))
+            while True:
+                
+                num_logfile_checks += 1
+
+                proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                proclines = proc.stdout.readlines()
+                proclines_err = proc.stderr.readlines()
+
+                if len( [ line for line in proclines if re.search(r"\.log$", line) ]) == len(proctypes):
+                    break   # Success
+                else:
+                    if num_logfile_checks == max_num_logfile_checks:
+                        self.print_log("e", "\nProblem associating logfiles with the artdaq processes. Output is as follows:")
+                        self.print_log("e", "\nSTDOUT:\n======================================================================\n%s\n======================================================================\n" % ("".join(proclines)))
+                        self.print_log("e", "STDERR:\n======================================================================\n%s\n======================================================================\n" % ("".join(proclines_err)))
+                        raise Exception(make_paragraph("Error: there was a problem identifying the logfiles for at least some of the artdaq processes. This may be the result of you not having write access to the directories where the logfiles are meant to be written. Please scroll up to see further output."))
+                    else:
+                        sleep(2)  # Give the logfiles a bit of time to appear before the next check
                 
             for i_p in range(len(proclines)):
                 if "BoardReader" in proctypes[i_p]:
@@ -1755,10 +1778,12 @@ class DAQInterface(Component):
             # Ensure the needed log directories are in place
 
             logdir_commands_to_run_on_host = []
+            permissions="0775"
+            logdir_commands_to_run_on_host.append("mkdir -p -m %s %s" % (permissions, self.log_directory))
 
-            for logdir in ["pmt", "boardreader", "eventbuilder",
+            for subdir in ["pmt", "boardreader", "eventbuilder",
                            "dispatcher", "datalogger", "routingmaster"]:
-                logdir_commands_to_run_on_host.append("mkdir -p -m 0777 " + "%s/%s" % (self.log_directory, logdir) )
+                logdir_commands_to_run_on_host.append("mkdir -p -m %s %s/%s" % (permissions, self.log_directory, subdir) )
 
             for host in set([procinfo.host for procinfo in self.procinfos]):
                 logdircmd = construct_checked_command( logdir_commands_to_run_on_host )
@@ -1777,7 +1802,7 @@ class DAQInterface(Component):
                     self.print_log("e", "STDOUT output: \n%s" % ("\n".join(proc.stdout.readlines())))
                     self.print_log("e", "STDERR output: \n%s" % ("\n".join(proc.stderr.readlines())))
                     self.print_log("e", make_paragraph("Returned value of %d suggests that the ssh call to %s timed out. Perhaps a lack of public/private ssh keys resulted in ssh asking for a password?" % (status, host)))
-                    raise Exception("Problem running mkdir -p for the needed logfile directories on %s" % ( host ) )
+                    raise Exception("Problem running mkdir -p for the needed logfile directories on %s; this is likely due either to an ssh issue or a directory permissions issue" % ( host ) )
 
             self.init_process_requirements() 
 
@@ -1935,8 +1960,7 @@ class DAQInterface(Component):
                 self.get_artdaq_log_filenames()
 
             except Exception:
-                self.print_log("e", traceback.format_exc())
-                self.alert_and_recover("Unable to find logfiles for the processes")
+                self.alert_and_recover("Unable to find logfiles for at least some of the artdaq processes")
                 return
             endtime = time()
             self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
@@ -2120,12 +2144,6 @@ class DAQInterface(Component):
                 self.print_log("d", traceback.format_exc(),2)
                 self.alert_and_recover("An exception was thrown when attempting to send the \"init\" transition to the artdaq processes; see messages above for more info")
                 return
-
-            try:
-                self.launch_art_procs(self.boot_filename)
-            except Exception:
-                self.print_log("w", traceback.format_exc())
-                self.print_log("w", make_paragraph("WARNING: an exception was caught when trying to launch the online monitoring processes; online monitoring won't work though this will not affect actual datataking"))
 
             starttime=time()
 
