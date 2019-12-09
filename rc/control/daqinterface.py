@@ -1204,8 +1204,7 @@ class DAQInterface(Component):
                     links_printed_to_output[host] = []
 
                 softlink = "%s/%s/run%d-%s.log" % (self.log_directory, subdir, self.run_number, label)
-                link_logfile_cmd = "mkdir -p %s/%s; ln -s %s %s" % \
-                                   (self.log_directory, subdir, logname, softlink)
+                link_logfile_cmd = "ln -s %s %s" % (logname, softlink)
                 softlink_commands_to_run_on_host[host].append(link_logfile_cmd)
                 links_printed_to_output[host].append("%-20s %s:%s" % (label+":", host, softlink))
 
