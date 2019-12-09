@@ -2,8 +2,8 @@ services: {
   scheduler: {
     errorOnFailureToPut: false
   }
-  ArtdaqSharedMemoryServiceInterface: {
-   service_provider: ArtdaqSharedMemoryService
+  NetMonTransportServiceInterface: {
+    service_provider: NetMonTransportService
   }
 }
 

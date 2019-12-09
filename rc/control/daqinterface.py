@@ -1689,6 +1689,27 @@ class DAQInterface(Component):
 
         self.procinfos.sort()
 
+        for ss in sorted(self.subsystems):
+
+            subsystem_line = "\nSubsystem %s: " % (ss)
+
+            if len(self.subsystems[ss].sources) == 0:
+                subsystem_line += "subsystem source(s): None"
+            else:
+                subsystem_line += "subsystem source(s): %s" % ([", ".join(self.subsystems[ss].sources)])
+
+            if self.subsystems[ss].destination is None:
+                subsystem_line += ", subsystem destination: None"
+            else:
+                subsystem_line += ", subsystem destination: %s" % (self.subsystems[ss].destination)
+
+            self.print_log("d", subsystem_line + "\n", 2)
+
+        for ss in sorted(self.subsystems):
+            for procinfo in self.procinfos:
+                if procinfo.subsystem == ss:
+                    self.print_log("d", "%-20s at %s:%s, part of subsystem %s, has rank %d" % (procinfo.label, procinfo.host, procinfo.port, procinfo.subsystem, procinfo.rank), 2)
+
         # JCF, Oct-18-2017
 
         # After a discussion with Ron about how trace commands need to
@@ -1708,7 +1729,6 @@ class DAQInterface(Component):
         # benefit here seems to outweight the cost.
 
         if self.manage_processes:
-
             hosts = [procinfo.host for procinfo in self.procinfos]
             random_host = random.choice( hosts )
 
@@ -1753,26 +1773,6 @@ class DAQInterface(Component):
             endtime = time()
             self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
 
-        for ss in self.subsystems:
-
-            subsystem_line = "\nSubsystem %s: " % (ss)
-
-            if len(self.subsystems[ss].sources) == 0:
-                subsystem_line += "subsystem source(s): None"
-            else:
-                subsystem_line += "subsystem source(s): %s" % ([", ".join(self.subsystems[ss].sources)])
-
-            if self.subsystems[ss].destination is None:
-                subsystem_line += ", subsystem destination: None"
-            else:
-                subsystem_line += ", subsystem destination: %s" % (self.subsystems[ss].destination)
-
-            self.print_log("d", subsystem_line + "\n", 2)
-
-            for subsystem in sorted(self.subsystems):
-                for procinfo in self.procinfos:
-                    if procinfo.subsystem == subsystem:
-                        self.print_log("d", "%-20s at %s:%s, part of subsystem %s, has rank %d" % (procinfo.label, procinfo.host, procinfo.port, procinfo.subsystem, procinfo.rank), 2)
  
             # Ensure the needed log directories are in place
 
