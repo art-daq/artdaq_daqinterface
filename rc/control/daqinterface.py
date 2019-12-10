@@ -1389,9 +1389,9 @@ class DAQInterface(Component):
                 pi = self.procinfos[procinfo_index]
 
                 if "timeout: timed out" in traceback.format_exc():
-                    output_message = "Timeout sending %s transition to artdaq process %s at %s:%s; try checking logfile %s for details\n" % (command, pi.label, pi.host, pi.port, self.determine_logfilename(pi))
+                    output_message = "\n%s: Timeout sending %s transition to artdaq process %s at %s:%s; try checking logfile %s for details\n" % (date_and_time(), command, pi.label, pi.host, pi.port, self.determine_logfilename(pi))
                 elif "[Errno 111] Connection refused" in traceback.format_exc():
-                    output_message = "artdaq process %s at %s:%s appears to have died (or at least refused the connection) when sent the %s transition; try checking logfile %s for details" % (pi.label, pi.host, pi.port, command, self.determine_logfilename(pi))
+                    output_message = "\n%s: artdaq process %s at %s:%s appears to have died (or at least refused the connection) when sent the %s transition; try checking logfile %s for details" % (date_and_time(), pi.label, pi.host, pi.port, command, self.determine_logfilename(pi))
                 else:
                     self.print_log("e", traceback.format_exc())
 
@@ -1419,9 +1419,10 @@ class DAQInterface(Component):
         self.print_log("i", "\nSending %s transition to artdaq processes..." % (command.lower()), 1, False)
         self.print_log("d", "", 3) 
 
+        proc_starttimes = {}
+        proc_endtimes = {}
         for proctype in proctypes_in_order:
 
-            threads = []
             priorities_used = {}
 
             for procinfo in self.procinfos:
@@ -1431,14 +1432,17 @@ class DAQInterface(Component):
             priority_rankings = sorted(priorities_used.iterkeys())
 
             for priority in priority_rankings:
+                proc_threads = {}
                 for i_procinfo, procinfo in enumerate(self.procinfos):
                     if proctype in procinfo.name and priority == procinfo.priority:
                         t = Thread(target=process_command, args=(self, i_procinfo, command))
-                        threads.append(t)
+                        proc_threads[procinfo.label] = t
+                        proc_starttimes[procinfo.label] = time()
                         t.start()
                         
-                for thread in threads:
-                    thread.join()
+                for label in proc_threads:
+                    proc_threads[label].join()
+                    proc_endtimes[label] = time()
 
         if self.exception:
             raise Exception(make_paragraph("An exception was thrown during the %s transition." % (command)))
@@ -1450,10 +1454,19 @@ class DAQInterface(Component):
 
         if self.debug_level >= 2 or len([dummy for procinfo in self.procinfos if procinfo.lastreturned != "Success"]):
             for procinfo in self.procinfos:
-                self.print_log("i", "%s at %s:%s, returned string is:\n%s\n" % \
-                    (procinfo.label, procinfo.host, procinfo.port, procinfo.lastreturned))
+                total_time = "%.1f" % (proc_endtimes[procinfo.label] - proc_starttimes[procinfo.label])
+                self.print_log("i", "%s at %s:%s, after %s seconds returned string was:\n%s\n" % \
+                    (procinfo.label, procinfo.host, procinfo.port, total_time, procinfo.lastreturned))
         else:
-            self.print_log("i", "\nAll artdaq processes returned \"Success\".\n")
+            slowest_process = ""
+            max_time = 0
+            for procinfo in self.procinfos:
+                if proc_endtimes[procinfo.label] - proc_starttimes[procinfo.label] > max_time:
+                    max_time = proc_endtimes[procinfo.label] - proc_starttimes[procinfo.label]
+                    slowest_process = procinfo.label
+
+            self.print_log("i", "Longest individual transition was %s, which took %.1f seconds." % (slowest_process, max_time))
+            self.print_log("i", "All artdaq processes returned \"Success\".\n")
 
         try:
             self.check_proc_transition( self.target_states[ command ] )
@@ -2319,22 +2332,22 @@ class DAQInterface(Component):
             starttime=time()
             self.print_log("i", "Sending shutdown transition to artdaq processes...", 1, False)
             
+            proc_starttimes = {}
+            proc_endtimes = {}
+
             for procinfo in self.procinfos:
 
                 procinfo.state = self.verbing_to_states["Shutdown"]
 
                 try:
+                    proc_starttimes[procinfo.label] = time()
                     procinfo.lastreturned = procinfo.server.daq.shutdown()
+                    proc_endtimes[procinfo.label] = time()
                 except Exception:
-                    self.print_log("e", "DAQInterface caught an exception in "
-                                   "do_terminate()")
+                    self.print_log("e", "An exception was thrown when shutdown was issued to %s" % (procinfo.label))
                     self.print_log("e", traceback.format_exc())
 
-                    self.print_log("e", "%s at %s:%s, returned string is:\n%s\n" % \
-                                       (procinfo.label, procinfo.host, procinfo.port, procinfo.lastreturned))
-
-                    self.alert_and_recover("An exception was thrown "
-                                           "during the terminate transition")
+                    self.alert_and_recover("An exception was thrown during the terminate transition")
                     return
                 else:
                     if procinfo.lastreturned == "Success" or procinfo.lastreturned == self.target_states["Shutdown"]:
@@ -2345,8 +2358,9 @@ class DAQInterface(Component):
 
             if self.debug_level >= 2 or len([dummy for procinfo in self.procinfos if procinfo.lastreturned != "Success"]):
                 for procinfo in self.procinfos:
-                    self.print_log("i", "%s at %s:%s, returned string is:\n%s\n" % \
-                        (procinfo.label, procinfo.host, procinfo.port, procinfo.lastreturned))
+                    total_time = proc_starttimes[procinfo.label] - proc_endtimes[procinfo.label]
+                    self.print_log("i", "%s at %s:%s, after %.1f seconds returned string was:\n%s\n" % \
+                        (procinfo.label, procinfo.host, procinfo.port, total_time, procinfo.lastreturned))
             else:
                 self.print_log("i", "\nAll artdaq processes returned \"Success\".\n")
 
@@ -2400,15 +2414,18 @@ class DAQInterface(Component):
 
                 procinfo.state = self.verbing_to_states[command]
                 try:
+                    transition_starttime = time()
                     if command == "Stop":
                         procinfo.lastreturned=procinfo.server.daq.stop()
                     elif command == "Shutdown":
                         procinfo.lastreturned=procinfo.server.daq.shutdown()
                     else:
                         assert False
+                    transition_endtime = time()
 
-                    self.print_log("d", "Called %s on %s at %s:%s without an exception; returned string was \"%s\"" % \
-                                       (command, procinfo.label, procinfo.host, procinfo.port, procinfo.lastreturned), 2)
+                    self.print_log("d", "Called %s on %s at %s:%s without an exception; after %.1f seconds returned string was \"%s\"" % \
+                                       (command, procinfo.label, procinfo.host, procinfo.port, 
+                                        transition_endtime - transition_starttime, procinfo.lastreturned), 2)
                 except Exception:
                     raise
 
@@ -2500,7 +2517,7 @@ class DAQInterface(Component):
             print
             for name in ["BoardReader", "EventBuilder", "DataLogger", "Dispatcher", "RoutingMaster"]:
 
-                self.print_log("i", "%s: Attempting to cleanly wind down the %ss if they still exist" % (date_and_time(), name))
+                self.print_log("i", "%s: Attempting to cleanly wind down the %ss if they (still) exist" % (date_and_time(), name))
 
                 threads = []
                 priorities_used = {}
