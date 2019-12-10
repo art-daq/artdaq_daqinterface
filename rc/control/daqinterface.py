@@ -2358,7 +2358,7 @@ class DAQInterface(Component):
 
             if self.debug_level >= 2 or len([dummy for procinfo in self.procinfos if procinfo.lastreturned != "Success"]):
                 for procinfo in self.procinfos:
-                    total_time = proc_starttimes[procinfo.label] - proc_endtimes[procinfo.label]
+                    total_time = proc_endtimes[procinfo.label] - proc_starttimes[procinfo.label]
                     self.print_log("i", "%s at %s:%s, after %.1f seconds returned string was:\n%s\n" % \
                         (procinfo.label, procinfo.host, procinfo.port, total_time, procinfo.lastreturned))
             else:
