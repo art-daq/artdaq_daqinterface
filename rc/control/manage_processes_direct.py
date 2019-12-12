@@ -46,18 +46,25 @@ def bootfile_name_to_execname(bootfile_name):
 # which it ran commands, and whose values are the list of commands run
 # on those hosts
 
-def launch_procs_base(self):
+def launch_procs_base(self, procinfos = None):
 
+    resurrecting_processes = False
+    if procinfos is not None:
+        resurrecting_processes = True
+        
+    if resurrecting_processes is False:
+        procinfos = self.procinfos
 
     messagefacility_fhicl_filename = obtain_messagefacility_fhicl(self.have_artdaq_mfextensions())
 
-    for host in set([procinfo.host for procinfo in self.procinfos]):
-        if host != "localhost" and host != os.environ["HOSTNAME"]:
-            cmd = "scp -p %s %s:%s" % (messagefacility_fhicl_filename, host, messagefacility_fhicl_filename)
-            status = Popen(cmd, shell=True).wait()
+    if not resurrecting_processes:
+        for host in set([procinfo.host for procinfo in self.procinfos]):
+            if host != "localhost" and host != os.environ["HOSTNAME"]:
+                cmd = "scp -p %s %s:%s" % (messagefacility_fhicl_filename, host, messagefacility_fhicl_filename)
+                status = Popen(cmd, shell=True).wait()
 
-            if status != 0:
-                raise Exception("Status error raised in %s executing \"%s\"" % (launch_procs_base.__name__, cmd))
+                if status != 0:
+                    raise Exception("Status error raised in %s executing \"%s\"" % (launch_procs_base.__name__, cmd))
 
     launch_commands_to_run_on_host = {}
     launch_commands_to_run_on_host_background = {}  # Need to run artdaq processes in the background so they're persistent outside of this function's Popen calls
@@ -65,7 +72,7 @@ def launch_procs_base(self):
             
     self.launch_attempt_file = "/tmp/launch_attempt_%s_partition%s" % (os.environ["USER"], os.environ["DAQINTERFACE_PARTITION_NUMBER"])
 
-    for procinfo in self.procinfos:
+    for procinfo in procinfos:
 
         if not procinfo.host in launch_commands_to_run_on_host:
 
@@ -74,7 +81,11 @@ def launch_procs_base(self):
             launch_commands_on_host_to_show_user[ procinfo.host ] = []
 
             launch_commands_to_run_on_host[ procinfo.host ].append("set +C")  
-            launch_commands_to_run_on_host[ procinfo.host ].append("echo > %s" % (self.launch_attempt_file))
+            
+            if not resurrecting_processes:
+                launch_commands_to_run_on_host[ procinfo.host ].append("echo > %s" % (self.launch_attempt_file))
+            else:
+                launch_commands_to_run_on_host[ procinfo.host ].append("echo \"%s: RESURRECTING THE FOLLOWING PROCESS: %s\" >> %s" % (date_and_time(), " ".join([pi.label for pi in procinfos if pi.host == procinfo.host]), self.launch_attempt_file))
             launch_commands_to_run_on_host[ procinfo.host ].append("export PRODUCTS=\"%s\"; . %s/setup >> %s 2>&1 " % (self.productsdir,upsproddir_from_productsdir(self.productsdir),self.launch_attempt_file))
             launch_commands_to_run_on_host[ procinfo.host ].append( bash_unsetup_command + " > /dev/null 2>&1 " )
             launch_commands_to_run_on_host[ procinfo.host ].append("source %s for_running >> %s 2>&1 " % (self.daq_setup_script, self.launch_attempt_file ))
@@ -82,7 +93,8 @@ def launch_procs_base(self):
             launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))
 
             launch_commands_to_run_on_host[ procinfo.host ].append("which boardreader >> %s 2>&1 " % (self.launch_attempt_file)) # Assume if this works, eventbuilder, etc. are also there
-            launch_commands_to_run_on_host[ procinfo.host ].append("%s/bin/mopup_shmem.sh %s --force >> %s 2>&1" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"], os.environ["DAQINTERFACE_PARTITION_NUMBER"], self.launch_attempt_file))
+            if not resurrecting_processes:
+                launch_commands_to_run_on_host[ procinfo.host ].append("%s/bin/mopup_shmem.sh %s --force >> %s 2>&1" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"], os.environ["DAQINTERFACE_PARTITION_NUMBER"], self.launch_attempt_file))
             #launch_commands_to_run_on_host[ procinfo.host ].append("setup valgrind v3_13_0")
 	    #launch_commands_to_run_on_host[ procinfo.host ].append("export LD_PRELOAD=libasan.so")
 	    #launch_commands_to_run_on_host[ procinfo.host ].append("export ASAN_OPTIONS=alloc_dealloc_mismatch=0")
@@ -123,7 +135,7 @@ def launch_procs_base(self):
         grepped_lines = []
         preexisting_pids = get_pids("\|".join([ "%s.*id:\s\+%s" % 
                                                 (bootfile_name_to_execname(procinfo.name), procinfo.port) for \
-                                                procinfo in self.procinfos if procinfo.host == host ]),
+                                                procinfo in procinfos if procinfo.host == host ]),
                                     host,
                                     grepped_lines)
         if len(preexisting_pids) > 0:
@@ -388,7 +400,7 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
 
     is_all_ok = True
 
-    procinfos_to_remove = []
+    procs_without_heartbeat = []
     found_processes = []
 
     for host in set([procinfo.host for procinfo in self.procinfos]):
@@ -403,18 +415,19 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
 
                 if requireSuccess:
                     self.print_log("e", "%s: Appear to have lost process with label %s on host %s" % (date_and_time(), procinfo.label, procinfo.host))
-                    procinfos_to_remove.append( procinfo )
+                    procs_without_heartbeat.append( procinfo )
 
                     mopup_process_base(self, procinfo)
     
     if not is_all_ok and requireSuccess:
         if self.state(self.name) == "running":
-            for procinfo in procinfos_to_remove:
-                self.procinfos.remove( procinfo )
-                self.throw_exception_if_losing_process_violates_requirements(procinfo)
-            self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
+            launch_procs_base(self, procs_without_heartbeat)
+            #for procinfo in procs_without_heartbeat:
+                #self.procinfos.remove( procinfo )
+                #self.throw_exception_if_losing_process_violates_requirements(procinfo)
+            #self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
         else:
-            raise Exception("\nProcess(es) %s died or found in Error state" % (", ".join(['"' + procinfo.label + '"' for procinfo in procinfos_to_remove])))
+            raise Exception("\nProcess(es) %s died or found in Error state" % (", ".join(['"' + procinfo.label + '"' for procinfo in procs_without_heartbeat])))
             
     if is_all_ok:
         assert len(found_processes) == len(self.procinfos)

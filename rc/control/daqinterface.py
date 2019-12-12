@@ -908,7 +908,8 @@ class DAQInterface(Component):
                 if "[Errno 111] Connection refused" in traceback.format_exc():
                     self.print_log("w", make_paragraph("An \"[Errno 111] Connection refused\" exception was thrown when attempting to query artdaq process %s at %s:%s; this likely means the process no longer exists -- try checking logfile %s for details" % (procinfo.label, procinfo.host, procinfo.port, self.determine_logfilename(procinfo))))
                     if procinfo.label in self.procs_which_already_caused_connection_refused:
-                        raise Exception(make_paragraph("Error: artdaq process \"%s\" has repeatedly returned \"[Errno 111] Connection refused\" when queried; this most likely means it's died"))
+                        self.print_log("w", "Warning: artdaq process \"%s\" has repeatedly returned \"[Errno 111] Connection refused\" when queried; this most likely means it's died" % (procinfo.label))
+                        #raise Exception(make_paragraph("Error: artdaq process \"%s\" has repeatedly returned \"[Errno 111] Connection refused\" when queried; this most likely means it's died" % (procinfo.label)))
                     else:
                         self.procs_which_already_caused_connection_refused.append(procinfo.label)
                         
