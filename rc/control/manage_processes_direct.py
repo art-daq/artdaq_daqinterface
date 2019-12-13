@@ -8,6 +8,7 @@ import socket
 from time import sleep
 import re
 import sys
+import traceback
 
 sys.path.append( os.environ["ARTDAQ_DAQINTERFACE_DIR"] )
 
@@ -19,7 +20,7 @@ from rc.control.utilities import obtain_messagefacility_fhicl
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import upsproddir_from_productsdir
 from rc.control.deepsuppression import deepsuppression
-
+from rc.io.timeoutclient import TimeoutServerProxy
 
 def bootfile_name_to_execname(bootfile_name):
 
@@ -421,7 +422,46 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
     
     if not is_all_ok and requireSuccess:
         if self.state(self.name) == "running":
+
+            self.print_log("i", "The following process(es) died at some point; relaunching them now: %s" % (" ".join([pi.label for pi in procs_without_heartbeat])))
+
+            dead_process_indices = [index for index in range(len(self.procinfos)) if self.procinfos[index] in procs_without_heartbeat]
+
             launch_procs_base(self, procs_without_heartbeat)
+
+            # What if the processes didn't *actually* launch? Need to add code here.
+            sleep(10)
+            self.print_log("i", "Launched the following process(es), will now shepherd them into the running state: %s" % (" ".join([pi.label for pi in procs_without_heartbeat])))
+
+
+            for index in dead_process_indices:
+
+                self.print_log("i", "Shepherding process %s on %s" % (self.procinfos[index].label, self.procinfos[index].host))
+                try:
+                    self.procinfos[index].server = TimeoutServerProxy(
+                        self.procinfos[index].socketstring, 30)
+                except Exception:
+                    self.print_log("e", traceback.format_exc())
+                    raise Exception("Problem creating server with socket \"%s\"" % \
+                                               (self.procinfos[index].socketstring))
+
+
+                self.procinfos[index].lastreturned = \
+                        self.procinfos[index].server.daq.init(self.procinfos[index].fhicl_used)
+
+                if self.procinfos[index].lastreturned == "Success" or self.procinfos[index].lastreturned == self.target_states[ "Init" ]:
+                    self.procinfos[index].state = self.target_states[ "Init" ]
+                else:
+                    raise Exception("Error: %s failed to make it through the init (config) transition while being shepherded" % (self.procinfos[index].label))
+
+                self.procinfos[index].lastreturned = \
+                        self.procinfos[index].server.daq.start(str(self.run_number))
+
+                if self.procinfos[index].lastreturned == "Success" or self.procinfos[index].lastreturned == self.target_states[ "Start" ]:
+                    self.procinfos[index].state = self.target_states[ "Start" ]
+                else:
+                    raise Exception("Error: %s failed to make it through the start transition while being shepherded" % (self.procinfos[index].label))
+
             #for procinfo in procs_without_heartbeat:
                 #self.procinfos.remove( procinfo )
                 #self.throw_exception_if_losing_process_violates_requirements(procinfo)
