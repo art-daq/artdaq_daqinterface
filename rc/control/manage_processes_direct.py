@@ -424,7 +424,8 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
     if not is_all_ok and requireSuccess:
         if self.state(self.name) == "running":
 
-            self.print_log("i", "%s: The following process(es) died at some point; relaunching them now: %s" % (date_and_time(), " ".join([pi.label for pi in procs_without_heartbeat])))
+            self.print_log("i", "\n%s: Relaunching the following process(es): %s..." % (date_and_time(), " ".join([pi.label for pi in procs_without_heartbeat])), 1, False)
+            starttime = time()
 
             dead_process_indices = [index for index in range(len(self.procinfos)) if self.procinfos[index] in procs_without_heartbeat]
 
@@ -446,7 +447,8 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
                     else:
                         sleep(2)
 
-            self.print_log("i", "%s: Relaunched the formerly-deceased process(es), will now shepherd them into the running state" % (date_and_time()))
+            endtime = time()
+            self.print_log("i", "done (%.1f seconds).\n" % (endtime - starttime))
 
             for index in dead_process_indices:
 
