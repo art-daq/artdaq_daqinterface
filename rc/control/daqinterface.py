@@ -929,15 +929,15 @@ class DAQInterface(Component):
 
                 print
                 self.print_log("e", make_paragraph(errmsg))
-                self.print_log("i", "\nWill remove %s from the list of processes" % (procinfo.label))
+                #self.print_log("i", "\nWill remove %s from the list of processes" % (procinfo.label))
                 print
                 self.mopup_process(procinfo)
-                self.procinfos.remove( procinfo )
+                #self.procinfos.remove( procinfo )
                 print
 
-                self.throw_exception_if_losing_process_violates_requirements(procinfo)
+                #self.throw_exception_if_losing_process_violates_requirements(procinfo)
 
-                self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
+                #self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
 
     def init_process_requirements(self):
         self.overriding_process_requirements = []
