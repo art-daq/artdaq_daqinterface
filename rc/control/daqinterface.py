@@ -916,7 +916,15 @@ class DAQInterface(Component):
                 elif "[Errno 113] No route to host" in traceback.format_exc():
                     raise Exception(make_paragraph("Error: an \"[Errno 113] No route to host\" exception was thrown when attempting to query artdaq process %s at %s:%s; this likely means there's an XML-RPC connection issue between this host and %s" % (procinfo.label, procinfo.host, procinfo.port, procinfo.host)))
                 else:
-                    raise
+                    # JCF, Dec-13-2019
+
+                    # No longer ending things by default for exception
+                    # throws during status queries since I got an
+                    # exception type == <class 'socket.timeout'>
+                    # during an otherwise-fine eventbuilder
+                    # death-and-resurrection sequence
+
+                    self.print_log("w", "Unable to determine status of process %s due to exception throw; continuing as if nothing happened..." % (procinfo.label))
                     
                 continue
             else:
