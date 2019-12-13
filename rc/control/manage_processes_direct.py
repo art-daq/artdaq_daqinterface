@@ -6,6 +6,7 @@ import subprocess
 from subprocess import Popen
 import socket
 from time import sleep
+from time import time
 import re
 import sys
 import traceback
@@ -423,42 +424,56 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
     if not is_all_ok and requireSuccess:
         if self.state(self.name) == "running":
 
-            self.print_log("i", "The following process(es) died at some point; relaunching them now: %s" % (" ".join([pi.label for pi in procs_without_heartbeat])))
+            self.print_log("i", "%s: The following process(es) died at some point; relaunching them now: %s" % (date_and_time(), " ".join([pi.label for pi in procs_without_heartbeat])))
 
             dead_process_indices = [index for index in range(len(self.procinfos)) if self.procinfos[index] in procs_without_heartbeat]
 
             launch_procs_base(self, procs_without_heartbeat)
 
-            # What if the processes didn't *actually* launch? Need to add code here.
-            sleep(10)
-            self.print_log("i", "Launched the following process(es), will now shepherd them into the running state: %s" % (" ".join([pi.label for pi in procs_without_heartbeat])))
+            num_launch_procs_checks = 0
+            max_num_launch_procs_checks = 5
 
+            while True:
+                num_launch_procs_checks += 1
+                found_processes = self.check_proc_heartbeats(False)
+
+                if len(found_processes) == len(self.procinfos):
+                    break
+                else:
+                    if num_launch_procs_checks >= max_num_launch_procs_checks:
+                        raise Exception("Error: unable to relaunch process(es) %s" % \
+                                        (" ".join([pi.label for pi in procs_without_heartbeat])))
+                    else:
+                        sleep(2)
+
+            self.print_log("i", "%s: Relaunched the formerly-deceased process(es), will now shepherd them into the running state" % (date_and_time()))
 
             for index in dead_process_indices:
 
-                self.print_log("i", "Shepherding process %s on %s" % (self.procinfos[index].label, self.procinfos[index].host))
-                try:
-                    self.procinfos[index].server = TimeoutServerProxy(
-                        self.procinfos[index].socketstring, 30)
-                except Exception:
-                    self.print_log("e", traceback.format_exc())
-                    raise Exception("Problem creating server with socket \"%s\"" % \
-                                               (self.procinfos[index].socketstring))
+                self.print_log("i", "%s: Sending shepherding init (config) to process %s on %s..." % (date_and_time(), self.procinfos[index].label, self.procinfos[index].host), 1, False)
 
-
+                starttime = time()
                 self.procinfos[index].lastreturned = \
                         self.procinfos[index].server.daq.init(self.procinfos[index].fhicl_used)
+                endtime = time()
 
                 if self.procinfos[index].lastreturned == "Success" or self.procinfos[index].lastreturned == self.target_states[ "Init" ]:
                     self.procinfos[index].state = self.target_states[ "Init" ]
+                    self.print_log("i", "done (%.1f seconds).\n" % (endtime - starttime))
                 else:
                     raise Exception("Error: %s failed to make it through the init (config) transition while being shepherded" % (self.procinfos[index].label))
 
+
+                self.print_log("i", "%s: Sending shepherding start to process %s on %s..." % (date_and_time(), self.procinfos[index].label, self.procinfos[index].host), 1, False)
+
+                starttime = time()
                 self.procinfos[index].lastreturned = \
                         self.procinfos[index].server.daq.start(str(self.run_number))
+                endtime = time()
 
                 if self.procinfos[index].lastreturned == "Success" or self.procinfos[index].lastreturned == self.target_states[ "Start" ]:
                     self.procinfos[index].state = self.target_states[ "Start" ]
+                    self.print_log("i", "done (%.1f seconds).\n" % (endtime - starttime))
                 else:
                     raise Exception("Error: %s failed to make it through the start transition while being shepherded" % (self.procinfos[index].label))
 
