@@ -348,7 +348,6 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
 def process_launch_diagnostics_base(self, procinfos_of_failed_processes):
     pass
 
-
-
-                        
+def handle_bad_process_base(self, procinfo):
+    assert False, "John needs to implement this"
 

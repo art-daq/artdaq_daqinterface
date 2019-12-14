@@ -424,65 +424,9 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
     if not is_all_ok and requireSuccess:
         if self.state(self.name) == "running":
 
-            self.print_log("i", "\n%s: Relaunching the following process(es): %s..." % (date_and_time(), " ".join([pi.label for pi in procs_without_heartbeat])), 1, False)
-            starttime = time()
-
-            dead_process_indices = [index for index in range(len(self.procinfos)) if self.procinfos[index] in procs_without_heartbeat]
-
-            launch_procs_base(self, procs_without_heartbeat)
-
-            num_launch_procs_checks = 0
-            max_num_launch_procs_checks = 5
-
-            while True:
-                num_launch_procs_checks += 1
-                found_processes = self.check_proc_heartbeats(False)
-
-                if len(found_processes) == len(self.procinfos):
-                    break
-                else:
-                    if num_launch_procs_checks >= max_num_launch_procs_checks:
-                        raise Exception("Error: unable to relaunch process(es) %s" % \
-                                        (" ".join([pi.label for pi in procs_without_heartbeat])))
-                    else:
-                        sleep(2)
-
-            endtime = time()
-            self.print_log("i", "done (%.1f seconds).\n" % (endtime - starttime))
-
-            for index in dead_process_indices:
-
-                self.print_log("i", "%s: Sending shepherding init (config) to process %s on %s..." % (date_and_time(), self.procinfos[index].label, self.procinfos[index].host), 1, False)
-
-                starttime = time()
-                self.procinfos[index].lastreturned = \
-                        self.procinfos[index].server.daq.init(self.procinfos[index].fhicl_used)
-                endtime = time()
-
-                if self.procinfos[index].lastreturned == "Success" or self.procinfos[index].lastreturned == self.target_states[ "Init" ]:
-                    self.procinfos[index].state = self.target_states[ "Init" ]
-                    self.print_log("i", "done (%.1f seconds).\n" % (endtime - starttime))
-                else:
-                    raise Exception("Error: %s failed to make it through the init (config) transition while being shepherded" % (self.procinfos[index].label))
-
-
-                self.print_log("i", "%s: Sending shepherding start to process %s on %s..." % (date_and_time(), self.procinfos[index].label, self.procinfos[index].host), 1, False)
-
-                starttime = time()
-                self.procinfos[index].lastreturned = \
-                        self.procinfos[index].server.daq.start(str(self.run_number))
-                endtime = time()
-
-                if self.procinfos[index].lastreturned == "Success" or self.procinfos[index].lastreturned == self.target_states[ "Start" ]:
-                    self.procinfos[index].state = self.target_states[ "Start" ]
-                    self.print_log("i", "done (%.1f seconds).\n" % (endtime - starttime))
-                else:
-                    raise Exception("Error: %s failed to make it through the start transition while being shepherded" % (self.procinfos[index].label))
-
-            #for procinfo in procs_without_heartbeat:
-                #self.procinfos.remove( procinfo )
-                #self.throw_exception_if_losing_process_violates_requirements(procinfo)
-            #self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
+            for procinfo in procs_without_heartbeat:
+                self.procinfos = handle_bad_process_base(self, procinfo)
+            return self.procinfos
         else:
             raise Exception("\nProcess(es) %s died or found in Error state" % (", ".join(['"' + procinfo.label + '"' for procinfo in procs_without_heartbeat])))
             
@@ -490,6 +434,65 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
         assert len(found_processes) == len(self.procinfos)
 
     return found_processes
+
+def handle_bad_process_base(self, procinfo):
+    
+    full_process_list = self.procinfos
+    process_list_with_bad_one_removed = [pi for pi in self.procinfos if pi.label != procinfo.label]
+
+    mopup_process_base(self, procinfo)
+    
+    live_procs_before = self.check_proc_heartbeats(False)
+    launch_procs_base(self, [ procinfo ] )
+
+    num_launch_procs_checks = 0
+    max_num_launch_procs_checks = 5
+
+    while True:
+        num_launch_procs_checks += 1
+        live_procs_after = self.check_proc_heartbeats(False)
+
+        if len(live_procs_after) == len(live_procs_before) + 1:
+            break
+        else:
+            if num_launch_procs_checks >= max_num_launch_procs_checks:
+                self.print_log("e", "Error: unable to relaunch process %s on %s" % (procinfo.label, procinfo.host))
+                return process_list_with_bad_one_removed 
+            else:
+                sleep(2)
+
+    # index needed so we modify the original procinfo and not a copy...
+    list_of_one_index = [ii for ii in range(len(self.procinfos)) if self.procinfos[ii].label == procinfo.label]
+    assert len(list_of_one_index) == 1
+    index = list_of_one_index[0]
+
+    self.print_log("i", "%s: Sending shepherding init (config) to process %s on %s..." % (date_and_time(), procinfo.label, procinfo.host), 1, False)
+
+    starttime = time()
+    self.procinfos[index].lastreturned = procinfo.server.daq.init(procinfo.fhicl_used)
+    endtime = time()
+
+    if self.procinfos[index].lastreturned == "Success" or self.procinfos[index].lastreturned == self.target_states[ "Init" ]:
+        self.procinfos[index].state = self.target_states[ "Init" ]
+        self.print_log("i", "done (%.1f seconds).\n" % (endtime - starttime))
+    else:
+        self.print_log("e", "Error: %s failed to make it through the init (config) transition while being shepherded" % (procinfo.label))
+        return process_list_with_bad_one_removed
+
+    self.print_log("i", "%s: Sending shepherding start to process %s on %s..." % (date_and_time(), procinfo.label, procinfo.host), 1, False)
+
+    starttime = time()
+    self.procinfos[index].lastreturned = procinfo.server.daq.start(str(self.run_number))
+    endtime = time()
+
+    if self.procinfos[index].lastreturned == "Success" or self.procinfos[index].lastreturned == self.target_states[ "Start" ]:
+        self.procinfos[index].state = self.target_states[ "Start" ]
+        self.print_log("i", "done (%.1f seconds).\n" % (endtime - starttime))
+    else:
+        self.print_log("e", "Error: %s failed to make it through the start transition while being shepherded" % (procinfo.label))
+        return process_list_with_bad_one_removed
+
+    return full_process_list
 
 
 def main():

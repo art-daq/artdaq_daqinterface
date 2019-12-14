@@ -114,6 +114,7 @@ if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "pmt":
     from rc.control.manage_processes_pmt import get_pid_for_process_base
     from rc.control.manage_processes_pmt import process_launch_diagnostics_base
     from rc.control.manage_processes_pmt import mopup_process_base
+    from rc.control.manage_processes_pmt import handle_bad_process_base
 elif os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "direct":
     from rc.control.manage_processes_direct import launch_procs_base
     from rc.control.manage_processes_direct import kill_procs_base
@@ -127,6 +128,7 @@ elif os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "direct":
     from rc.control.manage_processes_direct import get_pid_for_process_base
     from rc.control.manage_processes_direct import process_launch_diagnostics_base
     from rc.control.manage_processes_direct import mopup_process_base
+    from rc.control.manage_processes_direct import handle_bad_process_base
 elif os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "external_run_control":
     from rc.control.all_functions_noop import launch_procs_base
     from rc.control.all_functions_noop import kill_procs_base
@@ -139,6 +141,7 @@ elif os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "external_run_contr
     from rc.control.all_functions_noop import get_pid_for_process_base
     from rc.control.all_functions_noop import process_launch_diagnostics_base
     from rc.control.all_functions_noop import mopup_process_base
+    from rc.control.all_functions_noop import handle_bad_process_base
 
     def find_process_manager_variable_base(self, line):  # Actually used in get_boot_info() despite external_run_control
         return False
@@ -486,6 +489,7 @@ class DAQInterface(Component):
     get_pid_for_process = get_pid_for_process_base
     perform_periodic_action = perform_periodic_action_base
     check_config = check_config_base
+    handle_bad_process = handle_bad_process_base
 
     # The actual transition functions called by Run Control; note
     # these just set booleans which are tested in the runner()
@@ -937,15 +941,26 @@ class DAQInterface(Component):
 
                 print
                 self.print_log("e", make_paragraph(errmsg))
-                #self.print_log("i", "\nWill remove %s from the list of processes" % (procinfo.label))
                 print
-                self.mopup_process(procinfo)
-                #self.procinfos.remove( procinfo )
+                
+                # JCF, Dec-14-2019
+
+                # "handle_bad_process" is defined differently
+                # depending on the type of process management method
+                # used. It's intended to return a list of procinfos,
+                # corresponding to the list of processes which are now
+                # "good"; this way, if the function fails to bring a
+                # process back to a good state, it can remove the
+                # procinfo in question from the list it returns.
+
+                self.procinfos = self.handle_bad_process(procinfo)
                 print
-
-                #self.throw_exception_if_losing_process_violates_requirements(procinfo)
-
-                #self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
+                if procinfo in self.procinfos:
+                    self.print_log("i", "Process %s has been successfully relaunched and shepherded" % (procinfo.label))
+                else:
+                    self.print_log("i", "Unable to relaunch and/or shepherd process %s" % (procinfo.label))
+                    self.throw_exception_if_losing_process_violates_requirements(procinfo)
+                    self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
 
     def init_process_requirements(self):
         self.overriding_process_requirements = []
