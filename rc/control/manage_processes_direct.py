@@ -418,8 +418,6 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
                 if requireSuccess:
                     self.print_log("e", "%s: Appear to have lost process with label %s on host %s" % (date_and_time(), procinfo.label, procinfo.host))
                     procs_without_heartbeat.append( procinfo )
-
-                    mopup_process_base(self, procinfo)
     
     if not is_all_ok and requireSuccess:
         if self.state(self.name) == "running":
@@ -442,6 +440,9 @@ def handle_bad_process_base(self, procinfo):
 
     mopup_process_base(self, procinfo)
     
+    if self.shepherd_bad_processes == False:
+        return process_list_with_bad_one_removed
+
     live_procs_before = self.check_proc_heartbeats(False)
     launch_procs_base(self, [ procinfo ] )
 
@@ -460,6 +461,11 @@ def handle_bad_process_base(self, procinfo):
                 return process_list_with_bad_one_removed 
             else:
                 sleep(2)
+
+    # Wait two seconds, otherwise there's a risk of "Connection
+    # refused" when we send the init transition...
+    
+    sleep(2)
 
     # index needed so we modify the original procinfo and not a copy...
     list_of_one_index = [ii for ii in range(len(self.procinfos)) if self.procinfos[ii].label == procinfo.label]

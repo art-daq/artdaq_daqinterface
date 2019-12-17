@@ -14,6 +14,7 @@ from rc.control.utilities import date_and_time
 from rc.control.utilities import construct_checked_command
 from rc.control.utilities import obtain_messagefacility_fhicl
 from rc.control.utilities import upsproddir_from_productsdir
+from rc.control.utilities import make_paragraph
 from rc.control.deepsuppression import deepsuppression
 
 # JCF, 8/11/14
@@ -349,5 +350,9 @@ def process_launch_diagnostics_base(self, procinfos_of_failed_processes):
     pass
 
 def handle_bad_process_base(self, procinfo):
-    assert False, "John needs to implement this"
+
+    if self.shepherd_bad_processes == True:
+        self.print_log("w", make_paragraph("Warning: shepherd_bad_processes is set to true in the DAQInterface settings file \"%s\", but you're using pmt process management which doesn't support shepherding. No action will be taken on bad process \"%s\"." % (os.environ["DAQINTERFACE_SETTINGS"], procinfo.label)))
+    return [pi for pi in self.procinfos if pi.label != procinfo.label]
+
 

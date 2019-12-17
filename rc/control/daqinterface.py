@@ -572,6 +572,7 @@ class DAQInterface(Component):
         self.disable_unique_rootfile_labels = False
         self.disable_private_network_bookkeeping = False
         self.allowed_processors = None
+        self.shepherd_bad_processes = False
 
         self.productsdir = None
 
@@ -698,6 +699,13 @@ class DAQInterface(Component):
 
                 if res:
                     self.fake_messagefacility = True
+            elif "shepherd_bad_processes" in line or "shepherd bad processes" in line:
+                token = line.split()[-1].strip()
+
+                res = re.search(r"[Tt]rue", token)
+
+                if res:
+                    self.shepherd_bad_processes = True
             elif "data_directory_override" in line or "data directory override" in line:
                 self.data_directory_override = line.split()[-1].strip()
                 if self.data_directory_override[-1] != "/":
@@ -901,7 +909,8 @@ class DAQInterface(Component):
         if self.exception:
             return
 
-        for procinfo in self.procinfos:
+        self_procinfos_may_be_modified_in_the_loop = self.procinfos
+        for procinfo in self_procinfos_may_be_modified_in_the_loop:
 
             try:
                 procinfo.lastreturned = procinfo.server.daq.status()
@@ -953,14 +962,18 @@ class DAQInterface(Component):
                 # process back to a good state, it can remove the
                 # procinfo in question from the list it returns.
 
-                self.procinfos = self.handle_bad_process(procinfo)
-                print
-                if procinfo in self.procinfos:
-                    self.print_log("i", "Process %s has been successfully relaunched and shepherded" % (procinfo.label))
+                if self.shepherd_bad_processes == True:
+                    self.procinfos = self.handle_bad_process(procinfo)
+                    print
+                    if procinfo in self.procinfos:
+                        self.print_log("i", "Process %s has been successfully relaunched and shepherded" % (procinfo.label))
+                    else:
+                        self.print_log("w", "Unable to relaunch and/or shepherd process %s" % (procinfo.label))
+                        self.throw_exception_if_losing_process_violates_requirements(procinfo)
                 else:
-                    self.print_log("i", "Unable to relaunch and/or shepherd process %s" % (procinfo.label))
                     self.throw_exception_if_losing_process_violates_requirements(procinfo)
-                    self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
+
+                self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
 
     def init_process_requirements(self):
         self.overriding_process_requirements = []
@@ -1476,7 +1489,7 @@ class DAQInterface(Component):
         endtime = time()
         self.print_log("i", "done (%.1f seconds).\n" % (endtime - starttime))
 
-        if self.debug_level >= 2 or len([dummy for procinfo in self.procinfos if procinfo.lastreturned != "Success"]):
+        if self.debug_level >= 2 or len([procinfo for procinfo in self.procinfos if procinfo.lastreturned != "Success"]):
             for procinfo in self.procinfos:
                 total_time = "%.1f" % (proc_endtimes[procinfo.label] - proc_starttimes[procinfo.label])
                 self.print_log("i", "%s at %s:%s, after %s seconds returned string was:\n%s\n" % \
