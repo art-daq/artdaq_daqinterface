@@ -799,31 +799,6 @@ class DAQInterface(Component):
         if not is_all_ok:
             raise Exception("At least one artdaq process failed a transition")
 
-
-
-    # Utility functions used to count the different process types
-
-    def num_boardreaders(self):
-        num_boardreaders = 0
-        for procinfo in self.procinfos:
-            if "BoardReader" in procinfo.name:
-                num_boardreaders += 1
-        return num_boardreaders
-
-    def num_eventbuilders(self):
-        num_eventbuilders = 0
-        for procinfo in self.procinfos:
-            if "EventBuilder" in procinfo.name:
-                num_eventbuilders += 1
-        return num_eventbuilders
-
-    def num_dataloggers(self):
-        num_dataloggers = 0
-        for procinfo in self.procinfos:
-            if "DataLogger" in procinfo.name:
-                num_dataloggers += 1
-        return num_dataloggers
-
     def have_artdaq_mfextensions(self):
 
         try:
