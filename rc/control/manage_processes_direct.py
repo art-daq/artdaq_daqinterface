@@ -114,7 +114,7 @@ def launch_procs_base(self):
     for host in launch_commands_to_run_on_host:
 
         executing_commands_debug_level = 2
-        self.print_log("d", "Executing commands to launch processes on %s" % (host), executing_commands_debug_level, False)
+        self.print_log("d", "%s: Executing commands to launch processes on %s" % (date_and_time(), host), executing_commands_debug_level, False)
 
         # Before we try launching the processes, let's make sure there
         # aren't any pre-existing processes listening on the same
@@ -137,7 +137,8 @@ def launch_procs_base(self):
         launchcmd += "; "
         launchcmd += " ".join(launch_commands_to_run_on_host_background[ host ])  # Each command already terminated by ampersand
 
-        if host != os.environ["HOSTNAME"] and host != "localhost":
+        #if host != os.environ["HOSTNAME"] and host != "localhost":
+        if True:
             launchcmd = "ssh -f " + host + " '" + launchcmd + "'"
 
         self.print_log("d", "\nartdaq process launch commands to execute on %s (output will be in %s:%s):\n%s\n" % (host, host, self.launch_attempt_file, "\n".join(launch_commands_on_host_to_show_user[host])), 3)

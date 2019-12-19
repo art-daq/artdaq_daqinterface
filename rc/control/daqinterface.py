@@ -1796,7 +1796,7 @@ class DAQInterface(Component):
             # Now, with the info on hand about the processes contained in
             # procinfos, actually launch them
 
-            self.print_log("i", "\nLaunching the artdaq processes")
+            self.print_log("i", "\n%s: Launching the artdaq processes" % (date_and_time()))
             self.called_launch_procs = True
             self.launch_procs_time = time()   # Will be used when checking logfile's timestamps
 
@@ -1819,8 +1819,8 @@ class DAQInterface(Component):
 
                 num_launch_procs_checks += 1
 
-                self.print_log("i", "Checking that processes are up (check %d of a max of %d checks)..." % \
-                               (num_launch_procs_checks, max_num_launch_procs_checks), 1, False)
+                self.print_log("i", "%s: Checking that processes are up (check %d of a max of %d checks)..." % \
+                               (date_and_time(), num_launch_procs_checks, max_num_launch_procs_checks), 1, False)
 
                 # "False" here means "don't consider it an error if all
                 # processes aren't found"
@@ -1832,7 +1832,7 @@ class DAQInterface(Component):
                     make_paragraph("check_proc_heartbeats needs to return a list of procinfos corresponding to the processes it found alive")
                 if len(found_processes) == len(self.procinfos):
 
-                    self.print_log("i", "All processes appear to be up")
+                    self.print_log("i", "%s: All processes appear to be up" % (date_and_time()))
 
                     break
                 else:
