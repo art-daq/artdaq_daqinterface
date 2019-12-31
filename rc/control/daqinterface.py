@@ -338,20 +338,24 @@ class DAQInterface(Component):
         formatted_day = "%s-%s-%s" % (day, month, year)
 
         if self.debug_level >= debuglevel:
-            if self.fake_messagefacility:
-                print "%%MSG-%s DAQInterface %s %s %s" % \
-                    (severity, formatted_day, time, timezone)
-            if not newline and not self.fake_messagefacility:
-                sys.stdout.write(printstr)
-                sys.stdout.flush()
-            else:
-                print printstr
-
+            
+            # JCF, Dec-31-2019
+            # The swig_artdaq instance by default writes to stdout, so no explicit print call is needed 
             if self.use_messageviewer and self.messageviewer_sender is not None:
                 self.messageviewer_sender.write_info("DAQInterface partition %s" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"]), printstr)
+            else:
+                if self.fake_messagefacility:
+                    print "%%MSG-%s DAQInterface %s %s %s" % \
+                        (severity, formatted_day, time, timezone)
+                if not newline and not self.fake_messagefacility:
+                    sys.stdout.write(printstr)
+                    sys.stdout.flush()
+                else:
+                    print printstr
 
-            if self.fake_messagefacility:
-                print "%MSG"
+
+                if self.fake_messagefacility:
+                    print "%MSG"
 
     # JCF, Dec-16-2016
 
