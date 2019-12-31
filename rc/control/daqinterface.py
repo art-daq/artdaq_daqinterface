@@ -23,12 +23,6 @@ import random
 import signal
 import imp
 
-try:
-    import python_artdaq
-    from python_artdaq import swig_artdaq
-except:
-    pass # Users shouldn't need to worry if their installations don't yet have python_artdaq available
-
 from rc.io.timeoutclient import TimeoutServerProxy
 from rc.control.component import Component 
 from rc.control.deepsuppression import deepsuppression
@@ -53,6 +47,23 @@ from rc.control.utilities import fhicl_writes_root_file
 from rc.control.utilities import bash_unsetup_command
 from rc.control.utilities import kill_tail_f
 from rc.control.utilities import upsproddir_from_productsdir
+from rc.control.utilities import obtain_messagefacility_fhicl
+
+try:
+    import python_artdaq
+    from python_artdaq import swig_artdaq
+
+    # Here, "True" means that if python_artdaq is available, it's assumed 
+    # that artdaq_mfextensions is as well
+
+    messagefacility_fhicl_filename = obtain_messagefacility_fhicl(True)
+    if not "ARTDAQ_LOG_FHICL" in os.environ or os.environ["ARTDAQ_LOG_FHICL"] != messagefacility_fhicl_filename:
+        raise Exception(make_paragraph("Although the swig_artdaq python module is available, it needs the environment variable ARTDAQ_LOG_FHICL to point to %s" % (messagefacility_fhicl_filename)))
+
+except ImportError:
+    pass # Users shouldn't need to worry if their installations don't yet have python_artdaq available
+
+
 
 from rc.control.config_functions_local import get_boot_info_base
 from rc.control.config_functions_local import listdaqcomps_base
