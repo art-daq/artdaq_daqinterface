@@ -23,6 +23,12 @@ import random
 import signal
 import imp
 
+try:
+    import python_artdaq
+    from python_artdaq import swig_artdaq
+except:
+    pass # Users shouldn't need to worry if their installations don't yet have python_artdaq available
+
 from rc.io.timeoutclient import TimeoutServerProxy
 from rc.control.component import Component 
 from rc.control.deepsuppression import deepsuppression
@@ -329,6 +335,10 @@ class DAQInterface(Component):
                 sys.stdout.flush()
             else:
                 print printstr
+
+            if self.use_messageviewer and self.messageviewer_sender is not None:
+                self.messageviewer_sender.write_info("DAQInterface partition %s" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"]), printstr)
+
             if self.fake_messagefacility:
                 print "%MSG"
 
@@ -448,6 +458,14 @@ class DAQInterface(Component):
                     "DAQInterface will exit. Look at the messages above, make any necessary "
                     "changes, and restart.") + "\n")
             sys.exit(1)
+
+        self.messageviewer_sender = None
+
+        if self.use_messageviewer:
+            try:
+                self.messageviewer_sender = swig_artdaq("")
+            except:
+                pass
 
         if not os.access(self.record_directory, os.W_OK | os.X_OK):
             self.print_log("e", make_paragraph("DAQInterface launch failed since it's been determined that you don't have write access to the run records directory \"%s\"" % (self.record_directory)))
