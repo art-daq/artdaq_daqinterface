@@ -15,5 +15,5 @@ if [[ "$xmlrpc_retval" != "0" ]]; then
 fi
 
 
-xmlrpc http://localhost:$DAQINTERFACE_PORT/RPC2 trace_get daqint struct/{name:s/smurf}
+xmlrpc http://localhost:$DAQINTERFACE_PORT/RPC2 trace_get daqint struct/{name:s/ALL}
 exit $?

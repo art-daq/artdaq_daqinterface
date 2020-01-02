@@ -533,7 +533,34 @@ class DAQInterface(Component):
     def do_trace_get(self, name = None):
         if name is None:
             name = self.run_params["name"]
-        self.print_log("i", "trace_get, called with name \"%s\", not yet implemented" % (name))
+        self.print_log("i", "trace_get has been called with name \"%s\"" % (name))
+
+        def send_trace_get_command(self, i_procinfo):
+
+            if self.exception:
+                self.print_log("w", "An exception occurred at some point; will not send trace_get to %s" % (self.procinfos[i_procinfo].label))
+                return
+
+            try:
+                self.procinfos[i_procinfo].lastreturned = \
+                    self.procinfos[i_procinfo].server.daq.trace_get(name)
+            except:
+                self.print_log("e", "Something went wrong when trace_get was called on %s with \"%s\"" % (self.procinfos[i_procinfo].label, name))
+                self.exception = True
+                return
+
+            self.print_log("i", "On trace_get, for %s lastreturned is %s" % (self.procinfos[i_procinfo].label, self.procinfos[i_procinfo].lastreturned))
+
+        threads = []
+        for i_p in range(1):
+            t = Thread(target=send_trace_get_command, args=(self, i_p))
+            threads.append(t)
+            t.start()
+                        
+        for thread in threads:
+            thread.join()
+
+        self.print_log("i", "Finished call to trace_get")
 
     def alert_and_recover(self, extrainfo=None):
 
