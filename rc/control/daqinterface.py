@@ -433,6 +433,8 @@ class DAQInterface(Component):
         self.__do_enable = False
         self.__do_disable = False
 
+        self.do_trace_get_boolean = False
+
         # Here, states refers to individual artdaq process states, not the DAQInterface state
         self.target_states = {"Init":"Ready", "Start":"Running", "Pause":"Paused", "Resume":"Running",
                      "Stop":"Ready", "Shutdown":"Stopped"}
@@ -523,6 +525,15 @@ class DAQInterface(Component):
 
     def disable(self):
         self.__do_disable = True
+
+    # JCF, Jan-2-2020
+
+    # See Issue #23792 for more on trace_get and trace_set
+
+    def do_trace_get(self, name = None):
+        if name is None:
+            name = self.run_params["name"]
+        self.print_log("i", "trace_get, called with name \"%s\", not yet implemented" % (name))
 
     def alert_and_recover(self, extrainfo=None):
 
@@ -2562,6 +2573,7 @@ class DAQInterface(Component):
     # 5/30/14, called every 1s by control.py
 
     def runner(self):
+
         """
         Component "ops" loop.  Called at threading hearbeat frequency,
         currently 1/sec.
@@ -2625,6 +2637,10 @@ class DAQInterface(Component):
             elif self.__do_disable:
                 self.__do_disable = False
                 self.do_disable()
+
+            elif self.do_trace_get_boolean:
+                self.do_trace_get_boolean = False
+                self.do_trace_get()
 
             elif self.manage_processes and self.state(self.name) != "stopped" and self.state(self.name) != "booting" and self.state(self.name) != "terminating":
                 self.check_proc_heartbeats()
