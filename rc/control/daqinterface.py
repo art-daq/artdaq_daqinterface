@@ -533,7 +533,7 @@ class DAQInterface(Component):
     def do_trace_get(self, name = None):
         if name is None:
             name = self.run_params["name"]
-        self.print_log("i", "trace_get has been called with name \"%s\"" % (name))
+        self.print_log("d", "%s: trace_get has been called with name \"%s\"" % (date_and_time(), name), 3)
 
         def send_trace_get_command(self, i_procinfo):
 
@@ -549,10 +549,13 @@ class DAQInterface(Component):
                 self.exception = True
                 return
 
-            self.print_log("i", "On trace_get, for %s lastreturned is %s" % (self.procinfos[i_procinfo].label, self.procinfos[i_procinfo].lastreturned))
+            with open("/tmp/trace_get_%s_%s_partition%s.txt" % \
+                      (self.procinfos[i_procinfo].label, os.environ["USER"], \
+                       os.environ["DAQINTERFACE_PARTITION_NUMBER"]), "w") as trace_get_output:
+                trace_get_output.write(self.procinfos[i_procinfo].lastreturned)
 
         threads = []
-        for i_p in range(1):
+        for i_p in range(len(self.procinfos)):
             t = Thread(target=send_trace_get_command, args=(self, i_p))
             threads.append(t)
             t.start()
@@ -560,7 +563,16 @@ class DAQInterface(Component):
         for thread in threads:
             thread.join()
 
-        self.print_log("i", "Finished call to trace_get")
+        all_trace_get_info_in_one_string = ""
+        for procinfo in self.procinfos:
+            with open("/tmp/trace_get_%s_%s_partition%s.txt" % \
+                      (procinfo.label, os.environ["USER"], \
+                       os.environ["DAQINTERFACE_PARTITION_NUMBER"])) as inf:
+                all_trace_get_info_in_one_string += "\n\n%s:\n" % (procinfo.label)
+                all_trace_get_info_in_one_string += inf.read()
+
+        return all_trace_get_info_in_one_string
+
 
     def alert_and_recover(self, extrainfo=None):
 
