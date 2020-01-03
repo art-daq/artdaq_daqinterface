@@ -434,6 +434,7 @@ class DAQInterface(Component):
         self.__do_disable = False
 
         self.do_trace_get_boolean = False
+        self.do_trace_set_boolean = False
 
         # Here, states refers to individual artdaq process states, not the DAQInterface state
         self.target_states = {"Init":"Ready", "Start":"Running", "Pause":"Paused", "Resume":"Running",
@@ -545,7 +546,7 @@ class DAQInterface(Component):
                 self.procinfos[i_procinfo].lastreturned = \
                     self.procinfos[i_procinfo].server.daq.trace_get(name)
             except:
-                self.print_log("e", "Something went wrong when trace_get was called on %s with \"%s\"" % (self.procinfos[i_procinfo].label, name))
+                self.print_log("w", "Something went wrong when trace_get was called on %s with name %s" % (self.procinfos[i_procinfo].label, name))
                 self.exception = True
                 return
 
@@ -572,6 +573,44 @@ class DAQInterface(Component):
                 all_trace_get_info_in_one_string += inf.read()
 
         return all_trace_get_info_in_one_string
+
+    def do_trace_set(self, name = None, masktype = None, maskval = None):
+
+        print "DEBUG: "
+        print self.run_params
+        print
+
+        if name is None:
+            name = self.run_params["name"]
+            masktype = self.run_params["masktype"]
+            maskval = self.run_params["maskval"]
+
+        self.print_log("i", "%s: trace_set has been called with name \"%s\", masktype \"%s\", and maskval %s" % (date_and_time(), name, masktype, maskval))
+
+        def send_trace_set_command(self, i_procinfo):
+
+            if self.exception:
+                self.print_log("w", "An exception occurred at some point; will not send trace_set to %s" % (self.procinfos[i_procinfo].label))
+                return
+
+            try:
+                print "Calling trace_set on %s with %s, %s, %s" % (self.procinfos[i_procinfo].label, name, masktype, maskval)
+                self.procinfos[i_procinfo].lastreturned = \
+                    self.procinfos[i_procinfo].server.daq.trace_set(name, masktype, maskval)
+                print "Finished call, returned value is %s" % (self.procinfos[i_procinfo].lastreturned)
+            except:
+                self.print_log("w", "Something went wrong when trace_set was called on %s with name == %s, masktype == %s, and maskval == %s" % (self.procinfos[i_procinfo].label, name, masktype, maskval))
+                self.exception = True
+                return
+
+        threads = []
+        for i_p in range(len(self.procinfos)):
+            t = Thread(target=send_trace_set_command, args=(self, i_p))
+            threads.append(t)
+            t.start()
+                        
+        for thread in threads:
+            thread.join()
 
 
     def alert_and_recover(self, extrainfo=None):
@@ -2579,7 +2618,7 @@ class DAQInterface(Component):
         # transition "in the queue" despite DAQInterface being in the
         # Stopped state after we've finished this recover
 
-        self.__do_boot = self.__do_shutdown = self.__do_config = self.__do_recover = self.__do_start_running = self.__do_stop_running = self.__do_terminate = self.__do_pause_running = self.__do_resume_running = self.__do_enable = self.__do_disable = False
+        self.__do_boot = self.__do_shutdown = self.__do_config = self.__do_recover = self.__do_start_running = self.__do_stop_running = self.__do_terminate = self.__do_pause_running = self.__do_resume_running = self.__do_enable = self.__do_disable = self.do_trace_get_boolean = self.do_trace_set_boolean = False
 
         self.complete_state_change(self.name, "recovering")
 
@@ -2680,6 +2719,10 @@ class DAQInterface(Component):
             elif self.do_trace_get_boolean:
                 self.do_trace_get_boolean = False
                 self.do_trace_get()
+
+            elif self.do_trace_set_boolean:
+                self.do_trace_set_boolean = False
+                self.do_trace_set()
 
             elif self.manage_processes and self.state(self.name) != "stopped" and self.state(self.name) != "booting" and self.state(self.name) != "terminating":
                 self.check_proc_heartbeats()
