@@ -592,7 +592,7 @@ class DAQInterface(Component):
             try:
                 print "Calling trace_set on %s with %s, %s, %s" % (self.procinfos[i_procinfo].label, masktype, name, maskval)
                 self.procinfos[i_procinfo].lastreturned = \
-                    self.procinfos[i_procinfo].server.daq.trace_set(masktype, name, maskval)
+                    self.procinfos[i_procinfo].server.daq.trace_set(name, masktype, maskval)
                 print "Finished call, returned value is %s" % (self.procinfos[i_procinfo].lastreturned)
             except:
                 self.print_log("w", "Something went wrong when trace_set was called on %s with name == %s, masktype == %s, and maskval == %s" % (self.procinfos[i_procinfo].label, masktype, name, maskval))
@@ -1420,7 +1420,7 @@ class DAQInterface(Component):
                 elif command == "Start":
                     self.procinfos[procinfo_index].lastreturned = \
                         self.procinfos[procinfo_index].server.daq.start(\
-                        str(self.run_number))
+                        self.run_number)
                 elif command == "Pause":
                     self.procinfos[procinfo_index].lastreturned = \
                         self.procinfos[procinfo_index].server.daq.pause()

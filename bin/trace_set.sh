@@ -24,7 +24,7 @@ if [[ "$xmlrpc_retval" != "0" ]]; then
 fi
 
 
-xmlrpc http://localhost:$DAQINTERFACE_PORT/RPC2 trace_set daqint 'struct/{masktype:s/'$masktype',name:s/'$name',maskval:s/'$maskval'}'
+xmlrpc http://localhost:$DAQINTERFACE_PORT/RPC2 trace_set daqint 'struct/{name:s/'$name',masktype:s/'$masktype',maskval:s/'$maskval'}'
 retval="$?"
 
 if [[ "$retval" != "0" ]]; then
