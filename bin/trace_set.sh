@@ -1,12 +1,12 @@
 #!/bin/env bash
 
 if (( "$#" != 3 )); then
-    echo "Usage: "$( basename $0 )" <name> <masktype> <maskval>" >&2
+    echo "Usage: "$( basename $0 )" <masktype> <name> <maskval>" >&2
     exit 1
 fi
 
-name=$1
-masktype=$2
+masktype=$1
+name=$2
 maskval=$3
 
 . $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
@@ -24,7 +24,7 @@ if [[ "$xmlrpc_retval" != "0" ]]; then
 fi
 
 
-xmlrpc http://localhost:$DAQINTERFACE_PORT/RPC2 trace_set daqint 'struct/{name:s/'$name',masktype:s/'$masktype',maskval:s/'$maskval'}'
+xmlrpc http://localhost:$DAQINTERFACE_PORT/RPC2 trace_set daqint 'struct/{masktype:s/'$masktype',name:s/'$name',maskval:s/'$maskval'}'
 retval="$?"
 
 if [[ "$retval" != "0" ]]; then
