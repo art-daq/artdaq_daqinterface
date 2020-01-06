@@ -1,12 +1,12 @@
 #!/bin/env bash
 
 if (( "$#" != 3 )); then
-    echo "Usage: "$( basename $0 )" <masktype> <name> <maskval>" >&2
+    echo "Usage: "$( basename $0 )" <name> <masktype> <maskval>" >&2
     exit 1
 fi
 
-masktype=$1
-name=$2
+name=$1
+masktype=$2
 maskval=$3
 
 . $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh

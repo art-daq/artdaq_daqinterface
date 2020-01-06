@@ -574,9 +574,9 @@ class DAQInterface(Component):
 
         return all_trace_get_info_in_one_string
 
-    def do_trace_set(self, masktype = None, name = None, maskval = None):
+    def do_trace_set(self, name = None, masktype = None, maskval = None):
 
-        if masktype is None:
+        if name is None:
             name = self.run_params["name"]
             masktype = self.run_params["masktype"]
             maskval = self.run_params["maskval"]
@@ -590,12 +590,10 @@ class DAQInterface(Component):
                 return
 
             try:
-                print "Calling trace_set on %s with %s, %s, %s" % (self.procinfos[i_procinfo].label, masktype, name, maskval)
                 self.procinfos[i_procinfo].lastreturned = \
                     self.procinfos[i_procinfo].server.daq.trace_set(name, masktype, maskval)
-                print "Finished call, returned value is %s" % (self.procinfos[i_procinfo].lastreturned)
             except:
-                self.print_log("w", "Something went wrong when trace_set was called on %s with name == %s, masktype == %s, and maskval == %s" % (self.procinfos[i_procinfo].label, masktype, name, maskval))
+                self.print_log("w", "Something went wrong when trace_set was called on %s with name == %s, masktype == %s, and maskval == %s" % (self.procinfos[i_procinfo].label, name, masktype, maskval))
                 self.exception = True
                 return
 
