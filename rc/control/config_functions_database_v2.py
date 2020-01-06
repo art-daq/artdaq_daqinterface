@@ -107,6 +107,10 @@ def get_config_info_base(self):
 
 def put_config_info_base(self):
 
+    self.print_log("i,", "Attempting to save config info to the database...", 1, False);
+
+    starttime = time()
+
     scriptdir = os.environ["ARTDAQ_DAQINTERFACE_DIR"] + "/utils"
 
     if not os.path.exists( scriptdir ):
@@ -215,9 +219,16 @@ def put_config_info_base(self):
 
     shutil.rmtree( tmpdir )
 
+    endtime = time()
+    self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
+
     return
 
 def put_config_info_on_stop_base(self):
+
+    self.print_log("i,", "Attempting to save config info to the database...", 1, False);
+
+    starttime = time()
 
     runnum = str(self.run_number)
     tmpdir = "/tmp/" + Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
@@ -273,6 +284,10 @@ def put_config_info_on_stop_base(self):
 
     os.chdir("/tmp")
     shutil.rmtree( tmpdir )
+
+    endtime = time()
+    self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
+
 
 def listdaqcomps_base(self):
     assert False, "%s not yet implemented" % (listdaqcomps_base.__name__)
