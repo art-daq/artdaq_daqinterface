@@ -2259,10 +2259,6 @@ class DAQInterface(Component):
 
     def do_start_running(self, run_number = None):
 
-        print "Run number: "
-        print self.run_params["run_number"]
-        print "done"
-
         if not run_number:
             self.run_number = self.run_params["run_number"]
         else:
