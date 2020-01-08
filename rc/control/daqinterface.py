@@ -1416,9 +1416,19 @@ class DAQInterface(Component):
                     self.procinfos[procinfo_index].lastreturned = \
                         self.procinfos[procinfo_index].server.daq.init(self.procinfos[procinfo_index].fhicl_used)
                 elif command == "Start":
+
                     self.procinfos[procinfo_index].lastreturned = \
                         self.procinfos[procinfo_index].server.daq.start(\
                         self.run_number)
+
+                    # JCF, Jan-8-2019
+                    # Ensure DAQInterface is backwards-compatible with artdaq code which predates Issue #23824
+
+                    if "The start message requires the run number as an argument" in self.procinfos[procinfo_index].lastreturned:
+                        self.procinfos[procinfo_index].lastreturned = \
+                            self.procinfos[procinfo_index].server.daq.start(\
+                            str(self.run_number))
+
                 elif command == "Pause":
                     self.procinfos[procinfo_index].lastreturned = \
                         self.procinfos[procinfo_index].server.daq.pause()
@@ -2248,10 +2258,15 @@ class DAQInterface(Component):
 
     def do_start_running(self, run_number = None):
 
+        print "Run number: "
+        print self.run_params["run_number"]
+        print "done"
+
         if not run_number:
             self.run_number = self.run_params["run_number"]
         else:
             self.run_number = run_number
+
 
         self.print_log("i", "\n%s: START transition underway for run %d" % \
                        (date_and_time(), self.run_number))
