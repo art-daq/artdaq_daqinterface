@@ -553,6 +553,7 @@ class DAQInterface(Component):
             with open("/tmp/trace_get_%s_%s_partition%s.txt" % \
                       (self.procinfos[i_procinfo].label, os.environ["USER"], \
                        os.environ["DAQINTERFACE_PARTITION_NUMBER"]), "w") as trace_get_output:
+                trace_get_output.write("\ntrace(s) below are as they appeared at %s:\n\n" % (date_and_time()))
                 trace_get_output.write(self.procinfos[i_procinfo].lastreturned)
 
         threads = []
