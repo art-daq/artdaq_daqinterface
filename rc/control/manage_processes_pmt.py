@@ -186,8 +186,6 @@ def kill_procs_base(self):
 
     self.procinfos = []
 
-    self.kill_art_procs()
-
     return
 
 def mopup_process_base(self, procinfo):
