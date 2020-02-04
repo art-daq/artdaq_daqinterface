@@ -104,6 +104,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 if len(res) > 0:
                     raise Exception(make_paragraph("max_fragment_size_bytes is found in the FHiCL document for %s; this parameter must not appear in FHiCL documents for non-BoardReader artdaq processes" % (procinfo.label)))
 
+            if "max_event_size_bytes" in procinfo.fhicl_used:
+                raise Exception(make_paragraph("max_event_size_bytes is found in the FHiCL document for %s; this parameter must not appear in FHiCL documents when \"advanced_memory_usage\" is set to true in the settings file %s. This is because DAQInterface calculates and then adds this parameter during bookkeeping." %  (procinfo.label, os.environ["DAQINTERFACE_SETTINGS"])))
+
     # Now loop over the boardreaders again to determine
     # subsystem-level things, such as the number of fragments per
     # event produced by each subsystem's boardreader set, and the
