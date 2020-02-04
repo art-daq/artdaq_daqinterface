@@ -1,7 +1,6 @@
 daq: {
   aggregator: {
     expected_events_per_bunch: 1
-    max_event_size_bytes: 16777216
     buffer_count: 10
     event_queue_depth: 2
     event_queue_wait_time: 1

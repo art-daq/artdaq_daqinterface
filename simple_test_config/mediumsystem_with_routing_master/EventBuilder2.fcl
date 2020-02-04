@@ -13,7 +13,6 @@ services: {
 daq: {
   event_builder: {
 	expected_fragments_per_event: 3
-	max_event_size_bytes: 16777216
 	use_art: true
 	buffer_count: 20
 	send_init_fragments: false
