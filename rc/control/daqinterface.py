@@ -2153,17 +2153,6 @@ class DAQInterface(Component):
         assert "/tmp" == tmpdir_for_fhicl[:4] and len(tmpdir_for_fhicl) > 4
         shutil.rmtree( tmpdir_for_fhicl )
 
-        starttime=time()
-        self.print_log("i", "Bookkeeping the FHiCL documents...", 1, False)
-
-        try:
-            self.bookkeeping_for_fhicl_documents()
-        except Exception:
-            self.print_log("e", traceback.format_exc())
-            self.alert_and_recover("An exception was thrown when performing bookkeeping on the process FHiCL documents; see traceback above for more info")
-            return
-        endtime=time()
-        self.print_log("i", "done (%.1f seconds)." % (endtime-starttime))
 
         starttime=time()
         self.print_log("i", "Reformatting the FHiCL documents...", 1, False)
@@ -2180,6 +2169,19 @@ class DAQInterface(Component):
         
         endtime=time()
         self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
+
+        starttime=time()
+        self.print_log("i", "Bookkeeping the FHiCL documents...", 1, False)
+
+        try:
+            self.bookkeeping_for_fhicl_documents()
+        except Exception:
+            self.print_log("e", traceback.format_exc())
+            self.alert_and_recover("An exception was thrown when performing bookkeeping on the process FHiCL documents; see traceback above for more info")
+            return
+        endtime=time()
+        self.print_log("i", "done (%.1f seconds)." % (endtime-starttime))
+
 
         self.tmp_run_record = "/tmp/run_record_attempted_%s/%s" % \
             (os.environ["USER"],
