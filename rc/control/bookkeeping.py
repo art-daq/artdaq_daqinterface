@@ -611,12 +611,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     if res:
                         eventbuilders_involved_in_requests.append(procinfo.label)
 
-            #self.print_log("i", "BoardReaders involved in requests for subsystem %s: " % (str(subsystem_id)))
-            #self.print_log("i", " ".join(boardreaders_involved_in_requests))
-
-            #self.print_log("i", "EventBuilders involved in requests for subsystem %s: " % (str(subsystem_id)))
-            #self.print_log("i", print " ".join(eventbuilders_involved_in_requests))
-
             processes_involved_in_requests = [process for process_list in \
                                               [boardreaders_involved_in_requests, eventbuilders_involved_in_requests] \
                                               for process in process_list ]
@@ -656,6 +650,11 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         table_start, table_end = table_range(self.procinfos[i_proc].fhicl_used, tablename)
 
+        if table_start != -1:
+            should_be_negative_one, dummy = table_range(self.procinfos[i_proc].fhicl_used[table_end:], tablename)
+            if should_be_negative_one != -1:
+                raise Exception(make_paragraph("The table \"%s\" appears more than once in the FHiCL config for process \"%s\"; this is not allowed" % (tablename, self.procinfos[i_proc].label)))
+            
         #if table_start == -1 or table_end == -1:
         #    raise Exception(make_paragraph("router process for subsystem %s requires that a FHiCL table called \"%s\" exists in process %s's FHiCL, but none was found" % (router_process_subsystem, tablename, self.procinfos[i_proc].label)))
 
