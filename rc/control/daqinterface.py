@@ -47,6 +47,23 @@ from rc.control.utilities import fhicl_writes_root_file
 from rc.control.utilities import bash_unsetup_command
 from rc.control.utilities import kill_tail_f
 from rc.control.utilities import upsproddir_from_productsdir
+from rc.control.utilities import obtain_messagefacility_fhicl
+
+try:
+    import python_artdaq
+    from python_artdaq import swig_artdaq
+
+    # Here, "True" means that if python_artdaq is available, it's assumed 
+    # that artdaq_mfextensions is as well
+
+    messagefacility_fhicl_filename = obtain_messagefacility_fhicl(True)
+    if not "ARTDAQ_LOG_FHICL" in os.environ or os.environ["ARTDAQ_LOG_FHICL"] != messagefacility_fhicl_filename:
+        raise Exception(make_paragraph("Although the swig_artdaq python module is available, it needs the environment variable ARTDAQ_LOG_FHICL to point to %s" % (messagefacility_fhicl_filename)))
+
+except ImportError:
+    pass # Users shouldn't need to worry if their installations don't yet have python_artdaq available
+
+
 
 from rc.control.config_functions_local import get_boot_info_base
 from rc.control.config_functions_local import listdaqcomps_base
@@ -321,16 +338,24 @@ class DAQInterface(Component):
         formatted_day = "%s-%s-%s" % (day, month, year)
 
         if self.debug_level >= debuglevel:
-            if self.fake_messagefacility:
-                print "%%MSG-%s DAQInterface %s %s %s" % \
-                    (severity, formatted_day, time, timezone)
-            if not newline and not self.fake_messagefacility:
-                sys.stdout.write(printstr)
-                sys.stdout.flush()
+            
+            # JCF, Dec-31-2019
+            # The swig_artdaq instance by default writes to stdout, so no explicit print call is needed 
+            if self.use_messageviewer and self.messageviewer_sender is not None:
+                self.messageviewer_sender.write_info("DAQInterface partition %s" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"]), printstr)
             else:
-                print printstr
-            if self.fake_messagefacility:
-                print "%MSG"
+                if self.fake_messagefacility:
+                    print "%%MSG-%s DAQInterface %s %s %s" % \
+                        (severity, formatted_day, time, timezone)
+                if not newline and not self.fake_messagefacility:
+                    sys.stdout.write(printstr)
+                    sys.stdout.flush()
+                else:
+                    print printstr
+
+
+                if self.fake_messagefacility:
+                    print "%MSG"
 
     # JCF, Dec-16-2016
 
@@ -451,6 +476,14 @@ class DAQInterface(Component):
                     "DAQInterface will exit. Look at the messages above, make any necessary "
                     "changes, and restart.") + "\n")
             sys.exit(1)
+
+        self.messageviewer_sender = None
+
+        if self.use_messageviewer:
+            try:
+                self.messageviewer_sender = swig_artdaq("")
+            except:
+                pass
 
         if not os.access(self.record_directory, os.W_OK | os.X_OK):
             self.print_log("e", make_paragraph("DAQInterface launch failed since it's been determined that you don't have write access to the run records directory \"%s\"" % (self.record_directory)))

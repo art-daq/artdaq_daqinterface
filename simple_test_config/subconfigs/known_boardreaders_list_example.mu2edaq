@@ -319,8 +319,9 @@ component1237 mu2edaq12
 component1238 mu2edaq12
 component1239 mu2edaq12
 component1240 mu2edaq12
-component2000 mu2edaq01
 component2001 mu2edaq01
+component2002 mu2edaq01
+component2003 mu2edaq01
 component_one_event_per_subrun	 mu2edaq01
 component_throws_exception       mu2edaq01
 component_dies_from_exit	 mu2edaq01	
