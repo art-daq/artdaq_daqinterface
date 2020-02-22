@@ -457,13 +457,13 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             sender_ranks = "sender_ranks: [%s]" % ( ",".join( [str(rnk) for rnk in sorted_sender_ranks_list] ))
             receiver_ranks = "receiver_ranks: [%s]" % ( ",".join( sorted_receiver_ranks_list ))
 
-            self.procinfos[i_proc].fhicl_used = re.sub("sender_ranks\s*:\s*\[.*\]",
+            self.procinfos[i_proc].fhicl_used = re.sub("sender_ranks\s*:\s*\[[^\]]*\]",
                                                        sender_ranks,
-                                                       self.procinfos[i_proc].fhicl_used)
+                                                       self.procinfos[i_proc].fhicl_used, 0, re.DOTALL)
 
-            self.procinfos[i_proc].fhicl_used = re.sub("receiver_ranks\s*:\s*\[.*\]",
+            self.procinfos[i_proc].fhicl_used = re.sub("receiver_ranks\s*:\s*\[[^\]]*\]",
                                                        receiver_ranks,
-                                                       self.procinfos[i_proc].fhicl_used)
+                                                       self.procinfos[i_proc].fhicl_used, 0, re.DOTALL)
      
 
     for i_proc in range(len(self.procinfos)):
