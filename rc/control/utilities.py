@@ -177,32 +177,45 @@ def enclosing_table_range(fhiclstring, searchstring, startingloc=0):
     if loc == -1:
         return (-1, -1)
 
-    open_brace_loc = string.rindex(fhiclstring, "{", startingloc, loc)
+    braces_before = [(i+startingloc, c) for (i, c) in enumerate(fhiclstring[startingloc:loc]) if (c == "}" or c=="{")]
+    
+    opening_count = 0
+    closing_count = 0
+    opening_position = -1
 
-    while string.rfind(fhiclstring, '}', open_brace_loc, loc) != -1:
-        loc = open_brace_loc - 1
-        open_brace_loc = string.rindex(fhiclstring, "{", startingloc, loc)
-
-    close_braces_needed = 1
-    close_brace_loc = -1
-
-    for i_char, char in enumerate(fhiclstring[(open_brace_loc+1):]):
-
-        if char == '{':
-            close_braces_needed += 1
-        elif char == '}':
-            close_braces_needed -= 1
-
-        if close_braces_needed == 0:
-            close_brace_loc = i_char
+    for brace in reversed(braces_before):
+        if brace[1] == "{":
+            opening_count += 1
+        else:
+            closing_count += 1
+        
+        if opening_count - closing_count == 1:
+            opening_position = brace[0]
             break
 
-    if close_brace_loc == -1:
-        raise Exception(
-            "Unable to find close brace for requested table \"%s\"" % \
-                searchstring)
+    if opening_position == -1:
+        return (-1, -1)
 
-    return (open_brace_loc + 1, open_brace_loc + close_brace_loc + 1)
+    braces_after = [(i+loc, c) for (i, c) in enumerate(fhiclstring[loc:]) if (c == "}" or c=="{")]
+
+    opening_count = 0
+    closing_count = 0
+    closing_position = -1
+
+    for brace in braces_after:
+        if brace[1] == "}":
+            closing_count += 1
+        else:
+            opening_count -= 1
+
+        if closing_count - opening_count == 1:
+            closing_position = brace[0]
+            break
+
+    if closing_position == -1:
+        return (-1, -1)
+
+    return(opening_position, closing_position + 1)
 
 # 26-Nov-2018, ELF: This function finds the name of the enclosing table
 # for the specified string. This is used when determining which
