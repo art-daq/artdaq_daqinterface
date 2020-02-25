@@ -744,7 +744,9 @@ def main():
     get_commit_info_test = False
     get_build_info_test = False
     table_range_test = False
-    get_private_networks_test = True
+    get_private_networks_test = False
+    enclosing_table_name_test = True
+    enclosing_table_range_test = True
 
     if paragraphed_string_test:
         sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
@@ -834,6 +836,36 @@ def main():
             private_networks = get_private_networks(host)
             print "%s: " % (host)
             print [network.strip() for network in private_networks]
+
+    if enclosing_table_range_test or enclosing_table_name_test:
+        if len(sys.argv) != 3:
+            print make_paragraph("Since at least one of enclosing_table_range_test and enclosing_table_name_test are true, you need to supply the name of a FHiCL file and then a token which is enclosed in a table in the file")
+            sys.exit(0)
+        filename = sys.argv[1]
+        token = sys.argv[2]
+
+        if not os.path.exists(filename):
+            raise Exception("Unable to find FHiCL file \"%s\"" % (filename))
+
+        full_fhicl_blob = open(filename).read()
+
+        if enclosing_table_range_test:
+            start, end = enclosing_table_range(full_fhicl_blob, token)
+
+            if start == -1 or end == -1:
+                raise Exception("Uh-oh: unable to find an enclosing table around \"%s\"" % (token))
+
+            print
+            print "Enclosing table range starts at %d and ends at %d. Contents of table are between the =====s" % (start, end)
+            print "======================================================================"
+            print full_fhicl_blob[start:end]
+            print "======================================================================"
+            print
+
+        if enclosing_table_name_test:
+            tablename = enclosing_table_name(full_fhicl_blob, token)
+            print "Name of table enclosing \"%s\" found to be \"%s\"" % (token, tablename)
+            
 
 def kill_tail_f():
     tail_pids = get_pids("%s.*tail -f %s" % 
