@@ -461,6 +461,8 @@ class DAQInterface(Component):
         self.do_trace_get_boolean = False
         self.do_trace_set_boolean = False
 
+        self.messageviewer_sender = None
+
         # Here, states refers to individual artdaq process states, not the DAQInterface state
         self.target_states = {"Init":"Ready", "Start":"Running", "Pause":"Paused", "Resume":"Running",
                      "Stop":"Ready", "Shutdown":"Stopped"}
@@ -476,8 +478,6 @@ class DAQInterface(Component):
                     "DAQInterface will exit. Look at the messages above, make any necessary "
                     "changes, and restart.") + "\n")
             sys.exit(1)
-
-        self.messageviewer_sender = None
 
         if self.use_messageviewer:
             try:
