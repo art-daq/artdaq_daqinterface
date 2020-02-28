@@ -27,7 +27,7 @@ data_buffer_depth_fragments: 1000
 data_buffer_depth_mb: 1000
 
 request_port: 3001
-request_address: "227.128.12.26" # Multicast request address
+request_address: "227.128.12.27" # Multicast request address
 
 request_window_offset: 0 # Request message contains tzero. Window will be from tzero - offset to tz-o + width
 request_window_width: 0 # These settings correspond to "two before, two after"
@@ -40,8 +40,9 @@ separate_monitoring_thread: false # Whether a thread should be started which per
 hardware_poll_interval_us: 0 # How often, in microseconds, checkHWStatus_() should be called. 0 to disable.
 
 nADCcounts: 100
+max_fragment_size_bytes: 212
 
-throttle_usecs: 100000 # 50 Hz
+throttle_usecs: 50000 # 50 Hz
 
 distribution_type: 0
 

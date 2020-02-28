@@ -3,7 +3,6 @@
 daq: {
   event_builder: {
 	expected_fragments_per_event: 0  # Will be set by DAQInterface
-	max_fragment_size_bytes: 16777216
 	use_art: true
 	print_event_store_stats: true
 	buffer_count: 20
@@ -34,9 +33,8 @@ daq: {
 
 art: {
 services: {
-  scheduler: {
-    errorOnFailureToPut: false
-  }
+  ArtdaqSharedMemoryServiceInterface: { service_provider: ArtdaqSharedMemoryService }
+  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqDemoFragmentNamingService }
 }
 outputs: {
   binaryNetOutput: {
@@ -93,9 +91,9 @@ physics: {
  # my_output_modules: [ rootNetOutput ]
 }
 source: {
-  module_type: DemoInput
+  module_type: RawInput
   waiting_time: 2500000
   resume_after_timeout: true
 }
-process_name: DAQEB1
+process_name: DAQ
 }

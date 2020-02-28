@@ -1,13 +1,7 @@
-services: {
-  scheduler: {
-    errorOnFailureToPut: false
-  }
-}
 
 daq: {
   aggregator: {
     expected_events_per_bunch: 1
-	max_fragment_size_bytes: 16777216
     print_event_store_stats: true
     buffer_count: 20
     event_queue_depth: 2
@@ -37,6 +31,12 @@ daq: {
 
 }
 
+art: {
+services: {
+  ArtdaqSharedMemoryServiceInterface: { service_provider: ArtdaqSharedMemoryService }
+  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqDemoFragmentNamingService }
+}
+
 source: {
   module_type: NetMonInput
 }
@@ -49,3 +49,4 @@ physics: {
 
 }
 process_name: DAQDP
+}

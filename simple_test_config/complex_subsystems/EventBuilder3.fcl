@@ -3,13 +3,15 @@
 daq: {
   event_builder: {
 	expected_fragments_per_event: 0  # Will be set by DAQInterface
-	max_fragment_size_bytes: 16777216
 	use_art: true
 	print_event_store_stats: true
 	buffer_count: 20
 	max_incomplete_events: 75 # Same as boardreader sync interval
 	verbose: true
-	init_fragment_count: 2
+	init_fragment_count: 1
+	send_requests: true
+    request_port: 3001
+    request_address: "227.128.12.27" # Multicast request address
 
 	routing_token_config: {
 	use_routing_master: false
@@ -30,9 +32,8 @@ daq: {
 
 art: {
 services: {
-  scheduler: {
-    errorOnFailureToPut: false
-  }
+  ArtdaqSharedMemoryServiceInterface: { service_provider: ArtdaqSharedMemoryService }
+  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqDemoFragmentNamingService }
 }
 outputs: {
   rootNetOutput: {
@@ -93,7 +94,7 @@ physics: {
   #my_output_modules: [ normalOutput ]
 }
 source: {
-  module_type: NetMonInput
+  module_type: NetMonInputWithFragments
 }
 process_name: DAQEB3
 }

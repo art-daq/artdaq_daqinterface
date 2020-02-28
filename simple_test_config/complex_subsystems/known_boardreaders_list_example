@@ -1,6 +1,6 @@
 # Name Host [Port [Subsystem]]
 component01 localhost -1
-component02 localhost -1 2
+component02 localhost -1
 component03 localhost -1
 component04 localhost -1
 component05 localhost -1
