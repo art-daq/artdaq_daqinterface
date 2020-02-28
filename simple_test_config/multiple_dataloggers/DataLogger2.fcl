@@ -23,9 +23,6 @@ daq: {
 }
 
 services: {
-  scheduler: {
-    errorOnFailureToPut: false
-  }
   ArtdaqSharedMemoryServiceInterface: @local::art_service_for_shared_memory
 }
 
@@ -34,7 +31,7 @@ source: @local::artdaq_DL_art_source_specification
 outputs: {
   @table::artdaq_DL_data_logging_specification
 
-  #rootNetOutput: @local::artdaq_DL_art_output_module_for_sending_events
+  rootNetOutput: @local::artdaq_DL_art_output_module_for_sending_events
   #rootNetOutput.SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
 }
 
@@ -61,7 +58,7 @@ physics: {
 
   p2: [ BuildInfo ]
   a1: [ checkintegrity, checkintegrity2 ]
-  #send_data_to_dispatcher: [rootNetOutput]
+  send_data_to_dispatcher: [rootNetOutput]
 
   @table::artdaq_DL_data_logging_path
 }
