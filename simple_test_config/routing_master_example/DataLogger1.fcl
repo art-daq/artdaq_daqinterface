@@ -2,11 +2,8 @@ services: {
   scheduler: {
     errorOnFailureToPut: false
   }
-  NetMonTransportServiceInterface: {
-    service_provider: NetMonTransportService
-    broadcast_sends: true
-    nonblocking_sends: true
-	destinations: { }
+  ArtdaqSharedMemoryServiceInterface: {
+    service_provider: ArtdaqSharedMemoryService
   }
 }
 
@@ -16,7 +13,6 @@ daq: {
     print_event_store_stats: true
     event_queue_depth: 40
     event_queue_wait_time: 5
-	max_fragment_size_bytes: 16777216
     buffer_count: 40
     onmon_event_prescale: 1
     is_data_logger: true
@@ -56,6 +52,9 @@ outputs: {
   rootNetOutput: {
     module_type: RootNetOutput
     #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
+    broadcast_sends: true
+    nonblocking_sends: true
+	destinations: { }
   }
 
 }

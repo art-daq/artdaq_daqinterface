@@ -40,6 +40,7 @@ hardware_poll_interval_us: 0 # How often, in microseconds, checkHWStatus_() shou
     # Generator-Specific Configuration:
     
 throttle_usecs: 100000
+max_fragment_size_bytes: 10000
 string1: "You want to grep for \"grep\" in the output file!"
 string2: "That grep should return both of these lines, but only this line will match \"coconut\"."
 

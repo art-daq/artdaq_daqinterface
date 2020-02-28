@@ -80,6 +80,26 @@ def save_run_record_base(self):
     if not os.path.exists(outdir + "/known_boardreaders_list.txt"):
         self.alert_and_recover("Problem creating file " + outdir + "/known_boardreaders_list.txt")
 
+    ranksfilename = "%s/ranks.txt" % (outdir)
+
+    with open(ranksfilename, "w") as ranksfile:
+        ranksfile.write("%-30s%-10s%-20s%-15s%-10s\n" % ("host", "port", "label", "subsystem", "rank"))
+        ranksfile.write("\n")
+
+        procinfos_sorted_by_rank = sorted(self.procinfos, key=lambda procinfo: procinfo.rank)
+        for procinfo in procinfos_sorted_by_rank:
+            host = procinfo.host
+            if host == "localhost":
+                host = os.environ["HOSTNAME"]
+            ranksfile.write("%-29s %-9s %-19s %-14s %-9d\n" % (host, procinfo.port, procinfo.label, procinfo.subsystem, procinfo.rank))      
+    environfilename = "%s/environment.txt" % (outdir)
+
+    with open(environfilename, "w") as environfile:
+        for daqinterface_var in sorted( [ varname for varname in os.environ if re.search(r"^DAQINTERFACE_", varname) ] ):
+            environfile.write("export %s=%s\n" % (daqinterface_var, expand_environment_variable_in_string(os.environ[ daqinterface_var ])))
+
+
+
     # JCF, 11/20/14
 
     # Now save "metadata" about the run in the
@@ -189,24 +209,6 @@ def save_run_record_base(self):
     outf.write("\n")
     outf.close()
 
-    ranksfilename = "%s/ranks.txt" % (outdir)
-
-    with open(ranksfilename, "w") as ranksfile:
-        ranksfile.write("%-30s%-10s%-20s%-15s%-10s\n" % ("host", "port", "label", "subsystem", "rank"))
-        ranksfile.write("\n")
-
-        procinfos_sorted_by_rank = sorted(self.procinfos, key=lambda procinfo: procinfo.rank)
-        for procinfo in procinfos_sorted_by_rank:
-            host = procinfo.host
-            if host == "localhost":
-                host = os.environ["HOSTNAME"]
-            ranksfile.write("%-29s %-9s %-19s %-14s %-9d\n" % (host, procinfo.port, procinfo.label, procinfo.subsystem, procinfo.rank))      
-    environfilename = "%s/environment.txt" % (outdir)
-
-    with open(environfilename, "w") as environfile:
-        for daqinterface_var in sorted( [ varname for varname in os.environ if re.search(r"^DAQINTERFACE_", varname) ] ):
-            environfile.write("export %s=%s\n" % (daqinterface_var, expand_environment_variable_in_string(os.environ[ daqinterface_var ])))
-
     for (recorddir, dummy, recordfiles) in os.walk(self.tmp_run_record):
         for recordfile in recordfiles:
             os.chmod("%s/%s" % (recorddir, recordfile), 0o444)
@@ -217,10 +219,7 @@ def save_run_record_base(self):
         self.print_log("w", traceback.format_exc())
         self.print_log("w", make_paragraph("Attempt to copy temporary run record \"%s\" into \"%s\" didn't work; keep in mind that %s will be clobbered next time you run on this partition" % (self.tmp_run_record, self.semipermanent_run_record, self.tmp_run_record)))
 
-    if self.debug_level >= 2:
-        print "Saved run configuration records in %s" % \
-            (outdir)
-        print
+    self.print_log("d", make_paragraph("Saved run record in %s, will copy over to yet-to-be-created directory %s/<value of run number> on the start transition" % (outdir, self.record_directory)), 2)
 
 def save_metadata_value_base(self, key, value):
 

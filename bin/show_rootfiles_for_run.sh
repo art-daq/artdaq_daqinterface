@@ -85,17 +85,17 @@ elif (( $nmatches == 1 )); then
 if [[ \"$( grep -El "^\s*alias rawEventDump" $recorddir/$runnum/setup.txt )\" != \"\" ]] ; then \
   echo Using the rawEventDump alias found in $recorddir/$runnum/setup.txt ; \
   . $recorddir/$runnum/setup.txt > /dev/null ; \
-  eval \$( alias | sed -r -n \"s/^alias rawEventDump=.(.*).$/\1/p\" ) $file_format -n $nevents ; \
+  eval \$( alias | sed -r -n \"s/^alias rawEventDump=.(.*).$/\1/p\" ) \$( ls -tr1 $file_format | head -1 ) -n $nevents ; \
 else \
   echo -An alias for rawEventDump is not found in $recorddir/$runnum/setup.txt or in the environment ; \
   echo -Will try to run a generic, experiment-independent version of rawEventDump ; \
   echo -Will source the DAQ setup script in order to set up art \($recorddir/$runnum/setup.txt\) ; \
   . $recorddir/$runnum/setup.txt ; \
-  art -c $ARTDAQ_DAQINTERFACE_DIR/docs/rawEventDump.fcl $file_format -n $nevents  ; \
+  art -c $ARTDAQ_DAQINTERFACE_DIR/docs/rawEventDump.fcl \$( ls -tr1 $file_format | head -1 ) -n $nevents  ; \
 fi ; \
                      else \
 echo Using the rawEventDump which is already available, if a rawEventDump alias exists in $recorddir/$runnum/setup.txt it will be ignored ; \
-rawEventDump $file_format -n $nevents ; \
+rawEventDump \$( ls -tr1 $file_format | head -1 ) -n $nevents ; \
                      fi ; \
 $cmd "
 	    fi

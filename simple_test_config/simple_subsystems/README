@@ -19,7 +19,7 @@ Some notes:
   known_boardreaders_list, and that is also provided here.
   To run this demo, you can use the following commands:
   - 'cd <yourArtdaqDemoDir>'
-  - 'sh ./run_demo.sh --config simple_subsystems --bootfile `pwd`/artdaq-utilities-daqinterface/simple_test_config/simple_subsystems/boot.txt --comps component01 component02 component03 --brlist `pwd`/artdaq-utilities-daqinterface/simple_test_config/simple_subsystems/known_boardreaders_list_example'
+  - 'sh ./run_demo.sh --config simple_subsystems --bootfile `pwd`/artdaq-utilities-daqinterface/simple_test_config/simple_subsystems/boot.txt --comps component01 component02 component03 -- --brlist `pwd`/artdaq-utilities-daqinterface/simple_test_config/simple_subsystems/known_boardreaders_list_example'
 
 * NOTE that the pull-mode data requests that are used in this sample make use of 
   multicast Ethernet messages.  As such, there may
@@ -28,4 +28,6 @@ Some notes:
 
 * Also, NOTE that in an upcoming release of DAQInterface and this sample config,
   we will be able to use the following command for running this configuration:
-  - 'sh ./run_demo.sh --config simple_subsystems --bootfile `pwd`/artdaq-utilities-daqinterface/simple_test_config/simple_subsystems/boot.txt --comps component01 component02 component_subsystem_2'
+  - 'sh ./run_demo.sh --config simple_subsystems --bootfile `pwd`/artdaq-utilities-daqinterface/simple_test_config/simple_subsystems/boot.txt --comps component01 component02 component_subsystem_2 --'
+
+* Also, in an upcoming release of DAQInterface, boot.txt can be replaced by boot.fcl (included).

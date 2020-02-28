@@ -1,7 +1,6 @@
 daq: {
   event_builder: {
     expected_fragments_per_event: 0  # Will be set by DAQInterface
-    max_event_size_bytes: 16777216
     use_art: true
     buffer_count: 5
     max_incomplete_events: 75 # Same as boardreader sync interval
@@ -27,10 +26,8 @@ art: {
     scheduler: {
       errorOnFailureToPut: false
     }
-    NetMonTransportServiceInterface: {
-      service_provider: NetMonTransportService
-      #broadcast_sends: true
-      destinations: {}
+    ArtdaqSharedMemoryServiceInterface: {
+      service_provider: ArtdaqSharedMemoryService
     }
   }
 
@@ -57,9 +54,15 @@ art: {
 
       allow_default_round_robin_routing: false
 
-      policy: {
-        policy: "NoOp"
+      policy: {                                                                                                                                        
+        policy: "RoundRobin"
         receiver_ranks: []
+        minimum_participants: -2
+      }
+
+      inhibit_publisher: {
+        publisher: "ZMQ"
+        bind_address: "tcp://*:5599"
       }
 
       sender_ranks: []

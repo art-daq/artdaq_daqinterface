@@ -22,6 +22,7 @@ sleep_on_stop_us: 0
 request_mode: "Ignored" # Possible values are: Ignored, Single, Buffer, Window
 
 nADCcounts: 2000
+max_fragment_size_bytes: 5000
 
 throttle_usecs: 100000 # 10 Hz
 

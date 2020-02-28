@@ -3,22 +3,15 @@ services: {
   scheduler: {
     errorOnFailureToPut: false
   }
-  NetMonTransportServiceInterface: {
-    service_provider: NetMonTransportService
-    #broadcast_sends: true
-	destinations: { }
-	routing_table_config: {
-	    use_routing_master: false
-	}
+  ArtdaqSharedMemoryServiceInterface: {
+   service_provider: ArtdaqSharedMemoryService
   }
-
   #SimpleMemoryCheck: { }
 }
 
 daq: {
   event_builder: {
 	expected_fragments_per_event: 3
-	max_event_size_bytes: 16777216
 	use_art: true
 	buffer_count: 20
 	send_init_fragments: false
@@ -56,6 +49,11 @@ daq: {
 outputs: {
   rootNetOutput: {
     module_type: RootNetOutput
+    #broadcast_sends: true
+	destinations: { }
+	routing_table_config: {
+	    use_routing_master: false
+	}
   }
 }
 

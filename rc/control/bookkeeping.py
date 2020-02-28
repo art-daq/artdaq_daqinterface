@@ -104,6 +104,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 if len(res) > 0:
                     raise Exception(make_paragraph("max_fragment_size_bytes is found in the FHiCL document for %s; this parameter must not appear in FHiCL documents for non-BoardReader artdaq processes" % (procinfo.label)))
 
+            if "max_event_size_bytes" in procinfo.fhicl_used:
+                raise Exception(make_paragraph("max_event_size_bytes is found in the FHiCL document for %s; this parameter must not appear in FHiCL documents when \"advanced_memory_usage\" is set to true in the settings file %s. This is because DAQInterface calculates and then adds this parameter during bookkeeping." %  (procinfo.label, os.environ["DAQINTERFACE_SETTINGS"])))
+
     # Now loop over the boardreaders again to determine
     # subsystem-level things, such as the number of fragments per
     # event produced by each subsystem's boardreader set, and the
@@ -457,13 +460,13 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             sender_ranks = "sender_ranks: [%s]" % ( ",".join( [str(rnk) for rnk in sorted_sender_ranks_list] ))
             receiver_ranks = "receiver_ranks: [%s]" % ( ",".join( sorted_receiver_ranks_list ))
 
-            self.procinfos[i_proc].fhicl_used = re.sub("sender_ranks\s*:\s*\[.*\]",
+            self.procinfos[i_proc].fhicl_used = re.sub("sender_ranks\s*:\s*\[[^\]]*\]",
                                                        sender_ranks,
-                                                       self.procinfos[i_proc].fhicl_used)
+                                                       self.procinfos[i_proc].fhicl_used, 0, re.DOTALL)
 
-            self.procinfos[i_proc].fhicl_used = re.sub("receiver_ranks\s*:\s*\[.*\]",
+            self.procinfos[i_proc].fhicl_used = re.sub("receiver_ranks\s*:\s*\[[^\]]*\]",
                                                        receiver_ranks,
-                                                       self.procinfos[i_proc].fhicl_used)
+                                                       self.procinfos[i_proc].fhicl_used, 0, re.DOTALL)
      
 
     for i_proc in range(len(self.procinfos)):
@@ -614,12 +617,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     if res:
                         eventbuilders_involved_in_requests.append(procinfo.label)
 
-            #self.print_log("i", "BoardReaders involved in requests for subsystem %s: " % (str(subsystem_id)))
-            #self.print_log("i", " ".join(boardreaders_involved_in_requests))
-
-            #self.print_log("i", "EventBuilders involved in requests for subsystem %s: " % (str(subsystem_id)))
-            #self.print_log("i", print " ".join(eventbuilders_involved_in_requests))
-
             processes_involved_in_requests = [process for process_list in \
                                               [boardreaders_involved_in_requests, eventbuilders_involved_in_requests] \
                                               for process in process_list ]
@@ -659,6 +656,11 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         table_start, table_end = table_range(self.procinfos[i_proc].fhicl_used, tablename)
 
+        if table_start != -1:
+            should_be_negative_one, dummy = table_range(self.procinfos[i_proc].fhicl_used[table_end:], tablename)
+            if should_be_negative_one != -1:
+                raise Exception(make_paragraph("The table \"%s\" appears more than once in the FHiCL config for process \"%s\"; this is not allowed" % (tablename, self.procinfos[i_proc].label)))
+            
         #if table_start == -1 or table_end == -1:
         #    raise Exception(make_paragraph("router process for subsystem %s requires that a FHiCL table called \"%s\" exists in process %s's FHiCL, but none was found" % (router_process_subsystem, tablename, self.procinfos[i_proc].label)))
 
