@@ -1555,7 +1555,7 @@ class DAQInterface(Component):
         endtime = time()
         self.print_log("i", "done (%.1f seconds).\n" % (endtime - starttime))
 
-        if self.debug_level >= 2 or len([dummy for procinfo in self.procinfos if procinfo.lastreturned != "Success"]):
+        if self.debug_level >= 2 or len([procinfo for procinfo in self.procinfos if procinfo.lastreturned != "Success"]):
             for procinfo in self.procinfos:
                 total_time = "%.1f" % (proc_endtimes[procinfo.label] - proc_starttimes[procinfo.label])
                 self.print_log("i", "%s at %s:%s, after %s seconds returned string was:\n%s\n" % \
