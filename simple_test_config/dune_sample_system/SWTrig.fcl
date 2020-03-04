@@ -7,6 +7,7 @@ services: {
   ArtdaqSharedMemoryServiceInterface: {
     service_provider: ArtdaqSharedMemoryService
   }
+  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqDemoFragmentNamingService }
 }
 
 daq: {
@@ -60,7 +61,7 @@ physics: {
   my_output_modules2: [ binaryNetOutput ]
 }
 source: {
-  module_type: DemoInput
+  module_type: RawInput
   waiting_time: 2500000
   resume_after_timeout: true
 }

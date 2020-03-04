@@ -29,9 +29,10 @@ eventbuilder_art_standard: {
       scheduler: {
          errorOnFailureToPut: false
       }
+      ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqDemoFragmentNamingService }
    }
    source: {
-      module_type: "DemoInput"
+      module_type: "RawInput"
       resume_after_timeout: true
       waiting_time: 2.5e6
    }
