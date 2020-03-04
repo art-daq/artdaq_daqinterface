@@ -1369,7 +1369,10 @@ class DAQInterface(Component):
 
     def execute_trace_script(self, transition):
 
-        trace_script = "/nfs/sw/control_files/trace/trace_control.sh"
+        if "DAQINTERFACE_TRACE_SCRIPT" in not os.environ:
+            self.print_log("d", make_paragraph("Environment variable DAQINTERFACE_TRACE_SCRIPT not defined; will not execute the would-be trace script pointed to by the variable"), 3)
+
+        trace_script = os.environ["DAQINTERFACE_TRACE_SCRIPT"]
 
         if os.path.exists(trace_script):
 
@@ -1396,6 +1399,8 @@ class DAQInterface(Component):
 
             if retval != 0:
                 self.print_log("w", make_paragraph("WARNING: \"%s\" yielded a nonzero return value" % (cmd)))
+        else:  # trace script doesn't exist
+            raise Exception("Unable to find trace script referred to by environment variable DAQINTERFACE_TRACE_SCRIPT (\"%s\")" % (os.environ["DAQINTERFACE_TRACE_SCRIPT"]))
 
     # JCF, Nov-8-2015
 
