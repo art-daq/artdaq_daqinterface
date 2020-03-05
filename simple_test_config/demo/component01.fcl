@@ -1,6 +1,6 @@
   daq: {
   fragment_receiver: {
-	max_fragment_size_bytes: 32000
+	max_fragment_size_bytes: 100000
 
 	# CommandableFragmentGenerator Configuration: 
 	fragment_ids: []
