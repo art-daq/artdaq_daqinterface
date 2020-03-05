@@ -16,7 +16,7 @@ daq: {
     buffer_count: 40
     onmon_event_prescale: 1
     is_data_logger: true
-
+    max_fragment_size_bytes: 128000
     auto_suppression_enabled: false
 
 	routing_token_config: {
