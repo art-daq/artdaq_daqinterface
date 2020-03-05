@@ -399,7 +399,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                         tablename)
 
             def determine_if_inter_subsystem_transfer(procinfo, table_name, table_searchstart):
-                for enclosing_sender_table in ["routingNetOutput", "binaryNetOutput"]:
+                for enclosing_sender_table in ["routingNetOutput", "binaryNetOutput", "subsystemOutput"]:
                     if enclosing_table_name(procinfo.fhicl_used, table_name, table_searchstart) == enclosing_sender_table:
                         return True
 
