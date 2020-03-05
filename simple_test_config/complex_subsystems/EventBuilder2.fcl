@@ -37,7 +37,7 @@ services: {
   ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqDemoFragmentNamingService }
 }
 outputs: {
-  binaryNetOutput: {
+  subsystemOutput: {
     module_type: RootNetOutput
     #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
     #broadcast_sends: true
@@ -87,7 +87,7 @@ physics: {
   pmod3: [ prescaleMod3 ]
    
   a1: [ toy1Integ, toy2Integ ]
-  my_output_modules2: [ binaryNetOutput ]
+  my_output_modules2: [ subsystemOutput ]
  # my_output_modules: [ rootNetOutput ]
 }
 source: {
