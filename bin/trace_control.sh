@@ -6,6 +6,21 @@
  # $RCSfile: trace_control.sh,v $
  # rev='$Revision: 1.4 $$Date: 2018/09/13 15:10:41 $'
 
+cat <<EOF >&2
+
+Before using this script in DAQInterface, you'll want to: 
+
+1) Make sure you're using a copy of the original located in
+$ARTDAQ_DAQINTERFACE_DIR, and not the original itself. The copy should
+*not* be in $ARTDAQ_DAQINTERFACE_DIR
+
+2) Alter user-specific code in the script (specifically the references to "biery")
+
+3) Eliminate this error message as well as the "exit 1" right after it in the script
+
+EOF
+
+exit 1
 
 # Program defaults
 # output file - eval'd locally (to resolve $run); escaping hostname moves
