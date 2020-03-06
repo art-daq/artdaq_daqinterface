@@ -342,7 +342,15 @@ class DAQInterface(Component):
             # JCF, Dec-31-2019
             # The swig_artdaq instance by default writes to stdout, so no explicit print call is needed 
             if self.use_messageviewer and self.messageviewer_sender is not None:
-                self.messageviewer_sender.write_info("DAQInterface partition %s" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"]), printstr)
+                if severity == "e":
+                    self.messageviewer_sender.write_error("DAQInterface partition %s" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"]), printstr)
+                elif severity == "w":
+                    self.messageviewer_sender.write_warning("DAQInterface partition %s" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"]), printstr)
+                elif severity == "i":
+                    self.messageviewer_sender.write_info("DAQInterface partition %s" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"]), printstr)
+                elif severity == "d":
+                    self.messageviewer_sender.write_debug("DAQInterface partition %s" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"]), printstr)
+                    
             else:
                 if self.fake_messagefacility:
                     print "%%MSG-%s DAQInterface %s %s %s" % \
