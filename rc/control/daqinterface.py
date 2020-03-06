@@ -2321,6 +2321,7 @@ class DAQInterface(Component):
                 self.print_log("e", traceback.format_exc())
                 self.alert_and_recover(make_paragraph("Error: Attempt to copy temporary run record \"%s\" into permanent run record \"%s\" didn't work; most likely reason is that you don't have write permission to %s, but it may also mean that your experiment's reusing a run number. Scroll up past the Recover transition output for further troubleshooting information." % (self.tmp_run_record, run_record_directory, self.record_directory)))
                 return
+            Popen("touch %s" % (run_record_directory), shell=True)
             os.chmod(run_record_directory, 0o555)
 
             assert re.search(r"^/tmp/\S", self.semipermanent_run_record)
