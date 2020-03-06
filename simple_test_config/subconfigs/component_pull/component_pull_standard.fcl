@@ -7,7 +7,7 @@ component_pull_standard: {
       generator: "ToySimulator"
 
         distribution_type: 3
-        max_fragment_size_bytes: 2000 # max_fragment_size_bytes should be set taking into account the value of nADCcounts (the number of 2-byte ADC counts)
+        max_fragment_size_bytes: 100000 # max_fragment_size_bytes should be set taking into account the value of nADCcounts (the number of 2-byte ADC counts)
         nADCcounts: 500
         usecs_between_sends: 100000
         timestamp_scale_factor: 1
