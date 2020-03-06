@@ -1377,10 +1377,14 @@ class DAQInterface(Component):
 
     def execute_trace_script(self, transition):
 
-        if "DAQINTERFACE_TRACE_SCRIPT" in not os.environ:
+        if "DAQINTERFACE_TRACE_SCRIPT" not in os.environ:
             self.print_log("d", make_paragraph("Environment variable DAQINTERFACE_TRACE_SCRIPT not defined; will not execute the would-be trace script pointed to by the variable"), 3)
+            return
 
         trace_script = os.environ["DAQINTERFACE_TRACE_SCRIPT"]
+
+        if re.search(r"^%s" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"]), trace_script):
+            raise Exception(make_paragraph("The trace script referred to by the DAQINTERFACE_TRACE_SCRIPT environment variable, \"%s\", appears to be located inside the DAQInterface package itself. Please copy it somewhere else before using it, and revert any edits which may have been made to %s." % (trace_script, trace_script)))
 
         if os.path.exists(trace_script):
 
@@ -1403,10 +1407,20 @@ class DAQInterface(Component):
                    " ".join(nodes_for_rgang.keys()))
             self.print_log("d", "Executing \"%s\"" % (cmd), 2)
 
-            retval = Popen(cmd, shell=True).wait()
+            out = Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
-            if retval != 0:
-                self.print_log("w", make_paragraph("WARNING: \"%s\" yielded a nonzero return value" % (cmd)))
+            out_comm = out.communicate()
+
+            out_stdout = out_comm[0]
+            out_stderr = out_comm[1]
+            status = out.returncode
+
+            if status != 0:
+                self.print_log("e", "Error: execution of \"%s\" yielded a nonzero return value" % (cmd))
+                self.print_log("e", "\nSTDOUT from command: \n%s" % (out_stdout))
+                self.print_log("e", "\nSTDERR from command: \n%s" % (out_stderr))
+                raise Exception("\"%s\" yielded a nonzero return value; scroll up for further info" % (cmd))
+
         else:  # trace script doesn't exist
             raise Exception("Unable to find trace script referred to by environment variable DAQINTERFACE_TRACE_SCRIPT (\"%s\")" % (os.environ["DAQINTERFACE_TRACE_SCRIPT"]))
 
