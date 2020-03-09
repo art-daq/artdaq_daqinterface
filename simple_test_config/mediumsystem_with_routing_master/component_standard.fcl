@@ -96,7 +96,7 @@ component01_standard.fragment_receiver.request_mode: "Ignored"
 component01_standard.fragment_receiver.separate_data_thread: false
 component01_standard.fragment_receiver.nADCcounts: 2000
 component01_standard.fragment_receiver.distribution_type: 1
-component01_standard.fragment_receiver.max_fragment_size_bytes: 100000
+component01_standard.fragment_receiver.max_fragment_size_bytes: 8192
 
 component02_standard: @local::component_standard
 component02_standard.fragment_receiver.fragment_type: TOY2
