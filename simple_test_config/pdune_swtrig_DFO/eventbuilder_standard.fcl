@@ -36,6 +36,7 @@ eventbuilder_art_standard: {
     ArtdaqSharedMemoryServiceInterface: {
       service_provider: ArtdaqSharedMemoryService
     }
+  	ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqDemoFragmentNamingService }
   }
 
   source: {

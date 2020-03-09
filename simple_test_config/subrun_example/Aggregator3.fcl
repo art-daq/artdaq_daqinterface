@@ -27,6 +27,7 @@ services: {
     errorOnFailureToPut: false
   }
   ArtdaqSharedMemoryServiceInterface: @local::art_service_for_shared_memory
+  ArtdaqFragmentNamingServiceInterface: @local::art_service_for_fragment_naming
 }
 
 source: @local::artdaq_DL_art_source_specification
