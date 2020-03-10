@@ -37,7 +37,8 @@ services: {
   ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqDemoFragmentNamingService }
 }
 source: {
-  module_type: NetMonInput
+  module_type: ArtdaqInput
+  register_fragment_types: false
 }
 outputs: {
   normalOutput: {

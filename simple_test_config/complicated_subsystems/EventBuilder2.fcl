@@ -94,7 +94,7 @@ physics: {
   #my_output_modules: [ normalOutput ]
 }
 source: {
-  module_type: NetMonInputWithFragments
+  module_type: ArtdaqInput
 }
 process_name: DAQEB2
 }
