@@ -12,7 +12,7 @@ ssp_daq_standard.fragment_receiver.throttle_usecs: 0
 ssp_daq_standard.fragment_receiver.usecs_between_sends: 10000
 ssp_daq_standard.fragment_receiver.timestamp_scale_factor: 1
 ssp_daq_standard.fragment_receiver.nADCcounts: 300
-ssp_daq_standard.fragment_receiver.max_fragment_size_bytes: 1000
+ssp_daq_standard.fragment_receiver.max_fragment_size_bytes: 6664 # 300 times 2 (bytes per ADC count) times 11 (request_window_width/timestamp_scale_factor) plus 1% extra
 ssp_daq_standard.fragment_receiver.distribution_type: 3
 ssp_daq_standard.fragment_receiver.random_seed: 738
 ssp_daq_standard.fragment_receiver.fragment_id: 101
