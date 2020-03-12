@@ -40,7 +40,7 @@ eventbuilder_art_standard: {
   }
 
   source: {
-    module_type: DemoInput
+    module_type: ArtdaqInput
     waiting_time: 2500000
     resume_after_timeout: true
   }

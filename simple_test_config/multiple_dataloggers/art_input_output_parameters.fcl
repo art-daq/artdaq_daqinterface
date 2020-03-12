@@ -5,7 +5,7 @@ BEGIN_PROLOG
 
 # todo: add comment
 art_source_for_just_built_events: {
-  module_type: RawInput
+  module_type: ArtdaqInput
   waiting_time: 2500000
   resume_after_timeout: true
 }
@@ -15,7 +15,7 @@ artdaq_EB_art_source_specification: @local::art_source_for_just_built_events
 
 # todo: add comment
 art_source_for_serialized_root_events: {
-  module_type: NetMonInput
+  module_type: ArtdaqInput
 }
 
 artdaq_DL_art_source_specification: @local::art_source_for_serialized_root_events

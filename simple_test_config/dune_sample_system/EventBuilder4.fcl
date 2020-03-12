@@ -59,7 +59,7 @@ physics: {
   my_output_modules2: [ binaryNetOutput ]
 }
 source: {
-  module_type: RawInput
+  module_type: ArtdaqInput
   waiting_time: 2500000
   resume_after_timeout: true
 }

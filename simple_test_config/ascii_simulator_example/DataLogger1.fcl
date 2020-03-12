@@ -43,7 +43,7 @@ daq: {
 }
 
 source: {
-  module_type: NetMonInput
+  module_type: ArtdaqInput
 }
 outputs: {
   rootNetOutput: {
