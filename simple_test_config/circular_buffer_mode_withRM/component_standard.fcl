@@ -173,6 +173,7 @@ component11_standard.fragment_receiver.timestamp_scale_factor: 1
 component11_standard.fragment_receiver.request_window_offset: 500
 component11_standard.fragment_receiver.request_window_width: 501
 component11_standard.fragment_receiver.request_windows_are_unique: false
+component11_standard.fragment_receiver.max_fragment_size_bytes: 2048000
 
 # reduced the ADC counts in the baseline BR with lots of fragments per event
 component12_standard: @local::component_standard
@@ -187,6 +188,7 @@ component12_standard.fragment_receiver.timestamp_scale_factor: 1
 component12_standard.fragment_receiver.request_window_offset: 500
 component12_standard.fragment_receiver.request_window_width: 501
 component12_standard.fragment_receiver.request_windows_are_unique: false
+component12_standard.fragment_receiver.max_fragment_size_bytes: 2048000
 
 # reduced More the ADC counts in the baseline BR with lots of fragments per event
 component13_standard: @local::component_standard
@@ -229,6 +231,7 @@ component15_standard.fragment_receiver.timestamp_scale_factor: 1
 component15_standard.fragment_receiver.request_window_offset: 1000
 component15_standard.fragment_receiver.request_window_width: 1001
 component15_standard.fragment_receiver.request_windows_are_unique: false
+component15_standard.fragment_receiver.max_fragment_size_bytes: 8192000
 
 # changed windows to unique in the baseline BR with lots of fragments per event
 component16_standard: @local::component_standard
