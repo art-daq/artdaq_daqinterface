@@ -22,7 +22,7 @@ sleep_on_stop_us: 0
 request_mode: "Ignored" # Possible values are: Ignored, Single, Buffer, Window
 
 nADCcounts: 2000
-max_fragment_size_bytes: 8192
+max_fragment_size_bytes: 100000
 
 throttle_usecs: 0
 usecs_between_sends: 200000

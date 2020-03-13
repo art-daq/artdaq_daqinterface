@@ -343,7 +343,15 @@ class DAQInterface(Component):
             # JCF, Dec-31-2019
             # The swig_artdaq instance by default writes to stdout, so no explicit print call is needed 
             if self.use_messageviewer and self.messageviewer_sender is not None:
-                self.messageviewer_sender.write_info("DAQInterface partition %s" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"]), printstr)
+                if severity == "e":
+                    self.messageviewer_sender.write_error("DAQInterface partition %s" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"]), printstr)
+                elif severity == "w":
+                    self.messageviewer_sender.write_warning("DAQInterface partition %s" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"]), printstr)
+                elif severity == "i":
+                    self.messageviewer_sender.write_info("DAQInterface partition %s" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"]), printstr)
+                elif severity == "d":
+                    self.messageviewer_sender.write_debug("DAQInterface partition %s" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"]), printstr)
+                    
             else:
                 if self.fake_messagefacility:
                     print "%%MSG-%s DAQInterface %s %s %s" % \
@@ -1370,7 +1378,14 @@ class DAQInterface(Component):
 
     def execute_trace_script(self, transition):
 
-        trace_script = "/nfs/sw/control_files/trace/trace_control.sh"
+        if "DAQINTERFACE_TRACE_SCRIPT" not in os.environ:
+            self.print_log("d", make_paragraph("Environment variable DAQINTERFACE_TRACE_SCRIPT not defined; will not execute the would-be trace script pointed to by the variable"), 3)
+            return
+
+        trace_script = os.environ["DAQINTERFACE_TRACE_SCRIPT"]
+
+        if re.search(r"^%s" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"]), trace_script):
+            raise Exception(make_paragraph("The trace script referred to by the DAQINTERFACE_TRACE_SCRIPT environment variable, \"%s\", appears to be located inside the DAQInterface package itself. Please copy it somewhere else before using it, and revert any edits which may have been made to %s." % (trace_script, trace_script)))
 
         if os.path.exists(trace_script):
 
@@ -1393,10 +1408,22 @@ class DAQInterface(Component):
                    " ".join(nodes_for_rgang.keys()))
             self.print_log("d", "Executing \"%s\"" % (cmd), 2)
 
-            retval = Popen(cmd, shell=True).wait()
+            out = Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
-            if retval != 0:
-                self.print_log("w", make_paragraph("WARNING: \"%s\" yielded a nonzero return value" % (cmd)))
+            out_comm = out.communicate()
+
+            out_stdout = out_comm[0]
+            out_stderr = out_comm[1]
+            status = out.returncode
+
+            if status != 0:
+                self.print_log("e", "Error: execution of \"%s\" yielded a nonzero return value" % (cmd))
+                self.print_log("e", "\nSTDOUT from command: \n%s" % (out_stdout))
+                self.print_log("e", "\nSTDERR from command: \n%s" % (out_stderr))
+                raise Exception("\"%s\" yielded a nonzero return value; scroll up for further info" % (cmd))
+
+        else:  # trace script doesn't exist
+            raise Exception("Unable to find trace script referred to by environment variable DAQINTERFACE_TRACE_SCRIPT (\"%s\")" % (os.environ["DAQINTERFACE_TRACE_SCRIPT"]))
 
     # JCF, Nov-8-2015
 
@@ -2314,6 +2341,7 @@ class DAQInterface(Component):
                 self.print_log("e", traceback.format_exc())
                 self.alert_and_recover(make_paragraph("Error: Attempt to copy temporary run record \"%s\" into permanent run record \"%s\" didn't work; most likely reason is that you don't have write permission to %s, but it may also mean that your experiment's reusing a run number. Scroll up past the Recover transition output for further troubleshooting information." % (self.tmp_run_record, run_record_directory, self.record_directory)))
                 return
+            Popen("touch %s" % (run_record_directory), shell=True)
             os.chmod(run_record_directory, 0o555)
 
             assert re.search(r"^/tmp/\S", self.semipermanent_run_record)
