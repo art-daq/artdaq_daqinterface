@@ -20,9 +20,6 @@ daq: {
 
 art: {
   services: {
-    scheduler: {
-      errorOnFailureToPut: false
-    }
     ArtdaqSharedMemoryServiceInterface: @local::art_service_for_shared_memory
   ArtdaqFragmentNamingServiceInterface: @local::art_service_for_fragment_naming
   }
