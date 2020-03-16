@@ -183,7 +183,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         for ss_source in self.subsystems[ss].sources:
             size += calculate_max_event_size(ss_source)
 
-        # enforce minimum
+        # enforce minimum                                                                                                     
         if size < 102400:
             size = 102400
 
