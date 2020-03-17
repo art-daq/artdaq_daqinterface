@@ -201,7 +201,7 @@ component13_standard.fragment_receiver.board_id: 12
 component13_standard.fragment_receiver.starting_fragment_id: 12
 component13_standard.fragment_receiver.random_seed: 12738
 component13_standard.fragment_receiver.nADCcounts: 100
-component13_standard.fragment_receiver.max_fragment_size_bytes: 500
+component13_standard.fragment_receiver.max_fragment_size_bytes: 196000
 component13_standard.fragment_receiver.usecs_between_sends: 20000
 component13_standard.fragment_receiver.timestamp_scale_factor: 1
 component13_standard.fragment_receiver.request_window_offset: 500
@@ -216,7 +216,7 @@ component14_standard.fragment_receiver.board_id: 12
 component14_standard.fragment_receiver.starting_fragment_id: 12
 component14_standard.fragment_receiver.random_seed: 12738
 component14_standard.fragment_receiver.nADCcounts: 10
-component14_standard.fragment_receiver.max_fragment_size_bytes: 100
+component14_standard.fragment_receiver.max_fragment_size_bytes: 50000
 component14_standard.fragment_receiver.usecs_between_sends: 20000
 component14_standard.fragment_receiver.timestamp_scale_factor: 1
 component14_standard.fragment_receiver.request_window_offset: 500
@@ -247,7 +247,7 @@ component16_standard.fragment_receiver.board_id: 15
 component16_standard.fragment_receiver.starting_fragment_id: 15
 component16_standard.fragment_receiver.random_seed: 15738
 component16_standard.fragment_receiver.nADCcounts: 2000
-component16_standard.fragment_receiver.max_fragment_size_bytes: 5000
+component16_standard.fragment_receiver.max_fragment_size_bytes: 600000
 component16_standard.fragment_receiver.usecs_between_sends: 20000
 component16_standard.fragment_receiver.timestamp_scale_factor: 1
 component16_standard.fragment_receiver.request_window_offset: 500
