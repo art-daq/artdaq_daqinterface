@@ -210,7 +210,7 @@ class DAQInterface(Component):
     # host and port
 
     class Procinfo(object):
-        def __init__(self, name, rank, host, port, label=None, subsystem="1", allowed_processors = None, fhicl=None, fhicl_file_path = []):
+        def __init__(self, name, rank, host, port, label=None, subsystem="1", allowed_processors = None, prepend = "", fhicl=None, fhicl_file_path = []):
             self.name = name
             self.rank = rank
             self.port = port
@@ -218,6 +218,7 @@ class DAQInterface(Component):
             self.label = label
             self.subsystem = subsystem
             self.allowed_processors = allowed_processors
+            self.prepend = prepend
             self.fhicl = fhicl     # Name of the input FHiCL document
             self.ffp = fhicl_file_path
             self.priority = 999
@@ -1796,6 +1797,7 @@ class DAQInterface(Component):
             boardreader_port = "-1"
             boardreader_subsystem="1"
             boardreader_allowed_processors="-1"
+            boardreader_prepend=""
 
             if len(self.daq_comp_list[ compname ] ) == 1:
                 boardreader_host = self.daq_comp_list[ compname ]
@@ -1805,6 +1807,8 @@ class DAQInterface(Component):
                 boardreader_host, boardreader_port, boardreader_subsystem = self.daq_comp_list[ compname ]
             elif len(self.daq_comp_list[ compname ] ) == 4:
                 boardreader_host, boardreader_port, boardreader_subsystem, boardreader_allowed_processors = self.daq_comp_list[ compname ]
+            elif len(self.daq_comp_list[ compname ] ) == 5:
+                boardreader_host, boardreader_port, boardreader_subsystem, boardreader_allowed_processors, boardreader_prepend = self.daq_comp_list[ compname ]
             else:
                 raise Exception(make_paragraph("There's an unexpected number of elements which were passed for component \"%s\" in the setdaqcomps call" % (compname)))
 
@@ -1826,7 +1830,7 @@ class DAQInterface(Component):
             self.procinfos.append(self.Procinfo("BoardReader",
                                                 boardreader_rank,
                                                 boardreader_host,
-                                                boardreader_port, compname, boardreader_subsystem, boardreader_allowed_processors))
+                                                boardreader_port, compname, boardreader_subsystem, boardreader_allowed_processors, boardreader_prepend))
 
         # See the Procinfo.__lt__ function for details on sorting
 

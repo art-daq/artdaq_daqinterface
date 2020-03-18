@@ -95,8 +95,10 @@ def launch_procs_base(self):
                     launch_commands_on_host_to_show_user[ procinfo.host].append( res.group(1) )
                     
 
-        base_launch_cmd = "%s -c \"id: %s commanderPluginType: xmlrpc rank: %s application_name: %s partition_number: %s\"" % \
-                          (bootfile_name_to_execname(procinfo.name), procinfo.port, procinfo.rank, procinfo.label, 
+        prepend=procinfo.prepend.strip("\"")
+        base_launch_cmd = "%s %s -c \"id: %s commanderPluginType: xmlrpc rank: %s application_name: %s partition_number: %s\"" % \
+                          (prepend, bootfile_name_to_execname(procinfo.name), procinfo.port, 
+                           procinfo.rank, procinfo.label, 
                            os.environ["DAQINTERFACE_PARTITION_NUMBER"])
         if procinfo.allowed_processors is not None:
             base_launch_cmd="taskset --cpu-list %s %s" % (procinfo.allowed_processors, base_launch_cmd)
