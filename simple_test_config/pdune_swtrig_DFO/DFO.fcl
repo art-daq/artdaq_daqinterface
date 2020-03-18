@@ -23,9 +23,6 @@ daq: {
 
 art: {
   services: {
-    scheduler: {
-      errorOnFailureToPut: false
-    }
     ArtdaqSharedMemoryServiceInterface: {
       service_provider: ArtdaqSharedMemoryService
     }

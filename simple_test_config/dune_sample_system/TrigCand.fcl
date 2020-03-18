@@ -1,9 +1,6 @@
 #include "routing_master_parameters.fcl"
 
 services: {
-  scheduler: {
-    errorOnFailureToPut: false
-  }
   ArtdaqSharedMemoryServiceInterface: {
     service_provider: ArtdaqSharedMemoryService
   }

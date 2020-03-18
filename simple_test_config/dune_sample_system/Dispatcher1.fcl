@@ -1,7 +1,4 @@
 services: {
-  scheduler: {
-    errorOnFailureToPut: false
-  }
   ArtdaqSharedMemoryServiceInterface: {
     service_provider: ArtdaqSharedMemoryService
   }
@@ -19,13 +16,13 @@ daq: {
     is_dispatcher: true
     overwrite_mode: true
 
-	routing_token_config: {
-		use_routing_master: false
-	}
+    routing_token_config: {
+        use_routing_master: false
+    }
 
     auto_suppression_enabled: false
 
-	sources: { }
+    sources: { }
   }
 
   metrics: {

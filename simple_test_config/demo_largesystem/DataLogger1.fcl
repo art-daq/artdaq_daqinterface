@@ -1,7 +1,4 @@
 services: {
-  scheduler: {
-    errorOnFailureToPut: false
-  }
   ArtdaqSharedMemoryServiceInterface: {
     service_provider: ArtdaqSharedMemoryService
   }
@@ -41,6 +38,7 @@ daq: {
 
 source: {
   module_type: ArtdaqInput
+  register_fragment_types: false
 }
 outputs: {
   normalOutput: {
