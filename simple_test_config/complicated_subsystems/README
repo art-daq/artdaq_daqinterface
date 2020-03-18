@@ -1,17 +1,14 @@
-Sample configuration: simple_subsystems
-Notes on 28-Mar-2019, KAB (sample created by ELF)
+Sample configuration: complicated_subsystems
+Notes on 18-Mar-2019, ELF
 
 Description:
 This configuration is intended to demonstrate/test the use of a multi-layer
 artdaq system, that is, a system with multiple subsystems.  The current system
-layout has components 1 and 2 sending fragments to EBs 1 and 2, which send events
-to DataLogger1 which writes them to disk.  All of that is in subsystem #1.
-
-EBs 1 and 2 also send their data to EB3 in subsystem 2.
-
-In subsystem 2, component03 sends fragments to EB3.  component03 is configured
-in Window (pull) mode.  EB3 sends events to DL2 which
-writes them to disk and forwards them to Dispatcher1.
+layout has components 1, 2 and 3 sending fragments to EB 1 in subsystem #1, 
+component_subsystem_2 sending to EB2 in subsystem 2 along with serialized art
+events from EB1, component_subsystem_3 sending to EB3 in subsystem 3, and EB2
+and EB3 sending serialized art events to EB4 in subsystem 4. DL1 and DI1 are
+also in subsystem 4, writing data to disk and running online monitoring.
 
 Some notes:
 * This configuration needs an enhanced copy of the boot.txt file, and a
@@ -19,13 +16,10 @@ Some notes:
   known_boardreaders_list, and that is also provided here.
   To run this demo, you can use the following commands:
   - 'cd <yourArtdaqDemoDir>'
-  - 'sh ./run_demo.sh --config simple_subsystems --bootfile `pwd`/artdaq-utilities-daqinterface/simple_test_config/simple_subsystems/boot.txt --comps component01 component02 component03 --brlist `pwd`/artdaq-utilities-daqinterface/simple_test_config/simple_subsystems/known_boardreaders_list_example'
+  - 'sh ./run_integration_tests.sh --config complicated_subsystems'
 
 * NOTE that the pull-mode data requests that are used in this sample make use of 
   multicast Ethernet messages.  As such, there may
   be firewall settings that need to be tuned.  Please see the text that describes
   this in ../README.simple_test_configs.
-
-* Also, NOTE that in an upcoming release of DAQInterface and this sample config,
-  we will be able to use the following command for running this configuration:
-  - 'sh ./run_demo.sh --config simple_subsystems --bootfile `pwd`/artdaq-utilities-daqinterface/simple_test_config/simple_subsystems/boot.txt --comps component01 component02 component_subsystem_2'
+  
