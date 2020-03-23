@@ -104,6 +104,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 if len(res) > 0:
                     raise Exception(make_paragraph("max_fragment_size_bytes is found in the FHiCL document for %s; this parameter must not appear in FHiCL documents for non-BoardReader artdaq processes" % (procinfo.label)))
 
+            if "max_event_size_bytes" in procinfo.fhicl_used:
+                raise Exception(make_paragraph("max_event_size_bytes is found in the FHiCL document for %s; this parameter must not appear in FHiCL documents when \"advanced_memory_usage\" is set to true in the settings file %s. This is because DAQInterface calculates and then adds this parameter during bookkeeping." %  (procinfo.label, os.environ["DAQINTERFACE_SETTINGS"])))
+
     # Now loop over the boardreaders again to determine
     # subsystem-level things, such as the number of fragments per
     # event produced by each subsystem's boardreader set, and the
@@ -159,7 +162,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         count = subsystem_fragment_count[ss]
 
         for ss_source in self.subsystems[ss].sources:
-            count += calculate_expected_fragments_per_event(ss_source)
+            if self.subsystems[ss].fragmentMode:
+                count += calculate_expected_fragments_per_event(ss_source)
+            else:
+                count += 1
 
         return count
 
@@ -176,6 +182,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         for ss_source in self.subsystems[ss].sources:
             size += calculate_max_event_size(ss_source)
+
+        # enforce minimum                                                                                                     
+        if size < 1024000:
+            size = 1024000
 
         return size
 
@@ -389,7 +399,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                         tablename)
 
             def determine_if_inter_subsystem_transfer(procinfo, table_name, table_searchstart):
-                for enclosing_sender_table in ["routingNetOutput", "binaryNetOutput"]:
+                for enclosing_sender_table in ["routingNetOutput", "binaryNetOutput", "subsystemOutput"]:
                     if enclosing_table_name(procinfo.fhicl_used, table_name, table_searchstart) == enclosing_sender_table:
                         return True
 
@@ -454,13 +464,13 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             sender_ranks = "sender_ranks: [%s]" % ( ",".join( [str(rnk) for rnk in sorted_sender_ranks_list] ))
             receiver_ranks = "receiver_ranks: [%s]" % ( ",".join( sorted_receiver_ranks_list ))
 
-            self.procinfos[i_proc].fhicl_used = re.sub("sender_ranks\s*:\s*\[.*\]",
+            self.procinfos[i_proc].fhicl_used = re.sub("sender_ranks\s*:\s*\[[^\]]*\]",
                                                        sender_ranks,
-                                                       self.procinfos[i_proc].fhicl_used)
+                                                       self.procinfos[i_proc].fhicl_used, 0, re.DOTALL)
 
-            self.procinfos[i_proc].fhicl_used = re.sub("receiver_ranks\s*:\s*\[.*\]",
+            self.procinfos[i_proc].fhicl_used = re.sub("receiver_ranks\s*:\s*\[[^\]]*\]",
                                                        receiver_ranks,
-                                                       self.procinfos[i_proc].fhicl_used)
+                                                       self.procinfos[i_proc].fhicl_used, 0, re.DOTALL)
      
 
     for i_proc in range(len(self.procinfos)):

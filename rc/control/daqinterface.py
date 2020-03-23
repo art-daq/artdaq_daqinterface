@@ -210,7 +210,7 @@ class DAQInterface(Component):
     # host and port
 
     class Procinfo(object):
-        def __init__(self, name, rank, host, port, label=None, subsystem="1", allowed_processors = None, fhicl=None, fhicl_file_path = []):
+        def __init__(self, name, rank, host, port, label=None, subsystem="1", allowed_processors = None, prepend = "", fhicl=None, fhicl_file_path = []):
             self.name = name
             self.rank = rank
             self.port = port
@@ -218,6 +218,7 @@ class DAQInterface(Component):
             self.label = label
             self.subsystem = subsystem
             self.allowed_processors = allowed_processors
+            self.prepend = prepend
             self.fhicl = fhicl     # Name of the input FHiCL document
             self.ffp = fhicl_file_path
             self.priority = 999
@@ -318,9 +319,10 @@ class DAQInterface(Component):
     # artdaq subsytem.
 
     class Subsystem(object):
-        def __init__(self, sources = [], destination = None):
+        def __init__(self, sources = [], destination = None, fragmentMode = True):
             self.sources = sources
             self.destination = destination
+            self.fragmentMode = fragmentMode
 
         def __lt__(self, other):
             if self.id != other.id:
@@ -342,7 +344,15 @@ class DAQInterface(Component):
             # JCF, Dec-31-2019
             # The swig_artdaq instance by default writes to stdout, so no explicit print call is needed 
             if self.use_messageviewer and self.messageviewer_sender is not None:
-                self.messageviewer_sender.write_info("DAQInterface partition %s" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"]), printstr)
+                if severity == "e":
+                    self.messageviewer_sender.write_error("DAQInterface partition %s" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"]), printstr)
+                elif severity == "w":
+                    self.messageviewer_sender.write_warning("DAQInterface partition %s" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"]), printstr)
+                elif severity == "i":
+                    self.messageviewer_sender.write_info("DAQInterface partition %s" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"]), printstr)
+                elif severity == "d":
+                    self.messageviewer_sender.write_debug("DAQInterface partition %s" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"]), printstr)
+                    
             else:
                 if self.fake_messagefacility:
                     print "%%MSG-%s DAQInterface %s %s %s" % \
@@ -461,6 +471,8 @@ class DAQInterface(Component):
         self.do_trace_get_boolean = False
         self.do_trace_set_boolean = False
 
+        self.messageviewer_sender = None
+
         # Here, states refers to individual artdaq process states, not the DAQInterface state
         self.target_states = {"Init":"Ready", "Start":"Running", "Pause":"Paused", "Resume":"Running",
                      "Stop":"Ready", "Shutdown":"Stopped"}
@@ -476,8 +488,6 @@ class DAQInterface(Component):
                     "DAQInterface will exit. Look at the messages above, make any necessary "
                     "changes, and restart.") + "\n")
             sys.exit(1)
-
-        self.messageviewer_sender = None
 
         if self.use_messageviewer:
             try:
@@ -1369,7 +1379,14 @@ class DAQInterface(Component):
 
     def execute_trace_script(self, transition):
 
-        trace_script = "/nfs/sw/control_files/trace/trace_control.sh"
+        if "DAQINTERFACE_TRACE_SCRIPT" not in os.environ:
+            self.print_log("d", make_paragraph("Environment variable DAQINTERFACE_TRACE_SCRIPT not defined; will not execute the would-be trace script pointed to by the variable"), 3)
+            return
+
+        trace_script = os.environ["DAQINTERFACE_TRACE_SCRIPT"]
+
+        if re.search(r"^%s" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"]), trace_script):
+            raise Exception(make_paragraph("The trace script referred to by the DAQINTERFACE_TRACE_SCRIPT environment variable, \"%s\", appears to be located inside the DAQInterface package itself. Please copy it somewhere else before using it, and revert any edits which may have been made to %s." % (trace_script, trace_script)))
 
         if os.path.exists(trace_script):
 
@@ -1392,10 +1409,22 @@ class DAQInterface(Component):
                    " ".join(nodes_for_rgang.keys()))
             self.print_log("d", "Executing \"%s\"" % (cmd), 2)
 
-            retval = Popen(cmd, shell=True).wait()
+            out = Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
-            if retval != 0:
-                self.print_log("w", make_paragraph("WARNING: \"%s\" yielded a nonzero return value" % (cmd)))
+            out_comm = out.communicate()
+
+            out_stdout = out_comm[0]
+            out_stderr = out_comm[1]
+            status = out.returncode
+
+            if status != 0:
+                self.print_log("e", "Error: execution of \"%s\" yielded a nonzero return value" % (cmd))
+                self.print_log("e", "\nSTDOUT from command: \n%s" % (out_stdout))
+                self.print_log("e", "\nSTDERR from command: \n%s" % (out_stderr))
+                raise Exception("\"%s\" yielded a nonzero return value; scroll up for further info" % (cmd))
+
+        else:  # trace script doesn't exist
+            raise Exception("Unable to find trace script referred to by environment variable DAQINTERFACE_TRACE_SCRIPT (\"%s\")" % (os.environ["DAQINTERFACE_TRACE_SCRIPT"]))
 
     # JCF, Nov-8-2015
 
@@ -1554,7 +1583,7 @@ class DAQInterface(Component):
         endtime = time()
         self.print_log("i", "done (%.1f seconds).\n" % (endtime - starttime))
 
-        if self.debug_level >= 2 or len([dummy for procinfo in self.procinfos if procinfo.lastreturned != "Success"]):
+        if self.debug_level >= 2 or len([procinfo for procinfo in self.procinfos if procinfo.lastreturned != "Success"]):
             for procinfo in self.procinfos:
                 total_time = "%.1f" % (proc_endtimes[procinfo.label] - proc_starttimes[procinfo.label])
                 self.print_log("i", "%s at %s:%s, after %s seconds returned string was:\n%s\n" % \
@@ -1768,6 +1797,7 @@ class DAQInterface(Component):
             boardreader_port = "-1"
             boardreader_subsystem="1"
             boardreader_allowed_processors="-1"
+            boardreader_prepend=""
 
             if len(self.daq_comp_list[ compname ] ) == 1:
                 boardreader_host = self.daq_comp_list[ compname ]
@@ -1777,6 +1807,8 @@ class DAQInterface(Component):
                 boardreader_host, boardreader_port, boardreader_subsystem = self.daq_comp_list[ compname ]
             elif len(self.daq_comp_list[ compname ] ) == 4:
                 boardreader_host, boardreader_port, boardreader_subsystem, boardreader_allowed_processors = self.daq_comp_list[ compname ]
+            elif len(self.daq_comp_list[ compname ] ) == 5:
+                boardreader_host, boardreader_port, boardreader_subsystem, boardreader_allowed_processors, boardreader_prepend = self.daq_comp_list[ compname ]
             else:
                 raise Exception(make_paragraph("There's an unexpected number of elements which were passed for component \"%s\" in the setdaqcomps call" % (compname)))
 
@@ -1798,7 +1830,7 @@ class DAQInterface(Component):
             self.procinfos.append(self.Procinfo("BoardReader",
                                                 boardreader_rank,
                                                 boardreader_host,
-                                                boardreader_port, compname, boardreader_subsystem, boardreader_allowed_processors))
+                                                boardreader_port, compname, boardreader_subsystem, boardreader_allowed_processors, boardreader_prepend))
 
         # See the Procinfo.__lt__ function for details on sorting
 
@@ -2186,17 +2218,6 @@ class DAQInterface(Component):
         assert "/tmp" == tmpdir_for_fhicl[:4] and len(tmpdir_for_fhicl) > 4
         shutil.rmtree( tmpdir_for_fhicl )
 
-        starttime=time()
-        self.print_log("i", "Bookkeeping the FHiCL documents...", 1, False)
-
-        try:
-            self.bookkeeping_for_fhicl_documents()
-        except Exception:
-            self.print_log("e", traceback.format_exc())
-            self.alert_and_recover("An exception was thrown when performing bookkeeping on the process FHiCL documents; see traceback above for more info")
-            return
-        endtime=time()
-        self.print_log("i", "done (%.1f seconds)." % (endtime-starttime))
 
         starttime=time()
         self.print_log("i", "Reformatting the FHiCL documents...", 1, False)
@@ -2213,6 +2234,19 @@ class DAQInterface(Component):
         
         endtime=time()
         self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
+
+        starttime=time()
+        self.print_log("i", "Bookkeeping the FHiCL documents...", 1, False)
+
+        try:
+            self.bookkeeping_for_fhicl_documents()
+        except Exception:
+            self.print_log("e", traceback.format_exc())
+            self.alert_and_recover("An exception was thrown when performing bookkeeping on the process FHiCL documents; see traceback above for more info")
+            return
+        endtime=time()
+        self.print_log("i", "done (%.1f seconds)." % (endtime-starttime))
+
 
         self.tmp_run_record = "/tmp/run_record_attempted_%s/%s" % \
             (os.environ["USER"],
@@ -2311,6 +2345,7 @@ class DAQInterface(Component):
                 self.print_log("e", traceback.format_exc())
                 self.alert_and_recover(make_paragraph("Error: Attempt to copy temporary run record \"%s\" into permanent run record \"%s\" didn't work; most likely reason is that you don't have write permission to %s, but it may also mean that your experiment's reusing a run number. Scroll up past the Recover transition output for further troubleshooting information." % (self.tmp_run_record, run_record_directory, self.record_directory)))
                 return
+            Popen("touch %s" % (run_record_directory), shell=True)
             os.chmod(run_record_directory, 0o555)
 
             assert re.search(r"^/tmp/\S", self.semipermanent_run_record)

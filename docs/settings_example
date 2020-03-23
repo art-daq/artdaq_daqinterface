@@ -29,12 +29,6 @@ datalogger timeout: 30
 dispatcher timeout: 30
 routing_master timeout: 30
 
-# As of Nov-17-2018, the largest fragments are found in
-# mediumsystem_with_routing_master and subconfigs/component_pull, each
-# containing 500K 2-byte ADC counts
-
-max_fragment_size_bytes: 1024000
-
-advanced_memory_usage: false
+advanced_memory_usage: true
 
 #disable_unique_rootfile_labels: true

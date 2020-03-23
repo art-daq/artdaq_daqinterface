@@ -40,6 +40,7 @@ separate_monitoring_thread: false # Whether a thread should be started which per
 hardware_poll_interval_us: 0 # How often, in microseconds, checkHWStatus_() should be called. 0 to disable.
 
 nADCcounts: 100
+max_fragment_size_bytes: 400
 
 throttle_usecs: 100000 # 50 Hz
 
