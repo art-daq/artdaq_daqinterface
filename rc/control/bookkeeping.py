@@ -800,7 +800,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     def sends_to_via_RootNetOutput(proc1, proc2):
 
         res = re.findall(r'module_type:\s*"RootNetOutput"', proc1.fhicl_used)
-        print "Found %d instances of RootNetOutput module in %s" % (len(res), proc1.label)
+
         assert len(res) < 2, "Bookkeeping error: found more than one instance of RootNetOutput module in %s's FHiCL document, unable to handle this" % (proc1.label)
         
         if len(res) == 1:
@@ -821,7 +821,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     
 
     for subsystem_id, subsystem in self.subsystems.items():
-        print "Bookkeeping init_fragment_count for subsystem %s" % (str(subsystem_id))
+
         init_fragment_counts = {}
 
         for procinfo in [pi for pi in self.procinfos if pi.subsystem == subsystem_id]:
@@ -835,19 +835,16 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     for ss_source in subsystem.sources:
                         for possible_sender_procinfo in [pi for pi in self.procinfos if pi.subsystem == ss_source and pi.name == "EventBuilder"]:
                             if sends_to_via_RootNetOutput(possible_sender_procinfo, procinfo):
-                                print "%s appears to send via RootNetOutput to %s" % (possible_sender_procinfo.label, procinfo.label)
                                 init_fragment_count += 1
                                 break # Move on to next subsystem
                 elif procinfo.name == "DataLogger":
                     for possible_sender_procinfo in [pi for pi in self.procinfos if pi.subsystem == procinfo.subsystem and pi.name == "EventBuilder"]:
                         if sends_to_via_RootNetOutput(possible_sender_procinfo, procinfo):
-                            print "%s appears to send via RootNetOutput to %s" % (possible_sender_procinfo.label, procinfo.label)
                             init_fragment_count += 1
                             break 
                 elif procinfo.name == "Dispatcher":
                     for possible_sender_procinfo in [pi for pi in self.procinfos if pi.subsystem == procinfo.subsystem and pi.name == "DataLogger"]:
                         if sends_to_via_RootNetOutput(possible_sender_procinfo, procinfo):
-                            print "%s appears to send via RootNetOutput to %s" % (possible_sender_procinfo.label, procinfo.label)
                             init_fragment_count += 1
                             # break intentionally omitted; each DataLogger counts here
 
