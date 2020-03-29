@@ -839,13 +839,13 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                 init_fragment_count += 1
                                 break # Move on to next subsystem
                 elif procinfo.name == "DataLogger":
-                    for possible_sender_procinfo in [pi for pi in self.procinfos if pi.subsystem == procinfo.subsystem and procinfo.name == "EventBuilder"]:
+                    for possible_sender_procinfo in [pi for pi in self.procinfos if pi.subsystem == procinfo.subsystem and pi.name == "EventBuilder"]:
                         if sends_to_via_RootNetOutput(possible_sender_procinfo, procinfo):
                             print "%s appears to send via RootNetOutput to %s" % (possible_sender_procinfo.label, procinfo.label)
                             init_fragment_count += 1
                             break 
                 elif procinfo.name == "Dispatcher":
-                    for possible_sender_procinfo in [pi for pi in self.procinfos if pi.subsystem == procinfo.subsystem and procinfo.name == "DataLogger"]:
+                    for possible_sender_procinfo in [pi for pi in self.procinfos if pi.subsystem == procinfo.subsystem and pi.name == "DataLogger"]:
                         if sends_to_via_RootNetOutput(possible_sender_procinfo, procinfo):
                             print "%s appears to send via RootNetOutput to %s" % (possible_sender_procinfo.label, procinfo.label)
                             init_fragment_count += 1
@@ -853,7 +853,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
                 init_fragment_counts[procinfo.name] = init_fragment_count
                 
-            procinfo.fhicl_used = re.sub("init_fragment_count\s*:\s*[0-9\.e]+",
+            procinfo.fhicl_used = re.sub("init_fragment_count\s*:\s*\S+",
                                          "init_fragment_count: %d" % \
                                          init_fragment_counts[procinfo.name],
                                          procinfo.fhicl_used)
