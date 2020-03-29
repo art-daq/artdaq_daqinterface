@@ -1,0 +1,5 @@
+Config meant to test Issue #24231
+You should only see this on the feature/24231_bookkeep_init_fragment_count branch
+
+"For an EventBuilder listening to BoardReaders, it should be zero"
+-> EventBuilder1, EventBuilder2

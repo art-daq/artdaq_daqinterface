@@ -1,0 +1,10 @@
+Config meant to test Issue #24231
+You should only see this on the feature/24231_bookkeep_init_fragment_count branch
+
+"For an EventBuilder receiving from two EventBuilders in one subsystem, a third in a different subsystem, and zero or more BoardReaders, it should be 2"
+
+-> "For an EventBuilder receiving": EventBuilder4
+-> "two EventBuilders in one subsystem": EventBuilder2, EventBuilder2a
+-> "a third in a different subsystem": EventBuilder3
+-> "And zero or more BoardReaders": component_subsystem_4
+
