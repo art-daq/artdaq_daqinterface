@@ -22,7 +22,7 @@ Subsystem source: 2
 Subsystem source: 3
 Subsystem fragmentMode: False
 
-EventBuilder host: mu2edaq10
+EventBuilder host: mu2edaq14
 EventBuilder label: EventBuilder1
 EventBuilder subsystem: 1
 
@@ -34,7 +34,7 @@ EventBuilder host: mu2edaq12
 EventBuilder label: EventBuilder3
 EventBuilder subsystem: 3
 
-EventBuilder host: mu2edaq10
+EventBuilder host: mu2edaq14
 EventBuilder label: EventBuilder4
 EventBuilder subsystem: 4
 
