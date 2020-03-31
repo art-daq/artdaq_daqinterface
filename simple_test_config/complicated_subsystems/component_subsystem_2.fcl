@@ -44,7 +44,7 @@ max_fragment_size_bytes: 1024
 
 throttle_usecs: 1000000 # 50 Hz
 
-distribution_type: 0
+distribution_type: 1
 
 timestamp_scale_factor: 2
 

@@ -9,8 +9,8 @@ fragment_id: -99 # Please define only one of these
 sleep_on_stop_us: 0
 
     # Generated Parameters: 
-    generator: AsciiSimulator
-    fragment_type: ASCII
+    generator: ToySimulator
+    fragment_type: TOY1
     fragment_id: 4
     board_id: 4
     starting_fragment_id: 4
@@ -39,12 +39,12 @@ separate_data_thread: true # MUST be true for requests to be applied! If request
 separate_monitoring_thread: false # Whether a thread should be started which periodically calls checkHWStatus_, a user-defined function which should be used to check hardware status registers and report to MetricMan.
 hardware_poll_interval_us: 0 # How often, in microseconds, checkHWStatus_() should be called. 0 to disable.
 
+nADCcounts: 100
 max_fragment_size_bytes: 1024
 
 throttle_usecs: 1000000 # 50 Hz
 
-string1: "You want to grep for \"grep\" in the output file!"
-string2: "That grep should return both of these lines, but only this line will match \"coconut\"."
+distribution_type: 3
 
 timestamp_scale_factor: 2
 
