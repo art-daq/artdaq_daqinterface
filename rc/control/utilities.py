@@ -603,13 +603,17 @@ def fhiclize_document(filename):
                 continue
     return "\n".join( fhiclized_lines )
 
-
-def obtain_messagefacility_fhicl(have_artdaq_mfextensions):
-
+def get_messagefacility_template_filename():
     if "DAQINTERFACE_MESSAGEFACILITY_FHICL" in os.environ.keys():
         messagefacility_fhicl_filename = os.environ["DAQINTERFACE_MESSAGEFACILITY_FHICL"]
     else:
         messagefacility_fhicl_filename = os.getcwd() + "/MessageFacility.fcl" 
+    
+    return messagefacility_fhicl_filename
+
+def obtain_messagefacility_fhicl(have_artdaq_mfextensions):
+
+    messagefacility_fhicl_filename = get_messagefacility_template_filename()
 
     # JCF, 10-25-2018
 

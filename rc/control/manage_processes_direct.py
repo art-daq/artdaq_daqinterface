@@ -18,6 +18,7 @@ from rc.control.utilities import construct_checked_command
 from rc.control.utilities import obtain_messagefacility_fhicl
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import upsproddir_from_productsdir
+from rc.control.utilities import get_messagefacility_template_filename
 from rc.control.deepsuppression import deepsuppression
 
 
@@ -50,6 +51,19 @@ def launch_procs_base(self):
 
 
     messagefacility_fhicl_filename = obtain_messagefacility_fhicl(self.have_artdaq_mfextensions())
+
+    self.create_setup_fhiclcpp_if_needed()
+
+    cmds = []
+    cmds.append("if [[ -z $( command -v fhicl-dump ) ]]; then %s; source %s; fi" % \
+                (bash_unsetup_command, os.environ["DAQINTERFACE_SETUP_FHICLCPP"]))
+    cmds.append("fhicl-dump -l 0 -c %s" % (get_messagefacility_template_filename()))
+
+    proc = Popen("; ".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)    
+    status = proc.wait()
+
+    if status != 0:
+        raise Exception("The FHiCL code designed to control MessageViewer, found in %s, appears to contain one or more syntax errors" % (get_messagefacility_template_filename()))
 
     for host in set([procinfo.host for procinfo in self.procinfos]):
         if host != "localhost" and host != os.environ["HOSTNAME"]:
