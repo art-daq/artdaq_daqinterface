@@ -22,7 +22,8 @@ component_pull_standard: {
 
       # hardware_poll_interval_us is how often, in microseconds, checkHWStatus_() should be called. 0 to disable.
       hardware_poll_interval_us: 0 
-
+      
+receive_requests: true
       # See the artdaq file CommandableFragmentGenerator.hh for documentation on request_mode
       request_mode: "Window"
 
