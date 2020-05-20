@@ -1,11 +1,9 @@
 
 services: {
-  scheduler: {
-    errorOnFailureToPut: false
-  }
   ArtdaqSharedMemoryServiceInterface: {
    service_provider: ArtdaqSharedMemoryService
   }
+  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqDemoFragmentNamingService }
 
   #SimpleMemoryCheck: { }
 }
@@ -13,7 +11,6 @@ services: {
 daq: {
   event_builder: {
 	expected_fragments_per_event: 3
-	max_event_size_bytes: 16777216
 	use_art: true
 	buffer_count: 20
 	send_init_fragments: false
@@ -70,7 +67,7 @@ physics: {
   my_output_modules: [ rootNetOutput ]
 }
 source: {
-  module_type: DemoInput
+  module_type: ArtdaqInput
   waiting_time: 2500000
   resume_after_timeout: true
 }

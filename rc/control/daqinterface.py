@@ -319,9 +319,10 @@ class DAQInterface(Component):
     # artdaq subsytem.
 
     class Subsystem(object):
-        def __init__(self, sources = [], destination = None):
+        def __init__(self, sources = [], destination = None, fragmentMode = True):
             self.sources = sources
             self.destination = destination
+            self.fragmentMode = fragmentMode
 
         def __lt__(self, other):
             if self.id != other.id:
@@ -470,6 +471,8 @@ class DAQInterface(Component):
         self.do_trace_get_boolean = False
         self.do_trace_set_boolean = False
 
+        self.messageviewer_sender = None
+
         # Here, states refers to individual artdaq process states, not the DAQInterface state
         self.target_states = {"Init":"Ready", "Start":"Running", "Pause":"Paused", "Resume":"Running",
                      "Stop":"Ready", "Shutdown":"Stopped"}
@@ -485,8 +488,6 @@ class DAQInterface(Component):
                     "DAQInterface will exit. Look at the messages above, make any necessary "
                     "changes, and restart.") + "\n")
             sys.exit(1)
-
-        self.messageviewer_sender = None
 
         if self.use_messageviewer:
             try:
@@ -1582,7 +1583,7 @@ class DAQInterface(Component):
         endtime = time()
         self.print_log("i", "done (%.1f seconds).\n" % (endtime - starttime))
 
-        if self.debug_level >= 2 or len([dummy for procinfo in self.procinfos if procinfo.lastreturned != "Success"]):
+        if self.debug_level >= 2 or len([procinfo for procinfo in self.procinfos if procinfo.lastreturned != "Success"]):
             for procinfo in self.procinfos:
                 total_time = "%.1f" % (proc_endtimes[procinfo.label] - proc_starttimes[procinfo.label])
                 self.print_log("i", "%s at %s:%s, after %s seconds returned string was:\n%s\n" % \
@@ -2217,17 +2218,6 @@ class DAQInterface(Component):
         assert "/tmp" == tmpdir_for_fhicl[:4] and len(tmpdir_for_fhicl) > 4
         shutil.rmtree( tmpdir_for_fhicl )
 
-        starttime=time()
-        self.print_log("i", "Bookkeeping the FHiCL documents...", 1, False)
-
-        try:
-            self.bookkeeping_for_fhicl_documents()
-        except Exception:
-            self.print_log("e", traceback.format_exc())
-            self.alert_and_recover("An exception was thrown when performing bookkeeping on the process FHiCL documents; see traceback above for more info")
-            return
-        endtime=time()
-        self.print_log("i", "done (%.1f seconds)." % (endtime-starttime))
 
         starttime=time()
         self.print_log("i", "Reformatting the FHiCL documents...", 1, False)
@@ -2244,6 +2234,19 @@ class DAQInterface(Component):
         
         endtime=time()
         self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
+
+        starttime=time()
+        self.print_log("i", "Bookkeeping the FHiCL documents...", 1, False)
+
+        try:
+            self.bookkeeping_for_fhicl_documents()
+        except Exception:
+            self.print_log("e", traceback.format_exc())
+            self.alert_and_recover("An exception was thrown when performing bookkeeping on the process FHiCL documents; see traceback above for more info")
+            return
+        endtime=time()
+        self.print_log("i", "done (%.1f seconds)." % (endtime-starttime))
+
 
         self.tmp_run_record = "/tmp/run_record_attempted_%s/%s" % \
             (os.environ["USER"],

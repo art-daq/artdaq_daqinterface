@@ -177,60 +177,52 @@ def enclosing_table_range(fhiclstring, searchstring, startingloc=0):
     if loc == -1:
         return (-1, -1)
 
-    open_brace_loc = string.rindex(fhiclstring, "{", startingloc, loc)
+    braces_before = [(i+startingloc, c) for (i, c) in enumerate(fhiclstring[startingloc:loc]) if (c == "}" or c=="{")]
+    
+    opening_count = 0
+    closing_count = 0
+    opening_position = -1
 
-    # JCF, Apr-16-2019
-
-    # Going by the principle of "if you're going to fail, fail
-    # loudly", assert False if it turns out that the open_brace_loc
-    # above isn't actually the start of the enclosing table but is
-    # rather the start of a table which is WITHIN the enclosing table,
-    # but above the snippet represented by searchstring
-
-    try:
-        prior_close_brace_loc = string.rindex(fhiclstring, "}", startingloc, loc)
-        assert prior_close_brace_loc < open_brace_loc, "Error in enclosing_table_range: a } was found between the snippet \"%s\"and the {, meaning the { doesn't actually enclose the full table containing the snippet" % (searchstring)
-
-    except:
-        pass
-        # Exception here means there's no close brace at all above the snippet, so we're golden
-
-
-    close_braces_needed = 1
-    close_brace_loc = -1
-
-    for i_char, char in enumerate(fhiclstring[(open_brace_loc+1):]):
-
-        if char == '{':
-            close_braces_needed += 1
-        elif char == '}':
-            close_braces_needed -= 1
-
-        if close_braces_needed == 0:
-            close_brace_loc = i_char
+    for brace in reversed(braces_before):
+        if brace[1] == "{":
+            opening_count += 1
+        else:
+            closing_count += 1
+        
+        if opening_count - closing_count == 1:
+            opening_position = brace[0]
             break
 
-    if close_brace_loc == -1:
-        raise Exception(
-            "Unable to find close brace for requested table \"%s\"" % \
-                searchstring)
+    if opening_position == -1:
+        return (-1, -1)
 
-    return (open_brace_loc + 1, open_brace_loc + close_brace_loc + 1)
+    braces_after = [(i+loc, c) for (i, c) in enumerate(fhiclstring[loc:]) if (c == "}" or c=="{")]
+
+    opening_count = 0
+    closing_count = 0
+    closing_position = -1
+
+    for brace in braces_after:
+        if brace[1] == "}":
+            closing_count += 1
+        else:
+            opening_count -= 1
+
+        if closing_count - opening_count == 1:
+            closing_position = brace[0]
+            break
+
+    if closing_position == -1:
+        return (-1, -1)
+
+    return(opening_position, closing_position + 1)
 
 # 26-Nov-2018, ELF: This function finds the name of the enclosing table
 # for the specified string. This is used when determining which
 # destinations block is currently being filled during bookkeeping.
 def enclosing_table_name(fhiclstring, searchstring, startingloc=0):
 
-    loc = string.find(fhiclstring, searchstring, startingloc)
-    if loc == -1:
-        return "notfound"
-
-    open_brace_loc = string.rindex(fhiclstring, "{", 0, loc)
-
-    while string.rfind(fhiclstring, '}', open_brace_loc, loc) != -1:
-        loc = open_brace_loc - 1
-        open_brace_loc = string.rindex(fhiclstring, "{", 0, loc)
+    (open_brace_loc, close_brace_loc_will_be_ignored) = enclosing_table_range(fhiclstring, searchstring, startingloc)
 
     colon_loc = string.rindex(fhiclstring, ":", 0, open_brace_loc)
 
@@ -744,7 +736,9 @@ def main():
     get_commit_info_test = False
     get_build_info_test = False
     table_range_test = False
-    get_private_networks_test = True
+    get_private_networks_test = False
+    enclosing_table_name_test = True
+    enclosing_table_range_test = True
 
     if paragraphed_string_test:
         sample_string = "Set this string to whatever string you want to pass to make_paragraph() for testing purposes"
@@ -834,6 +828,36 @@ def main():
             private_networks = get_private_networks(host)
             print "%s: " % (host)
             print [network.strip() for network in private_networks]
+
+    if enclosing_table_range_test or enclosing_table_name_test:
+        if len(sys.argv) != 3:
+            print make_paragraph("Since at least one of enclosing_table_range_test and enclosing_table_name_test are true, you need to supply the name of a FHiCL file and then a token which is enclosed in a table in the file")
+            sys.exit(0)
+        filename = sys.argv[1]
+        token = sys.argv[2]
+
+        if not os.path.exists(filename):
+            raise Exception("Unable to find FHiCL file \"%s\"" % (filename))
+
+        full_fhicl_blob = open(filename).read()
+
+        if enclosing_table_range_test:
+            start, end = enclosing_table_range(full_fhicl_blob, token)
+
+            if start == -1 or end == -1:
+                raise Exception("Uh-oh: unable to find an enclosing table around \"%s\"" % (token))
+
+            print
+            print "Enclosing table range starts at %d and ends at %d. Contents of table are between the =====s" % (start, end)
+            print "======================================================================"
+            print full_fhicl_blob[start:end]
+            print "======================================================================"
+            print
+
+        if enclosing_table_name_test:
+            tablename = enclosing_table_name(full_fhicl_blob, token)
+            print "Name of table enclosing \"%s\" found to be \"%s\"" % (token, tablename)
+            
 
 def kill_tail_f():
     tail_pids = get_pids("%s.*tail -f %s" % 

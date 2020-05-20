@@ -23,15 +23,21 @@ component_nonsending_standard: {
    #include "metrics_for_boardreaders.fcl"
 }
 
-component1000_nonsending_standard: @local::component_nonsending_standard
-component1000_nonsending_standard.fragment_receiver.fragment_id: 1000
-component1000_nonsending_standard.fragment_receiver.starting_fragment_id: 1000
-component1000_nonsending_standard.fragment_receiver.board_id: 1000
+component2001_nonsending_standard: @local::component_nonsending_standard
+component2001_nonsending_standard.fragment_receiver.fragment_id: 2001
+component2001_nonsending_standard.fragment_receiver.starting_fragment_id: 2001
+component2001_nonsending_standard.fragment_receiver.board_id: 2001
 
-component1001_nonsending_standard: @local::component_nonsending_standard
-component1001_nonsending_standard.fragment_receiver.fragment_id: 1001
-component1001_nonsending_standard.fragment_receiver.starting_fragment_id: 1001
-component1001_nonsending_standard.fragment_receiver.board_id: 1001
+component2002_nonsending_standard: @local::component_nonsending_standard
+component2002_nonsending_standard.fragment_receiver.fragment_id: 2002
+component2002_nonsending_standard.fragment_receiver.starting_fragment_id: 2002
+component2002_nonsending_standard.fragment_receiver.board_id: 2002
+
+component2003_nonsending_standard: @local::component_nonsending_standard
+component2003_nonsending_standard.fragment_receiver.fragment_id: 2003
+component2003_nonsending_standard.fragment_receiver.starting_fragment_id: 2003
+component2003_nonsending_standard.fragment_receiver.board_id: 2003
+
 
 
 END_PROLOG

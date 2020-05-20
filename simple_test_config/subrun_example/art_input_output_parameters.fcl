@@ -5,9 +5,7 @@ BEGIN_PROLOG
 
 # todo: add comment
 art_source_for_just_built_events: {
-  module_type: DemoInput
-  waiting_time: 2500000
-  resume_after_timeout: true
+  module_type: ArtdaqInput
 }
 
 artdaq_EB_art_source_specification: @local::art_source_for_just_built_events
@@ -15,7 +13,7 @@ artdaq_EB_art_source_specification: @local::art_source_for_just_built_events
 
 # todo: add comment
 art_source_for_serialized_root_events: {
-  module_type: NetMonInput
+  module_type: ArtdaqInput
 }
 
 artdaq_DL_art_source_specification: @local::art_source_for_serialized_root_events
@@ -24,6 +22,12 @@ artdaq_DISP_art_source_specification: @local::art_source_for_serialized_root_eve
 
 art_service_for_shared_memory: {
 	service_provider: ArtdaqSharedMemoryService
+  waiting_time: 2500000
+  resume_after_timeout: true
+}
+
+art_service_for_fragment_naming: {
+    service_provider: ArtdaqDemoFragmentNamingService
 }
 
 # todo: add comment
