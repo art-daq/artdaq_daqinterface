@@ -40,11 +40,8 @@ EventBuilder subsystem: 4
 
 DataLogger host: mu2edaq11
 DataLogger label: DataLogger1
-
-DataLogger host: mu2edaq12
-DataLogger label: DataLogger2
 DataLogger subsystem: 4
 
 Dispatcher host: mu2edaq12
 Dispatcher label: Dispatcher1
-DataLogger subsystem: 4
+Dispatcher subsystem: 4

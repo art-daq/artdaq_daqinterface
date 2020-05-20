@@ -11,6 +11,7 @@ Subsystem destination: 2
 
 Subsystem id: 2
 Subsystem source: 1
+Subsystem fragmentMode: False
 
 EventBuilder host: mu2edaq14
 EventBuilder label: EventBuilder1
@@ -24,9 +25,6 @@ EventBuilder subsystem: 2
 
 DataLogger host: mu2edaq14
 DataLogger label: DataLogger1
-
-DataLogger host: mu2edaq11
-DataLogger label: DataLogger2
 DataLogger subsystem: 2
 
 Dispatcher host: mu2edaq12
