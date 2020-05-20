@@ -36,5 +36,5 @@ services: {
    }
 }
 source: {
-   module_type: ArtdaqInput"
+   module_type: "ArtdaqInput"
 }

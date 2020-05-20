@@ -32,7 +32,7 @@ eventbuilder_art_standard: {
       ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqDemoFragmentNamingService }
    }
    source: {
-      module_type: ArtdaqInput"
+      module_type: "ArtdaqInput"
       resume_after_timeout: true
       waiting_time: 2.5e6
    }
