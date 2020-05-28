@@ -1400,10 +1400,15 @@ class DAQInterface(Component):
             if trace_file == "":
                 raise Exception(make_paragraph("Exception in %s: unable to determine TRACE_FILE setting from \"%s\"" % (self.execute_trace_script.__name__, self.daq_setup_script)))
 
-            nodes_for_rgang={}
-            for procinfo in self.procinfos:
-                nodes_for_rgang[ procinfo.host ] = 1
+            assert transition == "start" or transition == "stop"
+            
+            if transition == "start":
+                self.procinfos_orig = list(self.procinfos) # Deep copy, not a reference
 
+            nodes_for_rgang={}
+            for procinfo in self.procinfos_orig:
+                nodes_for_rgang[ procinfo.host ] = 1
+                
             cmd = "%s %s --run %d --transition %s --node-list=\"%s\"" % \
                   (trace_script, trace_file, self.run_number, transition, \
                    " ".join(nodes_for_rgang.keys()))
