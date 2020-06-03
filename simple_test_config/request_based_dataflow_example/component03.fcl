@@ -43,7 +43,8 @@ hardware_poll_interval_us: 0 # How often, in microseconds, checkHWStatus_() shou
 nADCcounts: 100
 max_fragment_size_bytes: 2048
 
-throttle_usecs: 20000 # 50 Hz
+throttle_usecs: 0
+usecs_between_sends: 20000 # 50 Hz
 
 distribution_type: 0
 
