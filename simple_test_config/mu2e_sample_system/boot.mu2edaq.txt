@@ -7,10 +7,10 @@ debug level: 1
 
 Subsystem id: 1
 Subsystem destination: 2
+Subsystem fragmentMode: False
 
 Subsystem id: 2
 Subsystem source: 1
-Subsystem fragmentMode: False
 
 EventBuilder host: mu2edaq11
 EventBuilder label: EventFilter1

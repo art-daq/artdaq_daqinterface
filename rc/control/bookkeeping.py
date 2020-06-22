@@ -162,7 +162,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         count = subsystem_fragment_count[ss]
 
         for ss_source in self.subsystems[ss].sources:
-            if self.subsystems[ss].fragmentMode:
+            if self.subsystems[ss_source].fragmentMode:
                 count += calculate_expected_fragments_per_event(ss_source)
             else:
                 count += 1
