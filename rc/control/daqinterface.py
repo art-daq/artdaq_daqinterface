@@ -49,6 +49,7 @@ from rc.control.utilities import kill_tail_f
 from rc.control.utilities import upsproddir_from_productsdir
 from rc.control.utilities import obtain_messagefacility_fhicl
 from rc.control.utilities import record_directory_info
+from rc.control.utilities import get_messagefacility_template_filename
 
 try:
     import python_artdaq
@@ -1968,6 +1969,19 @@ class DAQInterface(Component):
                     raise Exception("Problem running mkdir -p for the needed logfile directories on %s; this is likely due either to an ssh issue or a directory permissions issue" % ( host ) )
 
             self.init_process_requirements() 
+
+            self.create_setup_fhiclcpp_if_needed()
+
+            cmds = []
+            cmds.append("if [[ -z $( command -v fhicl-dump ) ]]; then %s; source %s; fi" % \
+                        (bash_unsetup_command, os.environ["DAQINTERFACE_SETUP_FHICLCPP"]))
+            cmds.append("fhicl-dump -l 0 -c %s" % (get_messagefacility_template_filename()))
+
+            proc = Popen("; ".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)    
+            status = proc.wait()
+
+            if status != 0:
+                raise Exception("The FHiCL code designed to control MessageViewer, found in %s, appears to contain one or more syntax errors" % (get_messagefacility_template_filename()))
 
             # Now, with the info on hand about the processes contained in
             # procinfos, actually launch them
