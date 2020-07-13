@@ -21,7 +21,8 @@ component_standard: {
 
 	data_buffer_depth_fragments: 1000
 	data_buffer_depth_mb: 1000
-
+	
+receive_requests: true
 	request_port: 3001
 	request_address: "227.128.12.26" # Multicast request address
 	multicast_interface_ip: "0.0.0.0"
