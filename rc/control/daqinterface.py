@@ -1401,8 +1401,13 @@ class DAQInterface(Component):
             if trace_file == "":
                 raise Exception(make_paragraph("Exception in %s: unable to determine TRACE_FILE setting from \"%s\"" % (self.execute_trace_script.__name__, self.daq_setup_script)))
 
+            assert transition == "start" or transition == "stop"
+            
+            if transition == "start":
+                self.procinfos_orig = list(self.procinfos) # Deep copy, not a reference
+
             nodes_for_rgang={}
-            for procinfo in self.procinfos:
+            for procinfo in self.procinfos_orig:
                 nodes_for_rgang[ procinfo.host ] = 1
 
             cmd = "%s %s --run %d --transition %s --node-list=\"%s\"" % \
@@ -1418,7 +1423,10 @@ class DAQInterface(Component):
             out_stderr = out_comm[1]
             status = out.returncode
 
-            if status != 0:
+            if status == 0:
+                self.print_log("d", "\nSTDOUT from command: \n%s" % (out_stdout), 3)
+                self.print_log("d", "\nSTDERR from command: \n%s" % (out_stderr), 3)
+            else:
                 self.print_log("e", "Error: execution of \"%s\" yielded a nonzero return value" % (cmd))
                 self.print_log("e", "\nSTDOUT from command: \n%s" % (out_stdout))
                 self.print_log("e", "\nSTDERR from command: \n%s" % (out_stderr))
@@ -2562,7 +2570,6 @@ class DAQInterface(Component):
 
         self.in_recovery = True
 
-
         if not self.called_launch_procs:
             self.print_log("i", "DAQInterface does not appear to have gotten to the point of launching the artdaq processes")
 
@@ -2573,6 +2580,9 @@ class DAQInterface(Component):
             self.complete_state_change(self.name, "recovering")
             self.print_log("i", "\n%s: RECOVER transition complete" % (date_and_time()))
             return
+
+        if self.state(self.name) == "running" or self.state(self.name) == "stopping":
+            self.execute_trace_script("stop")
 
         def attempted_stop(self, procinfo):
 
@@ -2641,6 +2651,8 @@ class DAQInterface(Component):
                             " it's possible the process no longer existed\n"))
                         
                     return
+                    
+                
                     
                 try:
                     procinfo.lastreturned = procinfo.server.daq.status()
