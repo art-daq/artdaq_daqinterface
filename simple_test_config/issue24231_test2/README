@@ -1,0 +1,6 @@
+Config meant to test Issue #24231
+You should only see this on the feature/24231_bookkeep_init_fragment_count branch
+
+"For an EventBuilder receiving from another EventBuilder using BinaryNetOutput, along with zero or more BoardReaders, it should be zero"
+-> "For an EventBuilder": EventBuilder3
+-> "zero or more BoardReaders": component03

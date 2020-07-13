@@ -793,6 +793,67 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                        self.procinfos[i_proc].fhicl_used)
         
                                                                          
+    # JCF, Mar-27-2020
+    # Issue #24231: bookkeep the init_fragment_count to reflect the number of incoming serialized art events
+
+    # Convenience function: does proc1 send to proc2 via RootNetOutput?
+    def sends_to_via_RootNetOutput(proc1, proc2):
+
+        res = re.findall(r'module_type:\s*"RootNetOutput"', proc1.fhicl_used)
+
+        assert len(res) < 2, "Bookkeeping error: found more than one instance of RootNetOutput module in %s's FHiCL document, unable to handle this" % (proc1.label)
+        
+        if len(res) == 1:
+            (begin, end) = enclosing_table_range(proc1.fhicl_used, res[0])
+
+            assert begin != -1 and end != -1, "Bookkeeping error: RootNetOutput module was found in %s but unable to locate the enclosing table" % (proc1.label)
+                                
+            # Check to make sure there's been no change in the way destinations are defined
+            assert re.search(r"destinations:", proc1.fhicl_used[begin:end]), \
+                "Bookkeeping error: unable to find a destinations table within %s's RootNetOutput's enclosing table" % (proc1.label)
+                                
+            destination_string = "d%d:" % (proc2.rank)
+                                
+            if destination_string in proc1.fhicl_used[begin:end]:
+                return True
+            else:
+                return False
+    
+
+    for subsystem_id, subsystem in self.subsystems.items():
+
+        init_fragment_counts = {}
+
+        for procinfo in [pi for pi in self.procinfos if pi.subsystem == subsystem_id]:
+
+            if procinfo.name not in init_fragment_counts:
+                
+                possible_event_senders = []
+                init_fragment_count = 0
+
+                if procinfo.name == "EventBuilder":
+                    for ss_source in subsystem.sources:
+                        for possible_sender_procinfo in [pi for pi in self.procinfos if pi.subsystem == ss_source and pi.name == "EventBuilder"]:
+                            if sends_to_via_RootNetOutput(possible_sender_procinfo, procinfo):
+                                init_fragment_count += 1
+                                break # Move on to next subsystem
+                elif procinfo.name == "DataLogger":
+                    for possible_sender_procinfo in [pi for pi in self.procinfos if pi.subsystem == procinfo.subsystem and pi.name == "EventBuilder"]:
+                        if sends_to_via_RootNetOutput(possible_sender_procinfo, procinfo):
+                            init_fragment_count += 1
+                            break 
+                elif procinfo.name == "Dispatcher":
+                    for possible_sender_procinfo in [pi for pi in self.procinfos if pi.subsystem == procinfo.subsystem and pi.name == "DataLogger"]:
+                        if sends_to_via_RootNetOutput(possible_sender_procinfo, procinfo):
+                            init_fragment_count += 1
+                            # break intentionally omitted; each DataLogger counts here
+
+                init_fragment_counts[procinfo.name] = init_fragment_count
+                
+            procinfo.fhicl_used = re.sub("init_fragment_count\s*:\s*\S+",
+                                         "init_fragment_count: %d" % \
+                                         init_fragment_counts[procinfo.name],
+                                         procinfo.fhicl_used)
 
 def bookkeeping_for_fhicl_documents_artdaq_v4_base(self):
     pass

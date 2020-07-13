@@ -1,0 +1,6 @@
+Config meant to test Issue #24231
+You should only see this on the feature/24231_bookkeep_init_fragment_count branch
+
+"For a Dispatcher receiving from four DataLoggers, it should be 4"
+-> "For a Dispatcher": Dispatcher1
+-> "four DataLoggers": DataLogger[1..4]

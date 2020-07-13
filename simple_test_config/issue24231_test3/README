@@ -1,0 +1,7 @@
+Config meant to test Issue #24231
+You should only see this on the feature/24231_bookkeep_init_fragment_count branch
+
+"For an EventBuilder receiving from two EventBuilders in the same subsystem using RootNetOutput, it should be 1"
+-> Don't know how to set this up, so this test is essentially just a placeholder
+
+
