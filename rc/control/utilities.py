@@ -6,6 +6,7 @@ import string
 import socket
 import shutil
 import sys
+import stat
 
 import subprocess
 from subprocess import Popen
@@ -685,6 +686,12 @@ def upsproddir_from_productsdir( productsdir ):
             break
     return upsproddir
 
+def record_directory_info(recorddir):
+    if not os.path.exists(recorddir):
+        raise Exception("Directory \"%s\" doesn't exist, exiting...")
+    stats = os.stat(recorddir)
+    return "inode: %s" % (stats.st_ino)
+    
 def main():
 
     if len(sys.argv) > 1 and sys.argv[1] == "get_commit_info":
@@ -726,6 +733,12 @@ def main():
 
         productsdir = sys.argv[2]
         print( upsproddir_from_productsdir(productsdir) )
+        sys.exit(0)
+    elif len(sys.argv) > 1 and sys.argv[1] == "record_directory_info":
+        if len(sys.argv) != 3:
+            print make_paragraph("Error: expected 1 argument to record_directory_info: the name of an existing run records directory")
+            sys.exit(1)
+        print record_directory_info(sys.argv[2])
         sys.exit(0)
 
     paragraphed_string_test = False
