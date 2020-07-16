@@ -2,7 +2,7 @@ services: {
   ArtdaqSharedMemoryServiceInterface: {
     service_provider: ArtdaqSharedMemoryService
   }
-  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqDemoFragmentNamingService }
+  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqFragmentNamingService helper_plugin: "ArtdaqDemo" }
 }
 
 daq: {
@@ -15,7 +15,7 @@ daq: {
     is_dispatcher: true
 
 	routing_token_config: {
-		use_routing_master: false
+		use_routing_manager: false
 	}
 
 	auto_suppression_enabled: false

@@ -1,4 +1,4 @@
-#include "routing_master_parameters.fcl"
+#include "routing_manager_parameters.fcl"
 
 BEGIN_PROLOG
 
@@ -33,7 +33,7 @@ eventbuilder_art_standard: {
     ArtdaqSharedMemoryServiceInterface: {
       service_provider: ArtdaqSharedMemoryService
     }
-  	ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqDemoFragmentNamingService }
+  	ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqFragmentNamingService helper_plugin: "ArtdaqDemo" }
   }
 
   source: {

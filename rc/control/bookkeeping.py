@@ -205,7 +205,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     if self.advanced_memory_usage:
         for i_proc in range(len(self.procinfos)):
-            if "BoardReader" not in self.procinfos[i_proc].name and "RoutingMaster" not in self.procinfos[i_proc].name:
+            if "BoardReader" not in self.procinfos[i_proc].name and "RoutingManager" not in self.procinfos[i_proc].name:
                 if re.search(r"\n[^#]*max_event_size_bytes\s*:\s*[0-9\.e]+", self.procinfos[i_proc].fhicl_used):
                     self.procinfos[i_proc].fhicl_used = re.sub("max_event_size_bytes\s*:\s*[0-9\.e]+",
                                                                "max_event_size_bytes: %d" % \
@@ -228,7 +228,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     procinfos_sorted_by_rank = sorted(self.procinfos, key=lambda procinfo: procinfo.rank)
     for procinfo in procinfos_sorted_by_rank:
 
-        if procinfo.name == "RoutingMaster":
+        if procinfo.name == "RoutingManager":
             continue
         
         if procinfo.host == "localhost":
@@ -362,15 +362,15 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         return "\n".join( nodes )   # End function create_sources_or_destinations_string()
 
     def get_router_process_identifier(procinfo):
-        if "RoutingMaster" in procinfo.name:
-            return "RoutingMaster"
+        if "RoutingManager" in procinfo.name:
+            return "RoutingManager"
         elif "DFO" in procinfo.label:
             return "DFO"
         else:
             return None
 
     router_process_info = {}
-    router_process_info["RoutingMaster"] = { "location" : "child_subsystem" }
+    router_process_info["RoutingManager"] = { "location" : "child_subsystem" }
     router_process_info["DFO"] = { "location" : "parent_subsystem" }
 
     # Couple of sanity checks
@@ -384,12 +384,12 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             if len(rogue_eventbuilders) > 0:
                 raise Exception(make_paragraph("The following EventBuilder(s) were found in subsystem %s, location of DFO process %s; a DFO can't share a subsystems with other EventBuilders: %s" % (procinfo.subsystem, procinfo.label, " ".join(rogue_eventbuilders))))
 
-        # There shouldn't be a RoutingMaster in a subsystem with a parent subsystem which contains a DFO
+        # There shouldn't be a RoutingManager in a subsystem with a parent subsystem which contains a DFO
 
         if get_router_process_identifier(procinfo) == "DFO":
-            rogue_routingmasters = [pi.label for pi in self.procinfos if "RoutingMaster" in pi.name and self.subsystems[procinfo.subsystem].destination == pi.subsystem]
-            if len(rogue_routingmasters) > 0:
-                raise Exception(make_paragraph("A RoutingMaster was found in subsystem %s; this is illegal since a parent of subsystem %s, subsystem %s, contains a DFO (%s). The problem RoutingMaster(s): %s" % (self.subsystems[procinfo.subsystem].destination, self.subsystems[procinfo.subsystem].destination, procinfo.subsystem, procinfo.label, " ".join(rogue_routingmasters))))
+            rogue_routingmanagers = [pi.label for pi in self.procinfos if "RoutingManager" in pi.name and self.subsystems[procinfo.subsystem].destination == pi.subsystem]
+            if len(rogue_routingmanagers) > 0:
+                raise Exception(make_paragraph("A RoutingManager was found in subsystem %s; this is illegal since a parent of subsystem %s, subsystem %s, contains a DFO (%s). The problem RoutingManager(s): %s" % (self.subsystems[procinfo.subsystem].destination, self.subsystems[procinfo.subsystem].destination, procinfo.subsystem, procinfo.label, " ".join(rogue_routingmanagers))))
 
     for i_proc in range(len(self.procinfos)):
 
@@ -444,7 +444,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                        re.search(r"\n\s*generated_fragments_per_event\s*:\s*0", procinfo.fhicl_used):
                         nonsending_boardreaders.append( procinfo.label )
 
-            # The routingmaster in subsystem N should consider as senders both boardreaders in subsystem N 
+            # The routingmanager in subsystem N should consider as senders both boardreaders in subsystem N 
             # and eventbuilders in subsystem M if subsystem M is a parent of subsystem N
 
             boardreaders_in_sender_ranks = [ int(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "BoardReader" in otherproc.name and otherproc.label not in nonsending_boardreaders ]
@@ -499,14 +499,14 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     # For this next pass over the artdaq processes, we'll bookkeep the
     # parameters (ports, addresses, etc.) describing the physical
-    # hookup of the routingmaster to its connected processes. So,
+    # hookup of the routingmanager to its connected processes. So,
     # let's memo-ize these parameters
 
     # JCF, Jun-19-2019
 
     # Note the convention here: a router process (currently just a
-    # RoutingMaster or a DFO) is associated with the subsystem it's in
-    # charge of sending stuff to - so while a RoutingMaster is
+    # RoutingManager or a DFO) is associated with the subsystem it's in
+    # charge of sending stuff to - so while a RoutingManager is
     # actually in the subsystem it's associated with, a DFO is in the
     # parent subsystem of the subsystem it's associated with. Here
     # "associated with" translates to "what subsystem do we use when
@@ -556,7 +556,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         if len(router_process_for_subsystem_as_list) == 0:
             continue
         elif len(router_process_for_subsystem_as_list) > 1:
-            raise Exception(make_paragraph("DAQInterface has found more than one router process (RoutingMaster, DFO, etc.) associated with subsystem %s requested in the boot file %s; this isn't currently supported" % (subsystem_id, self.boot_filename)))
+            raise Exception(make_paragraph("DAQInterface has found more than one router process (RoutingManager, DFO, etc.) associated with subsystem %s requested in the boot file %s; this isn't currently supported" % (subsystem_id, self.boot_filename)))
         elif len(router_process_for_subsystem_as_list) == 1:
             router_process_for_subsystem = router_process_for_subsystem_as_list[0]
             
@@ -647,14 +647,14 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     # JCF, Apr-18-2019
 
-    # bookkeep_table_for_routing_master takes any parameters in a
-    # table related to a routing_master, and bookkeeps them so they
-    # refer to the routing_master in routing_master_subsystem
+    # bookkeep_table_for_routing_manager takes any parameters in a
+    # table related to a routing_manager, and bookkeeps them so they
+    # refer to the routing_manager in routing_manager_subsystem
 
     # JCF, Jun-19-2019
 
     # Rename the function bookkeep_table_for_router_process, and have
-    # it cover both routing_masters (RoutingMasters) and DFOs
+    # it cover both routing_managers (RoutingManagers) and DFOs
 
     def bookkeep_table_for_router_process(i_proc, router_process_subsystem, tablename):
 
@@ -683,13 +683,13 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                       "routing_token_port: %d" % (routing_base_ports[router_process_subsystem]), 
                                       table_to_bookkeep)
 
-        if "RoutingMaster" not in self.procinfos[i_proc].name or not self.disable_private_network_bookkeeping:
-            table_to_bookkeep = re.sub("routing_master_hostname\s*:\s*\S+",
-                                       "routing_master_hostname: \"%s\"" % (router_process_hostnames[router_process_subsystem].strip("\"")),
+        if "RoutingManager" not in self.procinfos[i_proc].name or not self.disable_private_network_bookkeeping:
+            table_to_bookkeep = re.sub("routing_manager_hostname\s*:\s*\S+",
+                                       "routing_manager_hostname: \"%s\"" % (router_process_hostnames[router_process_subsystem].strip("\"")),
                                        table_to_bookkeep)
 
         # So far in this function we've just set
-        # routing_master_hostname to the router process hostname from
+        # routing_manager_hostname to the router process hostname from
         # the boot file and left table_update_multicast_interface
         # untouched, but let's see if we can use a shared private
         # network...
@@ -699,11 +699,11 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
                 if zero_out_last_subnet(private_network_seen) == zero_out_last_subnet(router_process_private_networks[router_process_subsystem]):
 
-                    routing_master_hostname_value = router_process_private_networks[router_process_subsystem]
+                    routing_manager_hostname_value = router_process_private_networks[router_process_subsystem]
                     table_update_multicast_interface_value = zero_out_last_subnet(private_network_seen)
 
-                    table_to_bookkeep = re.sub("routing_master_hostname\s*:\s*\S+",
-                                               "routing_master_hostname: \"%s\"" % (routing_master_hostname_value),
+                    table_to_bookkeep = re.sub("routing_manager_hostname\s*:\s*\S+",
+                                               "routing_manager_hostname: \"%s\"" % (routing_manager_hostname_value),
                                                table_to_bookkeep)
 
                     table_to_bookkeep = re.sub("table_update_multicast_interface\s*:\s*\S+",
@@ -718,7 +718,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
     for i_proc in range(len(self.procinfos)):
 
-        if get_router_process_identifier(self.procinfos[i_proc]) == "RoutingMaster":
+        if get_router_process_identifier(self.procinfos[i_proc]) == "RoutingManager":
             bookkeep_table_for_router_process(i_proc, self.procinfos[i_proc].subsystem, "daq")
         elif get_router_process_identifier(self.procinfos[i_proc]) == "DFO":
             bookkeep_table_for_router_process(i_proc, self.subsystems[self.procinfos[i_proc].subsystem].destination, "art")
@@ -739,10 +739,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             if eb_subsystem in router_process_hostnames: 
                 bookkeep_table_for_router_process(i_proc, eb_subsystem, "routing_token_config")
 
-            unflattened_parents_of_subsystems_with_routing_masters = [self.subsystems[subsystem_id].sources for subsystem_id in self.subsystems if subsystem_id in [rm.subsystem for rm in self.procinfos if get_router_process_identifier(rm) == "RoutingMaster"] ]
-            parents_of_subsystems_with_routing_masters = [subsystem_id for parents in unflattened_parents_of_subsystems_with_routing_masters for subsystem_id in parents]
+            unflattened_parents_of_subsystems_with_routing_managers = [self.subsystems[subsystem_id].sources for subsystem_id in self.subsystems if subsystem_id in [rm.subsystem for rm in self.procinfos if get_router_process_identifier(rm) == "RoutingManager"] ]
+            parents_of_subsystems_with_routing_managers = [subsystem_id for parents in unflattened_parents_of_subsystems_with_routing_managers for subsystem_id in parents]
 
-            if eb_subsystem in parents_of_subsystems_with_routing_masters:
+            if eb_subsystem in parents_of_subsystems_with_routing_managers:
                 bookkeep_table_for_router_process(i_proc, self.subsystems[eb_subsystem].destination, "routing_table_config")
 
     firstLoggerRank = 9999999

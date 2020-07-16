@@ -53,7 +53,7 @@ timestamp_scale_factor: 1
 destinations: { }
 
 	routing_table_config: {
-	    use_routing_master: false
+	    use_routing_manager: false
 	}
   }
 

@@ -141,7 +141,7 @@ def get_boot_info_base(self, boot_filename):
 
         if "EventBuilder" in line or \
                 "DataLogger" in line or "Dispatcher" in line or \
-                "RoutingMaster" in line:
+                "RoutingManager" in line:
 
             res = re.search(r"^\s*(\w+)\s+(\S+)\s*:\s*(\S+)", line)
 

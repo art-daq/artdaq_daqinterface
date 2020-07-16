@@ -4,7 +4,7 @@ Notes on 16-June-2020, ELF
 Description:
 This configuration is intended to emulate the Mu2e TDAQ environment. It
 consists of component_trkcal01, component_trkcal02, EventFilter1, 
-EventFilter2, and RoutingMaster1 in subsystem 1, component_crv01, EventBuilder1,
+EventFilter2, and RoutingManager1 in subsystem 1, component_crv01, EventBuilder1,
 DataLogger1, and Dispatcher1 in subsystem2. The TRK+CAL components each
 generate ToyFragments that are sent to the EventFilters, 
 which run RandomDelayFilter to simulate a processing step.

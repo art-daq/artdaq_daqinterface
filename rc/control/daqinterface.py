@@ -193,7 +193,7 @@ class DAQInterface(Component):
     # However, it also contains a less-than function which allows it
     # to be sorted s.t. processes you'd want shutdown first appear
     # before processes you'd want shutdown last (in order:
-    # boardreader, eventbuilder, datalogger, dispatcher, routingmaster)
+    # boardreader, eventbuilder, datalogger, dispatcher, routingmanager)
 
     # JCF, Nov-17-2015
 
@@ -206,7 +206,7 @@ class DAQInterface(Component):
     # JCF, Apr-26-2018
     
     # The "label" variable is used to pick out specific FHiCL files
-    # for EventBuilders, DataLoggers, Dispatchers and RoutingMasters;
+    # for EventBuilders, DataLoggers, Dispatchers and RoutingManagers;
     # a given process's label is set in the boot file, alongside its
     # host and port
 
@@ -255,7 +255,7 @@ class DAQInterface(Component):
             if self.name != other.name:
 
                 processes_upstream_to_downstream = \
-                    ["BoardReader", "EventBuilder", "DataLogger", "Dispatcher", "RoutingMaster"]
+                    ["BoardReader", "EventBuilder", "DataLogger", "Dispatcher", "RoutingManager"]
 
                 if processes_upstream_to_downstream.index(self.name) < \
                         processes_upstream_to_downstream.index(other.name):
@@ -686,7 +686,7 @@ class DAQInterface(Component):
         self.eventbuilder_timeout = 30
         self.datalogger_timeout = 30
         self.dispatcher_timeout = 30
-        self.routingmaster_timeout = 30
+        self.routingmanager_timeout = 30
 
         self.use_messageviewer = True
         self.advanced_memory_usage = False
@@ -743,8 +743,8 @@ class DAQInterface(Component):
                 self.datalogger_timeout = int( line.split()[-1].strip() )
             elif "dispatcher_timeout" in line or "dispatcher timeout" in line:
                 self.dispatcher_timeout = int( line.split()[-1].strip() )
-            elif re.search(r"^\s*routing_?master[ _]timeout", line):
-                self.routingmaster_timeout = int( line.split()[-1].strip() )
+            elif re.search(r"^\s*routing_?manager[ _]timeout", line):
+                self.routingmanager_timeout = int( line.split()[-1].strip() )
             elif "boardreader_priorities:" in line or "boardreader priorities:" in line:
                 res = re.search(r"^\s*boardreader[ _]priorities\s*:\s*(.*)", line)
                 if res:
@@ -1110,18 +1110,18 @@ class DAQInterface(Component):
             elif fhicl_writes_root_file(procinfo.fhicl_used):
                 process_description = "process that writes data to disk"
             elif "EventBuilder" in procinfo.name:
-                is_routingmaster_used = True
-                if len([pi for pi in self.procinfos if "RoutingMaster" in pi.name]) == 0:
-                    is_routingmaster_used = False
+                is_routingmanager_used = True
+                if len([pi for pi in self.procinfos if "RoutingManager" in pi.name]) == 0:
+                    is_routingmanager_used = False
 
-                if is_routingmaster_used:
+                if is_routingmanager_used:
                     eventbuilder_procinfos = [ pi for pi in self.procinfos if "EventBuilder" in pi.name ]
 
                     if len(eventbuilder_procinfos) == 0 or \
                     (len(eventbuilder_procinfos) == 1 and procinfo.label == eventbuilder_procinfos[0].label):
                         process_description = "final remaining EventBuilder"
                 else:
-                    process_description = "EventBuilder in a run with no RoutingMaster"
+                    process_description = "EventBuilder in a run with no RoutingManager"
 
             if process_description != "":
                 if "DAQINTERFACE_PROCESS_REQUIREMENTS_LIST" in os.environ:
@@ -1135,7 +1135,7 @@ class DAQInterface(Component):
 
     def determine_logfilename(self, procinfo):
         loglists = [ self.boardreader_log_filenames, self.eventbuilder_log_filenames, self.datalogger_log_filenames, \
-                     self.dispatcher_log_filenames, self.routingmaster_log_filenames ]
+                     self.dispatcher_log_filenames, self.routingmanager_log_filenames ]
         all_logfilenames = [ logfilename for loglist in loglists for logfilename in loglist ]
         logfilename_in_list_form = [ logfilename for logfilename in all_logfilenames if "/%s-" % (procinfo.label) in logfilename ]
         assert len(logfilename_in_list_form) <= 1, make_paragraph("Unable to locate logfile for process \"%s\" out of the following list of candidates: [%s]; this may be due to incorrect assumptions made by DAQInterface about the format of the logfilenames. Please contact John Freeman at jcfree@fnal.gov" % (procinfo.label, ", ".join(all_logfilenames)))
@@ -1171,10 +1171,10 @@ class DAQInterface(Component):
         if not os.path.exists(self.daq_setup_script ):
             raise Exception(self.daq_setup_script + " script not found")
 
-        num_requested_routingmasters = len( [ procinfo.name for procinfo in self.procinfos 
-                                              if procinfo.name == "RoutingMaster" ]  )
-        if num_requested_routingmasters > len(self.subsystems):
-            raise Exception(make_paragraph("%d RoutingMaster processes defined in the boot file provided; you can't have more than the number of subsystems (%d)" % (num_requested_routingmasters, len(self.subsystems))))
+        num_requested_routingmanagers = len( [ procinfo.name for procinfo in self.procinfos 
+                                              if procinfo.name == "RoutingManager" ]  )
+        if num_requested_routingmanagers > len(self.subsystems):
+            raise Exception(make_paragraph("%d RoutingManager processes defined in the boot file provided; you can't have more than the number of subsystems (%d)" % (num_requested_routingmanagers, len(self.subsystems))))
 
         if len(set([procinfo.label for procinfo in self.procinfos])) < len(self.procinfos):
             raise Exception(make_paragraph("At least one of your desired artdaq processes has a duplicate label; please check the boot file to ensure that each process gets a unique label"))
@@ -1191,7 +1191,7 @@ class DAQInterface(Component):
         self.eventbuilder_log_filenames = []
         self.datalogger_log_filenames = []
         self.dispatcher_log_filenames = []
-        self.routingmaster_log_filenames = []
+        self.routingmanager_log_filenames = []
 
         for host in set([procinfo.host for procinfo in self.procinfos]):
 
@@ -1254,8 +1254,8 @@ class DAQInterface(Component):
                     self.datalogger_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip().split()[-1]))
                 elif "Dispatcher" in proctypes[i_p]:
                     self.dispatcher_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip().split()[-1]))
-                elif "RoutingMaster" in proctypes[i_p]:
-                    self.routingmaster_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip().split()[-1]))
+                elif "RoutingManager" in proctypes[i_p]:
+                    self.routingmanager_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip().split()[-1]))
                 else:
                     assert False, "Unknown process type found in procinfos list"
 
@@ -1275,7 +1275,7 @@ class DAQInterface(Component):
                          self.eventbuilder_log_filenames, 
                          self.datalogger_log_filenames,
                          self.dispatcher_log_filenames,
-                         self.routingmaster_log_filenames ]:
+                         self.routingmanager_log_filenames ]:
             
             for fulllogname in loglist:
                 host = fulllogname.split(":")[0]
@@ -1296,8 +1296,8 @@ class DAQInterface(Component):
                     subdir = "datalogger"
                 elif "Dispatcher" in proctype:
                     subdir = "dispatcher"
-                elif "RoutingMaster" in proctype:
-                    subdir = "routingmaster"
+                elif "RoutingManager" in proctype:
+                    subdir = "routingmanager"
                 else:
                     assert False, "Unknown process type \"%s\" found when soflinking logfiles" % (proctype)
 
@@ -1549,7 +1549,7 @@ class DAQInterface(Component):
         # next we send stop to all the eventbuilders, and finally we
         # send stop to all the aggregators
 
-        proctypes_in_order = ["RoutingMaster", "Dispatcher", "DataLogger", "EventBuilder","BoardReader"]
+        proctypes_in_order = ["RoutingManager", "Dispatcher", "DataLogger", "EventBuilder","BoardReader"]
 
         if command == "Stop" or command == "Pause" or command == "Shutdown":
             proctypes_in_order.reverse()
@@ -1954,7 +1954,7 @@ class DAQInterface(Component):
             logdir_commands_to_run_on_host.append("mkdir -p -m %s %s" % (permissions, self.log_directory))
 
             for subdir in ["pmt", "boardreader", "eventbuilder",
-                           "dispatcher", "datalogger", "routingmaster"]:
+                           "dispatcher", "datalogger", "routingmanager"]:
                 logdir_commands_to_run_on_host.append("mkdir -p -m %s %s/%s" % (permissions, self.log_directory, subdir) )
 
             for host in set([procinfo.host for procinfo in self.procinfos]):
@@ -1979,7 +1979,8 @@ class DAQInterface(Component):
             self.init_process_requirements() 
 
             self.create_setup_fhiclcpp_if_needed()
-
+            obtain_messagefacility_fhicl(self.have_artdaq_mfextensions())
+            
             cmds = []
             cmds.append("if [[ -z $( command -v fhicl-dump ) ]]; then %s; source %s; fi" % \
                         (bash_unsetup_command, os.environ["DAQINTERFACE_SETUP_FHICLCPP"]))
@@ -2059,8 +2060,8 @@ class DAQInterface(Component):
                     timeout = self.boardreader_timeout
                 elif "EventBuilder" in procinfo.name:
                     timeout = self.eventbuilder_timeout
-                elif "RoutingMaster" in procinfo.name:
-                    timeout = self.routingmaster_timeout
+                elif "RoutingManager" in procinfo.name:
+                    timeout = self.routingmanager_timeout
                 elif "DataLogger" in procinfo.name:
                     timeout = self.datalogger_timeout
                 elif "Dispatcher" in procinfo.name:
@@ -2701,7 +2702,7 @@ class DAQInterface(Component):
 
 
             print
-            for name in ["BoardReader", "EventBuilder", "DataLogger", "Dispatcher", "RoutingMaster"]:
+            for name in ["BoardReader", "EventBuilder", "DataLogger", "Dispatcher", "RoutingManager"]:
 
                 self.print_log("i", "%s: Attempting to cleanly wind down the %ss if they (still) exist" % (date_and_time(), name))
 

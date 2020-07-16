@@ -32,8 +32,8 @@ def bootfile_name_to_execname(bootfile_name):
         execname = "datalogger"
     elif "Dispatcher" in bootfile_name:
         execname = "dispatcher"
-    elif "RoutingMaster" in bootfile_name:
-        execname = "routing_master"
+    elif "RoutingManager" in bootfile_name:
+        execname = "routing_manager"
     else:
         assert False
 

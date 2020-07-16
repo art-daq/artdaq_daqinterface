@@ -27,7 +27,7 @@ boardreader timeout: 60
 eventbuilder timeout: 30
 datalogger timeout: 30
 dispatcher timeout: 30
-routing_master timeout: 30
+routing_manager timeout: 30
 
 advanced_memory_usage: true
 

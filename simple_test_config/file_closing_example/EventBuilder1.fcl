@@ -3,7 +3,7 @@ services: {
   ArtdaqSharedMemoryServiceInterface: {
     service_provider: ArtdaqSharedMemoryService
   }
-  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqDemoFragmentNamingService }
+  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqFragmentNamingService helper_plugin: "ArtdaqDemo" }
 }
 
 daq: {
@@ -17,7 +17,7 @@ daq: {
 	send_requests: false
 
 	routing_token_config: {
-	use_routing_master: false
+	use_routing_manager: false
 	}
 
 	sources: { }
@@ -41,7 +41,7 @@ outputs: {
 	destinations: {	}
 
 	routing_table_config: {
-	    use_routing_master: false
+	    use_routing_manager: false
 	}
   }
   #normalOutput: {

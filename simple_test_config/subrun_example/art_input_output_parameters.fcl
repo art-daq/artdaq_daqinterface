@@ -1,4 +1,4 @@
-#include "routing_master_parameters.fcl"
+#include "routing_manager_parameters.fcl"
 
 BEGIN_PROLOG
 
@@ -27,7 +27,7 @@ art_service_for_shared_memory: {
 }
 
 art_service_for_fragment_naming: {
-    service_provider: ArtdaqDemoFragmentNamingService
+    service_provider: ArtdaqFragmentNamingService helper_plugin: "ArtdaqDemo"
 }
 
 # todo: add comment

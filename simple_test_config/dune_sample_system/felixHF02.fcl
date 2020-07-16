@@ -65,7 +65,7 @@ max_fragment_size_bytes: 300
         destinations: { }
 
 	routing_table_config: {
-	    use_routing_master: false
+	    use_routing_manager: false
 	}
   }
 

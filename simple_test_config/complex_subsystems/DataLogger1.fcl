@@ -13,7 +13,7 @@ daq: {
     auto_suppression_enabled: false
 
 	routing_token_config: {
-		use_routing_master: false
+		use_routing_manager: false
 	}
 
 	sources: { }
@@ -34,7 +34,7 @@ daq: {
 art: {
 services: {
   ArtdaqSharedMemoryServiceInterface: { service_provider: ArtdaqSharedMemoryService }
-  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqDemoFragmentNamingService }
+  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqFragmentNamingService helper_plugin: "ArtdaqDemo" }
 }
 source: {
   module_type: ArtdaqInput

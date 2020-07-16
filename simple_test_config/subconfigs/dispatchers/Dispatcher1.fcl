@@ -16,7 +16,7 @@ daq: {
       # Only send 1/onmon_event_prescale events to art for online monitoring
       onmon_event_prescale: 1
       routing_token_config: {
-         use_routing_master: false
+         use_routing_manager: false
       }
       sources: {}
 }
@@ -30,7 +30,7 @@ services: {
    ArtdaqSharedMemoryServiceInterface: {
       service_provider: "ArtdaqSharedMemoryService"
    }
-  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqDemoFragmentNamingService }
+  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqFragmentNamingService helper_plugin: "ArtdaqDemo" }
    scheduler: {
       errorOnFailureToPut: false
    }

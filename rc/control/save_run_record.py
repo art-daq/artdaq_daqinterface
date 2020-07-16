@@ -196,7 +196,7 @@ def save_run_record_base(self):
                       ("eventbuilder", self.eventbuilder_log_filenames),
                       ("datalogger", self.datalogger_log_filenames),
                       ("dispatcher", self.dispatcher_log_filenames),
-                      ("routingmaster", self.routingmaster_log_filenames)]
+                      ("routingmanager", self.routingmanager_log_filenames)]
 
         for logtuple in logtuples:
 

@@ -1,6 +1,6 @@
 #include "standard_metrics_configs.fcl"
 #include "standard_boardreader_parameters.fcl"
-#include "routing_master_parameters.fcl"
+#include "routing_manager_parameters.fcl"
 
 BEGIN_PROLOG
 

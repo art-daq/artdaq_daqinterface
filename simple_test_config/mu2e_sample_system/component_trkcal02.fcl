@@ -68,8 +68,8 @@ usecs_between_sends: 5000
         destinations: { }
 
 	routing_table_config: {
-           ## True if using the Routing Master
-           use_routing_master: true
+           ## True if using the Routing Manager
+           use_routing_manager: true
        
            ## Port that table updates should arrive on
            table_update_port: 35556  # default
@@ -81,7 +81,7 @@ usecs_between_sends: 5000
           table_acknowledge_port: 35557  # default
        
            ## Host that acknowledgements should be sent to
-           routing_master_hostname: "localhost"  # default
+           routing_manager_hostname: "localhost"  # default
             table_update_multicast_interface: "0.0.0.0"
        
            ## Time to wait (in ms) for a routing table update if the table is exhausted
