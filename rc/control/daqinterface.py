@@ -1549,10 +1549,29 @@ class DAQInterface(Component):
         # next we send stop to all the eventbuilders, and finally we
         # send stop to all the aggregators
 
+        # ELF, Jul-17-2020
+        # I've modified this code to do what John says above, but also in subsystem order
+
         proctypes_in_order = ["RoutingManager", "Dispatcher", "DataLogger", "EventBuilder","BoardReader"]
 
         if command == "Stop" or command == "Pause" or command == "Shutdown":
             proctypes_in_order.reverse()
+
+        # ELF, Jul-17-2020
+        # Subsystems can form a tree from many sources to one final subsystem. Order from leaves to trunk to ensure that
+        # on stop, all of a given subsystem's sources are stopped first.
+        subsystems_in_order = []
+        while len(subsystems_in_order) < len(self.subsystems):
+            for subsystem in self.subsystems:
+                sources_copy = list(self.subsystems[subsystem].sources)
+                for ordered_ss in subsystems_in_order:
+                    if sources_copy.count(ordered_ss):
+                        sources_copy.remove(ordered_ss)
+                if(len(sources_copy) == 0):
+                    subsystems_in_order.append(subsystem)
+
+        if command != "Stop" and command != "Pause" and command != "Shutdown":
+            subsystems_in_order.reverse()
 
         starttime=time()
         
@@ -1561,28 +1580,29 @@ class DAQInterface(Component):
 
         proc_starttimes = {}
         proc_endtimes = {}
-        for proctype in proctypes_in_order:
+        for subsystem in subsystems_in_order:
+            for proctype in proctypes_in_order:
 
-            priorities_used = {}
+                priorities_used = {}
 
-            for procinfo in self.procinfos:
-                if proctype in procinfo.name:
-                    priorities_used[ procinfo.priority ] = "We only care about the key in this dict"
+                for procinfo in self.procinfos:
+                    if proctype in procinfo.name and procinfo.subsystem == subsystem:
+                        priorities_used[ procinfo.priority ] = procinfo
 
-            priority_rankings = sorted(priorities_used.iterkeys())
+                priority_rankings = sorted(priorities_used.iterkeys())
 
-            for priority in priority_rankings:
-                proc_threads = {}
-                for i_procinfo, procinfo in enumerate(self.procinfos):
-                    if proctype in procinfo.name and priority == procinfo.priority:
-                        t = Thread(target=process_command, args=(self, i_procinfo, command))
-                        proc_threads[procinfo.label] = t
-                        proc_starttimes[procinfo.label] = time()
-                        t.start()
+                for priority in priority_rankings:
+                    proc_threads = {}
+                    for i_procinfo, procinfo in enumerate(self.procinfos):
+                        if proctype in procinfo.name and priority == procinfo.priority and procinfo.subsystem == subsystem:
+                            t = Thread(target=process_command, args=(self, i_procinfo, command))
+                            proc_threads[procinfo.label] = t
+                            proc_starttimes[procinfo.label] = time()
+                            t.start()
                         
-                for label in proc_threads:
-                    proc_threads[label].join()
-                    proc_endtimes[label] = time()
+                    for label in proc_threads:
+                        proc_threads[label].join()
+                        proc_endtimes[label] = time()
 
         if self.exception:
             raise Exception(make_paragraph("An exception was thrown during the %s transition." % (command)))
