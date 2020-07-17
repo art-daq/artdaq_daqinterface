@@ -11,7 +11,7 @@
 	 # Possible values are: Ignored, Single, Buffer, Window
 	request_mode: "Ignored"
 
-	data_buffer_depth_fragments: 1000
+	data_buffer_depth_fragments: 0
 	data_buffer_depth_mb: 1000
 
 	request_port: 3001

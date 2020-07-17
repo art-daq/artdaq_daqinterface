@@ -23,16 +23,17 @@ request_mode: "Window" # Possible values are: Ignored, Single, Buffer, Window
 
 end_of_run_quiet_timeout_ms: 1000 # Time, in milliseconds, that the entire system must be quiet for check_stop to return true in request mode. 
 
-data_buffer_depth_fragments: 1000
+data_buffer_depth_fragments: 0
 data_buffer_depth_mb: 1000
 circular_buffer_mode: true
 
 request_port: 3001
 request_address: "227.128.12.27" # Multicast request address
+receive_requests: true
 
 request_window_offset: 1 # Request message contains tzero. Window will be from tzero - offset to tz-o + width
 request_window_width: 3 # These settings correspond to "one before, ts, one after"
-stale_request_timeout: 100 # How long to wait before discarding request messages that are outside the available data
+stale_request_timeout: 0xFFFFFFFF # How long to wait before discarding request messages that are outside the available data
 request_windows_are_unique: false # If request windows are unique, avoids a copy operation, but the same data point cannot be used for two requests. If this is not anticipated, leave set to "true"
 
 separate_data_thread: true # MUST be true for requests to be applied! If requesting is not desired, but a separate readout thread is, set this to true, requests_enabled to false and request_mode to ignored.
