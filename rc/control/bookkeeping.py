@@ -836,17 +836,14 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                         for possible_sender_procinfo in [pi for pi in self.procinfos if pi.subsystem == ss_source and pi.name == "EventBuilder"]:
                             if sends_to_via_RootNetOutput(possible_sender_procinfo, procinfo):
                                 init_fragment_count += 1
-                                break # Move on to next subsystem
                 elif procinfo.name == "DataLogger":
                     for possible_sender_procinfo in [pi for pi in self.procinfos if pi.subsystem == procinfo.subsystem and pi.name == "EventBuilder"]:
                         if sends_to_via_RootNetOutput(possible_sender_procinfo, procinfo):
                             init_fragment_count += 1
-                            break 
                 elif procinfo.name == "Dispatcher":
                     for possible_sender_procinfo in [pi for pi in self.procinfos if pi.subsystem == procinfo.subsystem and pi.name == "DataLogger"]:
                         if sends_to_via_RootNetOutput(possible_sender_procinfo, procinfo):
                             init_fragment_count += 1
-                            # break intentionally omitted; each DataLogger counts here
 
                 init_fragment_counts[procinfo.name] = init_fragment_count
                 
