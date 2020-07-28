@@ -1868,7 +1868,6 @@ class DAQInterface(Component):
                                         100 + \
                                         self.partition_number*int(os.environ["ARTDAQ_PORTS_PER_PARTITION"]) + \
                                         boardreader_rank )
-                self.daq_comp_list[ compname ] = boardreader_host, boardreader_port, boardreader_subsystem
 
             if boardreader_allowed_processors == "-1":
                 boardreader_allowed_processors = None
