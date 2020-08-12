@@ -949,7 +949,7 @@ class DAQInterface(Component):
         checked_cmd = construct_checked_command( cmds )
         
         with deepsuppression(self.debug_level < 5):
-            status = Popen(checked_cmd, shell = True).wait()
+            status = Popen(checked_cmd, executable="/bin/bash", shell = True).wait()
 
         if status == 0:
             self.artdaq_mfextensions_booleans[self.daq_setup_script] = True
@@ -967,7 +967,7 @@ class DAQInterface(Component):
         cmds.append(". %s for_running" % (self.daq_setup_script))
         cmds.append('if [ -n "$SETUP_ARTDAQ_MFEXTENSIONS" ]; then printenv SETUP_ARTDAQ_MFEXTENSIONS; else echo "artdaq_mfextensions $ARTDAQ_MFEXTENSIONS_VERSION $MRB_QUALS";fi')
 
-        proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = Popen(";".join(cmds), executable="/bin/bash", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         proclines = proc.stdout.readlines()
 
@@ -1230,7 +1230,7 @@ class DAQInterface(Component):
                 
                 num_logfile_checks += 1
 
-                proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                proc = Popen(cmd, executable="/bin/bash", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 proclines = proc.stdout.readlines()
                 proclines_err = proc.stderr.readlines()
 
@@ -1317,7 +1317,7 @@ class DAQInterface(Component):
             if host != "localhost" and host != os.environ["HOSTNAME"]:
                 link_logfile_cmd = "ssh %s '%s'" % (host, link_logfile_cmd)
 
-            status = Popen(link_logfile_cmd, shell=True).wait()
+            status = Popen(link_logfile_cmd, executable="/bin/bash", shell=True).wait()
             
             if status == 0:
                 self.print_log("d", "\n".join( links_printed_to_output[host] ), 2)
@@ -1348,7 +1348,7 @@ class DAQInterface(Component):
                   (bash_unsetup_command, self.daq_setup_script, "|".join(needed_packages))
 
         if cmd != "":
-            proc =  Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            proc =  Popen(cmd, executable="/bin/bash", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
             stdoutlines = proc.stdout.readlines()
             stderrlines = proc.stderr.readlines()
@@ -1415,7 +1415,7 @@ class DAQInterface(Component):
                    " ".join(nodes_for_rgang.keys()))
             self.print_log("d", "Executing \"%s\"" % (cmd), 2)
 
-            out = Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            out = Popen(cmd, executable="/bin/bash", shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
             out_comm = out.communicate()
 
@@ -1567,8 +1567,9 @@ class DAQInterface(Component):
                 for ordered_ss in subsystems_in_order:
                     if sources_copy.count(ordered_ss):
                         sources_copy.remove(ordered_ss)
-                if(len(sources_copy) == 0):
+                if(len(sources_copy) == 0 and not subsystem in subsystems_in_order):
                     subsystems_in_order.append(subsystem)
+                    break
 
         if command != "Stop" and command != "Pause" and command != "Shutdown":
             subsystems_in_order.reverse()
@@ -1728,7 +1729,7 @@ class DAQInterface(Component):
                 outf.write("export PRODUCTS=\"%s\"; . %s/setup\n" % (self.productsdir,upsproddir_from_productsdir(self.productsdir)))
                 outf.write( bash_unsetup_command + "\n" )
                 lines = Popen("export PRODUCTS=\"%s\"; . %s/setup; ups list -aK+ fhiclcpp | sort -n" % (self.productsdir,upsproddir_from_productsdir(self.productsdir)), 
-                                               shell=True, stdout=subprocess.PIPE).stdout.readlines()
+                                               executable="/bin/bash", shell=True, stdout=subprocess.PIPE).stdout.readlines()
                 if len(lines) > 0:
                     fhiclcpp_to_setup_line = lines[-1]
                 else:
@@ -1823,7 +1824,7 @@ class DAQInterface(Component):
 
             assert os.path.exists("%s/bin/defhiclize_boot_file.sh" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"]))
             cmd = "%s/bin/defhiclize_boot_file.sh %s > %s" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"], boot_filename, self.boot_filename)
-            status = Popen(cmd, shell=True).wait()
+            status = Popen(cmd, executable="/bin/bash", shell=True).wait()
             if status != 0:
                 raise Exception("Error: the command \"%s\" returned nonzero" % cmd)
             
@@ -1938,7 +1939,7 @@ class DAQInterface(Component):
                 if random_host != "localhost" and random_host != os.environ["HOSTNAME"]:
                     cmd = "timeout %d ssh %s '%s'" % (ssh_timeout_in_seconds, random_host, cmd)
 
-                out = Popen(cmd, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+                out = Popen(cmd, executable="/bin/bash", shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
 
                 out_comm = out.communicate()
 
@@ -1983,7 +1984,7 @@ class DAQInterface(Component):
                     logdircmd = "timeout %d ssh -f %s '%s'" % (ssh_timeout_in_seconds, host, logdircmd)
 
                 with deepsuppression(self.debug_level < 4):
-                    proc = Popen(logdircmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    proc = Popen(logdircmd, executable="/bin/bash", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     status = proc.wait()
 
                 if status != 0:   
@@ -2005,7 +2006,7 @@ class DAQInterface(Component):
                         (bash_unsetup_command, os.environ["DAQINTERFACE_SETUP_FHICLCPP"]))
             cmds.append("fhicl-dump -l 0 -c %s" % (get_messagefacility_template_filename()))
 
-            proc = Popen("; ".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)    
+            proc = Popen("; ".join(cmds), executable="/bin/bash", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)    
             status = proc.wait()
 
             if status != 0:
@@ -2130,7 +2131,7 @@ class DAQInterface(Component):
                     msgviewercmd = construct_checked_command( cmds )
 
                     with deepsuppression(self.debug_level < 4):
-                        status = Popen(msgviewercmd, shell=True).wait()
+                        status = Popen(msgviewercmd, executable="/bin/bash", shell=True).wait()
 
                     if status != 0:
                         self.alert_and_recover("Status error raised in msgviewer call within Popen; tried the following commands: \n\n\"%s\"" %
@@ -2313,7 +2314,7 @@ class DAQInterface(Component):
 
         self.semipermanent_run_record = "/tmp/run_record_attempted_%s/%s" % \
             (os.environ["USER"],
-             Popen("date +%a_%b_%d_%H:%M:%S.%N", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip())
+             Popen("date +%a_%b_%d_%H:%M:%S.%N", executable="/bin/bash", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip())
 
         assert not os.path.exists(self.semipermanent_run_record)
 
@@ -2409,7 +2410,7 @@ class DAQInterface(Component):
                 self.print_log("e", traceback.format_exc())
                 self.alert_and_recover(make_paragraph("Error: Attempt to copy temporary run record \"%s\" into permanent run record \"%s\" didn't work; most likely reason is that you don't have write permission to %s, but it may also mean that your experiment's reusing a run number. Scroll up past the Recover transition output for further troubleshooting information." % (self.tmp_run_record, run_record_directory, self.record_directory)))
                 return
-            Popen("touch %s" % (run_record_directory), shell=True)
+            Popen("touch %s" % (run_record_directory), executable="/bin/bash", shell=True)
             os.chmod(run_record_directory, 0o555)
 
             assert re.search(r"^/tmp/\S", self.semipermanent_run_record)
@@ -2456,7 +2457,7 @@ class DAQInterface(Component):
         self.start_datataking()
 
         self.save_metadata_value("DAQInterface start time", \
-                                     Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
+                                     Popen("date --utc", executable="/bin/bash", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
 
         if self.manage_processes:
             starttime=time()
@@ -2479,7 +2480,7 @@ class DAQInterface(Component):
             (date_and_time(), self.run_number))
 
         self.save_metadata_value("DAQInterface stop time", \
-                                     Popen("date --utc", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
+                                     Popen("date --utc", executable="/bin/bash", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
 
         try:
             self.put_config_info_on_stop()
@@ -2941,7 +2942,7 @@ def main():  # no-coverage
     if not "HOSTNAME" in os.environ:
         print
         print make_paragraph("WARNING: the \"HOSTNAME\" environment variable does not appear to be defined (or, at least, does not appear in the os.environ dictionary). Will internally set it using the system's \"hostname\" command")
-        os.environ["HOSTNAME"] = Popen("hostname", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+        os.environ["HOSTNAME"] = Popen("hostname", executable="/bin/bash", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
         print
 
     args = get_args()
