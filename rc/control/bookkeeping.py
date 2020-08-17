@@ -800,11 +800,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     def sends_to_via_RootNetOutput(proc1, proc2):
 
         res = re.findall(r'module_type:\s*"RootNetOutput"', proc1.fhicl_used)
-
-        assert len(res) < 2, "Bookkeeping error: found more than one instance of RootNetOutput module in %s's FHiCL document, unable to handle this" % (proc1.label)
         
-        if len(res) == 1:
-            (begin, end) = enclosing_table_range(proc1.fhicl_used, res[0])
+        for i_res in range(len(res)):
+            (begin, end) = enclosing_table_range(proc1.fhicl_used, res[i_res])
 
             assert begin != -1 and end != -1, "Bookkeeping error: RootNetOutput module was found in %s but unable to locate the enclosing table" % (proc1.label)
                                 
@@ -816,8 +814,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                 
             if destination_string in proc1.fhicl_used[begin:end]:
                 return True
-            else:
-                return False
+
+        return False
     
 
     for subsystem_id, subsystem in self.subsystems.items():
