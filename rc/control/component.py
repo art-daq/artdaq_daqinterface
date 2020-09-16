@@ -40,7 +40,9 @@ class Component(ContextObject):
                                "state_change": self.state_change,
                                "setdaqcomps": self.setdaqcomps,
                                "listdaqcomps": self.listdaqcomps,
-                               "listconfigs":self.listconfigs})),
+                               "listconfigs": self.listconfigs,
+                               "trace_get": self.trace_get,
+                               "trace_set": self.trace_set })),
             ("runner", threadable(func=self.runner))]
 
         self.dict_state_to = {"booting": "booted",
@@ -119,6 +121,18 @@ class Component(ContextObject):
 
     def print_log(self, severity, printstr, debuglevel=-999):
         print printstr
+
+    def trace_get(self, name, trace_args):
+        if name != self.name:
+            return
+        self.run_params = trace_args
+        self.do_trace_get_boolean = True
+
+    def trace_set(self, name, trace_args):
+        if name != self.name:
+            return
+        self.run_params = trace_args
+        self.do_trace_set_boolean = True
 
     def state_change(self, name, requested, state_args):
         if name != self.name:

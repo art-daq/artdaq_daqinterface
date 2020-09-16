@@ -1,6 +1,6 @@
 #include "standard_metrics_configs.fcl"
 #include "data_logging_parameters.fcl"
-#include "routing_master_parameters.fcl"
+#include "routing_manager_parameters.fcl"
 #include "art_input_output_parameters.fcl"
 
 daq: {
@@ -8,7 +8,6 @@ daq: {
     expected_events_per_bunch: 1
     event_queue_depth: 40
     event_queue_wait_time: 5
-    max_fragment_size_bytes: 16777216
     buffer_count: 40
     onmon_event_prescale: 1
     is_data_logger: true
@@ -24,10 +23,8 @@ daq: {
 }
 
 services: {
-  scheduler: {
-    errorOnFailureToPut: false
-  }
   ArtdaqSharedMemoryServiceInterface: @local::art_service_for_shared_memory
+  ArtdaqFragmentNamingServiceInterface: @local::art_service_for_fragment_naming
 }
 
 source: @local::artdaq_DL_art_source_specification

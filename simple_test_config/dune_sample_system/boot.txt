@@ -61,6 +61,6 @@ Dispatcher host: localhost
 Dispatcher label: Dispatcher1
 Dispatcher subsystem: 4
 
-RoutingMaster host: localhost
-RoutingMaster label: RoutingMaster1
-RoutingMaster subsystem: 4
+RoutingManager host: localhost
+RoutingManager label: RoutingManager1
+RoutingManager subsystem: 4

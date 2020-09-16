@@ -1,17 +1,14 @@
 
 services: {
-  scheduler: {
-    errorOnFailureToPut: false
-  }
   ArtdaqSharedMemoryServiceInterface: {
     service_provider: ArtdaqSharedMemoryService
   }
+  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqFragmentNamingService helper_plugin: "ArtdaqDemo" }
 }
 
 daq: {
   event_builder: {
 	expected_fragments_per_event: 0  # Will be set by DAQInterface
-	max_fragment_size_bytes: 16777216
 	use_art: true
 	print_event_store_stats: true
 	buffer_count: 20
@@ -22,7 +19,7 @@ daq: {
     request_address: "227.128.12.26" # Multicast request address
 
 	routing_token_config: {
-	use_routing_master: false
+	use_routing_manager: false
 	}
 
 	sources: { }
@@ -46,7 +43,7 @@ outputs: {
 	destinations: {	}
 
 	routing_table_config: {
-	    use_routing_master: false
+	    use_routing_manager: false
 	}
   }
   #normalOutput: {
@@ -97,7 +94,7 @@ physics: {
   #my_output_modules: [ normalOutput ]
 }
 source: {
-  module_type: DemoInput
+  module_type: ArtdaqInput
   waiting_time: 2500000
   resume_after_timeout: true
 }

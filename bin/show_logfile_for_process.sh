@@ -29,7 +29,7 @@ if [[ ! -e $metadata_file ]]; then
     exit 1
 fi
 
-for procname in boardreader eventbuilder routingmaster datalogger dispatcher; do
+for procname in boardreader eventbuilder routingmanager datalogger dispatcher; do
 
     logfiles=$( sed -r -n '/'$procname' logfiles:/,/^$/p' $metadata_file | sed '1d;$d')
 

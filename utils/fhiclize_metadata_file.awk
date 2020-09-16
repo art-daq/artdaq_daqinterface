@@ -83,21 +83,21 @@
 	}
     }
 
-    if (routingmaster_section_active) {
+    if (routingmanager_section_active) {
 	if ( $0 !~ /^\s*$/) {
-	    routingmasters[++routingmaster_cntr] = $1
+	    routingmanagers[++routingmanager_cntr] = $1
 	    next
 	} else {
-	    printf "\nroutingmaster_logfiles: ["
-	    for (i = 1; i <= length(routingmasters); ++i) {
-		if (i != length(routingmasters)) {
-		    printf "\"%s\", ", routingmasters[i]
+	    printf "\nroutingmanager_logfiles: ["
+	    for (i = 1; i <= length(routingmanagers); ++i) {
+		if (i != length(routingmanagers)) {
+		    printf "\"%s\", ", routingmanagers[i]
 		} else {
-		    printf "\"%s\"", routingmasters[i]
+		    printf "\"%s\"", routingmanagers[i]
 		}
 	    }
 	    printf "]\n"
-	    routingmaster_section_active = 0
+	    routingmanager_section_active = 0
 	}
     }
 
@@ -177,8 +177,8 @@
 	} else if (firstpart ~ "eventbuilder logfiles") {
 	    eventbuilder_section_active = 1
 	    next
-	} else if (firstpart ~ "routingmaster logfiles") {
-	    routingmaster_section_active = 1
+	} else if (firstpart ~ "routingmanager logfiles") {
+	    routingmanager_section_active = 1
 	    next
 	} else if (firstpart ~ "datalogger logfiles") {
 	    datalogger_section_active = 1

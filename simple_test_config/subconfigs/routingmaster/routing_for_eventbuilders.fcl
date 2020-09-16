@@ -1,5 +1,0 @@
-routing_token_config: {
-   routing_master_hostname: "localhost"
-   routing_token_port: 35555
-   use_routing_master: true
-}
