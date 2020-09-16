@@ -124,7 +124,7 @@ a given time window around the "DAQ" events.
              systemctl stop slam-firewall
 
         The request_address and request_port fhicl params, in the
-        example component0{1,2,3}_hw_cfg.fcl files, control the
+        example component0{1,2,3}.fcl files, control the
         multicast address and port (default 3001 as mentioned above)
         used. These fhicl params are also applicable for the
         event_builder block in the EventBuilder.fcl files. Additionally,
@@ -146,10 +146,10 @@ TODO: Describe this configuration or remove it!!!
 
 =====================================================================
 
-routing_master_example:
+routing_manager_example:
 
 A "2+2+1x1" system, with two BoardReaders, two EventBuilders, a
-DataLogger and a Dispatcher. Two RoutingMasters are employed,
+DataLogger and a Dispatcher. Two RoutingManagers are employed,
 one between the BoardReaders and the EventBuilders, and the other
 between the EventBuilders and the DataLogger.
 

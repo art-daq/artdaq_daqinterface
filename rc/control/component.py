@@ -36,10 +36,13 @@ class Component(ContextObject):
             ("rpc_server",
              rpc_server(port=self.__rpc_port,
                         funcs={"state": self.state,
+                               "artdaq_process_info": self.artdaq_process_info,
                                "state_change": self.state_change,
                                "setdaqcomps": self.setdaqcomps,
                                "listdaqcomps": self.listdaqcomps,
-                               "listconfigs":self.listconfigs})),
+                               "listconfigs": self.listconfigs,
+                               "trace_get": self.trace_get,
+                               "trace_set": self.trace_set })),
             ("runner", threadable(func=self.runner))]
 
         self.dict_state_to = {"booting": "booted",
@@ -73,6 +76,9 @@ class Component(ContextObject):
         if name != self.name:
             return "unknown"
         return self.__state
+
+    def artdaq_process_info(self, name):
+        raise NotImplementedError()
 
     def complete_state_change(self, name, requested):
         if name != self.name:
@@ -116,6 +122,18 @@ class Component(ContextObject):
     def print_log(self, severity, printstr, debuglevel=-999):
         print printstr
 
+    def trace_get(self, name, trace_args):
+        if name != self.name:
+            return
+        self.run_params = trace_args
+        self.do_trace_get_boolean = True
+
+    def trace_set(self, name, trace_args):
+        if name != self.name:
+            return
+        self.run_params = trace_args
+        self.do_trace_set_boolean = True
+
     def state_change(self, name, requested, state_args):
         if name != self.name:
             return
@@ -126,7 +144,7 @@ class Component(ContextObject):
 
             self.print_log("w", "\nWARNING: Unable to accept transition request " \
                 "\"%s\" from current state \"%s\"; the command will have no effect." % \
-                (requested, self.__state))
+                (self.dict_correct_grammar[requested], self.__state))
 
             allowed_transitions = []
 

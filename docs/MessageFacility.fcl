@@ -1,4 +1,0 @@
-# this goes inside (and at the end of) the "destinations" table which will ultimately be passed to mf::StartMessageFacility
-udp : { type : "UDP" threshold : "INFO" port : 30000 host : "mu2edaq01.fnal.gov" }
-} # close destinations
-TRACE:{  TRACE_MSGMAX:0 TRACE_LIMIT_MS:[10,500,1500] 

@@ -15,6 +15,7 @@ fi
 
 runnum=$1
 
+. $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
 . $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
 setupscript=$recorddir/$runnum/setup.txt
@@ -22,14 +23,22 @@ setupscript=$recorddir/$runnum/setup.txt
 if [[ -e $setupscript ]]; then
 
     if [[ -n $PRODUCTS ]]; then
-	proddir=$( echo $PRODUCTS | tr ":" "\n" | head -1 )
+	
+	ups_is_setup=false  # Needed for unset function
 
-	if [[ -e $proddir/setup ]]; then
-	    . $proddir/setup
-	else
-	    echo "Unable to find file $proddir/setup despite $proddir appearing in the PRODUCTS environment variable, $PRODUCTS" >&2
+	for proddir in $( echo $PRODUCTS | tr ":" "\n" ) ; do
+
+	    if [[ -e $proddir/setup && -d $proddir/ups ]]; then
+		. $proddir/setup
+		ups_is_setup=true
+	    fi
+	done
+	
+	if ! $ups_is_setup ; then
+	    echo "Unable set up product \"ups\" given products directories $PRODUCTS. ups is needed for the unsetup function, so will exit..." >&2
 	    exit 100
 	fi
+
 
 	# Ron's unsetup function
 
@@ -72,14 +81,26 @@ fi
 for file_location in $( file_locations ); do
 
     rootfile_dir=$( echo $file_location | sed -r -n 's/.*:(.*)/\1/p' )
+    rootfile=$(ls -tr1 ${rootfile_dir}/*$(printf "%06d" $runnum)*_*.root 2>/dev/null| tail -1 )
 
-    rootfile=$(ls -tr1 ${rootfile_dir}/*$(printf "%06d" $runnum)*_*.root | tail -1 )
-    break
+    if [[ -n $rootfile ]]; then
+	break
+    fi
 done
 
+scriptname=$( basename "$0" )
 
 if [[ -z $rootfile ]]; then
-    echo "Unable to find root file for run #${runnum} in directory \"${rootfiledir}\"" >&2
+
+    cat>&2<<EOF
+
+    Unable to find a root file for run #${runnum} in directory
+    "${rootfile_dir}"; note that this script ($scriptname) needs to be
+    run on one of the hosts to which rootfiles were written
+
+EOF
+
+
     exit 20
 fi 
 
@@ -143,7 +164,7 @@ fi
 
 cleaned_run_records_metadata_file=/tmp/$(uuidgen)
 
-grep -E -v 'Total events|Start time|Stop time' $run_records_metadata_file > $cleaned_run_records_metadata_file
+grep -E -v 'Total events|DAQInterface start time|DAQInterface stop time' $run_records_metadata_file > $cleaned_run_records_metadata_file
 
 res_boot=$( diff --ignore-blank-lines $temporary_daqinterface_boot_file $run_records_boot_file )
 res_metadata=$( diff --ignore-blank-lines $temporary_metadata_file $cleaned_run_records_metadata_file )

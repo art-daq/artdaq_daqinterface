@@ -2,13 +2,14 @@
 
 
 if [[ $# != 1 && $# != 2 ]] ; then
-     echo "Usage: $0 <run number> (examine)"
+     echo "Usage: $0 <run number> (optional, any second argument will open the logfile)"
      exit 1
 fi
 
 runnum=$1
 examine=$2
 
+. $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
 . $ARTDAQ_DAQINTERFACE_DIR/bin/diagnostic_tools.sh
 
 metadata_file=$recorddir/$runnum/metadata.txt
@@ -18,28 +19,61 @@ if [[ ! -e $metadata_file ]]; then
     exit 1
 fi
 
-fileglob=$( sed -r -n '/pmt logfile/s/.*:(.*)/\1/p' $metadata_file )
+method=$( sed -r -n 's/^process management method: (\S+).*/\1/p' $metadata_file)
 
-if [[ -n $fileglob ]]; then
+files=$( sed -n '/^process manager logfile/,/^\s*$/p' $recorddir/$runnum/metadata.txt | sed '1d;$d' )
 
-    # The "in run <runnum> has ended" is printed out by SharedMemoryEventManager in artdaq v3_00_02
+if [[ "$method" == "pmt" && -n $files ]]; then
 
-    file=$( grep -l "in run $runnum has ended" $fileglob )
+    for file in $files; do
 
-    if [[ -n $file ]]; then
+	host=$( echo $file | awk 'BEGIN{FS=":"}{print $1}' )
+	filename=$( echo $file | awk 'BEGIN{FS=":"}{print $2}' )
+
 	if [[ -n $examine && "$examine" != "0" ]]; then
-	    less $file
+
+	    if [[ "$host" == "$HOSTNAME" || "$host" == "localhost" ]]; then
+		if [[ -e $filename ]]; then
+		    less $filename
+		else
+		    cat <<EOF
+
+$metadata_file lists 
+$filename 
+as being on this host but it doesn't appear to exist (any longer)
+
+EOF
+		    
+		fi
+	    else
+		echo "Ability to examine logfile on remote host (\"$logfile\") not yet implemented"
+		exit 0
+	    fi
 	else
-	    ls $file
+	    echo $file
 	fi
-	exit 0
-    else
-	echo "Unable to find \"in run <runnum> has ended\" token in ${fileglob}, but that may be because the run didn't end cleanly, rather than because it's not the correct logfile"
-	exit 1
-    fi
+    done
+
+    exit 0
+
 else
-    echo "An assumption about the metadata file has been broken; please contact John Freeman at jcfree@fnal.gov about this" >&2
-    exit 1
+
+
+    
+    cat>&2<<EOF
+
+    Unable to find the process manager logfile for run $runnum; this
+    may be because the DAQINTERFACE_PROCESS_MANAGEMENT_METHOD
+    environment variable was set to something other than "pmt" before
+    the launching of the DAQInterface instance used in the run. You
+    can confirm this by executing:
+
+    grep -1 "process management method" $metadata_file
+
+EOF
+
+exit 1
+
 fi
 
 
