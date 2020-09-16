@@ -146,10 +146,10 @@ TODO: Describe this configuration or remove it!!!
 
 =====================================================================
 
-routing_master_example:
+routing_manager_example:
 
 A "2+2+1x1" system, with two BoardReaders, two EventBuilders, a
-DataLogger and a Dispatcher. Two RoutingMasters are employed,
+DataLogger and a Dispatcher. Two RoutingManagers are employed,
 one between the BoardReaders and the EventBuilders, and the other
 between the EventBuilders and the DataLogger.
 

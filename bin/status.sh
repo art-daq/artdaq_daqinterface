@@ -1,5 +1,6 @@
 #!/bin/env bash
 
+. $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
 . $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
 daqinterface_preamble
 

@@ -1,16 +1,9 @@
 
 services: {
-  scheduler: {
-    errorOnFailureToPut: false
+  ArtdaqSharedMemoryServiceInterface: {
+    service_provider: ArtdaqSharedMemoryService
   }
-  NetMonTransportServiceInterface: {
-    service_provider: NetMonTransportService
-    #broadcast_sends: true
-	destinations: { }
-	routing_table_config: {
-	    use_routing_master: false
-	}
-  }
+  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqFragmentNamingService helper_plugin: "ArtdaqDemo" }
 
   #SimpleMemoryCheck: { }
 }
@@ -18,7 +11,6 @@ services: {
 daq: {
   event_builder: {
 	expected_fragments_per_event: 3
-	max_event_size_bytes: 16777216
 	use_art: true
 	print_event_store_stats: true
 	buffer_count: 20
@@ -30,14 +22,14 @@ daq: {
 	expected_art_event_processing_time_us: 2000000
 
     routing_token_config: {
-        ## True if using the Routing Master
-        use_routing_master: true
+        ## True if using the Routing Manager
+        use_routing_manager: true
 
         ## Port to send tokens on
         routing_token_port: 35555  # default
 
-        ## Hostname or IP of RoutingMaster
-        routing_master_hostname: "localhost"  # default
+        ## Hostname or IP of RoutingManager
+        routing_manager_hostname: "localhost"  # default
     }
 
 	sources: { }
@@ -45,8 +37,9 @@ daq: {
   metrics: {
 	evbFile: {
 	  metricPluginType: "file"
-	  level: 3
-	  fileName: "/tmp/eventbuilder/evb_%UID%_metrics.log"
+	  level: 4
+	  fileName: "eventbuilder/evb_%UID%_metrics.log"
+         absolute_file_path: false
 	  uniquify: true
 	}
   }
@@ -55,6 +48,11 @@ daq: {
 outputs: {
   rootNetOutput: {
     module_type: RootNetOutput
+    #broadcast_sends: true
+	destinations: { }
+	routing_table_config: {
+	    use_routing_manager: false
+	}
   }
 }
 
@@ -69,7 +67,7 @@ physics: {
   my_output_modules: [ rootNetOutput ]
 }
 source: {
-  module_type: DemoInput
+  module_type: ArtdaqInput
   waiting_time: 2500000
   resume_after_timeout: true
 }

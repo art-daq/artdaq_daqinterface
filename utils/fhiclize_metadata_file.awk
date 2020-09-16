@@ -7,6 +7,12 @@
 
 {
 
+    # Comments in the metadata file don't need modification
+    if ( $0 ~ /^\s*#/) {
+	print $0
+	next
+    }
+
     if (components_section_active) {
 	if ( $0 !~ /Component #[0-9]/) {
 	    printf "components: ["
@@ -50,9 +56,10 @@
 		if (i != length(boardreaders)) {
 		    printf "\"%s\", ", boardreaders[i]
 		} else {
-		    printf "\"%s\"]\n", boardreaders[i]
+		    printf "\"%s\"", boardreaders[i]
 		}
 	    }
+	    printf "]\n"
 	    boardreader_section_active = 0
 	}
     }
@@ -76,21 +83,21 @@
 	}
     }
 
-    if (routingmaster_section_active) {
+    if (routingmanager_section_active) {
 	if ( $0 !~ /^\s*$/) {
-	    routingmasters[++routingmaster_cntr] = $1
+	    routingmanagers[++routingmanager_cntr] = $1
 	    next
 	} else {
-	    printf "\nroutingmaster_logfiles: ["
-	    for (i = 1; i <= length(routingmasters); ++i) {
-		if (i != length(routingmasters)) {
-		    printf "\"%s\", ", routingmasters[i]
+	    printf "\nroutingmanager_logfiles: ["
+	    for (i = 1; i <= length(routingmanagers); ++i) {
+		if (i != length(routingmanagers)) {
+		    printf "\"%s\", ", routingmanagers[i]
 		} else {
-		    printf "\"%s\"", routingmasters[i]
+		    printf "\"%s\"", routingmanagers[i]
 		}
 	    }
 	    printf "]\n"
-	    routingmaster_section_active = 0
+	    routingmanager_section_active = 0
 	}
     }
 
@@ -143,7 +150,7 @@
 	    firstpart ~ "DAQInterface stop time" || firstpart ~ "Total events" ) {
 	    
 	    firstpart = tolower(firstpart)
-	    sub(" ", "_", firstpart)
+	    gsub(" ", "_", firstpart)
 
 	} else if (firstpart ~ /Component #[0-9]/) {
 	    components[++component_cntr] = secondpart
@@ -170,8 +177,8 @@
 	} else if (firstpart ~ "eventbuilder logfiles") {
 	    eventbuilder_section_active = 1
 	    next
-	} else if (firstpart ~ "routingmaster logfiles") {
-	    routingmaster_section_active = 1
+	} else if (firstpart ~ "routingmanager logfiles") {
+	    routingmanager_section_active = 1
 	    next
 	} else if (firstpart ~ "datalogger logfiles") {
 	    datalogger_section_active = 1

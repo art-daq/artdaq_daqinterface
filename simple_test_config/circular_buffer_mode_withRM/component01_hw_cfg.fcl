@@ -34,8 +34,8 @@ timestamp_scale_factor: 10
 	destinations: {	}
 
 	routing_table_config: {
-           ## True if using the Routing Master
-           use_routing_master: true
+           ## True if using the Routing Manager
+           use_routing_manager: true
        
            ## Port that table updates should arrive on
            table_update_port: 35556  # default
@@ -47,7 +47,8 @@ timestamp_scale_factor: 10
           table_acknowledge_port: 35557  # default
        
            ## Host that acknowledgements should be sent to
-           routing_master_hostname: "localhost"  # default
+           routing_manager_hostname: "localhost"  # default
+            table_update_multicast_interface: "0.0.0.0"
        
            ## Time to wait (in ms) for a routing table update if the table is exhausted
            routing_timeout_ms: 2000  # default 1000
@@ -60,8 +61,9 @@ timestamp_scale_factor: 10
   metrics: {
 	brFile: {
 	  metricPluginType: "file"
-	  level: 3
-	  fileName: "/tmp/boardreader/br_%UID%_metrics.log"
+	  level: 4
+	  fileName: "boardreader/br_%UID%_metrics.log"
+         absolute_file_path: false
 	  uniquify: true
 	}
   }

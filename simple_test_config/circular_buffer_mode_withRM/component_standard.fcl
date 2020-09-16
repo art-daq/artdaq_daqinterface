@@ -21,7 +21,8 @@ component_standard: {
 
 	data_buffer_depth_fragments: 1000
 	data_buffer_depth_mb: 1000
-
+	
+receive_requests: true
 	request_port: 3001
 	request_address: "227.128.12.26" # Multicast request address
 
@@ -50,8 +51,8 @@ hardware_poll_interval_us: 0 # How often, in microseconds, checkHWStatus_() shou
 	destinations: {	}
 
 	routing_table_config: {
-           ## True if using the Routing Master
-           use_routing_master: true
+           ## True if using the Routing Manager
+           use_routing_manager: true
        
            ## Port that table updates should arrive on
            table_update_port: 35556  # default
@@ -63,7 +64,8 @@ hardware_poll_interval_us: 0 # How often, in microseconds, checkHWStatus_() shou
           table_acknowledge_port: 35557  # default
        
            ## Host that acknowledgements should be sent to
-           routing_master_hostname: "localhost"  # default
+           routing_manager_hostname: "localhost"  # default
+            table_update_multicast_interface: "0.0.0.0"		   
        
            ## Time to wait (in ms) for a routing table update if the table is exhausted
            routing_timeout_ms: 2000  # default 1000
@@ -76,8 +78,9 @@ hardware_poll_interval_us: 0 # How often, in microseconds, checkHWStatus_() shou
     metrics: {
 	brFile: {
 	    metricPluginType: "file"
-	    level: 3
-	    fileName: "/tmp/boardreader/br_%UID%_metrics.log"
+	    level: 4
+	    fileName: "boardreader/br_%UID%_metrics.log"
+         absolute_file_path: false
 	    uniquify: true
 	}
     }
@@ -92,6 +95,7 @@ component01_standard.fragment_receiver.random_seed: 9079
 component01_standard.fragment_receiver.request_mode: "Ignored"
 component01_standard.fragment_receiver.separate_data_thread: false
 component01_standard.fragment_receiver.nADCcounts: 2000
+component01_standard.fragment_receiver.max_fragment_size_bytes: 5000
 component01_standard.fragment_receiver.distribution_type: 1
 component01_standard.fragment_receiver.circular_buffer_mode: false
 
@@ -166,11 +170,13 @@ component11_standard.fragment_receiver.board_id: 10
 component11_standard.fragment_receiver.starting_fragment_id: 10
 component11_standard.fragment_receiver.random_seed: 10738
 component11_standard.fragment_receiver.nADCcounts: 2000
+component11_standard.fragment_receiver.max_fragment_size_bytes: 5000
 component11_standard.fragment_receiver.usecs_between_sends: 20000
 component11_standard.fragment_receiver.timestamp_scale_factor: 1
 component11_standard.fragment_receiver.request_window_offset: 500
 component11_standard.fragment_receiver.request_window_width: 501
 component11_standard.fragment_receiver.request_windows_are_unique: false
+component11_standard.fragment_receiver.max_fragment_size_bytes: 2048000
 
 # reduced the ADC counts in the baseline BR with lots of fragments per event
 component12_standard: @local::component_standard
@@ -180,11 +186,13 @@ component12_standard.fragment_receiver.board_id: 11
 component12_standard.fragment_receiver.starting_fragment_id: 11
 component12_standard.fragment_receiver.random_seed: 11738
 component12_standard.fragment_receiver.nADCcounts: 1000
+component12_standard.fragment_receiver.max_fragment_size_bytes: 2000
 component12_standard.fragment_receiver.usecs_between_sends: 20000
 component12_standard.fragment_receiver.timestamp_scale_factor: 1
 component12_standard.fragment_receiver.request_window_offset: 500
 component12_standard.fragment_receiver.request_window_width: 501
 component12_standard.fragment_receiver.request_windows_are_unique: false
+component12_standard.fragment_receiver.max_fragment_size_bytes: 2048000
 
 # reduced More the ADC counts in the baseline BR with lots of fragments per event
 component13_standard: @local::component_standard
@@ -194,6 +202,7 @@ component13_standard.fragment_receiver.board_id: 12
 component13_standard.fragment_receiver.starting_fragment_id: 12
 component13_standard.fragment_receiver.random_seed: 12738
 component13_standard.fragment_receiver.nADCcounts: 100
+component13_standard.fragment_receiver.max_fragment_size_bytes: 196000
 component13_standard.fragment_receiver.usecs_between_sends: 20000
 component13_standard.fragment_receiver.timestamp_scale_factor: 1
 component13_standard.fragment_receiver.request_window_offset: 500
@@ -208,6 +217,7 @@ component14_standard.fragment_receiver.board_id: 12
 component14_standard.fragment_receiver.starting_fragment_id: 12
 component14_standard.fragment_receiver.random_seed: 12738
 component14_standard.fragment_receiver.nADCcounts: 10
+component14_standard.fragment_receiver.max_fragment_size_bytes: 50000
 component14_standard.fragment_receiver.usecs_between_sends: 20000
 component14_standard.fragment_receiver.timestamp_scale_factor: 1
 component14_standard.fragment_receiver.request_window_offset: 500
@@ -222,11 +232,13 @@ component15_standard.fragment_receiver.board_id: 14
 component15_standard.fragment_receiver.starting_fragment_id: 14
 component15_standard.fragment_receiver.random_seed: 14738
 component15_standard.fragment_receiver.nADCcounts: 2000
+component15_standard.fragment_receiver.max_fragment_size_bytes: 5000
 component15_standard.fragment_receiver.usecs_between_sends: 20000
 component15_standard.fragment_receiver.timestamp_scale_factor: 1
 component15_standard.fragment_receiver.request_window_offset: 1000
 component15_standard.fragment_receiver.request_window_width: 1001
 component15_standard.fragment_receiver.request_windows_are_unique: false
+component15_standard.fragment_receiver.max_fragment_size_bytes: 8192000
 
 # changed windows to unique in the baseline BR with lots of fragments per event
 component16_standard: @local::component_standard
@@ -236,6 +248,7 @@ component16_standard.fragment_receiver.board_id: 15
 component16_standard.fragment_receiver.starting_fragment_id: 15
 component16_standard.fragment_receiver.random_seed: 15738
 component16_standard.fragment_receiver.nADCcounts: 2000
+component16_standard.fragment_receiver.max_fragment_size_bytes: 600000
 component16_standard.fragment_receiver.usecs_between_sends: 20000
 component16_standard.fragment_receiver.timestamp_scale_factor: 1
 component16_standard.fragment_receiver.request_window_offset: 500

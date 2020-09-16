@@ -1,13 +1,8 @@
 services: {
-  scheduler: {
-	errorOnFailureToPut: false
+  ArtdaqSharedMemoryServiceInterface: {
+	service_provider: ArtdaqSharedMemoryService
   }
-  NetMonTransportServiceInterface: {
-	service_provider: NetMonTransportService
-	broadcast_sends: true
-	nonblocking_sends: true
-	destinations: {	}
-  }
+  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqFragmentNamingService helper_plugin: "ArtdaqDemo" }
 }
 
 daq: {
@@ -16,7 +11,6 @@ daq: {
 		print_event_store_stats: true
 		event_queue_depth: 40
 		event_queue_wait_time: 5
-		max_fragment_size_bytes: 16777216
 		buffer_count: 40
 		onmon_event_prescale: 1
 		is_data_logger: true
@@ -24,7 +18,7 @@ daq: {
 		auto_suppression_enabled: false
 
 		routing_token_config: {
-			use_routing_master: false
+			use_routing_manager: false
 		}
 
 		sources: { }
@@ -33,8 +27,9 @@ daq: {
 	metrics: {
 		aggFile: {
 			metricPluginType: "file"
-			level: 3
-			fileName: "/tmp/aggregator/agg_%UID%_metrics.log"
+			level: 4
+			fileName: "aggregator/agg_%UID%_metrics.log"
+         absolute_file_path: false
 			uniquify: true
 		}
 	}
@@ -42,7 +37,7 @@ daq: {
 }
 
 source: {
-  module_type: NetMonInput
+  module_type: ArtdaqInput
 }
 outputs: {
   normalOutput: {
@@ -55,6 +50,9 @@ outputs: {
   rootNetOutput: {
 	module_type: RootNetOutput
 	#SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
+	broadcast_sends: true
+	nonblocking_sends: true
+	destinations: {	}
   }
 
 }

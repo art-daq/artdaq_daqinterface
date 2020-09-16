@@ -20,6 +20,10 @@ outputs: {
    }
    rootNetOutput: {
       module_type: "RootNetOutput"
+      broadcast_sends: true
+      nonblocking_sends: true
+
+      destinations: {}
    }
 }
 physics: {
@@ -42,19 +46,16 @@ physics: {
 }
 process_name: "DAQDL"
 services: {
-   NetMonTransportServiceInterface: {
-      broadcast_sends: true
-      nonblocking_sends: true
-      service_provider: "NetMonTransportService"
-
-      destinations: {}
+   ArtdaqSharedMemoryServiceInterface: {
+      service_provider: "ArtdaqSharedMemoryService"
 }
+  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqFragmentNamingService helper_plugin: "ArtdaqDemo" }
    scheduler: {
       errorOnFailureToPut: false  # Don't change this
    }
 }
 source: {
-   module_type: "NetMonInput"
+   module_type: "ArtdaqInput"
 }
 }
 

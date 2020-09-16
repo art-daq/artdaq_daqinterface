@@ -5,11 +5,15 @@ import re
 import subprocess
 from subprocess import Popen
 import traceback
+import shutil
+import string
+
 from rc.control.deepsuppression import deepsuppression
 
 from rc.control.utilities import make_paragraph
-from rc.control.utilities import get_commit_hash
-from rc.control.utilities import get_commit_comment
+from rc.control.utilities import get_commit_info
+from rc.control.utilities import get_commit_info_filename
+from rc.control.utilities import get_build_info
 from rc.control.utilities import expand_environment_variable_in_string
 
 def save_run_record_base(self):
@@ -76,6 +80,26 @@ def save_run_record_base(self):
     if not os.path.exists(outdir + "/known_boardreaders_list.txt"):
         self.alert_and_recover("Problem creating file " + outdir + "/known_boardreaders_list.txt")
 
+    ranksfilename = "%s/ranks.txt" % (outdir)
+
+    with open(ranksfilename, "w") as ranksfile:
+        ranksfile.write("%-30s%-10s%-20s%-15s%-10s\n" % ("host", "port", "label", "subsystem", "rank"))
+        ranksfile.write("\n")
+
+        procinfos_sorted_by_rank = sorted(self.procinfos, key=lambda procinfo: procinfo.rank)
+        for procinfo in procinfos_sorted_by_rank:
+            host = procinfo.host
+            if host == "localhost":
+                host = os.environ["HOSTNAME"]
+            ranksfile.write("%-29s %-9s %-19s %-14s %-9d\n" % (host, procinfo.port, procinfo.label, procinfo.subsystem, procinfo.rank))      
+    environfilename = "%s/environment.txt" % (outdir)
+
+    with open(environfilename, "w") as environfile:
+        for daqinterface_var in sorted( [ varname for varname in os.environ if re.search(r"^DAQINTERFACE_", varname) ] ):
+            environfile.write("export %s=%s\n" % (daqinterface_var, expand_environment_variable_in_string(os.environ[ daqinterface_var ])))
+
+
+
     # JCF, 11/20/14
 
     # Now save "metadata" about the run in the
@@ -94,41 +118,74 @@ def save_run_record_base(self):
             enumerate(sorted(self.daq_comp_list)):
         outf.write("Component #%d: %s\n" % (i_comp, component))
 
-    outf.write("DAQInterface directory: %s\n" % ( os.getcwd() ))
+    outf.write("DAQInterface directory: %s:%s\n" % (os.environ["HOSTNAME"], os.getcwd() ))
+    outf.write("DAQInterface logfile: %s:%s\n" % (os.environ["HOSTNAME"], expand_environment_variable_in_string(os.environ["DAQINTERFACE_LOGFILE"])))
 
     # Now save the commit hashes / versions of the packages listed in
     # $DAQINTERFACE_SETTINGS, along with the commit hash for
     # DAQInterface(if using DAQInterface from the repo) or version (if
     # using DAQInterface as a ups product)
 
+    # JCF, Jul-9-2019
+    # Add additional info along with that described above, as per Redmine Issue #22777
+
+    outf.write("\n# Two possible sets of fields provided below for code info, depending on if a git repo was available: ")
+    outf.write("\n# <git commit hash> <LoCs added on top of commit> <LoCs removed on top of commit> <git commit comment> <git commit time> <git branch> <BuildInfo build time (if available)> <BuildInfo version (if available)>")
+    outf.write("\n# <package version> <BuildInfo build time (if available)> <BuildInfo version (if available)>\n\n")
+               
     assert "ARTDAQ_DAQINTERFACE_DIR" in os.environ and os.path.exists(os.environ["ARTDAQ_DAQINTERFACE_DIR"])
+
+    buildinfo_packages = [pkg for pkg in self.package_hashes_to_save]  # Directly assigning would make buildinfo_packages a reference, not a copy
+    buildinfo_packages.append("artdaq_daqinterface")
+
+    package_buildinfo_dict = get_build_info(buildinfo_packages, self.daq_setup_script)
 
     with deepsuppression(self.debug_level < 3):
         try:
-            outf.write("DAQInterface commit/version: %s \"%s\"\n" % ( get_commit_hash(os.environ["ARTDAQ_DAQINTERFACE_DIR"]), get_commit_comment( os.environ["ARTDAQ_DAQINTERFACE_DIR"] )))
+            commit_info_fullpathname = "%s/%s" % (os.path.dirname(self.daq_setup_script), get_commit_info_filename("DAQInterface"))
+            if os.path.exists(commit_info_fullpathname):
+                with open(commit_info_fullpathname) as commitfile:
+                    outf.write("%s" % (commitfile.read()))
+            else:
+                outf.write("%s" % (get_commit_info("DAQInterface", os.environ["ARTDAQ_DAQINTERFACE_DIR"])))
         except Exception:
             # Not an exception in a bad sense as the throw just means we're using DAQInterface as a ups product
-            outf.write("DAQInterface commit/version: %s\n" % ( self.get_package_version("artdaq_daqinterface") ))
+            self.fill_package_versions(["artdaq_daqinterface"])
+            outf.write("DAQInterface commit/version: %s" % ( self.package_versions["artdaq_daqinterface"] ))
+            
+        outf.write(" %s\n\n" % (package_buildinfo_dict["artdaq_daqinterface"]))
 
-    self.package_info_dict = {}
+    package_commit_dict = {}
+    packages_whose_versions_we_need = []
 
     for pkgname in self.package_hashes_to_save:
         
         pkg_full_path = "%s/srcs/%s" % (self.daq_dir, pkgname.replace("-", "_"))
+        commit_info_fullpathname = "%s/%s" % (os.path.dirname(self.daq_setup_script), get_commit_info_filename(pkgname))
 
-        if os.path.exists( pkg_full_path ):
+        if os.path.exists(commit_info_fullpathname):
+            with open(commit_info_fullpathname) as commitfile:
+                package_commit_dict[pkgname] = commitfile.read()
+
+        elif os.path.exists( pkg_full_path ):
             try: 
-                self.package_info_dict[pkgname] = get_commit_hash( pkg_full_path )
-                self.package_info_dict[pkgname] += " \"%s\"" % (get_commit_comment( pkg_full_path ))
+                package_commit_dict[pkgname] = get_commit_info( pkgname, pkg_full_path )
             except Exception:
                 self.print_log("e", traceback.format_exc())
-                self.alert_and_recover("An exception was thrown in get_commit_hash; see traceback above for more info")
+                self.alert_and_recover("An exception was thrown in get_commit_info; see traceback above for more info")
                 return
         else:
-            self.package_info_dict[pkgname] = self.get_package_version( pkgname.replace("-", "_") )
+            # We'll throw this on the list of packages whose actual versions we need to figure out in real-time
+            packages_whose_versions_we_need.append(pkgname)
 
-    for pkg in sorted(self.package_info_dict.keys()):
-        outf.write("%s commit/version: %s\n" % (pkg, self.package_info_dict[ pkg ] ))
+    self.fill_package_versions( [ string.replace(pkg, "-", "_") for pkg in packages_whose_versions_we_need ] )
+        
+    for pkgname in packages_whose_versions_we_need:
+        package_commit_dict[pkgname] = "%s commit/version: %s" % (pkgname, self.package_versions[string.replace(pkgname, "-","_")])
+
+    for pkg in sorted(package_commit_dict.keys()):
+        outf.write("%s" % (package_commit_dict[pkg]))
+        outf.write(" %s\n\n" % (package_buildinfo_dict[pkg]))
 
     outf.write("\nprocess management method: %s\n" % (os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"]))
 
@@ -139,7 +196,7 @@ def save_run_record_base(self):
                       ("eventbuilder", self.eventbuilder_log_filenames),
                       ("datalogger", self.datalogger_log_filenames),
                       ("dispatcher", self.dispatcher_log_filenames),
-                      ("routingmaster", self.routingmaster_log_filenames)]
+                      ("routingmanager", self.routingmanager_log_filenames)]
 
         for logtuple in logtuples:
 
@@ -152,95 +209,24 @@ def save_run_record_base(self):
     outf.write("\n")
     outf.close()
 
-    ranksfilename = "%s/ranks.txt" % (outdir)
-
-    with open(ranksfilename, "w") as ranksfile:
-        ranksfile.write("        host   port         label  rank\n")
-        ranksfile.write("\n")
-
-        procinfos_sorted_by_rank = sorted(self.procinfos, key=lambda procinfo: procinfo.rank)
-        for procinfo in procinfos_sorted_by_rank:
-            host = procinfo.host
-            if host == "localhost":
-                host = os.environ["HOSTNAME"]
-            ranksfile.write("%s\t%s\t%s\t%d\n" % (host, procinfo.port, procinfo.label, procinfo.rank))            
-    if self.debug_level >= 2:
-        print "Saved run configuration records in %s" % \
-            (outdir)
-        print
-
-def total_events_in_run_base(self):
-
-    # JCF, Apr-19-2018
-    # This function will need to be rewritten to work, thus the assert False
+    for (recorddir, dummy, recordfiles) in os.walk(self.tmp_run_record):
+        for recordfile in recordfiles:
+            os.chmod("%s/%s" % (recorddir, recordfile), 0o444)
     
-    assert False
+    try:
+        shutil.copytree(self.tmp_run_record, self.semipermanent_run_record)
+    except:
+        self.print_log("w", traceback.format_exc())
+        self.print_log("w", make_paragraph("Attempt to copy temporary run record \"%s\" into \"%s\" didn't work; keep in mind that %s will be clobbered next time you run on this partition" % (self.tmp_run_record, self.semipermanent_run_record, self.tmp_run_record)))
 
-    data_logger_filenames = []
-    
-    if len(self.aggregator_log_filenames) > 0:
-
-        for log_filename in self.aggregator_log_filenames:
-            host, filename = log_filename.split(":")
-        
-            cmd = "grep -l \"is_data_logger\s*=\s*1\" " +  filename
-
-            if host != "localhost" and host != os.environ["HOSTNAME"]:
-                cmd = "ssh -f " + host + " '" + cmd + "'"
-            
-            proc = Popen(cmd, shell=True, stdout=subprocess.PIPE)
-            proclines = proc.stdout.readlines()
-            
-            if len(proclines) != 0:
-                assert len(proclines) == 1, "%s\n%s\nETC." % (proclines[0], proclines[1])
-                assert proclines[0].strip() == filename, "%s not the same as %s" % (proclines[0].strip(), filename)
-            else:
-                continue
-                
-            data_logger_filenames.append( log_filename )
-    else:
-        data_logger_filenames = self.eventbuilder_log_filenames
-
-    total = 0
-    fail_value = -999
-
-    for log_filename in data_logger_filenames:
-        host, filename = log_filename.split(":")
-
-        cmd = "sed -r -n '/Subrun [0-9]+ in run " + str(self.run_number) + " has ended/s/.*There were ([0-9]+) events in this subrun.*/\\1/p' " + log_filename.split(":")[1]
-
-        if host != "localhost" and host != os.environ["HOSTNAME"]:
-            cmd = "ssh -f " + host + " \"" + cmd + "\""
-
-        proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        proclines = proc.stdout.readlines()
-
-        proclines = [ line.strip() for line in proclines ]
-
-        warning_msg = "WARNING: unable to deduce the number of events in run " + \
-            str(self.run_number) + " by running the following command: \"" + \
-            cmd + "\""
-
-        if len(proclines) == 0:
-            print warning_msg
-            return fail_value
-
-        for line in proclines:
-            if not re.search(r"^[0-9]+$", line):
-                print warning_msg
-                return fail_value
-
-        for line in proclines:
-            total += int(line)
-        
-    return total
+    self.print_log("d", make_paragraph("Saved run record in %s, will copy over to yet-to-be-created directory %s/<value of run number> on the start transition" % (outdir, self.record_directory)), 2)
 
 def save_metadata_value_base(self, key, value):
 
-    outdir = "%s/%s" % (self.record_directory, str(self.run_number))
-    assert os.path.exists(outdir + "/metadata.txt")
+    metadata_filename = "%s/%s/metadata.txt" % (self.record_directory, str(self.run_number))
+    assert os.path.exists(metadata_filename)
 
-    outf = open(outdir + "/metadata.txt", "a")
-
-    outf.write("\n%s: %s\n" % (key, value))
-
+    os.chmod(metadata_filename, 0o644)
+    with open(metadata_filename, "a") as metadata_file:
+        metadata_file.write("\n%s: %s\n" % (key, value))
+    os.chmod(metadata_filename, 0o444)

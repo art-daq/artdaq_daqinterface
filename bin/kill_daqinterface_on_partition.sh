@@ -24,6 +24,7 @@ if [[ "$#" == "0" ]]; then
     exit 1
 fi
 
+. $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
 . $ARTDAQ_DAQINTERFACE_DIR/bin/daqinterface_functions.sh
 
 scriptdir="$(dirname "$0")"
@@ -86,6 +87,14 @@ for partition in "$@"; do
     if [[ -n $daqinterface_pid ]]; then
 	
 	if ! $forcibly_kill ; then
+
+cat <<EOF
+
+Checking to make sure that DAQInterface on partition $partition is in the "stopped" state.
+If the script appears to hang here, there's an issue communicating with DAQInterface; hit Ctrl-c, 
+and then re-run this script with the "--force" option added at the end.
+
+EOF
 
 	     export DAQINTERFACE_PARTITION_NUMBER=$partition
 	     state_true="0"

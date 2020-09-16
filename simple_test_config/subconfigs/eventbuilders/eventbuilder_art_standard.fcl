@@ -4,6 +4,10 @@ eventbuilder_art_standard: {
    outputs: {
       rootNetOutput: {
          module_type: "RootNetOutput"
+         destinations: {}
+         routing_table_config: {
+            use_routing_manager: false
+         }
       }
    }
    physics: {
@@ -19,19 +23,16 @@ eventbuilder_art_standard: {
    }
    process_name: "DAQ"
    services: {
-      NetMonTransportServiceInterface: {
-         destinations: {}
-         routing_table_config: {
-            use_routing_master: false
-         }
-         service_provider: "NetMonTransportService"
+      ArtdaqSharedMemoryServiceInterface: {
+         service_provider: "ArtdaqSharedMemoryService"
       }
       scheduler: {
          errorOnFailureToPut: false
       }
+      ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqFragmentNamingService helper_plugin: "ArtdaqDemo" }
    }
    source: {
-      module_type: "DemoInput"
+      module_type: "ArtdaqInput"
       resume_after_timeout: true
       waiting_time: 2.5e6
    }

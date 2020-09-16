@@ -16,13 +16,12 @@ datalogger_daq_standard: {
       expected_art_event_processing_time_us: 2e6
       expected_fragments_per_event: 1  # Don't change this
       is_data_logger: true  # Don't change this
-      max_event_size_bytes: 9224000 # Will be overwritten if DAQInterface's advanced memory usage is selected (see https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Advanced_Memory_Usage)
       
       # Only send 1/onmon_event_prescale events to art for online monitoring
       onmon_event_prescale: 1
       restart_crashed_art_processes: false
       routing_token_config: {
-         use_routing_master: false
+         use_routing_manager: false
       }
       sources: {}
 }

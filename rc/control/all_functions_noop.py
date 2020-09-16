@@ -20,6 +20,8 @@
 
 def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     pass
+def check_config_base(self):
+    pass
 def check_proc_heartbeats_base(self):
     pass
 def do_disable_base(self):
@@ -37,6 +39,8 @@ def kill_procs_base(self):
 def launch_procs_base(self):
     pass
 def mopup_process_base(self):
+    pass
+def perform_periodic_action_base(self):
     pass
 def process_launch_diagnostics_base(self):
     pass

@@ -22,6 +22,7 @@ sleep_on_stop_us: 0
 request_mode: "Ignored" # Possible values are: Ignored, Single, Buffer, Window
 
 nADCcounts: 2000
+max_fragment_size_bytes: 5000
 
 usecs_between_sends: 1000000 # 10 Hz
 throttle_usecs: 0
@@ -34,15 +35,16 @@ timestamp_scale_factor: 1000
 	destinations: {	}
 
 	routing_table_config: {
-	    use_routing_master: false
+	    use_routing_manager: false
 	}
   }
 
   metrics: {
 	brFile: {
 	  metricPluginType: "file"
-	  level: 3
-	  fileName: "/tmp/boardreader/br_%UID%_metrics.log"
+	  level: 4
+	  fileName: "boardreader/br_%UID%_metrics.log"
+         absolute_file_path: false
 	  uniquify: true
 	}
   }
