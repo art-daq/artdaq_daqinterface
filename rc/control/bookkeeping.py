@@ -139,7 +139,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 generated_fragments_per_event = int(res.group(1))
 
             fragments_per_boardreader[ procinfo.label ] = generated_fragments_per_event
-            subsystem_fragment_count[ procinfo.subsystem ] += generated_fragments_per_event
 
             if self.advanced_memory_usage:
                 list_of_one_fragment_size = [ proctuple[1] for proctuple in max_fragment_sizes if 
@@ -149,7 +148,13 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             else:
                 fragment_space = self.max_fragment_size_bytes
                 
-            subsystem_fragment_space[ procinfo.subsystem ] += generated_fragments_per_event*fragment_space
+            total_fragment_space = generated_fragments_per_event*fragment_space
+            if self.subsystems[ procinfo.subsystem ].boardreadersSendEvents and total_fragment_space > subsystem_fragment_space[ procinfo.subsystem ]:
+                subsystem_fragment_space[ procinfo.subsystem ] = total_fragment_space
+                subsystem_fragment_count[ procinfo.subsystem ] = 1
+            elif not self.subsystems[ procinfo.subsystem ].boardreadersSendEvents:
+                subsystem_fragment_space[ procinfo.subsystem ] += total_fragment_space
+                subsystem_fragment_count[ procinfo.subsystem ] += generated_fragments_per_event
 
     # Now using the per-subsystem info we've gathered, use recursion
     # to determine the *true* number of fragments per event and the
@@ -486,6 +491,8 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             request_address = "227.128.%d.%d" % (self.partition_number, 128 + int(self.procinfos[i_proc].subsystem))
         else:
             request_address = self.request_address
+
+        self.procinfos[i_proc].fhicl_used = re.sub("host_map\s*:\s*\[.*?\]", host_map_string, self.procinfos[i_proc].fhicl_used)
 
         self.procinfos[i_proc].fhicl_used = re.sub("request_address\s*:\s*[\"0-9\.]+", 
                                                    "request_address: \"%s\"" % (request_address.strip("\"")), 

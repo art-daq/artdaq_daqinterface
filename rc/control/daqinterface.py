@@ -320,10 +320,11 @@ class DAQInterface(Component):
     # artdaq subsytem.
 
     class Subsystem(object):
-        def __init__(self, sources = [], destination = None, fragmentMode = True):
+        def __init__(self, sources = [], destination = None, fragmentMode = True, boardreadersSendEvents = False):
             self.sources = sources
             self.destination = destination
             self.fragmentMode = fragmentMode
+            self.boardreadersSendEvents = boardreadersSendEvents
 
         def __lt__(self, other):
             if self.id != other.id:
