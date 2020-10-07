@@ -842,6 +842,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     for possible_sender_procinfo in [pi for pi in self.procinfos if pi.subsystem == procinfo.subsystem and pi.name == "DataLogger"]:
                         if sends_to_via_RootNetOutput(possible_sender_procinfo, procinfo):
                             init_fragment_count += 1
+                    if init_fragment_count == 0: # Dispatcher will _always_ receive init Fragments, this probably means we're running without DataLoggers
+                        for possible_sender_procinfo in [pi for pi in self.procinfos if pi.subsystem == procinfo.subsystem and pi.name == "EventBuilder"]:
+                            if sends_to_via_RootNetOutput(possible_sender_procinfo, procinfo):
+                                init_fragment_count += 1
 
                 init_fragment_counts[procinfo.name] = init_fragment_count
                 
