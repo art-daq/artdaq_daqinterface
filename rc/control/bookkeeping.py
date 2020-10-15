@@ -444,9 +444,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             router_process_target = self.procinfos[i_proc].target
             sorted_sender_ranks_list = []
             sorted_receiver_ranks_list = []
+            nonsending_boardreaders = []
 
             if router_process_target is "EventBuilder":
-                nonsending_boardreaders = []
                 for procinfo in self.procinfos:
                     if "BoardReader" in procinfo.name:
                         if re.search(r"\n\s*sends_no_fragments\s*:\s*[Tt]rue", procinfo.fhicl_used) or \
@@ -473,16 +473,16 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     assert False, "Developer error: logic needs to be added here for the %s case of a router process location" % (router_location)
             
             elif router_process_target is "DataLogger":
-                sorted_sender_ranks_list = [str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsyste == self.procinfos[i_proc].subsystem and "EventBuilder" in otherproc.name ]
-                sorted_receiver_ranks_list = [str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.subsystems[self.procinfos[i_proc].subsystem].destination and "DataLogger" in otherproc.name]
+                sorted_sender_ranks_list = [str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "EventBuilder" in otherproc.name ]
+                sorted_receiver_ranks_list = [str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "DataLogger" in otherproc.name]
             
             elif router_process_target is "Dispatcher":
-                sorted_sender_ranks_list = [str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsyste == self.procinfos[i_proc].subsystem and "DataLogger" in otherproc.name ]
+                sorted_sender_ranks_list = [str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "DataLogger" in otherproc.name ]
                 if len(sorted_sender_ranks_list) == 0:
-                    sorted_sender_ranks_list = [str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsyste == self.procinfos[i_proc].subsystem and "EventBuilder" in otherproc.name ]
+                    sorted_sender_ranks_list = [str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "EventBuilder" in otherproc.name ]
                     subsystems_without_dataloggers.append(self.procinfos[i_proc].subsystem)
                     
-                sorted_receiver_ranks_list = [str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.subsystems[self.procinfos[i_proc].subsystem].destination and "Dispatcher" in otherproc.name]
+                sorted_receiver_ranks_list = [str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "Dispatcher" in otherproc.name]
 
             sender_ranks = "sender_ranks: [%s]" % (",".join([str(rnk) for rnk in sorted_sender_ranks_list]))
             receiver_ranks = "receiver_ranks: [%s]" % (",".join(sorted_receiver_ranks_list))
@@ -728,7 +728,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             dl_subsystem = self.procinfos[i_proc].subsystem
             if (dl_subsystem, "DataLogger") in router_process_hostnames:
                 bookkeep_table_for_router_process(i_proc, dl_subsystem, "routing_token_config", "DataLogger")
-            if (dl_subsystem, "Dispatcher") in router_process_hstnames:
+            if (dl_subsystem, "Dispatcher") in router_process_hostnames:
                 bookkeep_table_for_router_process(i_proc, dl_subsystem, "routing_table_config", "Dispatcher")
                 
         elif "Dispatcher" in self.procinfos[i_proc].name:
