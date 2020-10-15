@@ -62,7 +62,7 @@ def get_boot_info_base(self, boot_filename):
                             "unable to locate configuration file \"" +
                             boot_filename + "\""))
 
-    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set", "allowed_processors": "not set", "target": "not set"}
+    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set", "allowed_processors": "not set", "target": "EventBuilder"}
     subsystemDict = {"id": None, "source": "not set", "destination": "not set", "fragmentMode": "not set", "boardreadersSendEvents": "not set"}
 
     num_expected_processes = 0
