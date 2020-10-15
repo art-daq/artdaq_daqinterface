@@ -574,6 +574,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             if router_process_identifier is None:
                 continue
             
+            if procinfo.target == "not set":
+                procinfo.target = "EventBuilder"
+
             if router_process_info[router_process_identifier]["location"] == "child_subsystem" and procinfo.subsystem == subsystem_id:
                 router_process_for_subsystem_as_list.append(procinfo)
             elif router_process_info[router_process_identifier]["location"] == "parent_subsystem" and procinfo.subsystem in self.subsystems[subsystem_id].sources:
