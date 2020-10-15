@@ -62,7 +62,7 @@ def get_boot_info_base(self, boot_filename):
                             "unable to locate configuration file \"" +
                             boot_filename + "\""))
 
-    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set", "allowed_processors": "not set", "target": "EventBuilder"}
+    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set", "allowed_processors": "not set", "target": "not set"}
     subsystemDict = {"id": None, "source": "not set", "destination": "not set", "fragmentMode": "not set", "boardreadersSendEvents": "not set"}
 
     num_expected_processes = 0
@@ -244,7 +244,7 @@ def get_boot_info_base(self, boot_filename):
                                                     ))
 
                 for varname in memberDict.keys():
-                    if varname != "port" and varname != "subsystem" and varname != "allowed_processors":
+                    if varname != "port" and varname != "subsystem" and varname != "allowed_processors" and varname != "target":
                         memberDict[varname] = None
                     else:
                         memberDict[varname] = "not set"
