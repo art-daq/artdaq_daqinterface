@@ -328,10 +328,12 @@ def reformat_fhicl_documents(setup_fhiclcpp, procinfos):
     cmds = []
     cmds.append("if [[ -z $( command -v fhicl-dump ) ]]; then %s; source %s; fi" % \
                 (bash_unsetup_command, setup_fhiclcpp))
+    cmds.append("if [[ $FHICLCPP_VERSION =~ v4_1[01]|v4_0|v[0123] ]]; then dump_arg=0;else dump_arg=none;fi")
     cmds.append("cd %s" % (reformat_indir))
 
-    xargs_cmd = "find ./ -name \*.fcl -print | xargs -I {} -n 1 -P %s fhicl-dump -l 0 -c {} -o %s/{}" % \
+    xargs_cmd = "find ./ -name \*.fcl -print | xargs -I {} -n 1 -P %s fhicl-dump -l $dump_arg -c {} -o %s/{}" % \
                 (nprocessors, reformat_outdir)
+
     cmds.append("echo About to execute '%s'" % (xargs_cmd))
     cmds.append(xargs_cmd)
     

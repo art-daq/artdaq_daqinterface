@@ -2006,13 +2006,21 @@ class DAQInterface(Component):
             cmds = []
             cmds.append("if [[ -z $( command -v fhicl-dump ) ]]; then %s; source %s; fi" % \
                         (bash_unsetup_command, os.environ["DAQINTERFACE_SETUP_FHICLCPP"]))
-            cmds.append("fhicl-dump -l 0 -c %s" % (get_messagefacility_template_filename()))
+            cmds.append("if [[ $FHICLCPP_VERSION =~ v4_1[01]|v4_0|v[0123] ]]; then dump_arg=0;else dump_arg=none;fi")
+            cmds.append("fhicl-dump -l $dump_arg -c %s" % (get_messagefacility_template_filename()))
 
             proc = Popen("; ".join(cmds), executable="/bin/bash", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)    
-            status = proc.wait()
 
+            status = proc.wait()
+            
             if status != 0:
-                raise Exception("The FHiCL code designed to control MessageViewer, found in %s, appears to contain one or more syntax errors" % (get_messagefacility_template_filename()))
+                self.print_log("e", "\nNonzero return value (%d) resulted when trying to run the following:\n%s\n" % \
+                                   (status, "\n".join(cmds)))
+                self.print_log("e", "STDOUT output: \n%s" % ("\n".join(proc.stdout.readlines())))
+                self.print_log("e", "STDERR output: \n%s" % ("\n".join(proc.stderr.readlines())))
+                self.print_log("e", make_paragraph("The FHiCL code designed to control MessageViewer, found in %s, appears to contain one or more syntax errors (Or there was a problem running fhicl-dump)" % (get_messagefacility_template_filename())))
+                
+                raise Exception("The FHiCL code designed to control MessageViewer, found in %s, appears to contain one or more syntax errors (Or there was a problem running fhicl-dump)" % (get_messagefacility_template_filename()))
 
             # Now, with the info on hand about the processes contained in
             # procinfos, actually launch them
