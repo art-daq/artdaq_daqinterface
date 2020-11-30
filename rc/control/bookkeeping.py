@@ -799,10 +799,12 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     # Convenience function: does proc1 send to proc2 via RootNetOutput?
     def sends_to_via_RootNetOutput(proc1, proc2):
 
-        res = re.findall(r'module_type:\s*"RootNetOutput"', proc1.fhicl_used)
+        res = re.finditer(r'module_type:\s*"RootNetOutput"', proc1.fhicl_used)
         
-        for i_res in range(len(res)):
-            (begin, end) = enclosing_table_range(proc1.fhicl_used, res[i_res])
+        last_start = 0
+        for i_res in res:
+            (begin, end) = enclosing_table_range(proc1.fhicl_used, i_res.group(), last_start)
+            last_start = i_res.start() + len(i_res.group())
 
             assert begin != -1 and end != -1, "Bookkeeping error: RootNetOutput module was found in %s but unable to locate the enclosing table" % (proc1.label)
                                 
@@ -842,6 +844,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     for possible_sender_procinfo in [pi for pi in self.procinfos if pi.subsystem == procinfo.subsystem and pi.name == "DataLogger"]:
                         if sends_to_via_RootNetOutput(possible_sender_procinfo, procinfo):
                             init_fragment_count += 1
+                    if init_fragment_count == 0: # Dispatcher will _always_ receive init Fragments, this probably means we're running without DataLoggers
+                        for possible_sender_procinfo in [pi for pi in self.procinfos if pi.subsystem == procinfo.subsystem and pi.name == "EventBuilder"]:
+                            if sends_to_via_RootNetOutput(possible_sender_procinfo, procinfo):
+                                init_fragment_count += 1
 
                 init_fragment_counts[procinfo.name] = init_fragment_count
                 
