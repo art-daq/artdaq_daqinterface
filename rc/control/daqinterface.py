@@ -1230,6 +1230,8 @@ class DAQInterface(Component):
                 
                 num_logfile_checks += 1
 
+                if "ssh" in cmd:
+                    self.print_log("d", cmd, 6)
                 proc = Popen(cmd, executable="/bin/bash", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 proclines = proc.stdout.readlines()
                 proclines_err = proc.stderr.readlines()
@@ -1316,6 +1318,7 @@ class DAQInterface(Component):
 
             if host != "localhost" and host != os.environ["HOSTNAME"]:
                 link_logfile_cmd = "ssh %s '%s'" % (host, link_logfile_cmd)
+                self.print_log("d", link_logfile_cmd, 6)
 
             status = Popen(link_logfile_cmd, executable="/bin/bash", shell=True).wait()
             
@@ -1938,6 +1941,7 @@ class DAQInterface(Component):
 
                 if random_host != "localhost" and random_host != os.environ["HOSTNAME"]:
                     cmd = "timeout %d ssh %s '%s'" % (ssh_timeout_in_seconds, random_host, cmd)
+                    self.print_log("d", cmd, 6)
 
                 out = Popen(cmd, executable="/bin/bash", shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
 
@@ -1982,6 +1986,7 @@ class DAQInterface(Component):
 
                 if host != os.environ["HOSTNAME"] and host != "localhost":
                     logdircmd = "timeout %d ssh -f %s '%s'" % (ssh_timeout_in_seconds, host, logdircmd)
+                    self.print_log("d", logdircmd, 6)
 
                 with deepsuppression(self.debug_level < 4):
                     proc = Popen(logdircmd, executable="/bin/bash", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

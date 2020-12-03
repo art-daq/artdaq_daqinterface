@@ -162,6 +162,7 @@ def launch_procs_base(self):
 
         if host != os.environ["HOSTNAME"] and host != "localhost":
             launchcmd = "ssh -f " + host + " '" + launchcmd + "'"
+            self.print_log("d", launchcmd, 6)
 
         self.print_log("d", "\nartdaq process launch commands to execute on %s (output will be in %s:%s):\n%s\n" % (host, host, self.launch_attempt_file, "\n".join(launch_commands_on_host_to_show_user[host])), 3)
         
@@ -196,6 +197,7 @@ def kill_procs_base(self):
             cmd = "kill %s" % (" ".join(artdaq_pids))
             if host != "localhost" and host != os.environ["HOSTNAME"]:
                 cmd = "ssh -x " + host + " '" + cmd + "'"
+                self.print_log("d", cmd, 6)
 
             Popen(cmd, executable="/bin/bash",shell=True, stdout=subprocess.PIPE,
                   stderr=subprocess.STDOUT).wait()
@@ -210,6 +212,7 @@ def kill_procs_base(self):
 
             if host != "localhost" and host != os.environ["HOSTNAME"]:
                 cmd = "ssh -x " + host + " '" + cmd + "'"
+                self.print_log("d", cmd, 6)
 
             self.print_log("d", "%s: About to kill the artdaq-associated art processes on %s" % (date_and_time(), host), 2)
             Popen(cmd, executable="/bin/bash",shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).wait()
@@ -226,6 +229,8 @@ def kill_procs_base(self):
             cmd = "kill -9 %s" % (" ".join(artdaq_pids))
             if host != "localhost" and host != os.environ["HOSTNAME"]:
                 cmd = "ssh -x " + host + " '" + cmd + "'"
+                self.print_log("d", cmd, 6)
+
             Popen(cmd, executable="/bin/bash",shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).wait()
 
     self.procinfos = []
@@ -289,6 +294,7 @@ def mopup_process_base(self, procinfo):
         
         if on_other_node:
             cmd = "ssh -x %s '%s'" % (procinfo.host, cmd)
+            self.print_log("d", cmd, 6)
 
         status = Popen(cmd, executable="/bin/bash",shell=True).wait()
         sleep(1)
@@ -298,7 +304,8 @@ def mopup_process_base(self, procinfo):
             
             if on_other_node:
                 cmd = "ssh -x %s '%s'" % (procinfo.host, cmd)
-            
+                self.print_log("d", cmd, 6)            
+
             self.print_log("w", "A standard kill of the artdaq process %s on %s didn't work; resorting to a kill -9" % \
                            (procinfo.label, procinfo.host))
             Popen(cmd, executable="/bin/bash",shell=True).wait()
@@ -330,6 +337,7 @@ def mopup_process_base(self, procinfo):
     
     if on_other_node:
         cmd = "ssh -x %s '%s'" % (procinfo.host, cmd)
+        self.print_log("d", cmd, 6)
 
     Popen(cmd, executable="/bin/bash",shell=True).wait()
 
@@ -343,6 +351,7 @@ def mopup_process_base(self, procinfo):
 
         if on_other_node:
             cmd = "ssh -x %s '%s'" % (procinfo.host, cmd)
+            self.print_log("d", cmd, 6)
         
         Popen(cmd, executable="/bin/bash",shell=True).wait()
 
@@ -390,6 +399,7 @@ def get_related_pids_for_process(procinfo):
 
     if procinfo.host != "localhost" and procinfo.host != os.environ["HOSTNAME"]:
         netstat_cmd = "ssh -x %s '%s'" % (procinfo.host, netstat_cmd)
+        self.print_log("d", netstat_cmd, 6)
 
     proc = Popen(netstat_cmd, executable="/bin/bash",shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
