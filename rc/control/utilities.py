@@ -102,9 +102,9 @@ def get_pids(greptoken, host="localhost", grepresults = None):
 
     if grepresults is not None:
         for line in lines:
-            grepresults.append( line ) # Clunkier than a straight assignment, but needed for pass-by-reference
+            grepresults.append( line.decode('utf-8') ) # Clunkier than a straight assignment, but needed for pass-by-reference
 
-    pids = [line.split()[1] for line in lines]
+    pids = [line.decode('utf-8').split()[1] for line in lines]
 
     return pids
 
@@ -116,7 +116,7 @@ def table_range(fhiclstring, tablename, startingloc=0):
 
     # 13-Apr-2018, KAB: added the startingloc argument so that this function can
     # be used to find more than the first instance of the tablename in the string.
-    loc = string.find(fhiclstring, tablename, startingloc)
+    loc = fhiclstring.find(tablename, startingloc)
 
     if loc == -1:
         return (-1, -1)
@@ -144,7 +144,7 @@ def table_range(fhiclstring, tablename, startingloc=0):
         else:
             return (-1, -1)
 
-    open_brace_loc = string.index(fhiclstring[loc:], "{")
+    open_brace_loc = fhiclstring[loc:].index("{")
 
     close_braces_needed = 1
     close_brace_loc = -1
@@ -173,7 +173,7 @@ def table_range(fhiclstring, tablename, startingloc=0):
 # contents of the entire table.
 def enclosing_table_range(fhiclstring, searchstring, startingloc=0):
 
-    loc = string.find(fhiclstring, searchstring, startingloc)
+    loc = fhiclstring.find(searchstring, startingloc)
 
     if loc == -1:
         return (-1, -1)
@@ -225,7 +225,7 @@ def enclosing_table_name(fhiclstring, searchstring, startingloc=0):
 
     (open_brace_loc, close_brace_loc_will_be_ignored) = enclosing_table_range(fhiclstring, searchstring, startingloc)
 
-    colon_loc = string.rindex(fhiclstring, ":", 0, open_brace_loc)
+    colon_loc = fhiclstring.rindex(":", 0, open_brace_loc)
 
     while fhiclstring[colon_loc - 1] == " ":
         colon_loc -= 1
@@ -255,7 +255,7 @@ def is_msgviewer_running():
 
     for line in Popen("ps u", shell=True, 
                       stdout=subprocess.PIPE).stdout.readlines():
-        if "msgviewer" in line and "DAQINTERFACE_TTY" in os.environ and os.environ["DAQINTERFACE_TTY"] in line:
+        if "msgviewer" in line.decode('utf-8') and "DAQINTERFACE_TTY" in os.environ and os.environ["DAQINTERFACE_TTY"] in line.decode('utf-8'):
             return True
 
     return False
@@ -284,10 +284,10 @@ def execute_command_in_xterm(home, cmd):
     Popen(fullcmd, shell=True).wait()
 
 def date_and_time():
-    return Popen("LC_ALL=\"en_US.UTF-8\" date", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    return Popen("LC_ALL=\"en_US.UTF-8\" date", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].decode('utf-8').strip()
 
 def date_and_time_more_precision():
-    return Popen("date +%a_%b_%d_%H:%M:%S.%N | sed -r 's/_/ /g'", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    return Popen("date +%a_%b_%d_%H:%M:%S.%N | sed -r 's/_/ /g'", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].decode('utf-8').strip()
 
 def construct_checked_command(cmds):
 
@@ -313,13 +313,13 @@ def reformat_fhicl_documents(setup_fhiclcpp, procinfos):
     cmd = "grep -c ^processor /proc/cpuinfo"
 
     nprocessors = Popen(cmd, shell=True,
-                        stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+                        stdout=subprocess.PIPE).stdout.readlines()[0].decode('utf-8').strip()
 
     if not re.search(r"^[0-9]+$", nprocessors):
         raise Exception(make_paragraph("A problem occurred when DAQInterface tried to execute \"%s\"; result was not an integer" % (cmd)))
 
-    reformat_indir = Popen("mktemp -d", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
-    reformat_outdir = Popen("mktemp -d", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    reformat_indir = Popen("mktemp -d", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].decode('utf-8').strip()
+    reformat_outdir = Popen("mktemp -d", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].decode('utf-8').strip()
 
     for procinfo in procinfos:
         with open("%s/%s.fcl" % (reformat_indir, procinfo.label), "w") as preformat_fhicl_file:
@@ -348,10 +348,10 @@ def reformat_fhicl_documents(setup_fhiclcpp, procinfos):
     if status != 0:
         
         if out_stdout is not None:
-            print (out_stdout)
+            print (out_stdout.decode('utf-8'))
 
         if out_stderr is not None:
-            print (out_stderr)
+            print (out_stderr.decode('utf-8'))
         
         raise Exception("There was a problem reformatting the FHiCL documents found in %s; this is very likely due to illegal FHiCL syntax somewhere. See above for more info." % (reformat_indir))
 
@@ -412,7 +412,11 @@ def get_commit_comment( gitrepo ):
     cmds.append("git log --format=%B -n 1 HEAD")
     proc = Popen(";".join(cmds), shell=True,
                  stdout=subprocess.PIPE)
-    single_line_comment = " ".join( proc.stdout.readlines() )
+
+    proclines = proc.stdout.readlines()
+    single_line_comment = proclines[0].decode('utf-8')
+    for line in proclines[1:]:
+      single_line_comment += " " + line.decode('utf-8')
 
     for badchar in [ '\n', '"', "'" ]:
         single_line_comment = single_line_comment.replace(badchar, "")
@@ -434,7 +438,7 @@ def get_commit_time(gitrepo):
     proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE)
     proclines = proc.stdout.readlines()
     
-    return proclines[0].strip()
+    return proclines[0].decode('utf-8').strip()
 
 def get_commit_branch(gitrepo):
     if not os.path.exists(gitrepo):
@@ -514,7 +518,7 @@ def get_build_info(pkgnames, setup_script):
         found_ups_package = False
         package_line_number = -1
         for i_l, line in enumerate(stdoutlines):
-            if re.search(r"^%s\s+" % (ups_pkgname), line):
+            if re.search(r"^%s\s+" % (ups_pkgname), line.decode('utf-8')):
                 found_ups_package = True
                 package_line_number = i_l
                 break
@@ -670,7 +674,7 @@ def get_private_networks(host):
     networks = []
 
     for line in lines:
-        network = line.strip()
+        network = line.decode('utf-8').strip()
         res = re.search(r"^([0-9]+\.[0-9]+\.[0-9]+\.)[0-9]+", network)
         if not res:
             raise Exception("Unexpected result from command \"%s\"; line \"%s\" doesn't appear to be an address" % (cmd, network))

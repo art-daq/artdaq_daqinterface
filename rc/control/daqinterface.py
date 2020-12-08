@@ -972,7 +972,7 @@ class DAQInterface(Component):
 
         proclines = proc.stdout.readlines()
 
-        printenv_line = proclines[-1]
+        printenv_line = proclines[-1].decode('utf-8')
         version = printenv_line.split()[1]
         qualifiers = printenv_line.split()[-1]
 
@@ -1235,7 +1235,7 @@ class DAQInterface(Component):
                 proclines = proc.stdout.readlines()
                 proclines_err = proc.stderr.readlines()
 
-                if len( [ line for line in proclines if re.search(r"\.log$", line) ]) == len(proctypes):
+                if len( [ line for line in proclines if re.search(r"\.log$", line.decode('utf-8')) ]) == len(proctypes):
                     break   # Success
                 else:
                     if num_logfile_checks == max_num_logfile_checks:
@@ -1246,17 +1246,18 @@ class DAQInterface(Component):
                     else:
                         sleep(2)  # Give the logfiles a bit of time to appear before the next check
                 
+
             for i_p in range(len(proclines)):
                 if "BoardReader" in proctypes[i_p]:
-                    self.boardreader_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip().split()[-1]))
+                    self.boardreader_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].decode('utf-8').strip().split()[-1]))
                 elif "EventBuilder" in proctypes[i_p]:
-                    self.eventbuilder_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip().split()[-1]))
+                    self.eventbuilder_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].decode('utf-8').strip().split()[-1]))
                 elif "DataLogger" in proctypes[i_p]:
-                    self.datalogger_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip().split()[-1]))
+                    self.datalogger_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].decode('utf-8').strip().split()[-1]))
                 elif "Dispatcher" in proctypes[i_p]:
-                    self.dispatcher_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip().split()[-1]))
+                    self.dispatcher_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].decode('utf-8').strip().split()[-1]))
                 elif "RoutingManager" in proctypes[i_p]:
-                    self.routingmanager_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].strip().split()[-1]))
+                    self.routingmanager_log_filenames.append("%s:%s" % (full_hostname, proclines[i_p].decode('utf-8').strip().split()[-1]))
                 else:
                     assert False, "Unknown process type found in procinfos list"
 
@@ -1591,7 +1592,7 @@ class DAQInterface(Component):
                     if proctype in procinfo.name and procinfo.subsystem == subsystem:
                         priorities_used[ procinfo.priority ] = procinfo
 
-                priority_rankings = sorted(priorities_used.iterkeys())
+                priority_rankings = sorted(priorities_used.keys())
 
                 for priority in priority_rankings:
                     proc_threads = {}
@@ -1944,12 +1945,14 @@ class DAQInterface(Component):
 
                 out_comm = out.communicate()
 
-                out_stdout = out_comm[0]
-                out_stderr = out_comm[1]
+                if out_comm[0] is not None:
+                    out_stdout = out_comm[0].decode('utf-8')
+                    self.print_log("d", "\nSTDOUT: \n%s" % (out_stdout), random_node_source_debug_level)
+                if out_comm[1] is not None:
+                    out_stderr = out_comm[1].decode('utf-8')
+                    self.print_log("d", "STDERR: \n%s" % (out_stderr), random_node_source_debug_level)
                 status = out.returncode
 
-                self.print_log("d", "\nSTDOUT: \n%s" % (out_stdout), random_node_source_debug_level)
-                self.print_log("d", "STDERR: \n%s" % (out_stderr), random_node_source_debug_level)
 
 
             if status != 0:
@@ -2742,7 +2745,7 @@ class DAQInterface(Component):
                     if name in procinfo.name:
                         priorities_used[ procinfo.priority ] = "We only care about the key in the dict"
 
-                for priority in sorted(priorities_used.iterkeys(), reverse = True):
+                for priority in sorted(priorities_used.keys(), reverse = True):
                     for procinfo in self.procinfos:
                         if name in procinfo.name and priority == procinfo.priority:
                             t = Thread(target=attempted_stop, args=(self, procinfo))

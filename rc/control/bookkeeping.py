@@ -786,7 +786,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                                                         rootoutput_table + \
                                                         self.procinfos[i_proc].fhicl_used[end:]
                                                     
-    for fhicl_key, fhicl_value in self.bootfile_fhicl_overwrites.iteritems():
+    for fhicl_key, fhicl_value in self.bootfile_fhicl_overwrites.items():
         print (fhicl_key, fhicl_value)
         for i_proc in range(len(self.procinfos)):
             self.procinfos[i_proc].fhicl_used = re.sub(r"%s\s*:\s*\S+" % (fhicl_key), \
