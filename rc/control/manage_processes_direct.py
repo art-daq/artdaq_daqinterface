@@ -269,9 +269,9 @@ def get_pid_for_process_base(self, procinfo):
         return None
     else:
         for grepped_line in grepped_lines:
-            print grepped_line
+            print (grepped_line)
 
-        print "Appear to have duplicate processes for %s on %s, pids: %s" % (procinfo.label, procinfo.host, " ".join( pids ))
+        print ("Appear to have duplicate processes for %s on %s, pids: %s" % (procinfo.label, procinfo.host, " ".join( pids )))
 
     return None
 
@@ -476,7 +476,7 @@ def main():
             procinfos.append( Procinfo("EventBuilder", "1", "localhost", "10101", "MockEventBuilder") )
 
             def print_log(self, ignore, string_to_print, ignore2):
-                print string_to_print
+                print (string_to_print)
             
 
         launch_procs_base( MockDAQInterface() )

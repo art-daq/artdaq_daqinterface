@@ -39,7 +39,7 @@ if version_to_integer(os.environ["ARTDAQ_DATABASE_VERSION"]) >= version_to_integ
     from conftool import getListOfMaskedRunConfigurations
 else:
     print
-    print make_paragraph("WARNING: you appear to be using an artdaq_database version older than v1_04_75 (%s), on the config transition DAQInterface will accept a configuration even if it's been masked off" % (os.environ["ARTDAQ_DATABASE_VERSION"]))
+    print (make_paragraph("WARNING: you appear to be using an artdaq_database version older than v1_04_75 (%s), on the config transition DAQInterface will accept a configuration even if it's been masked off" % (os.environ["ARTDAQ_DATABASE_VERSION"])))
     print
 
 from conftool import exportConfiguration
@@ -294,7 +294,7 @@ def listdaqcomps_base(self):
 
 def listconfigs_base(self):
     print
-    print "Available configurations: "
+    print ("Available configurations: ")
 
     config_cntr = 0
 
@@ -304,7 +304,7 @@ def listconfigs_base(self):
 
             if config_cntr <= self.max_configurations_to_list:
                 outf.write(config + "\n")
-                print config
+                print (config)
 
 def main():
 
@@ -313,11 +313,11 @@ def main():
     put_config_info_test = False
 
     if listconfigs_test:
-        print "Calling listconfigs_base"
+        print ("Calling listconfigs_base")
         listconfigs_base("ignored_argument")
         
     if get_config_info_test:
-        print "Calling get_config_info_base"
+        print ("Calling get_config_info_base")
 
         class MockDAQInterface:
             subconfigs_for_run = [ "ToyComponent_EBwriting00025" ]
@@ -325,11 +325,11 @@ def main():
 
         mydir, mydirs = get_config_info_base( MockDAQInterface() )
 
-        print "FHiCL directories to search: " + " ".join(mydirs)
-        print "Directory where the FHiCL documents are located: " + mydir
+        print ("FHiCL directories to search: " + " ".join(mydirs))
+        print ("Directory where the FHiCL documents are located: " + mydir)
 
     if put_config_info_test:
-        print "Calling put_config_info_base"
+        print ("Calling put_config_info_base")
 
         class MockDAQInterface:
             run_number = 73

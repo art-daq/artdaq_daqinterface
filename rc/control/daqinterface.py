@@ -356,17 +356,18 @@ class DAQInterface(Component):
                     
             else:
                 if self.fake_messagefacility:
-                    print "%%MSG-%s DAQInterface %s %s %s" % \
-                        (severity, formatted_day, time, timezone)
+                    print ("%%MSG-%s DAQInterface %s %s %s" % \
+                        (severity, formatted_day, time, timezone))
                 if not newline and not self.fake_messagefacility:
                     sys.stdout.write(printstr)
-                    sys.stdout.flush()
                 else:
-                    print printstr
+                    print (printstr)
 
 
                 if self.fake_messagefacility:
-                    print "%MSG"
+                    print ("%MSG")
+
+            sys.stdout.flush()
 
     # JCF, Dec-16-2016
 
@@ -732,8 +733,8 @@ class DAQInterface(Component):
                 package_hashes_to_save_unprocessed = res.group(1).split(",")
 
                 for ip, package in enumerate(package_hashes_to_save_unprocessed):
-                    package = string.replace(package, "\"", "")
-                    package = string.replace(package, " ", "") # strip() doesn't seem to work here
+                    package = package.replace("\"", "")
+                    package = package.replace(" ", "") # strip() doesn't seem to work here
                     self.package_hashes_to_save.append(package)
             elif "boardreader_timeout" in line or "boardreader timeout" in line:
                 self.boardreader_timeout = int( line.split()[-1].strip() )
@@ -1361,7 +1362,7 @@ class DAQInterface(Component):
                                     (self.fill_package_versions.__name__, cmd, "".join(stderrlines)))
 
             if len(stdoutlines) == 0:
-                print traceback.format_exc()
+                print (traceback.format_exc())
                 raise Exception("Error in %s: the command \"%s\" yields no output to stdout" % \
                                 (self.fill_package_versions.__name__, cmd))
 
@@ -2909,22 +2910,22 @@ def get_args():  # no-coverage
 def main():  # no-coverage
 
     if "DAQINTERFACE_STANDARD_SOURCEFILE_SOURCED" not in os.environ.keys():
-        print make_paragraph("Won't launch DAQInterface; you first need to run \"source $ARTDAQ_DAQINTERFACE_DIR/source_me\"")
+        print (make_paragraph("Won't launch DAQInterface; you first need to run \"source $ARTDAQ_DAQINTERFACE_DIR/source_me\""))
         print
         return
 
     if "DAQINTERFACE_SETTINGS" not in os.environ.keys():
-        print make_paragraph("Need to have the DAQINTERFACE_SETTINGS environment variable set to refer to the DAQInterface settings file")
+        print (make_paragraph("Need to have the DAQINTERFACE_SETTINGS environment variable set to refer to the DAQInterface settings file"))
         print
         return
 
     if not os.path.exists( os.environ["DAQINTERFACE_SETTINGS"] ):
-        print make_paragraph("The file referred to by the DAQINTERFACE_SETTINGS environment variable, \"%s\", does not appear to exist" % (os.environ["DAQINTERFACE_SETTINGS"]))
+        print (make_paragraph("The file referred to by the DAQINTERFACE_SETTINGS environment variable, \"%s\", does not appear to exist" % (os.environ["DAQINTERFACE_SETTINGS"])))
         print
         return
 
     if "DAQINTERFACE_KNOWN_BOARDREADERS_LIST" not in os.environ.keys():
-        print make_paragraph("Need to have the DAQINTERFACE_KNOWN_BOARDREADERS_LIST environment variable set to refer to the list of boardreader types DAQInterface can use")
+        print (make_paragraph("Need to have the DAQINTERFACE_KNOWN_BOARDREADERS_LIST environment variable set to refer to the list of boardreader types DAQInterface can use"))
         print
         return
 
@@ -2943,13 +2944,13 @@ def main():  # no-coverage
 
 
     if not os.path.exists( os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"] ):
-        print make_paragraph("The file referred to by the DAQINTERFACE_KNOWN_BOARDREADERS_LIST environment variable, \"%s\", does not appear to exist" % (os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"]))
+        print (make_paragraph("The file referred to by the DAQINTERFACE_KNOWN_BOARDREADERS_LIST environment variable, \"%s\", does not appear to exist" % (os.environ["DAQINTERFACE_KNOWN_BOARDREADERS_LIST"])))
         print
         return
 
     if not "HOSTNAME" in os.environ:
         print
-        print make_paragraph("WARNING: the \"HOSTNAME\" environment variable does not appear to be defined (or, at least, does not appear in the os.environ dictionary). Will internally set it using the system's \"hostname\" command")
+        print (make_paragraph("WARNING: the \"HOSTNAME\" environment variable does not appear to be defined (or, at least, does not appear in the os.environ dictionary). Will internally set it using the system's \"hostname\" command"))
         os.environ["HOSTNAME"] = Popen("hostname", executable="/bin/bash", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
         print
 
@@ -2963,15 +2964,15 @@ def main():  # no-coverage
     partition_number = vars(args)["partition_number"]
     if partition_number < 0 or partition_number > max_partitions - 1:
         print
-        print make_paragraph(
+        print (make_paragraph(
             "Error: requested partition has the value %d while it needs to be between 0 and %d, inclusive; please set the DAQINTERFACE_PARTITION_NUMBER environment variable accordingly and try again" % \
-            (partition_number, max_partitions-1))
+            (partition_number, max_partitions-1)))
         return
 
     greptoken = "python.*daqinterface.py.*--partition-number\s\+%d\s\+" % (partition_number)
     pids = get_pids(greptoken)
     if len(pids) > 1:  
-        print make_paragraph("There already appears to be a DAQInterface instance running on the requested partition number (%s); please either kill the instance (if it's yours) or use a different partition. Run \"listdaqinterfaces.sh\" for more info." % (partition_number))
+        print (make_paragraph("There already appears to be a DAQInterface instance running on the requested partition number (%s); please either kill the instance (if it's yours) or use a different partition. Run \"listdaqinterfaces.sh\" for more info." % (partition_number)))
         kill_tail_f() # Because tail -f is launched before this script is launched
         return
 
@@ -2989,7 +2990,7 @@ def main():  # no-coverage
             sleep(10)
 
         line = "%s: exiting..." % (date_and_time()) 
-        print line
+        print (line)
 
         daqinterface_instance.__del__()
 
