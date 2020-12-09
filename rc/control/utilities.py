@@ -666,7 +666,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THI
 def get_private_networks(host):
     cmd = "/usr/sbin/ifconfig | sed -r -n \"s/^\s*inet\s+(192\.168\.\S+|10\.\S+)\s+.*/\\1/p\""
 
-    if host != "localhost" and not os.environ["HOSTNAME"].contains(procinfo.host):
+    if host != "localhost" and not procinfo.host in os.environ["HOSTNAME"]:
         cmd = "ssh -x %s '%s'" % (host, cmd)
 
     lines = Popen(cmd, shell=True, stdout=subprocess.PIPE ).stdout.readlines() 
