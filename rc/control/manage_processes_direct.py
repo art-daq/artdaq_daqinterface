@@ -237,6 +237,10 @@ def softlink_process_manager_logfile(self, host):
     pmt_logfile = get_process_manager_log_filename(self, host)
     link_pmt_logfile_cmd = "ln -s %s %s/pmt/run%d-pmt_%s.log" % \
                                    (pmt_logfile, self.log_directory, self.run_number, host)
+
+    if host != "localhost" and host != os.environ["HOSTNAME"]:
+        link_pmt_logfile_cmd = "ssh -f %s '%s'" % (host, link_pmt_logfile_cmd)
+
     status = Popen(link_pmt_logfile_cmd, shell=True).wait()
 
     if status == 0:
@@ -263,8 +267,12 @@ def reset_process_manager_variables_base(self):
     pass
 
 def get_process_manager_log_filename(self, host):
-    cmd = "ls -tr1 %s/pmt/launch_attempt_%s_%s_partition%s* | tail -1" % (self.log_directory, host, os.environ["USER"], os.environ["DAQINTERFACE_PARTITION_NUMBER"])
-    log_filename_current = Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].decode('utf-8').strip()
+    get_log_filename_cmd = "ls -tr1 %s/pmt/launch_attempt_%s_%s_partition%s* | tail -1" % (self.log_directory, host, os.environ["USER"], os.environ["DAQINTERFACE_PARTITION_NUMBER"])
+
+    if host != "localhost" and host != os.environ["HOSTNAME"]:
+        get_log_filename_cmd = "ssh -f %s '%s'" % (host, get_log_filename_cmd)
+
+    log_filename_current = Popen(get_log_filename_cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].decode('utf-8').strip()
     return log_filename_current
 
 def get_process_manager_log_filenames_base(self):
