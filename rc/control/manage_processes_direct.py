@@ -19,6 +19,7 @@ from rc.control.utilities import construct_checked_command
 from rc.control.utilities import obtain_messagefacility_fhicl
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import upsproddir_from_productsdir
+from rc.control.utilities import get_short_hostname
 from rc.control.utilities import get_messagefacility_template_filename
 from rc.control.deepsuppression import deepsuppression
 
@@ -254,10 +255,10 @@ def softlink_process_manager_logfile(self, host):
 
 def softlink_process_manager_logfiles_base(self):
     # localhost first 
-    softlink_process_manager_logfile(self, os.environ["HOSTNAME"])
+    softlink_process_manager_logfile(self, get_short_hostname())
 
     for host in set([procinfo.host for procinfo in self.procinfos]):
-        if host != "localhost" and host != os.environ["HOSTNAME"]:
+        if host != "localhost" and host != get_short_hostname():
             softlink_process_manager_logfile(self, host)
     return
 
@@ -283,9 +284,9 @@ def get_process_manager_log_filenames_base(self):
     output = []
     
     # localhost first 
-    output.append(get_process_manager_log_filename(self, os.environ["HOSTNAME"]))
+    output.append(get_process_manager_log_filename(self, get_short_hostname()))
     for host in set([procinfo.host for procinfo in self.procinfos]):
-        if host != "localhost" and host != os.environ["HOSTNAME"]:
+        if host != "localhost" and host != get_short_hostname():
             output.append(get_process_manager_log_filename(self, host))
     
     return output

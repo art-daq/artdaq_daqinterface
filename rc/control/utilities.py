@@ -701,6 +701,10 @@ def record_directory_info(recorddir):
     stats = os.stat(recorddir)
     return "inode: %s" % (stats.st_ino)
     
+def get_short_hostname():
+    hostname = Popen("hostname -s", executable="/bin/bash", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    return hostname
+
 def main():
 
     if len(sys.argv) > 1 and sys.argv[1] == "get_commit_info":
