@@ -75,7 +75,7 @@ def launch_procs_base(self):
         raise Exception("The FHiCL code designed to control MessageViewer, found in %s, appears to contain one or more syntax errors (Or there was a problem running fhicl-dump)" % (get_messagefacility_template_filename()))
 
     for host in set([procinfo.host for procinfo in self.procinfos]):
-        if host != "localhost" and not procinfo.host in os.environ["HOSTNAME"]:
+        if host != "localhost" and not os.environ["HOSTNAME"].contains(procinfo.host):
             cmd = "scp -p %s %s:%s" % (messagefacility_fhicl_filename, host, messagefacility_fhicl_filename)
             status = Popen(cmd, executable="/bin/bash",shell=True).wait()
 
@@ -166,7 +166,7 @@ def launch_procs_base(self):
         launchcmd += "; "
         launchcmd += " ".join(launch_commands_to_run_on_host_background[ host ])  # Each command already terminated by ampersand
 
-        if not procinfo.host in os.environ["HOSTNAME"] and host != "localhost":
+        if not os.environ["HOSTNAME"].contains(procinfo.host) and host != "localhost":
             launchcmd = "ssh -f " + host + " '" + launchcmd + "'"
 
         self.print_log("d", "\nartdaq process launch commands to execute on %s (output will be in %s:%s):\n%s\n" % (host, host, self.launch_attempt_files[host], "\n".join(launch_commands_on_host_to_show_user[host])), 3)
@@ -200,7 +200,7 @@ def kill_procs_base(self):
                            (date_and_time(), host, " ".join( labels_of_found_processes ) ), 2)
 
             cmd = "kill %s" % (" ".join(artdaq_pids))
-            if host != "localhost" and not procinfo.host in os.environ["HOSTNAME"]:
+            if host != "localhost" and not os.environ["HOSTNAME"].contains(procinfo.host):
                 cmd = "ssh -x " + host + " '" + cmd + "'"
 
             Popen(cmd, executable="/bin/bash",shell=True, stdout=subprocess.PIPE,
@@ -214,7 +214,7 @@ def kill_procs_base(self):
 
             cmd = "kill -9 %s" % (" ".join( art_pids ) )   # JCF, Dec-8-2018: the "-9" is apparently needed...
 
-            if host != "localhost" and not procinfo.host in os.environ["HOSTNAME"]:
+            if host != "localhost" and not os.environ["HOSTNAME"].contains(procinfo.host):
                 cmd = "ssh -x " + host + " '" + cmd + "'"
 
             self.print_log("d", "%s: About to kill the artdaq-associated art processes on %s" % (date_and_time(), host), 2)
@@ -230,7 +230,7 @@ def kill_procs_base(self):
         if len(artdaq_pids) > 0:
             self.print_log("w", make_paragraph("Despite receiving a termination signal, the following artdaq processes on %s were not killed, so they'll be issued a SIGKILL: %s" % (host, " ".join(labels_of_found_processes))))
             cmd = "kill -9 %s" % (" ".join(artdaq_pids))
-            if host != "localhost" and not procinfo.host in os.environ["HOSTNAME"]:
+            if host != "localhost" and not os.environ["HOSTNAME"].contains(procinfo.host):
                 cmd = "ssh -x " + host + " '" + cmd + "'"
             Popen(cmd, executable="/bin/bash",shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).wait()
 
@@ -243,7 +243,7 @@ def softlink_process_manager_logfile(self, host):
     link_pmt_logfile_cmd = "ln -s %s %s/pmt/run%d-pmt_%s.log" % \
                                    (pmt_logfile, self.log_directory, self.run_number, host)
 
-    if host != "localhost" and not procinfo.host in os.environ["HOSTNAME"]:
+    if host != "localhost" and not os.environ["HOSTNAME"].contains(procinfo.host):
         link_pmt_logfile_cmd = "ssh -f %s '%s'" % (host, link_pmt_logfile_cmd)
 
     status = Popen(link_pmt_logfile_cmd, shell=True).wait()
@@ -258,7 +258,7 @@ def softlink_process_manager_logfiles_base(self):
     softlink_process_manager_logfile(self, os.environ["HOSTNAME"])
 
     for host in set([procinfo.host for procinfo in self.procinfos]):
-        if host != "localhost" and not procinfo.host in os.environ["HOSTNAME"]:
+        if host != "localhost" and not os.environ["HOSTNAME"].contains(procinfo.host):
             softlink_process_manager_logfile(self, host)
     return
 
@@ -274,7 +274,7 @@ def reset_process_manager_variables_base(self):
 def get_process_manager_log_filename(self, host):
     get_log_filename_cmd = "ls -tr1 %s/pmt/launch_attempt_%s_%s_partition%s* | tail -1" % (self.log_directory, host, os.environ["USER"], os.environ["DAQINTERFACE_PARTITION_NUMBER"])
 
-    if host != "localhost" and not procinfo.host in os.environ["HOSTNAME"]:
+    if host != "localhost" and not os.environ["HOSTNAME"].contains(procinfo.host):
         get_log_filename_cmd = "ssh -f %s '%s'" % (host, get_log_filename_cmd)
 
     log_filename_current = Popen(get_log_filename_cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].decode('utf-8').strip()
@@ -286,7 +286,7 @@ def get_process_manager_log_filenames_base(self):
     # localhost first 
     output.append(get_process_manager_log_filename(self, get_short_hostname()))
     for host in set([procinfo.host for procinfo in self.procinfos]):
-        if host != "localhost" and not procinfo.host in os.environ["HOSTNAME"]:
+        if host != "localhost" and not os.environ["HOSTNAME"].contains(procinfo.host):
             output.append(get_process_manager_log_filename(self, host))
     
     return output
@@ -321,7 +321,7 @@ def get_pid_for_process_base(self, procinfo):
 
 def mopup_process_base(self, procinfo):
 
-    if procinfo.host != "localhost" and not procinfo.host in os.environ["HOSTNAME"]:
+    if procinfo.host != "localhost" and not os.environ["HOSTNAME"].contains(procinfo.host):
         on_other_node = True
     else: 
         on_other_node = False
@@ -432,7 +432,7 @@ def get_related_pids_for_process(procinfo):
 
     netstat_cmd = "netstat -alpn | grep %s" % (procinfo.port)
 
-    if procinfo.host != "localhost" and not procinfo.host in os.environ["HOSTNAME"]:
+    if procinfo.host != "localhost" and not os.environ["HOSTNAME"].contains(procinfo.host):
         netstat_cmd = "ssh -x %s '%s'" % (procinfo.host, netstat_cmd)
 
     proc = Popen(netstat_cmd, executable="/bin/bash",shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
