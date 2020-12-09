@@ -85,33 +85,37 @@ def launch_procs_base(self):
     launch_commands_to_run_on_host = {}
     launch_commands_to_run_on_host_background = {}  # Need to run artdaq processes in the background so they're persistent outside of this function's Popen calls
     launch_commands_on_host_to_show_user = {} # Don't want to clobber a pre-existing logfile or clutter the commands via "$?" checks
-            
-    self.launch_attempt_file = "%s/pmt/launch_attempt_%s_%s_partition%s_%s" % (self.log_directory, get_short_hostname(), os.environ["USER"], os.environ["DAQINTERFACE_PARTITION_NUMBER"], date_and_time_filename())
+
+    self.launch_attempt_files = {}
 
     for procinfo in self.procinfos:
 
+        if procinfo.host == "localhost":
+            procinfo.host = get_short_hostname()
+
         if not procinfo.host in launch_commands_to_run_on_host:
+            self.launch_attempt_files[procinfo.host ] = "%s/pmt/launch_attempt_%s_%s_partition%s_%s" % (self.log_directory, procinfo.host, os.environ["USER"], os.environ["DAQINTERFACE_PARTITION_NUMBER"], date_and_time_filename())
 
             launch_commands_to_run_on_host[ procinfo.host ] = []
             launch_commands_to_run_on_host_background[ procinfo.host ] = []
             launch_commands_on_host_to_show_user[ procinfo.host ] = []
 
             launch_commands_to_run_on_host[ procinfo.host ].append("set +C")  
-            launch_commands_to_run_on_host[ procinfo.host ].append("echo > %s" % (self.launch_attempt_file))
-            launch_commands_to_run_on_host[ procinfo.host ].append("export PRODUCTS=\"%s\"; . %s/setup >> %s 2>&1 " % (self.productsdir,upsproddir_from_productsdir(self.productsdir),self.launch_attempt_file))
+            launch_commands_to_run_on_host[ procinfo.host ].append("echo > %s" % (self.launch_attempt_files[procinfo.host]))
+            launch_commands_to_run_on_host[ procinfo.host ].append("export PRODUCTS=\"%s\"; . %s/setup >> %s 2>&1 " % (self.productsdir,upsproddir_from_productsdir(self.productsdir),self.launch_attempt_files[procinfo.host]))
             launch_commands_to_run_on_host[ procinfo.host ].append( bash_unsetup_command + " > /dev/null 2>&1 " )
-            launch_commands_to_run_on_host[ procinfo.host ].append("source %s for_running >> %s 2>&1 " % (self.daq_setup_script, self.launch_attempt_file ))
+            launch_commands_to_run_on_host[ procinfo.host ].append("source %s for_running >> %s 2>&1 " % (self.daq_setup_script, self.launch_attempt_files[procinfo.host] ))
             launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_ROOT=%s" % (self.log_directory))
             launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))
 
-            launch_commands_to_run_on_host[ procinfo.host ].append("which boardreader >> %s 2>&1 " % (self.launch_attempt_file)) # Assume if this works, eventbuilder, etc. are also there
-            launch_commands_to_run_on_host[ procinfo.host ].append("%s/bin/mopup_shmem.sh %s --force >> %s 2>&1" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"], os.environ["DAQINTERFACE_PARTITION_NUMBER"], self.launch_attempt_file))
+            launch_commands_to_run_on_host[ procinfo.host ].append("which boardreader >> %s 2>&1 " % (self.launch_attempt_files[procinfo.host])) # Assume if this works, eventbuilder, etc. are also there
+            launch_commands_to_run_on_host[ procinfo.host ].append("%s/bin/mopup_shmem.sh %s --force >> %s 2>&1" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"], os.environ["DAQINTERFACE_PARTITION_NUMBER"], self.launch_attempt_files[procinfo.host]))
             #launch_commands_to_run_on_host[ procinfo.host ].append("setup valgrind v3_13_0")
 	    #launch_commands_to_run_on_host[ procinfo.host ].append("export LD_PRELOAD=libasan.so")
 	    #launch_commands_to_run_on_host[ procinfo.host ].append("export ASAN_OPTIONS=alloc_dealloc_mismatch=0")
 
             for command in launch_commands_to_run_on_host[ procinfo.host ]:
-                res = re.search(r"^([^>]*).*%s.*$" % (self.launch_attempt_file), command)
+                res = re.search(r"^([^>]*).*%s.*$" % (self.launch_attempt_files[procinfo.host]), command)
                 if not res:
                     launch_commands_on_host_to_show_user[ procinfo.host ].append( command)
                 else:
@@ -130,7 +134,7 @@ def launch_procs_base(self):
         
 
         #base_launch_cmd = "valgrind --tool=callgrind %s" % (base_launch_cmd)
-        launch_cmd = "%s >> %s 2>&1 & " % (base_launch_cmd, self.launch_attempt_file)
+        launch_cmd = "%s >> %s 2>&1 & " % (base_launch_cmd, self.launch_attempt_files[procinfo.host])
 
         launch_commands_to_run_on_host_background[ procinfo.host ].append( launch_cmd )
         launch_commands_on_host_to_show_user[ procinfo.host].append( "%s &" % (base_launch_cmd) )
@@ -165,13 +169,13 @@ def launch_procs_base(self):
         if not procinfo.host in os.environ["HOSTNAME"] and host != "localhost":
             launchcmd = "ssh -f " + host + " '" + launchcmd + "'"
 
-        self.print_log("d", "\nartdaq process launch commands to execute on %s (output will be in %s:%s):\n%s\n" % (host, host, self.launch_attempt_file, "\n".join(launch_commands_on_host_to_show_user[host])), 3)
+        self.print_log("d", "\nartdaq process launch commands to execute on %s (output will be in %s:%s):\n%s\n" % (host, host, self.launch_attempt_files[host], "\n".join(launch_commands_on_host_to_show_user[host])), 3)
         
         with deepsuppression(self.debug_level < 5):
             status = Popen(launchcmd, executable="/bin/bash",shell=True, preexec_fn=os.setpgrp).wait()
 
         if status != 0:   
-            self.print_log("e", "Status error raised in attempting to launch processes on %s, to investigate, see %s:%s for output" % (host, host, self.launch_attempt_file))
+            self.print_log("e", "Status error raised in attempting to launch processes on %s, to investigate, see %s:%s for output" % (host, host, self.launch_attempt_files[host]))
             self.print_log("i", make_paragraph("You can also try running again with the \"debug level\" in the boot file set to 4. Otherwise, you can recreate what DAQInterface did by performing a clean login to %s, source-ing the DAQInterface environment and executing the following:" % (host)))
             self.print_log("i", "\n" + "\n".join(launch_commands_on_host_to_show_user[host]) + "\n")
             raise Exception("Status error raised attempting to launch processes on %s; scroll up for more detail" % (host))
@@ -182,7 +186,7 @@ def launch_procs_base(self):
 
 def process_launch_diagnostics_base(self, procinfos_of_failed_processes):
     for host in set([procinfo.host for procinfo in procinfos_of_failed_processes]):
-        self.print_log("e", "\nOutput of unsuccessful attempted process launch on %s can be found in file %s:%s" % (host, host, self.launch_attempt_file))
+        self.print_log("e", "\nOutput of unsuccessful attempted process launch on %s can be found in file %s:%s" % (host, host, self.launch_attempt_files[host]))
 
 
 
