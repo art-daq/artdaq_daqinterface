@@ -666,7 +666,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THI
 def get_private_networks(host):
     cmd = "/usr/sbin/ifconfig | sed -r -n \"s/^\s*inet\s+(192\.168\.\S+|10\.\S+)\s+.*/\\1/p\""
 
-    if host != "localhost" and not os.environ["HOSTNAME"].contains(procinfo.host):
+    if host != "localhost" and host != os.environ["HOSTNAME"]:
         cmd = "ssh -x %s '%s'" % (host, cmd)
 
     lines = Popen(cmd, shell=True, stdout=subprocess.PIPE ).stdout.readlines() 
@@ -701,12 +701,6 @@ def record_directory_info(recorddir):
     stats = os.stat(recorddir)
     return "inode: %s" % (stats.st_ino)
     
-def get_short_hostname():
-    cmd = "hostname -s"
-
-    hostname = Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].decode('utf-8').strip()
-    return hostname
-
 def main():
 
     if len(sys.argv) > 1 and sys.argv[1] == "get_commit_info":

@@ -1220,7 +1220,7 @@ class DAQInterface(Component):
 
             cmd = "; ".join( cmds )
 
-            if not os.environ["HOSTNAME"].contains(procinfo.host) and host != "localhost":
+            if host != os.environ["HOSTNAME"] and host != "localhost":
                 cmd = "ssh -f " + host + " '" + cmd + "'"
 
             num_logfile_checks = 0
@@ -1314,7 +1314,7 @@ class DAQInterface(Component):
         for host in softlink_commands_to_run_on_host:
             link_logfile_cmd = "; ".join( softlink_commands_to_run_on_host[host] )
 
-            if host != "localhost" and not os.environ["HOSTNAME"].contains(procinfo.host):
+            if host != "localhost" and host != os.environ["HOSTNAME"]:
                 link_logfile_cmd = "ssh %s '%s'" % (host, link_logfile_cmd)
 
             status = Popen(link_logfile_cmd, executable="/bin/bash", shell=True).wait()
@@ -1936,7 +1936,7 @@ class DAQInterface(Component):
             with deepsuppression(self.debug_level < random_node_source_debug_level):
                 cmd = "%s ; . %s for_running" % (bash_unsetup_command, self.daq_setup_script)
 
-                if random_host != "localhost" and not os.environ["HOSTNAME"].contains(procinfo.host):
+                if random_host != "localhost" and random_host != os.environ["HOSTNAME"]:
                     cmd = "timeout %d ssh %s '%s'" % (ssh_timeout_in_seconds, random_host, cmd)
 
                 out = Popen(cmd, executable="/bin/bash", shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
@@ -1980,7 +1980,7 @@ class DAQInterface(Component):
             for host in set([procinfo.host for procinfo in self.procinfos]):
                 logdircmd = construct_checked_command( logdir_commands_to_run_on_host )
 
-                if not os.environ["HOSTNAME"].contains(procinfo.host) and host != "localhost":
+                if host != os.environ["HOSTNAME"] and host != "localhost":
                     logdircmd = "timeout %d ssh -f %s '%s'" % (ssh_timeout_in_seconds, host, logdircmd)
 
                 with deepsuppression(self.debug_level < 4):
@@ -2950,7 +2950,7 @@ def main():  # no-coverage
     if not "HOSTNAME" in os.environ:
         print
         print make_paragraph("WARNING: the \"HOSTNAME\" environment variable does not appear to be defined (or, at least, does not appear in the os.environ dictionary). Will internally set it using the system's \"hostname\" command")
-        os.environ["HOSTNAME"] = Popen("hostname -s", executable="/bin/bash", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+        os.environ["HOSTNAME"] = Popen("hostname", executable="/bin/bash", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
         print
 
     args = get_args()
