@@ -14,6 +14,7 @@ sys.path.append( os.environ["ARTDAQ_DAQINTERFACE_DIR"] )
 from rc.control.utilities import get_pids
 from rc.control.utilities import bash_unsetup_command
 from rc.control.utilities import date_and_time
+from rc.control.utilities import date_and_time_filename
 from rc.control.utilities import construct_checked_command
 from rc.control.utilities import obtain_messagefacility_fhicl
 from rc.control.utilities import make_paragraph
@@ -84,7 +85,7 @@ def launch_procs_base(self):
     launch_commands_to_run_on_host_background = {}  # Need to run artdaq processes in the background so they're persistent outside of this function's Popen calls
     launch_commands_on_host_to_show_user = {} # Don't want to clobber a pre-existing logfile or clutter the commands via "$?" checks
             
-    self.launch_attempt_file = "/tmp/launch_attempt_%s_partition%s" % (os.environ["USER"], os.environ["DAQINTERFACE_PARTITION_NUMBER"])
+    self.launch_attempt_file = "%s/pmt/launch_attempt_%s_%s_partition%s_%s" % (self.log_directory, os.environ["HOSTNAME"], os.environ["USER"], os.environ["DAQINTERFACE_PARTITION_NUMBER"], date_and_time_filename())
 
     for procinfo in self.procinfos:
 
@@ -232,7 +233,24 @@ def kill_procs_base(self):
 
     return
 
+def softlink_process_manager_logfile(self, host):
+    pmt_logfile = get_process_manager_log_filename(self, host)
+    link_pmt_logfile_cmd = "ln -s %s %s/pmt/run%d-pmt_%s.log" % \
+                                   (pmt_logfile, self.log_directory, self.run_number, host)
+    status = Popen(link_pmt_logfile_cmd, shell=True).wait()
+
+    if status == 0:
+        return True
+    else:
+        return False
+
 def softlink_process_manager_logfiles_base(self):
+    # localhost first 
+    softlink_process_manager_logfile(self, os.environ["HOSTNAME"])
+
+    for host in set([procinfo.host for procinfo in self.procinfos]):
+        if host != "localhost" and host != os.environ["HOSTNAME"]:
+            softlink_process_manager_logfile(self, host)
     return
 
 def find_process_manager_variable_base(self, line):
@@ -244,8 +262,21 @@ def set_process_manager_default_variables_base(self):
 def reset_process_manager_variables_base(self):
     pass
 
+def get_process_manager_log_filename(self, host):
+    cmd = "ls -tr1 %s/pmt/launch_attempt_%s_%s_partition%s* | tail -1" % (self.log_directory, host, os.environ["USER"], os.environ["DAQINTERFACE_PARTITION_NUMBER"])
+    log_filename_current = Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].decode('utf-8').strip()
+    return log_filename_current
+
 def get_process_manager_log_filenames_base(self):
-    return []
+    output = []
+    
+    # localhost first 
+    output.append(get_process_manager_log_filename(self, os.environ["HOSTNAME"]))
+    for host in set([procinfo.host for procinfo in self.procinfos]):
+        if host != "localhost" and host != os.environ["HOSTNAME"]:
+            output.append(get_process_manager_log_filename(self, host))
+    
+    return output
 
 def process_manager_cleanup_base(self):
     pass
