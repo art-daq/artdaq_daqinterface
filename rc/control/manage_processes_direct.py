@@ -357,11 +357,11 @@ def mopup_process_base(self, procinfo):
 # If you change what this function returns, you should rename it for obvious reasons
 def get_pids_and_labels_on_host(host, procinfos):
 
-    greptoken = "[0-9]:[0-9][0-9]\s\+\(%s\).*application_name.*partition_number:\s*%s" % \
-                ("\|".join(set([".*" + bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])), \
+    greptoken = "[0-9]:[0-9][0-9]\s\+.*\(%s\).*application_name.*partition_number:\s*%s" % \
+                ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])), \
                  os.environ["DAQINTERFACE_PARTITION_NUMBER"])
-    sshgreptoken = "[0-9]:[0-9][0-9]\s\+\(%s\).*application_name.*partition_number:\s*%s" % \
-                ("\|".join(set(["ssh .*" + bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])), \
+    sshgreptoken = "[0-9]:[0-9][0-9]\s\+ssh.*\(%s\).*application_name.*partition_number:\s*%s" % \
+                ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])), \
                  os.environ["DAQINTERFACE_PARTITION_NUMBER"])
 
     #greptoken = "[0-9]:[0-9][0-9]\s\+valgrind.*\(%s\).*application_name.*partition_number:\s*%s" % \
