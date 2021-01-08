@@ -289,6 +289,9 @@ def date_and_time():
 def date_and_time_more_precision():
     return Popen("date +%a_%b_%d_%H:%M:%S.%N | sed -r 's/_/ /g'", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].decode('utf-8').strip()
 
+def date_and_time_filename():
+    return Popen("LC_ALL=\"en_US.UTF-8\" date +%Y%m%d%H%M%S", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+
 def construct_checked_command(cmds):
 
     checked_cmds = []
@@ -702,6 +705,10 @@ def record_directory_info(recorddir):
     stats = os.stat(recorddir)
     return "inode: %s" % (stats.st_ino)
     
+def get_short_hostname():
+    hostname = Popen("hostname -s", executable="/bin/bash", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    return hostname
+
 def main():
 
     if len(sys.argv) > 1 and sys.argv[1] == "get_commit_info":
