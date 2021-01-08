@@ -20,6 +20,7 @@ daq: {
 	}
 
 	auto_suppression_enabled: false
+    tcp_receive_buffer_size: 81000
 	sources: { }
   }
 
