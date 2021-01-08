@@ -2174,6 +2174,7 @@ class DAQInterface(Component):
                 self.get_artdaq_log_filenames()
 
             except Exception:
+                self.print_log("e", traceback.format_exc())
                 self.alert_and_recover("Unable to find logfiles for at least some of the artdaq processes")
                 return
             endtime = time()
