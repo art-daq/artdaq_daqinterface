@@ -257,12 +257,9 @@ def softlink_process_manager_logfile(self, host):
         return False
 
 def softlink_process_manager_logfiles_base(self):
-    # localhost first 
-    softlink_process_manager_logfile(self, get_short_hostname())
 
     for host in set([procinfo.host for procinfo in self.procinfos]):
-        if not host_is_local(host):
-            softlink_process_manager_logfile(self, host)
+        softlink_process_manager_logfile(self, host)
     return
 
 def find_process_manager_variable_base(self, line):
@@ -286,11 +283,8 @@ def get_process_manager_log_filename(self, host):
 def get_process_manager_log_filenames_base(self):
     output = []
     
-    # localhost first 
-    output.append(get_process_manager_log_filename(self, get_short_hostname()))
     for host in set([procinfo.host for procinfo in self.procinfos]):
-        if not host_is_local(host):
-            output.append(get_process_manager_log_filename(self, host))
+         output.append(get_process_manager_log_filename(self, host))
     
     return output
 
