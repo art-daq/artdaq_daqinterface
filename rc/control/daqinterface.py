@@ -2612,7 +2612,10 @@ class DAQInterface(Component):
             return
 
         if self.state(self.name) == "running" or self.state(self.name) == "stopping":
-            self.execute_trace_script("stop")
+            try:
+                self.execute_trace_script("stop")
+            except Exception:
+                pass
 
         def attempted_stop(self, procinfo):
 
