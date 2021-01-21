@@ -115,10 +115,14 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     fragments_per_boardreader = {}
     subsystem_fragment_count = { }
     subsystem_fragment_space = { }
+    subsystem_fragment_ids = {}
+    subsystem_eventbuilder_fragment_id = {}
 
     for ss in self.subsystems:
         subsystem_fragment_count[ss] = 0
         subsystem_fragment_space[ss] = 0
+        subsystem_fragment_ids[ss] = []
+        subsystem_eventbuilder_fragment_id[ss] = -1
 
     for procinfo in self.procinfos:
         if "BoardReader" in procinfo.name:
@@ -138,6 +142,22 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             if res:
                 generated_fragments_per_event = int(res.group(1))
 
+            res = re.search(r"\n\s*fragment_ids?\s*:\s*(?:([0-9]+)|\[([^\]]*)\])", procinfo.fhicl_used)
+
+            if res:
+                new_fragment_ids = []
+                if res.group(1) is not None:
+                    new_fragment_ids.append(int(res.group(1)))
+                if res.group(2) is not None:
+                    tmp_list = res.group(2).split(",")
+                    for id in tmp_list:
+                        new_fragment_ids.append(int(id))
+                for fragment_id in new_fragment_ids:
+                    if fragment_id in subsystem_fragment_ids[procinfo.subsystem]:
+                        assert False, "Duplicate Fragment ID in configuration: %d, detected in process %s" % (fragment_id, procinfo.label)
+                    self.print_log("i", "Adding fragment_id %d from process %s to list for subsystem %s" % (fragment_id, procinfo.label, procinfo.subsystem))
+                    subsystem_fragment_ids[procinfo.subsystem].append(fragment_id)
+
             fragments_per_boardreader[ procinfo.label ] = generated_fragments_per_event
             subsystem_fragment_count[ procinfo.subsystem ] += generated_fragments_per_event
 
@@ -150,6 +170,53 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 fragment_space = self.max_fragment_size_bytes
                 
             subsystem_fragment_space[ procinfo.subsystem ] += generated_fragments_per_event*fragment_space
+        # Check for EventBuilders sending to other subsystems
+        if "EventBuilder" in procinfo.name:
+            dest_ss = self.subsystems[procinfo.subsystem].destination
+            if dest_ss is not None:
+                # The default behavior of ArtdaqOutput is to use the rank for 
+                # fragment_id. That won't work here, so lets make sure its set
+                res = re.search(r"\s*fragment_id\s*:\s*([0-9]+)", procinfo.fhicl_used)
+                res2 = re.search(r"\s*module_type\s*:\s*\"?BinaryNetOutput\"?", procinfo.fhicl_used)
+
+                if res2 is None:
+                    if res is None:
+                        assert False, "%s, configured to send to subsystem %s using RootNetOutput must have fragment_id set!" % (procinfo.label, dest_ss)
+                    fragment_id = int(res.group(1))
+                    if subsystem_eventbuilder_fragment_id[dest_ss] != -1:
+                        if subsystem_eventbuilder_fragment_id[dest_ss] != fragment_id:
+                            assert False, "All Eventbuilders in subsystem %s must use the same fragment_id. %s currently has id %d, but %d has already been used by a different EVB" % (procinfo.subsystem, procinfo.label, fragment_id, subsystem_eventbuilder_fragment_id[dest_ss])
+                    elif fragment_id in subsystem_fragment_ids[dest_ss]:
+                        assert False, "Duplicate Fragment ID in configuration: %d, detected in process %s" % (fragment_id, procinfo.label)
+                    else:
+                        self.print_log("i", "Adding fragment_id %d from process %s to list for EVBs in subsystem %s" % (fragment_id, procinfo.label, procinfo.subsystem))
+                        subsystem_fragment_ids[dest_ss].append(fragment_id)
+                        subsystem_eventbuilder_fragment_id[dest_ss] = fragment_id
+
+    # Account for pass-through fragment IDs from BinaryNetOutput
+    def calculate_expected_fragment_ids_per_event(ss):
+        ids = list(subsystem_fragment_ids[ss])
+       
+        for ss_source in self.subsystems[ss].sources:
+            if self.subsystems[ss_source].fragmentMode:
+                for id in list(calculate_expected_fragment_ids_per_event(ss_source)):
+                    ids.append(id)
+
+        ids_set = set(ids)
+        return list(ids_set)
+    for ss in self.subsystems:
+        subsystem_fragment_ids[ss] = calculate_expected_fragment_ids_per_event(ss)
+
+
+    # Set the expected_fragment_ids parameter in EventBuilders, if present
+    for i_proc in range(len(self.procinfos)):
+        if "EventBuilder" in self.procinfos[i_proc].name:
+            str_ids = [str(fid) for fid in subsystem_fragment_ids[self.procinfos[i_proc].subsystem]]
+            self.print_log("i", "Setting expected_fragment_ids for process %s to [%s]" % (self.procinfos[i_proc].label, ", ".join(str_ids)))
+            self.procinfos[i_proc].fhicl_used = re.sub("expected_fragment_ids\s*:\s*\[[^\]]*\]", 
+                                                       "expected_fragment_ids: [%s]" % (", ".join(str_ids)), 
+                                                       self.procinfos[i_proc].fhicl_used)
+
 
     # Now using the per-subsystem info we've gathered, use recursion
     # to determine the *true* number of fragments per event and the

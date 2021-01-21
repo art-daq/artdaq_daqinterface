@@ -12,6 +12,7 @@ daq: {
     request_port: 3001
     request_address: "227.128.12.26" # Multicast request address
 	send_init_frags: false
+    expected_fragment_ids: []
 
 	routing_token_config: {
 	use_routing_manager: false
@@ -42,6 +43,7 @@ outputs: {
     #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
     #broadcast_sends: true
 	destinations: {	}	
+    fragment_id: 50
   }
   #normalOutput: {
   #  module_type: RootDAQOut
