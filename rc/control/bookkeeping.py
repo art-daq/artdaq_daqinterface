@@ -144,7 +144,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
             res = re.search(r"\n\s*fragment_ids?\s*:\s*(?:([0-9]+)|\[([^\]]*)\])", procinfo.fhicl_used)
 
-            if res:
+            if res and generated_fragments_per_event > 0:
                 new_fragment_ids = []
                 if res.group(1) is not None:
                     new_fragment_ids.append(int(res.group(1)))
