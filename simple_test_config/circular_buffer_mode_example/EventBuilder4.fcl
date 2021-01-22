@@ -19,6 +19,7 @@ daq: {
 	send_requests: true
     request_port: 3001
     request_address: "227.128.12.26"
+	expected_fragment_ids: []
 	
 	routing_token_config: {
 	use_routing_manager: false

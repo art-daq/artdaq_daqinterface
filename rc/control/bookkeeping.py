@@ -176,6 +176,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             if dest_ss is not None:
                 # The default behavior of ArtdaqOutput is to use the rank for 
                 # fragment_id. That won't work here, so lets make sure its set
+                # TODO 01/21/2021, ELF: Should we generate and set fragment_id?
                 res = re.search(r"\s*fragment_id\s*:\s*([0-9]+)", procinfo.fhicl_used)
                 res2 = re.search(r"\s*module_type\s*:\s*\"?BinaryNetOutput\"?", procinfo.fhicl_used)
 
@@ -183,15 +184,15 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     if res is None:
                         assert False, "%s, configured to send to subsystem %s using RootNetOutput must have fragment_id set!" % (procinfo.label, dest_ss)
                     fragment_id = int(res.group(1))
-                    if subsystem_eventbuilder_fragment_id[dest_ss] != -1:
-                        if subsystem_eventbuilder_fragment_id[dest_ss] != fragment_id:
-                            assert False, "All Eventbuilders in subsystem %s must use the same fragment_id. %s currently has id %d, but %d has already been used by a different EVB" % (procinfo.subsystem, procinfo.label, fragment_id, subsystem_eventbuilder_fragment_id[dest_ss])
+                    if subsystem_eventbuilder_fragment_id[procinfo.subsystem] != -1:
+                        if subsystem_eventbuilder_fragment_id[procinfo.subsystem] != fragment_id:
+                            assert False, "All Eventbuilders in subsystem %s must use the same fragment_id. %s currently has id %d, but %d has already been used by a different EVB" % (procinfo.subsystem, procinfo.label, fragment_id, subsystem_eventbuilder_fragment_id[procinfo.subsystem])
                     elif fragment_id in subsystem_fragment_ids[dest_ss]:
                         assert False, "Duplicate Fragment ID in configuration: %d, detected in process %s" % (fragment_id, procinfo.label)
                     else:
                         self.print_log("i", "Adding fragment_id %d from process %s to list for EVBs in subsystem %s" % (fragment_id, procinfo.label, procinfo.subsystem))
                         subsystem_fragment_ids[dest_ss].append(fragment_id)
-                        subsystem_eventbuilder_fragment_id[dest_ss] = fragment_id
+                        subsystem_eventbuilder_fragment_id[procinfo.subsystem] = fragment_id
 
     # Account for pass-through fragment IDs from BinaryNetOutput
     def calculate_expected_fragment_ids_per_event(ss):

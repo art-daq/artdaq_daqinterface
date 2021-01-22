@@ -10,6 +10,7 @@ daq: {
 	verbose: true
 	init_fragment_count: 0
 	send_requests: false
+	expected_fragment_ids: []
 	
     routing_token_config: {
         ## True if using the Routing Manager
@@ -46,6 +47,7 @@ outputs: {
     #SelectEvents: [ delay ] 
     #broadcast_sends: true
 	destinations: {	}
+    fragment_id: 50
 
 	routing_table_config: {
 	    use_routing_manager: false

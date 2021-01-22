@@ -212,9 +212,9 @@ component13_standard.fragment_receiver.request_windows_are_unique: false
 # reduced MORE the ADC counts in the baseline BR with lots of fragments per event
 component14_standard: @local::component_standard
 component14_standard.fragment_receiver.fragment_type: TOY2
-component14_standard.fragment_receiver.fragment_id: 12
-component14_standard.fragment_receiver.board_id: 12
-component14_standard.fragment_receiver.starting_fragment_id: 12
+component14_standard.fragment_receiver.fragment_id: 13
+component14_standard.fragment_receiver.board_id: 13
+component14_standard.fragment_receiver.starting_fragment_id: 13
 component14_standard.fragment_receiver.random_seed: 12738
 component14_standard.fragment_receiver.nADCcounts: 10
 component14_standard.fragment_receiver.max_fragment_size_bytes: 50000

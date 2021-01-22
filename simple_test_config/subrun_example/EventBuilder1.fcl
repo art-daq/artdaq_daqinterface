@@ -10,6 +10,7 @@ daq: {
     max_incomplete_events: 75 # Same as boardreader sync interval
     verbose: true
     send_requests: false
+	expected_fragment_ids: []
 
     routing_token_config: @local::artdaq_EB_routing_token_specification
 

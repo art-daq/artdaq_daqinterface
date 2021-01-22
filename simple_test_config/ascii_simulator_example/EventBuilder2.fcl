@@ -15,6 +15,7 @@ daq: {
 	send_init_fragments: false
 	verbose: false
 	send_requests: false
+	expected_fragment_ids: []
 	
 	routing_token_config: {
 	use_routing_manager: false

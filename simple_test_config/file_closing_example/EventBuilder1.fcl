@@ -15,6 +15,7 @@ daq: {
 	max_incomplete_events: 75 # Same as boardreader sync interval
 	verbose: false
 	send_requests: false
+	expected_fragment_ids: []
 
 	routing_token_config: {
 	use_routing_manager: false

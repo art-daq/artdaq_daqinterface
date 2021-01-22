@@ -20,6 +20,7 @@ daq: {
 	request_address: "227.128.12.26"
 	multicast_interface_ip: "0.0.0.0"
 	expected_art_event_processing_time_us: 2000000
+	expected_fragment_ids: []
 
     routing_token_config: {
         ## True if using the Routing Manager
