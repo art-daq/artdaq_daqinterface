@@ -2389,8 +2389,8 @@ class DAQInterface(Component):
         self.complete_state_change(self.name, "configuring")
 
         if self.manage_processes:
-            self.print_log("i", "\nProcess manager logfiles (if applicable):\n%s" % (", ".join(self.process_manager_log_filenames)))
-
+            self.print_log("i", str("\nProcess manager logfiles (if applicable):\n%s" % (", ".join(self.process_manager_log_filenames))))
+            
         self.print_log("i", "\n%s: CONFIG transition complete" % (date_and_time()))
 
     def do_start_running(self, run_number = None):
