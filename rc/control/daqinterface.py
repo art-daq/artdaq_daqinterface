@@ -1479,6 +1479,9 @@ class DAQInterface(Component):
                                (command, self.procinfos[procinfo_index].label), 2)
                 return
 
+            timeout_dict = { "BoardReader": self.boardreader_timeout, "EventBuilder": self.eventbuilder_timeout, "DataLogger": self.datalogger_timeout, "Dispatcher": self.dispatcher_timeout, "RoutingManager": self.routingmanager_timeout}
+            timeout = timeout_dict[self.procinfos[procinfo_index].name]
+
             self.procinfos[procinfo_index].state = self.verbing_to_states[command]
                 
             try:
@@ -1486,12 +1489,12 @@ class DAQInterface(Component):
 
                 if command == "Init":
                     self.procinfos[procinfo_index].lastreturned = \
-                        self.procinfos[procinfo_index].server.daq.init(self.procinfos[procinfo_index].fhicl_used)
+                        self.procinfos[procinfo_index].server.daq.init(self.procinfos[procinfo_index].fhicl_used, timeout)
                 elif command == "Start":
 
                     self.procinfos[procinfo_index].lastreturned = \
                         self.procinfos[procinfo_index].server.daq.start(\
-                        self.run_number)
+                        self.run_number, timeout)
 
                     # JCF, Jan-8-2019
                     # Ensure DAQInterface is backwards-compatible with artdaq code which predates Issue #23824
@@ -1503,16 +1506,16 @@ class DAQInterface(Component):
 
                 elif command == "Pause":
                     self.procinfos[procinfo_index].lastreturned = \
-                        self.procinfos[procinfo_index].server.daq.pause()
+                        self.procinfos[procinfo_index].server.daq.pause(timeout)
                 elif command == "Resume":
                     self.procinfos[procinfo_index].lastreturned = \
-                        self.procinfos[procinfo_index].server.daq.resume()
+                        self.procinfos[procinfo_index].server.daq.resume(timeout)
                 elif command == "Stop":
                     self.procinfos[procinfo_index].lastreturned = \
-                        self.procinfos[procinfo_index].server.daq.stop()
+                        self.procinfos[procinfo_index].server.daq.stop(timeout)
                 elif command == "Shutdown":
                     self.procinfos[procinfo_index].lastreturned = \
-                        self.procinfos[procinfo_index].server.daq.shutdown()
+                        self.procinfos[procinfo_index].server.daq.shutdown(timeout)
                 else:
                     assert False, "Unknown command"
 
