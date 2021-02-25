@@ -698,7 +698,7 @@ class DAQInterface(Component):
         self.allowed_processors = None
 
         self.max_num_launch_procs_checks = 20
-        self.launch_procs_wait_time = 2
+        self.launch_procs_wait_time = 40
 
         self.productsdir = None
 
@@ -841,6 +841,10 @@ class DAQInterface(Component):
                 
 
         missing_vars = []
+
+        # Must wait at least one seconds between checks
+        if self.launch_procs_wait_time < self.max_num_launch_proc_checks:
+            self.launch_procs_wait_time = self.max_num_launch_proc_checks
 
         if self.log_directory is None:
             missing_vars.append("log_directory")
@@ -2073,7 +2077,7 @@ class DAQInterface(Component):
 
                     break
                 else:
-                    sleep(self.launch_procs_wait_time)
+                    sleep(self.launch_procs_wait_time / self.max_num_launch_procs_checks)
                     if num_launch_procs_checks >= self.max_num_launch_procs_checks:
                         missing_processes = [procinfo for procinfo in self.procinfos if procinfo not in found_processes]
 
