@@ -843,8 +843,8 @@ class DAQInterface(Component):
         missing_vars = []
 
         # Must wait at least one seconds between checks
-        if self.launch_procs_wait_time < self.max_num_launch_proc_checks:
-            self.launch_procs_wait_time = self.max_num_launch_proc_checks
+        if self.launch_procs_wait_time < self.max_num_launch_procs_checks:
+            self.launch_procs_wait_time = self.max_num_launch_procs_checks
 
         if self.log_directory is None:
             missing_vars.append("log_directory")
