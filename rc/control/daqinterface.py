@@ -697,6 +697,9 @@ class DAQInterface(Component):
         self.disable_private_network_bookkeeping = False
         self.allowed_processors = None
 
+        self.max_num_launch_procs_checks = 20
+        self.launch_procs_wait_time = 2
+
         self.productsdir = None
 
         for line in inf.readlines():
@@ -830,6 +833,11 @@ class DAQInterface(Component):
                 self.transfer = line.split()[-1].strip()
             elif "allowed_processors" in line or "allowed processors" in line:
                 self.allowed_processors = line.split()[-1].strip()
+            elif "max_launch_checks" in line or "max launch checks" in line:
+                self.max_num_launch_procs_checks = int( line.split()[-1].strip() )
+            elif "launch_procs_wait_time" in line or "launch procs wait time" in line:
+                self.launch_procs_wait_time = int( line.split()[-1].strip() )
+
                 
 
         missing_vars = []
@@ -2043,14 +2051,13 @@ class DAQInterface(Component):
                 return
 
             num_launch_procs_checks = 0
-            max_num_launch_procs_checks = 5
 
             while True:
 
                 num_launch_procs_checks += 1
 
                 self.print_log("i", "Checking that processes are up (check %d of a max of %d checks)..." % \
-                               (num_launch_procs_checks, max_num_launch_procs_checks), 1, False)
+                               (num_launch_procs_checks, self.max_num_launch_procs_checks), 1, False)
 
                 # "False" here means "don't consider it an error if all
                 # processes aren't found"
@@ -2066,8 +2073,8 @@ class DAQInterface(Component):
 
                     break
                 else:
-                    sleep(2)
-                    if num_launch_procs_checks >= max_num_launch_procs_checks:
+                    sleep(self.launch_procs_wait_time)
+                    if num_launch_procs_checks >= self.max_num_launch_procs_checks:
                         missing_processes = [procinfo for procinfo in self.procinfos if procinfo not in found_processes]
 
                         print
