@@ -697,6 +697,9 @@ class DAQInterface(Component):
         self.disable_private_network_bookkeeping = False
         self.allowed_processors = None
 
+        self.max_num_launch_procs_checks = 20
+        self.launch_procs_wait_time = 40
+
         self.productsdir = None
 
         for line in inf.readlines():
@@ -830,9 +833,18 @@ class DAQInterface(Component):
                 self.transfer = line.split()[-1].strip()
             elif "allowed_processors" in line or "allowed processors" in line:
                 self.allowed_processors = line.split()[-1].strip()
+            elif "max_launch_checks" in line or "max launch checks" in line:
+                self.max_num_launch_procs_checks = int( line.split()[-1].strip() )
+            elif "launch_procs_wait_time" in line or "launch procs wait time" in line:
+                self.launch_procs_wait_time = int( line.split()[-1].strip() )
+
                 
 
         missing_vars = []
+
+        # Must wait at least one seconds between checks
+        if self.launch_procs_wait_time < self.max_num_launch_procs_checks:
+            self.launch_procs_wait_time = self.max_num_launch_procs_checks
 
         if self.log_directory is None:
             missing_vars.append("log_directory")
@@ -1479,6 +1491,9 @@ class DAQInterface(Component):
                                (command, self.procinfos[procinfo_index].label), 2)
                 return
 
+            timeout_dict = { "BoardReader": self.boardreader_timeout, "EventBuilder": self.eventbuilder_timeout, "DataLogger": self.datalogger_timeout, "Dispatcher": self.dispatcher_timeout, "RoutingManager": self.routingmanager_timeout}
+            timeout = timeout_dict[self.procinfos[procinfo_index].name]
+
             self.procinfos[procinfo_index].state = self.verbing_to_states[command]
                 
             try:
@@ -1486,12 +1501,12 @@ class DAQInterface(Component):
 
                 if command == "Init":
                     self.procinfos[procinfo_index].lastreturned = \
-                        self.procinfos[procinfo_index].server.daq.init(self.procinfos[procinfo_index].fhicl_used)
+                        self.procinfos[procinfo_index].server.daq.init(self.procinfos[procinfo_index].fhicl_used, timeout)
                 elif command == "Start":
 
                     self.procinfos[procinfo_index].lastreturned = \
                         self.procinfos[procinfo_index].server.daq.start(\
-                        self.run_number)
+                        self.run_number, timeout)
 
                     # JCF, Jan-8-2019
                     # Ensure DAQInterface is backwards-compatible with artdaq code which predates Issue #23824
@@ -1503,16 +1518,16 @@ class DAQInterface(Component):
 
                 elif command == "Pause":
                     self.procinfos[procinfo_index].lastreturned = \
-                        self.procinfos[procinfo_index].server.daq.pause()
+                        self.procinfos[procinfo_index].server.daq.pause(timeout)
                 elif command == "Resume":
                     self.procinfos[procinfo_index].lastreturned = \
-                        self.procinfos[procinfo_index].server.daq.resume()
+                        self.procinfos[procinfo_index].server.daq.resume(timeout)
                 elif command == "Stop":
                     self.procinfos[procinfo_index].lastreturned = \
-                        self.procinfos[procinfo_index].server.daq.stop()
+                        self.procinfos[procinfo_index].server.daq.stop(timeout)
                 elif command == "Shutdown":
                     self.procinfos[procinfo_index].lastreturned = \
-                        self.procinfos[procinfo_index].server.daq.shutdown()
+                        self.procinfos[procinfo_index].server.daq.shutdown(timeout)
                 else:
                     assert False, "Unknown command"
 
@@ -2040,14 +2055,13 @@ class DAQInterface(Component):
                 return
 
             num_launch_procs_checks = 0
-            max_num_launch_procs_checks = 5
 
             while True:
 
                 num_launch_procs_checks += 1
 
                 self.print_log("i", "Checking that processes are up (check %d of a max of %d checks)..." % \
-                               (num_launch_procs_checks, max_num_launch_procs_checks), 1, False)
+                               (num_launch_procs_checks, self.max_num_launch_procs_checks), 1, False)
 
                 # "False" here means "don't consider it an error if all
                 # processes aren't found"
@@ -2063,8 +2077,8 @@ class DAQInterface(Component):
 
                     break
                 else:
-                    sleep(2)
-                    if num_launch_procs_checks >= max_num_launch_procs_checks:
+                    sleep(self.launch_procs_wait_time / self.max_num_launch_procs_checks)
+                    if num_launch_procs_checks >= self.max_num_launch_procs_checks:
                         missing_processes = [procinfo for procinfo in self.procinfos if procinfo not in found_processes]
 
                         print
@@ -2389,8 +2403,8 @@ class DAQInterface(Component):
         self.complete_state_change(self.name, "configuring")
 
         if self.manage_processes:
-            self.print_log("i", "\nProcess manager logfiles (if applicable):\n%s" % (", ".join(self.process_manager_log_filenames)))
-
+            self.print_log("i", str("\nProcess manager logfiles (if applicable):\n%s" % (", ".join(self.process_manager_log_filenames))))
+            
         self.print_log("i", "\n%s: CONFIG transition complete" % (date_and_time()))
 
     def do_start_running(self, run_number = None):
@@ -2612,7 +2626,10 @@ class DAQInterface(Component):
             return
 
         if self.state(self.name) == "running" or self.state(self.name) == "stopping":
-            self.execute_trace_script("stop")
+            try:
+                self.execute_trace_script("stop")
+            except Exception:
+                pass
 
         def attempted_stop(self, procinfo):
 
