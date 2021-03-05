@@ -7,6 +7,7 @@ component_nonsending_standard: {
       generator: "ToySimulator"
 
         generated_fragments_per_event: 0
+	fragment_ids: [ ]
         distribution_type: 1
 
         max_fragment_size_bytes: 200
@@ -23,15 +24,15 @@ component_nonsending_standard: {
    #include "metrics_for_boardreaders.fcl"
 }
 
-component1000_nonsending_standard: @local::component_nonsending_standard
-component1000_nonsending_standard.fragment_receiver.fragment_id: 1000
-component1000_nonsending_standard.fragment_receiver.starting_fragment_id: 1000
-component1000_nonsending_standard.fragment_receiver.board_id: 1000
+component2001_nonsending_standard: @local::component_nonsending_standard
+component2001_nonsending_standard.fragment_receiver.board_id: 2001
 
-component1001_nonsending_standard: @local::component_nonsending_standard
-component1001_nonsending_standard.fragment_receiver.fragment_id: 1001
-component1001_nonsending_standard.fragment_receiver.starting_fragment_id: 1001
-component1001_nonsending_standard.fragment_receiver.board_id: 1001
+component2002_nonsending_standard: @local::component_nonsending_standard
+component2002_nonsending_standard.fragment_receiver.board_id: 2002
+
+component2003_nonsending_standard: @local::component_nonsending_standard
+component2003_nonsending_standard.fragment_receiver.board_id: 2003
+
 
 
 END_PROLOG

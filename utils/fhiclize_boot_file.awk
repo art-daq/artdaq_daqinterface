@@ -22,7 +22,7 @@ BEGIN {
     process_names["EventBuilder"] = "now defined"
     process_names["DataLogger"] = "now defined"
     process_names["Dispatcher"] = "now defined"
-    process_names["RoutingMaster"] = "now defined"
+    process_names["RoutingManager"] = "now defined"
 
     process_tokens["host"] = "now defined"
     process_tokens["port"] = "now defined"

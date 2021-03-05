@@ -63,7 +63,7 @@ def get_boot_info_base(self, boot_filename):
                             boot_filename + "\""))
 
     memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set", "allowed_processors": "not set"}
-    subsystemDict = {"id": None, "source": "not set", "destination": "not set"}
+    subsystemDict = {"id": None, "source": "not set", "destination": "not set", "fragmentMode": "not set"}
 
     num_expected_processes = 0
     num_actual_processes = 0
@@ -141,7 +141,7 @@ def get_boot_info_base(self, boot_filename):
 
         if "EventBuilder" in line or \
                 "DataLogger" in line or "Dispatcher" in line or \
-                "RoutingMaster" in line:
+                "RoutingManager" in line:
 
             res = re.search(r"^\s*(\w+)\s+(\S+)\s*:\s*(\S+)", line)
 
@@ -196,11 +196,16 @@ def get_boot_info_base(self, boot_filename):
                 if subsystemDict["destination"] != "not set":
                     destination = subsystemDict["destination"]
 
-                self.subsystems[subsystemDict["id"]] = self.Subsystem(sources, destination)
+                fragmentMode = True
+                if re.search("[Ff]alse",subsystemDict["fragmentMode"]):
+                    fragmentMode = False
+
+                self.subsystems[subsystemDict["id"]] = self.Subsystem(sources, destination, fragmentMode)
 
                 subsystemDict["id"] = None
                 subsystemDict["source"] = "not set"
                 subsystemDict["destination"] = "not set"
+                subsystemDict["fragmentMode"] = "not set"
 
             # If it has been filled, then initialize a Procinfo
             # object, append it to procinfos, and reset the

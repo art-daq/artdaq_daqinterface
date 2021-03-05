@@ -22,7 +22,7 @@ from shutil import copyfile
 import re
 import os
 import string
-import shutil
+from time import time
 
 from rc.control.utilities import expand_environment_variable_in_string
 

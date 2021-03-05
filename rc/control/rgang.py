@@ -186,7 +186,7 @@ def getopts( optspec, argv, usage_in, usage_v_in, app, version='' ):
                                'desc':'print usage/help. A bit more with -v'}})
     optspec.update({'version':{'alias':['V'],'desc':'print cvs version/date'}})
     opt_map={}                          # handles aliases
-    opt={}                              # local master options dictionary
+    opt={}                              # local manager options dictionary
     long_opts = []; env_opts = []
     env_app=re.sub( r'\..*', '', re.sub('-','_',app).upper() )
     # look for options from environment first as they may be overridden

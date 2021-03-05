@@ -31,6 +31,6 @@ Dispatcher host: mu2edaq12
 Dispatcher port: 5269
 Dispatcher label: Dispatcher1
 
-RoutingMaster host: mu2edaq14
-RoutingMaster port: 5275
-RoutingMaster label: RoutingMaster1
+RoutingManager host: mu2edaq14
+RoutingManager port: 5275
+RoutingManager label: RoutingManager1

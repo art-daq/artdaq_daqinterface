@@ -57,16 +57,44 @@ for comp in $components; do
 	port=$( echo $comp_line | awk '{print $3}' )
 	subsystem=$( echo $comp_line | awk '{print $4}' )
 	allowed_processors=$( echo $comp_line | awk '{print $5}' )
+	
+	# sed command below says "Grab a quoted sixth field, if it exists"
+	prepend=$( echo $comp_line | sed -r -n "s/^\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+(\"[^\"]+\")/\1/p" )
+
+
+	if [[ -z $prepend ]] && (( $( echo $comp_line | awk '{ print NF  }' ) >= 6 )); then 
+
+	    cat<<EOF >&2
+
+An unquoted sixth field was found in $DAQINTERFACE_KNOWN_BOARDREADERS_LIST on this line:
+
+$comp_line
+
+This suggests that a command-to-be-prepended to artdaq process launch
+was unquoted, which is a syntax error. Exiting...
+
+EOF
+
+exit 1
+
+	fi
+
 
 	#defaults
 	port=${port:-"-1"}
 	subsystem=${subsystem:-"1"}
+
+	xmlrpc_arg=${xmlrpc_arg}${comp}":array/(s/"${host}","${port}","${subsystem}
 	
 	if [[ -n $allowed_processors ]]; then
-	    xmlrpc_arg=${xmlrpc_arg}${comp}":array/(s/"${host}","${port}","${subsystem}","${allowed_processors}")"
-	else
-	    xmlrpc_arg=${xmlrpc_arg}${comp}":array/(s/"${host}","${port}","${subsystem}")"
+	    xmlrpc_arg=${xmlrpc_arg}","${allowed_processors}
 	fi
+
+	if [[ -n $prepend ]]; then
+	    xmlrpc_arg=${xmlrpc_arg}","${prepend}
+	fi
+
+	xmlrpc_arg=${xmlrpc_arg}")"
 
 	test $comp_cntr != $num_components && xmlrpc_arg=${xmlrpc_arg}","
     else

@@ -49,12 +49,13 @@ services: {
    ArtdaqSharedMemoryServiceInterface: {
       service_provider: "ArtdaqSharedMemoryService"
 }
+  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqFragmentNamingService helper_plugin: "ArtdaqDemo" }
    scheduler: {
       errorOnFailureToPut: false  # Don't change this
    }
 }
 source: {
-   module_type: "NetMonInput"
+   module_type: "ArtdaqInput"
 }
 }
 

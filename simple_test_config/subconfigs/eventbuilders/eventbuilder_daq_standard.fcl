@@ -11,7 +11,6 @@ eventbuilder_daq_standard: {
      
       expected_fragments_per_event: 0       # Don't touch this; DAQInterface will set it
 
-      max_event_size_bytes: 9224000 # Will be overwritten if DAQInterface's advanced memory usage is selected (see https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Advanced_Memory_Usage)
 
 
       request_address: "999.999.999.999"       # Don't touch this; DAQInterface will set it
