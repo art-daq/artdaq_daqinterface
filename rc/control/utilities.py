@@ -94,7 +94,7 @@ def get_pids(greptoken, host="localhost", grepresults = None):
     cmd = 'ps aux | grep "%s" | grep -v grep' % (greptoken)
 
     if host != "localhost":
-        cmd = "ssh -x " + host + " '" + cmd + "'"
+        cmd = "ssh -x %s '%s'" % ( host, cmd )
 
     proc = Popen(cmd, shell=True, stdout=subprocess.PIPE)
 

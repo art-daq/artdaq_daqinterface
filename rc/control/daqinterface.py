@@ -2631,7 +2631,7 @@ class DAQInterface(Component):
 
         if self.state(self.name) == "running" or self.state(self.name) == "stopping":
             try:
-            self.execute_trace_script("stop")
+                self.execute_trace_script("stop")
             except Exception:
                 pass
 
