@@ -1383,12 +1383,13 @@ class DAQInterface(Component):
                                 (self.fill_package_versions.__name__, cmd))
 
             for line in stdoutlines:
-                if re.search(r"^(%s)\s+" % ("|".join(needed_packages)), line.decode('utf-8') ):
+                line=line.decode('utf-8')
+                if re.search(r"^(%s)\s+" % ("|".join(needed_packages)), line ):
                     (package, version) = line.split()
 
-                    if not re.search(r"v[0-9]+_[0-9]+_[0-9]+.*", version.decode('utf-8')):
+                    if not re.search(r"v[0-9]+_[0-9]+_[0-9]+.*", version):
                         raise Exception(make_paragraph("Error in %s: the version of the package \"%s\" this function has determined, \"%s\", is not the expected v<int>_<int>_<int>optionalextension format" % (self.fill_package_versions.__name__, package, version)))
-
+                    print('package=%s type(package)=%s'%(package,type(package)))
                     self.package_versions[package] = version
 
         for package in packages:
@@ -2487,7 +2488,7 @@ class DAQInterface(Component):
         self.start_datataking()
 
         self.save_metadata_value("DAQInterface start time", \
-                                     Popen("date --utc", executable="/bin/bash", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
+                                     Popen("date --utc", executable="/bin/bash", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip().decode('utf-8') )
 
         if self.manage_processes:
             starttime=time()
@@ -2510,7 +2511,7 @@ class DAQInterface(Component):
             (date_and_time(), self.run_number))
 
         self.save_metadata_value("DAQInterface stop time", \
-                                     Popen("date --utc", executable="/bin/bash", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip() )
+                Popen("date --utc", executable="/bin/bash", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip().decode('utf-8') )
 
         try:
             self.put_config_info_on_stop()
