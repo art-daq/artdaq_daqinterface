@@ -9,14 +9,14 @@
   	table_update_interval_ms: 1000
 	table_ack_retry_count: 5
     
-    ## True if using the Routing Master
-    use_routing_master: true
+    ## True if using the Routing Manager
+    use_routing_manager: true
 
     ## Port to send tokens on
     routing_token_port: 35555  # default
 
-    ## Hostname or IP of RoutingMaster
-    routing_master_hostname: "localhost"  # default
+    ## Hostname or IP of RoutingManager
+    routing_manager_hostname: "localhost"  # default
 
     ## Port that table updates should arrive on
     table_update_port: 35556  # default
@@ -38,7 +38,7 @@
 	rmFile: {
 	  metricPluginType: "file"
 	  level: 3
-	  fileName: "/tmp/RoutingMaster/rm_%UID%_metrics.log"
+	  fileName: "/tmp/RoutingManager/rm_%UID%_metrics.log"
 	  uniquify: true
 	}
 	 ganglia: {
@@ -62,5 +62,9 @@
 	#   port: 20030
 	#   namespace: "artdaq."
 	# }
+	report: {
+		metricPluginType: "report"
+		level: 2
+	}
   }
 }
