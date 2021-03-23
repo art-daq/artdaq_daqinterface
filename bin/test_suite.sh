@@ -7,14 +7,14 @@
 # This script was originally tested (i.e., tested to see that it
 # performs tests correctly) using artdaq-demo v2_08_04
 
-# This script expects simple_test_config/demo/component01_hw_cfg.fcl to exist
+# This script expects simple_test_config/demo/component01.fcl to exist
 
 # This script expects the variables "change_after_N_seconds",
 # "nADCcounts_after_N_seconds", "exit_after_N_seconds",
 # "abort_after_N_seconds" and "exception_after_N_seconds" to exist in
 # the above file
 
-# This script will modify simple_test_config/demo/component01_hw_cfg.fcl
+# This script will modify simple_test_config/demo/component01.fcl
 
 standard_test=true
 boardreader_hangs_test=true
@@ -23,6 +23,7 @@ boardreader_aborts_test=true
 boardreader_exits_test=true
 boardreader_throws_test=true
 
+. $ARTDAQ_DAQINTERFACE_DIR/bin/exit_if_bad_environment.sh
 
 if [[ ! -e bin/just_do_it.sh ]]; then
     echo "Can't find bin/just_do_it.sh; are you in the base directory of artdaq-utilities-daqinterface?" >&2
@@ -43,7 +44,7 @@ fi
 runtime=10
 
 
-boardreader_fhicl=simple_test_config/demo/component01_hw_cfg.fcl
+boardreader_fhicl=simple_test_config/demo/component01.fcl
 
 for needed_variable in change_after_N_seconds nADCcounts_after_N_seconds abort_after_N_seconds exit_after_N_seconds exception_after_N_seconds ; do
 
