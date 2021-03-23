@@ -5,13 +5,13 @@
 daq: {
   aggregator: {
     expected_events_per_bunch: 1
-    max_fragment_size_bytes: 16777216
     buffer_count: 20
     event_queue_depth: 2
     event_queue_wait_time: 1
     onmon_event_prescale: 1
     is_dispatcher: true
     overwrite_mode: true
+    init_fragment_count: 4
 
     routing_token_config: @local::artdaq_DISP_routing_token_specification
 
@@ -24,10 +24,8 @@ daq: {
 }
 
 services: {
-  scheduler: {
-    errorOnFailureToPut: false
-  }
-  NetMonTransportServiceInterface: @local::artdaq_DISP_art_service_for_sending_events
+  ArtdaqSharedMemoryServiceInterface: @local::art_service_for_shared_memory
+  ArtdaqFragmentNamingServiceInterface: @local::art_service_for_fragment_naming
 }
 
 source: @local::artdaq_DISP_art_source_specification

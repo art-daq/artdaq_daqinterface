@@ -13,10 +13,12 @@
     use_routing_manager: true
 
     ## Port to send tokens on
-    routing_token_port: 35555  # default
+    token_receiver: {
+        routing_token_port: 35555  # default
+    }
 
     ## Hostname or IP of RoutingManager
-    routing_manager_hostname: "localhost"  # default
+    routing_manager_hostname: "0.0.0.0"
 
     ## Port that table updates should arrive on
     table_update_port: 35556  # default
@@ -37,18 +39,11 @@
   metrics: {
 	rmFile: {
 	  metricPluginType: "file"
-	  level: 3
-	  fileName: "/tmp/RoutingManager/rm_%UID%_metrics.log"
+	  level: 4
+	  fileName: "RoutingManager/rm_%UID%_metrics.log"
+         absolute_file_path: false
 	  uniquify: true
 	}
-	 ganglia: {
-	   metricPluginType: "ganglia"
-	   level: 3
-	   reporting_interval: 15.0
-	 
-	   configFile: "/etc/ganglia/gmond.conf"
-	   group: "ARTDAQ"
-	 }
 	# msgfac: {
 	#    level: %{mf_level}
 	#    metricPluginType: "msgFacility"

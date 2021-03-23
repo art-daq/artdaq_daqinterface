@@ -1,5 +1,5 @@
 
-DAQ setup script: name_of_DAQ_setup_script_not_yet_defined 
+DAQ setup script: $yourArtdaqInstallationDir/setupARTDAQDEMO
 
 PMT host: localhost
 

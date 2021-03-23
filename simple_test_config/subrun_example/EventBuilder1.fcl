@@ -5,7 +5,6 @@
 daq: {
   event_builder: {
     expected_fragments_per_event: 0  # Will be set by DAQInterface
-    max_fragment_size_bytes: 16777216
     use_art: true
     buffer_count: 20
     max_incomplete_events: 75 # Same as boardreader sync interval
@@ -21,10 +20,8 @@ daq: {
 
 art: {
   services: {
-    scheduler: {
-      errorOnFailureToPut: false
-    }
-    NetMonTransportServiceInterface: @local::artdaq_EB_art_service_for_sending_events
+    ArtdaqSharedMemoryServiceInterface: @local::art_service_for_shared_memory
+  ArtdaqFragmentNamingServiceInterface: @local::art_service_for_fragment_naming
   }
 
   source: @local::artdaq_EB_art_source_specification

@@ -1,6 +1,6 @@
 # The parent line must be the first non-comment line in the file
 # This line defines the product name and version
-parent  artdaq_daqinterface	v3_02_01
+parent  artdaq_daqinterface	v3_09_05
 no_fq_dir
 
 # These optional lines define the installed directories where headers,
@@ -32,7 +32,7 @@ bindir product_dir bin
 # list all products here
 # the 4th field may be either optional or only_for_build
 product		version
-cetbuildtools	v7_02_01	-	only_for_build	
+cetbuildtools	v7_17_01	-	only_for_build	
 end_product_list
  
 # e5  - with gcc 4.8.2 and -std=c++11 
