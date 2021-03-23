@@ -1,5 +1,0 @@
-#include "component.fcl" 
-daq: @local::component01_standard  
-
-daq.fragment_receiver.request_mode: "Ignored"
-daq.fragment_receiver.throttle_usecs: 200000

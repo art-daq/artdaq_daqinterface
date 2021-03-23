@@ -1,24 +1,32 @@
-component01 localhost 5305
-component02 localhost 5306
-component03 localhost 5307
-component04 localhost 5308
-component05 localhost 5309
-component06 localhost 5310
-component07 localhost 5311
-component08 localhost 5312
-component09 localhost 5313
-component10 localhost 5314
-component11 localhost 5315
-component12 localhost 5316
-component13 localhost 5317
-component14 localhost 5318
-component15 localhost 5319
-component16 localhost 5320
-component17 localhost 5321
-component18 localhost 5322
-component19 localhost 5323
-component20 localhost 5324
-component21 localhost 5325
-component22 localhost 5326
-component23 localhost 5327
-component24 localhost 5328
+# Name Host [Port [Subsystem]]
+component01 localhost -1 1
+component02 localhost -1 1
+component03 localhost -1 1
+component04 localhost -1 1
+component05 localhost -1 1
+component06 localhost -1 1
+component07 localhost -1 1
+component08 localhost -1 1
+component09 localhost -1 1
+component10 localhost -1 1
+component11 localhost -1 1
+component12 localhost -1 1
+component13 localhost -1 1
+component14 localhost -1 1
+component15 localhost -1 1
+component16 localhost -1 1
+component17 localhost -1 1
+component18 localhost -1 1
+component19 localhost -1 1
+component1000 localhost -1 1
+component1001 localhost -1 1
+component_one_event_per_subrun localhost 
+component_throws_exception localhost	
+component_dies_from_exit localhost 	
+component_dies_from_abort localhost 	
+component_hangs localhost 		
+component_fragment_size_blows_up localhost
+component_buffer_mode localhost
+component_throws_exception_on_config localhost
+component_dies_on_config localhost
+component_subsystem_2 localhost -1 2

@@ -1,2 +1,0 @@
-#include "component.fcl" 
-daq: @local::component08_standard  
