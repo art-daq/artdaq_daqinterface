@@ -17,7 +17,7 @@ expected_fragments_per_event: 2
 verbose: false  
  send_requests: false
 	routing_token_config: {
-	use_routing_master: false
+	use_routing_manager: false
 	}
  sources: { }
 } 

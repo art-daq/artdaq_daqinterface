@@ -21,7 +21,7 @@ daq: {
     is_data_logger: true
 
 	routing_token_config: {
-		use_routing_master: false
+		use_routing_manager: false
 	}
 
 	auto_suppression_enabled: false

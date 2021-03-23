@@ -20,7 +20,7 @@ daq: {
 	verbose: false
 	send_requests: true
 
-	use_routing_master: false
+	use_routing_manager: false
 
 	sources: { }
   }

@@ -47,7 +47,7 @@ string2: "That grep should return both of these lines, but only this line will m
 	destinations: {	}
 
 	routing_table_config: {
-	    use_routing_master: false
+	    use_routing_manager: false
 	}
   }
 

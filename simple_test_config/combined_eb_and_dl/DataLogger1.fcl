@@ -1,6 +1,6 @@
 #include "standard_metrics_configs.fcl"
 #include "data_logging_parameters.fcl"
-#include "routing_master_parameters.fcl"
+#include "routing_manager_parameters.fcl"
 #include "art_input_output_parameters.fcl"
 
 daq: {

@@ -65,7 +65,7 @@ component_standard: {
 
         destinations: { }
 
-	use_routing_master: false
+	use_routing_manager: false
   }
 
   metrics: {

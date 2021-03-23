@@ -8,7 +8,7 @@ services: {
     #broadcast_sends: true
 	destinations: { }
 	routing_table_config: {
-	    use_routing_master: false
+	    use_routing_manager: false
 	}
   }
 
@@ -30,14 +30,14 @@ daq: {
 	expected_art_event_processing_time_us: 2000000
 
     routing_token_config: {
-        ## True if using the Routing Master
-        use_routing_master: true
+        ## True if using the Routing Manager
+        use_routing_manager: true
 
         ## Port to send tokens on
         routing_token_port: 35555  # default
 
-        ## Hostname or IP of RoutingMaster
-        routing_master_hostname: "localhost"  # default
+        ## Hostname or IP of RoutingManager
+        routing_manager_hostname: "localhost"  # default
     }
 
 	sources: { }
