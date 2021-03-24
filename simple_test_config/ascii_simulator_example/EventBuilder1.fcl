@@ -49,7 +49,7 @@ outputs: {
   #  fileName: "/tmp/artdaqdemo_eb00_r%06r_sr%02s_%to_%#.root"
   #  #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
   #  fileProperties: { maxSubRuns: 1 maxRuns: 1 maxSize: 8192000 }
-  #  compressionLevel: 3
+  #  compressionLevel: 501 # ZSTD
   #  fastCloning: false
  #}
 }
