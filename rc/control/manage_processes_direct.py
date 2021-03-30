@@ -85,7 +85,7 @@ def launch_procs_base(self):
     launch_commands_to_run_on_host = {}
     launch_commands_to_run_on_host_background = {}  # Need to run artdaq processes in the background so they're persistent outside of this function's Popen calls
     launch_commands_on_host_to_show_user = {} # Don't want to clobber a pre-existing logfile or clutter the commands via "$?" checks
-
+            
     self.launch_attempt_files = {}
 
     for procinfo in self.procinfos:
@@ -259,7 +259,7 @@ def softlink_process_manager_logfile(self, host):
 def softlink_process_manager_logfiles_base(self):
 
     for host in set([procinfo.host for procinfo in self.procinfos]):
-        softlink_process_manager_logfile(self, host)
+            softlink_process_manager_logfile(self, host)
     return
 
 def find_process_manager_variable_base(self, line):
@@ -284,7 +284,7 @@ def get_process_manager_log_filenames_base(self):
     output = []
     
     for host in set([procinfo.host for procinfo in self.procinfos]):
-         output.append(get_process_manager_log_filename(self, host))
+            output.append(get_process_manager_log_filename(self, host))
     
     return output
 
@@ -310,9 +310,9 @@ def get_pid_for_process_base(self, procinfo):
         return None
     else:
         for grepped_line in grepped_lines:
-            print grepped_line
+            print (grepped_line)
 
-        print "Appear to have duplicate processes for %s on %s, pids: %s" % (procinfo.label, procinfo.host, " ".join( pids ))
+        print ("Appear to have duplicate processes for %s on %s, pids: %s" % (procinfo.label, procinfo.host, " ".join( pids )))
 
     return None
 
@@ -517,7 +517,7 @@ def main():
             procinfos.append( Procinfo("EventBuilder", "1", "localhost", "10101", "MockEventBuilder") )
 
             def print_log(self, ignore, string_to_print, ignore2):
-                print string_to_print
+                print (string_to_print)
             
 
         launch_procs_base( MockDAQInterface() )
