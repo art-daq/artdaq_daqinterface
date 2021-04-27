@@ -94,7 +94,7 @@ physics: {
 }
 source: {
   module_type: ArtdaqInput
-  waiting_time: 2500000
+  waiting_time: 2500001
   resume_after_timeout: true
 }
-process_name: DAQ
+process_name: DAQ02
