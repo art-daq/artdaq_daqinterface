@@ -14,17 +14,13 @@
 # ======================================================================
 
 # use cmake 2.8 or later
-cmake_minimum_required (VERSION 2.8)
+cmake_minimum_required (VERSION 3.16)
 
-project(artdaq-daqinterface)
-# cetbuildtools contains our cmake modules
-SET ( CETBUILDTOOLS_VERSION $ENV{CETBUILDTOOLS_VERSION} )
-IF (NOT CETBUILDTOOLS_VERSION)
-    MESSAGE (FATAL_ERROR "ERROR: setup cetbuildtools to get the cmake modules")
-ENDIF()
+find_package(cetmodules)
 
-set(CMAKE_MODULE_PATH $ENV{CETBUILDTOOLS_DIR}/Modules
-		      ${CMAKE_MODULE_PATH})
+project(artdaq-daqinterface VERSION 3.09.05)
+
+set(artdaq-daqinterface_NOARCH TRUE)
 
 include(CetCMakeEnv)
 cet_cmake_env(noarch)
@@ -35,16 +31,7 @@ cet_set_compiler_flags(DIAGS VIGILANT
   EXTRA_FLAGS -pedantic
 )
 
-string(TOUPPER ${CMAKE_BUILD_TYPE} BTYPE_UC )
-#if( ${BTYPE_UC} MATCHES "DEBUG" )
-#  cet_add_compiler_flags(-fsanitize=address)
-#endif()
-
 cet_report_compiler_flags()
-
-# these are minimum required versions, not the actual product versions
-find_ups_product (cetbuildtools v4_09_02)
-find_ups_product( cetpkgsupport v1_08_03 )
 
 # ups - table and config files
 add_subdirectory(ups)
@@ -56,5 +43,3 @@ INSTALL(DIRECTORY simple_test_config DESTINATION ${product}/${version} FILE_PERM
 INSTALL(DIRECTORY utils DESTINATION ${product}/${version} FILE_PERMISSIONS USE_SOURCE_PERMISSIONS)
 INSTALL(FILES source_me DESTINATION ${product}/${version})
 
-# packaging utility
-include(UseCPack)
