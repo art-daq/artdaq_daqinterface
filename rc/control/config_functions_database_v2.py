@@ -39,7 +39,7 @@ if version_to_integer(os.environ["ARTDAQ_DATABASE_VERSION"]) >= version_to_integ
     from conftool import getListOfMaskedRunConfigurations
 else:
     print
-    print make_paragraph("WARNING: you appear to be using an artdaq_database version older than v1_04_75 (%s), on the config transition DAQInterface will accept a configuration even if it's been masked off" % (os.environ["ARTDAQ_DATABASE_VERSION"]))
+    print (make_paragraph("WARNING: you appear to be using an artdaq_database version older than v1_04_75 (%s), on the config transition DAQInterface will accept a configuration even if it's been masked off" % (os.environ["ARTDAQ_DATABASE_VERSION"])))
     print
 
 from conftool import exportConfiguration
@@ -57,7 +57,7 @@ def get_config_info_base(self):
 
     ffp = []
 
-    uuidgen=Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    uuidgen=Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip().decode('utf-8')
     tmpdir = config_basedir(self) + uuidgen
 
     Popen("mkdir -p %s" % tmpdir, shell=True).wait()
@@ -119,7 +119,7 @@ def put_config_info_base(self):
     runnum = str(self.run_number)
     runrecord = self.record_directory + "/" + runnum
 
-    tmpdir = "/tmp/" + Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    tmpdir = "/tmp/" + Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip().decode('utf-8')
 
     cmds = []
     cmds.append(" scriptdir=" + scriptdir)
@@ -190,7 +190,7 @@ def put_config_info_base(self):
 
     with open( "%s/%s/RunHistory.fcl" % (tmpdir, runnum), "w" ) as runhistory_file:
         runhistory_file.write("\nrun_number: %s" % (runnum))
-        
+
         with open( "%s/%s/metadata.fcl" % (tmpdir, runnum) ) as metadata_file:
             for line in metadata_file.readlines():
                 if "config_name" in line:
@@ -231,7 +231,7 @@ def put_config_info_on_stop_base(self):
     starttime = time()
 
     runnum = str(self.run_number)
-    tmpdir = "/tmp/" + Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    tmpdir = "/tmp/" + Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip().decode('utf-8')
     os.mkdir(tmpdir)
     os.mkdir("%s/%s" % (tmpdir, runnum))
     os.chdir(tmpdir)
@@ -240,11 +240,11 @@ def put_config_info_on_stop_base(self):
     with open( "%s/%s/RunHistory2.fcl" % (tmpdir, runnum), "w" ) as runhistory_file:
 
         metadata_filename = "%s/%s/metadata.txt" % (self.record_directory, str(self.run_number))
-        
+
         if os.path.exists(metadata_filename):
             found_start_time = False
             found_stop_time = False
-            
+
             with open(metadata_filename) as metadata_file:
                 for line in metadata_file:
                     res = re.search(r"^DAQInterface start time:\s+(.*)", line)
@@ -256,12 +256,12 @@ def put_config_info_on_stop_base(self):
                     if res:
                         runhistory_file.write("\nDAQInterface_stop_time: \"%s\"\n" % (res.group(1)))
                         found_stop_time = True
-            
+
             if not found_start_time:
                 self.print_log("w", "WARNING: unable to find DAQInterface start time in %s; will not save this info into the database" % (metadata_filename))
             if not found_stop_time:
                 self.print_log("w", "WARNING: unable to find DAQInterface stop time in %s; will not save this info into the database" % (metadata_filename))
-                
+
         else:
             self.print_log("w", "Expected file %s wasn't found! Will not save start/stop times of run in the database" % (metadata_filename))
 
@@ -294,7 +294,7 @@ def listdaqcomps_base(self):
 
 def listconfigs_base(self):
     print
-    print "Available configurations: "
+    print ("Available configurations: ")
 
     config_cntr = 0
 
@@ -304,7 +304,7 @@ def listconfigs_base(self):
 
             if config_cntr <= self.max_configurations_to_list:
                 outf.write(config + "\n")
-                print config
+                print (config)
 
 def main():
 
@@ -313,11 +313,11 @@ def main():
     put_config_info_test = False
 
     if listconfigs_test:
-        print "Calling listconfigs_base"
+        print ("Calling listconfigs_base")
         listconfigs_base("ignored_argument")
-        
+
     if get_config_info_test:
-        print "Calling get_config_info_base"
+        print ("Calling get_config_info_base")
 
         class MockDAQInterface:
             subconfigs_for_run = [ "ToyComponent_EBwriting00025" ]
@@ -325,11 +325,11 @@ def main():
 
         mydir, mydirs = get_config_info_base( MockDAQInterface() )
 
-        print "FHiCL directories to search: " + " ".join(mydirs)
-        print "Directory where the FHiCL documents are located: " + mydir
+        print ("FHiCL directories to search: " + " ".join(mydirs))
+        print ("Directory where the FHiCL documents are located: " + mydir)
 
     if put_config_info_test:
-        print "Calling put_config_info_base"
+        print ("Calling put_config_info_base")
 
         class MockDAQInterface:
             run_number = 73
