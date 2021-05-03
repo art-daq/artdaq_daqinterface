@@ -120,7 +120,7 @@ class Component(ContextObject):
     # severity level
 
     def print_log(self, severity, printstr, debuglevel=-999):
-        print printstr
+        print (printstr)
 
     def trace_get(self, name, trace_args):
         if name != self.name:

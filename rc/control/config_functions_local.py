@@ -264,7 +264,7 @@ def listdaqcomps_base(self):
     try:
         inf = open( components_file )
     except:
-        print traceback.format_exc()
+        print (traceback.format_exc())
         return 
 
     lines = inf.readlines()
@@ -275,7 +275,7 @@ def listdaqcomps_base(self):
             count = count - 1
 
     print
-    print "# of components found in listdaqcomps call: %d" % (count)
+    print ("# of components found in listdaqcomps call: %d" % (count))
 
     lines.sort()
     for line in lines:
@@ -284,7 +284,7 @@ def listdaqcomps_base(self):
         component = line.split()[0].strip()
         host = line.split()[1].strip()
         
-        print "%s (runs on %s)" % (component, host)
+        print ("%s (runs on %s)" % (component, host))
 
 def listconfigs_base(self):
     subdirs = next(os.walk(get_config_parentdir()))[1]
@@ -295,18 +295,21 @@ def listconfigs_base(self):
     outf = open(listconfigs_file, "w")
 
     print
-    print "Available configurations: "
+    print ("Available configurations: ")
     for config in sorted(configs):
-        print config
+        print (config)
         outf.write("%s\n" % config)
 
     print
-    print "See file \"%s\" for saved record of the above configurations" % (listconfigs_file)
-    print make_paragraph("Please note that for the time being, the optional max_configurations_to_list variable which may be set in %s is only applicable when working with the database" % os.environ["DAQINTERFACE_SETTINGS"])
+    print ("See file \"%s\" for saved record of the above configurations" % (listconfigs_file))
+    print (make_paragraph("Please note that for the time being, the optional max_configurations_to_list variable which may be set in %s is only applicable when working with the database" % os.environ["DAQINTERFACE_SETTINGS"]))
     print
 
+    #print(flush=True)
+    sys.stdout.flush()
+
 def main():
-    print "Calling listdaqcomps_base: "
+    print ("Calling listdaqcomps_base: ")
     listdaqcomps_base("ignored_argument")
 
 if __name__ == "__main__":
