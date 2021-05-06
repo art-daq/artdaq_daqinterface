@@ -18,7 +18,7 @@ cmake_minimum_required (VERSION 3.16)
 
 find_package(cetmodules)
 
-project(artdaq-daqinterface VERSION 3.09.05)
+project(artdaq-daqinterface VERSION 3.10.00)
 
 set(artdaq-daqinterface_NOARCH TRUE)
 
