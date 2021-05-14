@@ -187,7 +187,7 @@ test -z "$_cetpkg_status$_cetpkg_cettop" -a -n "$CETMODULES_DIR" && __SET__ _cet
 # Generate the setup script to set up dependencies.
 
 test -n "$_cetpkg_status" || \
-  __SET__ _cetpkg_setup="`${_cetpkg_cettop}/libexec/set_dev_products $_cetpkg_nobuild __SETUP_ARGS__`"
+  __SET__ _cetpkg_setup="`${_cetpkg_cettop}/libexec/set_dev_products $_cetpkg_nobuild`"
 test $? != 0 -o -z "$_cetpkg_setup" && __SET__ _cetpkg_status=1 && \
   echo "ERROR: generation of setup script has failed" || true
 ####################################
