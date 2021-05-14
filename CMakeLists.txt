@@ -33,9 +33,6 @@ cet_set_compiler_flags(DIAGS VIGILANT
 
 cet_report_compiler_flags()
 
-# ups - table and config files
-add_subdirectory(ups)
-
 INSTALL(DIRECTORY bin DESTINATION ${product}/${version} FILE_PERMISSIONS USE_SOURCE_PERMISSIONS)
 INSTALL(DIRECTORY docs DESTINATION ${product}/${version} FILE_PERMISSIONS USE_SOURCE_PERMISSIONS)
 INSTALL(DIRECTORY rc DESTINATION ${product}/${version} FILE_PERMISSIONS USE_SOURCE_PERMISSIONS)
@@ -43,3 +40,5 @@ INSTALL(DIRECTORY simple_test_config DESTINATION ${product}/${version} FILE_PERM
 INSTALL(DIRECTORY utils DESTINATION ${product}/${version} FILE_PERMISSIONS USE_SOURCE_PERMISSIONS)
 INSTALL(FILES source_me DESTINATION ${product}/${version})
 
+# ups - table and config files
+add_subdirectory(ups)
