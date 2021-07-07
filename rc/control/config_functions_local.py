@@ -311,6 +311,9 @@ def listconfigs_base(self):
     print (make_paragraph("Please note that for the time being, the optional max_configurations_to_list variable which may be set in %s is only applicable when working with the database" % os.environ["DAQINTERFACE_SETTINGS"]))
     print
 
+    #print(flush=True)
+    sys.stdout.flush()
+
 def main():
     print ("Calling listdaqcomps_base: ")
     listdaqcomps_base("ignored_argument")

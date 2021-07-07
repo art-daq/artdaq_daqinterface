@@ -6,6 +6,8 @@ sys.path.append( os.environ["ARTDAQ_DAQINTERFACE_DIR"] )
 if "DAQINTERFACE_OVERRIDES_FOR_EXPERIMENT_MODULE_DIR" in os.environ:
     sys.path.append( os.environ["DAQINTERFACE_OVERRIDES_FOR_EXPERIMENT_MODULE_DIR"] )
 
+#sys.stdout = os.fdopen(
+
 import argparse
 import datetime
 import subprocess
@@ -1383,10 +1385,10 @@ class DAQInterface(Component):
                                 (self.fill_package_versions.__name__, cmd))
 
             for line in stdoutlines:
-                if re.search(r"^(%s)\s+" % ("|".join(needed_packages)), line):
+                if re.search(r"^(%s)\s+" % ("|".join(needed_packages)), line.decode('utf-8') ):
                     (package, version) = line.split()
 
-                    if not re.search(r"v[0-9]+_[0-9]+_[0-9]+.*", version):
+                    if not re.search(r"v[0-9]+_[0-9]+_[0-9]+.*", version.decode('utf-8')):
                         raise Exception(make_paragraph("Error in %s: the version of the package \"%s\" this function has determined, \"%s\", is not the expected v<int>_<int>_<int>optionalextension format" % (self.fill_package_versions.__name__, package, version)))
 
                     self.package_versions[package] = version

@@ -57,7 +57,7 @@ def get_config_info_base(self):
 
     ffp = []
 
-    uuidgen=Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    uuidgen=Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip().decode('utf-8')
     tmpdir = config_basedir(self) + uuidgen
 
     Popen("mkdir -p %s" % tmpdir, shell=True).wait()
@@ -119,7 +119,7 @@ def put_config_info_base(self):
     runnum = str(self.run_number)
     runrecord = self.record_directory + "/" + runnum
 
-    tmpdir = "/tmp/" + Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    tmpdir = "/tmp/" + Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip().decode('utf-8')
 
     cmds = []
     cmds.append(" scriptdir=" + scriptdir)
@@ -190,7 +190,7 @@ def put_config_info_base(self):
 
     with open( "%s/%s/RunHistory.fcl" % (tmpdir, runnum), "w" ) as runhistory_file:
         runhistory_file.write("\nrun_number: %s" % (runnum))
-        
+
         with open( "%s/%s/metadata.fcl" % (tmpdir, runnum) ) as metadata_file:
             for line in metadata_file.readlines():
                 if "config_name" in line:
@@ -231,7 +231,7 @@ def put_config_info_on_stop_base(self):
     starttime = time()
 
     runnum = str(self.run_number)
-    tmpdir = "/tmp/" + Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    tmpdir = "/tmp/" + Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip().decode('utf-8')
     os.mkdir(tmpdir)
     os.mkdir("%s/%s" % (tmpdir, runnum))
     os.chdir(tmpdir)
@@ -240,11 +240,11 @@ def put_config_info_on_stop_base(self):
     with open( "%s/%s/RunHistory2.fcl" % (tmpdir, runnum), "w" ) as runhistory_file:
 
         metadata_filename = "%s/%s/metadata.txt" % (self.record_directory, str(self.run_number))
-        
+
         if os.path.exists(metadata_filename):
             found_start_time = False
             found_stop_time = False
-            
+
             with open(metadata_filename) as metadata_file:
                 for line in metadata_file:
                     res = re.search(r"^DAQInterface start time:\s+(.*)", line)
@@ -256,12 +256,12 @@ def put_config_info_on_stop_base(self):
                     if res:
                         runhistory_file.write("\nDAQInterface_stop_time: \"%s\"\n" % (res.group(1)))
                         found_stop_time = True
-            
+
             if not found_start_time:
                 self.print_log("w", "WARNING: unable to find DAQInterface start time in %s; will not save this info into the database" % (metadata_filename))
             if not found_stop_time:
                 self.print_log("w", "WARNING: unable to find DAQInterface stop time in %s; will not save this info into the database" % (metadata_filename))
-                
+
         else:
             self.print_log("w", "Expected file %s wasn't found! Will not save start/stop times of run in the database" % (metadata_filename))
 
@@ -315,7 +315,7 @@ def main():
     if listconfigs_test:
         print ("Calling listconfigs_base")
         listconfigs_base("ignored_argument")
-        
+
     if get_config_info_test:
         print ("Calling get_config_info_base")
 
