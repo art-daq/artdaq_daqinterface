@@ -443,8 +443,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         if router_process_identifier is not None:
             router_process_target = self.procinfos[i_proc].target
-            sorted_sender_ranks_list = []
-            sorted_receiver_ranks_list = []
             nonsending_boardreaders = []
 
             if router_process_target == "EventBuilder":
@@ -453,48 +451,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                         if re.search(r"\n\s*sends_no_fragments\s*:\s*[Tt]rue", procinfo.fhicl_used) or \
                             re.search(r"\n\s*generated_fragments_per_event\s*:\s*0", procinfo.fhicl_used):
                                 nonsending_boardreaders.append(procinfo.label)
-
-                # The routingmanager in subsystem N should consider as senders
-                # both boardreaders in subsystem N
-                # and eventbuilders in subsystem M if subsystem M is a parent
-                # of subsystem N
-
-                boardreaders_in_sender_ranks = [ int(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "BoardReader" in otherproc.name and otherproc.label not in nonsending_boardreaders ]
-
-                eventbuilders_in_sender_ranks = [ int(otherproc.rank) for otherproc in procinfos_sorted_by_rank if "EventBuilder" in otherproc.name and self.subsystems[otherproc.subsystem].destination == self.procinfos[i_proc].subsystem ]
-
-                sorted_sender_ranks_list = sorted(boardreaders_in_sender_ranks + eventbuilders_in_sender_ranks, key=lambda rank: rank)
-
-                router_location = router_process_info[router_process_identifier]["location"]
-                if router_location == "child_subsystem":
-                    sorted_receiver_ranks_list = [ str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "EventBuilder" in otherproc.name ]
-                elif router_location == "parent_subsystem":
-                    sorted_receiver_ranks_list = [ str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.subsystems[self.procinfos[i_proc].subsystem].destination and "EventBuilder" in otherproc.name ]
-                else:
-                    assert False, "Developer error: logic needs to be added here for the %s case of a router process location" % (router_location)
-            
-            elif router_process_target == "DataLogger":
-                sorted_sender_ranks_list = [str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "EventBuilder" in otherproc.name ]
-                sorted_receiver_ranks_list = [str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "DataLogger" in otherproc.name]
-            
-            elif router_process_target == "Dispatcher":
-                sorted_sender_ranks_list = [str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "DataLogger" in otherproc.name ]
-                if len(sorted_sender_ranks_list) == 0:
-                    sorted_sender_ranks_list = [str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "EventBuilder" in otherproc.name ]
-                    subsystems_without_dataloggers.append(self.procinfos[i_proc].subsystem)
-                    
-                sorted_receiver_ranks_list = [str(otherproc.rank) for otherproc in procinfos_sorted_by_rank if otherproc.subsystem == self.procinfos[i_proc].subsystem and "Dispatcher" in otherproc.name]
-
-            sender_ranks = "sender_ranks: [%s]" % (",".join([str(rnk) for rnk in sorted_sender_ranks_list]))
-            receiver_ranks = "receiver_ranks: [%s]" % (",".join(sorted_receiver_ranks_list))
-
-            self.procinfos[i_proc].fhicl_used = re.sub("sender_ranks\s*:\s*\[[^\]]*\]",
-                                                       sender_ranks,
-                                                       self.procinfos[i_proc].fhicl_used, 0, re.DOTALL)
-
-            self.procinfos[i_proc].fhicl_used = re.sub("receiver_ranks\s*:\s*\[[^\]]*\]",
-                                                       receiver_ranks,
-                                                       self.procinfos[i_proc].fhicl_used, 0, re.DOTALL)
                 
      
 

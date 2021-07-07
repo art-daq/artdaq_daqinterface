@@ -1,7 +1,6 @@
   daq: {
   policy: {
   	  policy: "PreferSameHost"
-	  receiver_ranks: [2,3]
 	  routing_manager_mode: DataFlow
 	  host_map: []
   }
