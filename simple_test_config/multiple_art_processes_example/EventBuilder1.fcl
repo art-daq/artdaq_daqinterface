@@ -97,4 +97,4 @@ source: {
   waiting_time: 2500000
   resume_after_timeout: true
 }
-process_name: DAQ
+process_name: DAQ01

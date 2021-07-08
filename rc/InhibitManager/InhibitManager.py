@@ -16,7 +16,7 @@ class StatusMsg:
         self.raw_msg  = str(msg)
         self.msg_list = msg.split("_")
         if len(self.msg_list) != 5:
-            print "MESSAGE is malformed! raw_msg=%s\n" % self.raw_msg
+            print ("MESSAGE is malformed! raw_msg=%s\n" % self.raw_msg)
             self.msg_ok = False
         else:
             self.msg_ok = True
@@ -105,9 +105,9 @@ class InhibitManager:
         self.verbose = verbose
 
     def print_status():
-        print "Current Status = %s" % self.current_status
+        print ("Current Status = %s" % self.current_status)
         for fe in self.frontend_dict:
-            print "\t%s : %s" % (fe,frontend_dict[fe])
+            print ("\t%s : %s" % (fe,frontend_dict[fe]))
         
     def status(self):
         return self.current_status
@@ -131,7 +131,7 @@ class InhibitManager:
             init_status = self.status()
             msg = subscriber.recv_status_msg_timeout(self.update_freq)
             if(self.verbose):
-                print "Msg received: %s" % msg
+                print ("Msg received: %s" % msg)
             if msg!="TIMEOUT":
                 self.register_status_msg(StatusMsg(msg))
                 if self.status()!=init_status:
