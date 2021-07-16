@@ -5,25 +5,21 @@ daq: {
 	expected_fragments_per_event: 0  # Will be set by DAQInterface
 	use_art: true
 	print_event_store_stats: true
-	buffer_count: 60
+	buffer_count: 20
 	max_incomplete_events: 75 # Same as boardreader sync interval
 	verbose: true
-	init_fragment_count: 0
+	init_fragment_count: 2
 	send_requests: false
-	
-    routing_token_config: {
-        ## True if using the Routing Manager
-        use_routing_manager: true
+    request_port: 3001
+    request_address: "227.128.12.26" # Multicast request address
 
-        ## Port to send tokens on
-        routing_token_port: 35555  # default
-
-        ## Hostname or IP of RoutingManager
-        routing_manager_hostname: "localhost"  # default
-   }
+	routing_token_config: {
+	use_routing_manager: false
+	}
 
 	sources: { }
   }
+
   metrics: {
 	evbFile: {
 	  metricPluginType: "file"
@@ -41,25 +37,11 @@ services: {
   ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqFragmentNamingService helper_plugin: "ArtdaqDemo" }
 }
 outputs: {
-  subsystemOutput: {
+  rootNetOutput: {
     module_type: RootNetOutput
-    #SelectEvents: [ delay ] 
+    #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
     #broadcast_sends: true
-	destinations: {	}
-
-	routing_table_config: {
-	    use_routing_manager: false
-	}
-  }
-  lumiOutput: {
-    module_type: RootNetOutput
-    #SelectEvents: [ delay ] 
-    #broadcast_sends: true
-	destinations: {	}
-
-	routing_table_config: {
-	    use_routing_manager: false
-	}
+	destinations: {	}	
   }
   #normalOutput: {
   #  module_type: RootDAQOut
@@ -90,25 +72,27 @@ physics: {
 
   filters: {
 
-    randomDelay: {
-		module_type: RandomDelayFilter
-        minimum_delay_ms: 2
-        maximum_delay_ms: 100
-        mean_delay_ms: 5
-        sigma_delay_ms: 2
-        pass_filter_percentage: 80
-        cpu_load_ration: 0.5
-        distribution_type: Normal
-	}
+    prescaleMod2: {
+       module_type: NthEvent
+       nth: 2
+    }
+
+    prescaleMod3: {
+       module_type: NthEvent
+       nth: 3
+    }
   }
 
-  #delay: [ randomDelay ]
+  pmod2: [ prescaleMod2 ]
+  pmod3: [ prescaleMod3 ]
+   
   a1: [ toy1Integ, toy2Integ ]
-  my_output_modules: [ lumiOutput, subsystemOutput ]
-  #my_output_modules: [ normalOutput ]
+  my_output_modules: [ rootNetOutput ]
 }
 source: {
   module_type: ArtdaqInput
+  waiting_time: 2500000
+  resume_after_timeout: true
 }
-process_name: DAQEF1
+process_name: CRVEB
 }
