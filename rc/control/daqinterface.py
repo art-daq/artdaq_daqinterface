@@ -1752,7 +1752,7 @@ class DAQInterface(Component):
                 lines = Popen("export PRODUCTS=\"%s\"; . %s/setup; ups list -aK+ fhiclcpp | sort -n" % (self.productsdir,upsproddir_from_productsdir(self.productsdir)),
                                                executable="/bin/bash", shell=True, stdout=subprocess.PIPE).stdout.readlines()
                 if len(lines) > 0:
-                    fhiclcpp_to_setup_line = lines[-1]
+                    fhiclcpp_to_setup_line = lines[-1].decode('utf-8')
                 else:
                     os.unlink( os.environ["DAQINTERFACE_SETUP_FHICLCPP"] )
                     raise Exception(make_paragraph("Unable to find fhiclcpp ups product in products directory \"%s\" provided in the DAQInterface settings file, \"%s\"" % (self.productsdir, os.environ["DAQINTERFACE_SETTINGS"])))
