@@ -36,7 +36,7 @@ bindir product_dir bin
 # list all products here
 # the 4th field may be either optional or only_for_build
 product		version
-cetmodules	v2_21_00	-	only_for_build
+cetmodules	v2_23_03	-	only_for_build
 end_product_list
  
 # e5  - with gcc 4.8.2 and -std=c++11 
@@ -45,7 +45,7 @@ end_product_list
 # e5  - with gcc 4.7.1 and -std=c++11
 # -nq- here means there is no qualifier
 # a - here means the dependent product is not required by the parent and will not be setup
-qualifier	cetbuildtools	notes
+qualifier	cetmodules	notes
 end_qualifier_list
 
 table_fragment_begin
