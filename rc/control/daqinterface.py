@@ -1370,12 +1370,18 @@ class DAQInterface(Component):
             stdoutlines = proc.stdout.readlines()
             stderrlines = proc.stderr.readlines()
 
+            for line in stderrlines:
+                if "type: unsetup: not found" in line:
+                    self.print_log("w", line)
+                    stderrlines.remove(line)
+                elif re.search("INFO: mrb v\d_\d\d_\d\d requires cetmodules >= \d\.\d\d\.\d\d to run: attempting to configure\.\.\.v\d_\d\d_\d\d OK", line):
+                    self.print_log("i", line)
+                    stderrlines.remove(line)
+                     
+
             if len(stderrlines) > 0:
-                if len(stderrlines) == 1 and "type: unsetup: not found" in stderrlines[0]:
-                    self.print_log("w", stderrlines[0])
-                else:
-                    raise Exception("Error in %s: the command \"%s\" yields output to stderr:\n\"%s\"" % \
-                                    (self.fill_package_versions.__name__, cmd, "".join(stderrlines)))
+                raise Exception("Error in %s: the command \"%s\" yields output to stderr:\n\"%s\"" % \
+                                (self.fill_package_versions.__name__, cmd, "".join(stderrlines)))
 
             if len(stdoutlines) == 0:
                 print (traceback.format_exc())
