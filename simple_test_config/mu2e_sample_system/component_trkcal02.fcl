@@ -61,15 +61,19 @@
 	  nADCcounts: 40
 		max_fragment_size_bytes: 1024
 throttle_usecs: 0
-usecs_between_sends: 5000
+usecs_between_sends: 10000
 	  distribution_type: 2
 	  timestamp_scale_factor: 2
+	  sequence_scale_factor: 2
+	  skip_seqID_test: true
+	  initial_sequence_id: 2
 
         destinations: { }
 
 	routing_table_config: {
            ## True if using the Routing Manager
            use_routing_manager: true
+	   route_on_request_mode: true
        
            ## Port that table updates should arrive on
            table_update_port: 35556  # default

@@ -62,8 +62,8 @@ def get_boot_info_base(self, boot_filename):
                             "unable to locate configuration file \"" +
                             boot_filename + "\""))
 
-    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set", "allowed_processors": "not set"}
-    subsystemDict = {"id": None, "source": "not set", "destination": "not set", "fragmentMode": "not set"}
+    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set", "allowed_processors": "not set", "target": "not set"}
+    subsystemDict = {"id": None, "source": "not set", "destination": "not set", "fragmentMode": "not set", "boardreadersSendEvents": "not set"}
 
     num_expected_processes = 0
     num_actual_processes = 0
@@ -200,12 +200,17 @@ def get_boot_info_base(self, boot_filename):
                 if re.search("[Ff]alse",subsystemDict["fragmentMode"]):
                     fragmentMode = False
 
-                self.subsystems[subsystemDict["id"]] = self.Subsystem(sources, destination, fragmentMode)
+                boardreadersSendEvents = False
+                if re.search("[Tt]rue", subsystemDict["boardreadersSendEvents"]):
+                    boardreadersSendEvents = True
+
+                self.subsystems[subsystemDict["id"]] = self.Subsystem(sources, destination, fragmentMode, boardreadersSendEvents)
 
                 subsystemDict["id"] = None
                 subsystemDict["source"] = "not set"
                 subsystemDict["destination"] = "not set"
                 subsystemDict["fragmentMode"] = "not set"
+                subsystemDict["boardreadersSendEvents"] = "not set"
 
             # If it has been filled, then initialize a Procinfo
             # object, append it to procinfos, and reset the
@@ -234,11 +239,12 @@ def get_boot_info_base(self, boot_filename):
                                                     memberDict["port"],
                                                     memberDict["label"],
                                                     memberDict["subsystem"],
-                                                    memberDict["allowed_processors"]
+                                                    memberDict["allowed_processors"],
+                                                    memberDict["target"]
                                                     ))
 
                 for varname in memberDict.keys():
-                    if varname != "port" and varname != "subsystem" and varname != "allowed_processors":
+                    if varname != "port" and varname != "subsystem" and varname != "allowed_processors" and varname != "target":
                         memberDict[varname] = None
                     else:
                         memberDict[varname] = "not set"
