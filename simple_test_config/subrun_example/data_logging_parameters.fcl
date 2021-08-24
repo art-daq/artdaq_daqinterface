@@ -31,7 +31,7 @@ artdaq_EB_data_logging_path: @local::default_data_logging_path
 ##    #fileName: /tmp/artdaqdemo_r%06r_sr%02s_%to_%#.root  
 ##    fileProperties: { maxSubRuns: 1 maxRuns: 1  }
 ##    fastCloning: false
-##    compressionLevel: 3
+##    compressionLevel: 501 # ZSTD
 ##}
 
 END_PROLOG
