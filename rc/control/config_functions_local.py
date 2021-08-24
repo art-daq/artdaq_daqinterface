@@ -62,7 +62,7 @@ def get_boot_info_base(self, boot_filename):
                             "unable to locate configuration file \"" +
                             boot_filename + "\""))
 
-    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set", "allowed_processors": "not set", "target": "not set"}
+    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set", "allowed_processors": "not set", "target": "not set", "prepend": "not set"}
     subsystemDict = {"id": None, "source": "not set", "destination": "not set", "fragmentMode": "not set", "boardreadersSendEvents": "not set"}
 
     num_expected_processes = 0
@@ -143,7 +143,7 @@ def get_boot_info_base(self, boot_filename):
                 "DataLogger" in line or "Dispatcher" in line or \
                 "RoutingManager" in line:
 
-            res = re.search(r"^\s*(\w+)\s+(\S+)\s*:\s*(\S+)", line)
+            res = re.search(r"^\s*(\w+)\s+(\S+)\s*:\s*(\"[^\"]*\"|\S+)", line)
 
             if res:
                 memberDict["name"] = res.group(1)
@@ -233,6 +233,9 @@ def get_boot_info_base(self, boot_filename):
                 if memberDict["allowed_processors"] == "not set":
                     memberDict["allowed_processors"] = None  # Where None actually means "allow all processors"
 
+                if memberDict["prepend"] == "not set":
+                    memberDict["prepend"] = ""
+
                 self.procinfos.append(self.Procinfo(memberDict["name"],
                                                     rank,
                                                     memberDict["host"],
@@ -241,10 +244,11 @@ def get_boot_info_base(self, boot_filename):
                                                     memberDict["subsystem"],
                                                     memberDict["allowed_processors"],
                                                     memberDict["target"]
+                                                    memberDict["prepend"]
                                                     ))
 
                 for varname in memberDict.keys():
-                    if varname != "port" and varname != "subsystem" and varname != "allowed_processors" and varname != "target":
+                    if varname != "port" and varname != "subsystem" and varname != "allowed_processors" and varname != "target" and varname != "prepend":
                         memberDict[varname] = None
                     else:
                         memberDict[varname] = "not set"
