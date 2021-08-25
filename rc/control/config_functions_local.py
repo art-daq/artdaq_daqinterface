@@ -243,7 +243,7 @@ def get_boot_info_base(self, boot_filename):
                                                     memberDict["label"],
                                                     memberDict["subsystem"],
                                                     memberDict["allowed_processors"],
-                                                    memberDict["target"]
+                                                    memberDict["target"],
                                                     memberDict["prepend"]
                                                     ))
 
