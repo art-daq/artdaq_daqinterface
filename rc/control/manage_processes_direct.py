@@ -167,7 +167,9 @@ def launch_procs_base(self):
         launchcmd += " ".join(launch_commands_to_run_on_host_background[ host ])  # Each command already terminated by ampersand
 
         if not host_is_local(host):
-            launchcmd = "ssh -f " + host + " '" + launchcmd + "'"
+            launchcmd = "ssh -f " + host + " '" + launchcmd + "' &"
+        else:
+            launchcmd = "$(" + launchcmd + ") &"
 
         self.print_log("d", "\nartdaq process launch commands to execute on %s (output will be in %s:%s):\n%s\n" % (host, host, self.launch_attempt_files[host], "\n".join(launch_commands_on_host_to_show_user[host])), 3)
         
