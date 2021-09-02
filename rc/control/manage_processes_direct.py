@@ -1,5 +1,6 @@
 
 import random
+import threading
 import string
 import os
 import subprocess
@@ -9,7 +10,7 @@ from time import sleep
 import re
 import sys
 
-sys.path.append( os.environ["ARTDAQ_DAQINTERFACE_DIR"] )
+sys.path.append(os.environ["ARTDAQ_DAQINTERFACE_DIR"])
 
 from rc.control.utilities import get_pids
 from rc.control.utilities import bash_unsetup_command
@@ -41,6 +42,50 @@ def bootfile_name_to_execname(bootfile_name):
 
     return execname
 
+def launch_procs_on_host(self, host,launch_commands_to_run_on_host, launch_commands_to_run_on_host_background, launch_commands_on_host_to_show_user ):
+        executing_commands_debug_level = 2
+        self.print_log("i", "Executing commands to launch processes on %s" % (host))
+
+        # Before we try launching the processes, let's make sure there
+        # aren't any pre-existing processes listening on the same
+        # ports
+
+        self.print_log("d", "Before check for existing processes on %s" % (host), executing_commands_debug_level)
+        grepped_lines = []
+        preexisting_pids = get_pids("\|".join([ "%s.*id:\s\+%s" % (bootfile_name_to_execname(procinfo.name), procinfo.port) for \
+                                                procinfo in self.procinfos if procinfo.host == host ]),
+                                                host,
+                                        grepped_lines)
+        if len(preexisting_pids) > 0:
+            self.print_log("e", make_paragraph("On host %s, found artdaq process(es) already existing which use the ports DAQInterface was going to use; this may be the result of an improper cleanup from a prior run: " % (host)))
+            self.print_log("e", "\n" + "\n".join(grepped_lines))
+            self.print_log("i", "...note that the process(es) may get automatically cleaned up during DAQInterface recovery\n")
+            raise Exception(make_paragraph("DAQInterface found previously-existing artdaq processes using desired ports; see error message above for details"))
+        
+        self.print_log("d", "After check for existing processes on %s" % (host), executing_commands_debug_level)
+
+        launchcmd = construct_checked_command(launch_commands_to_run_on_host)
+        launchcmd += "; "
+        launchcmd += " ".join(launch_commands_to_run_on_host_background)  # Each command already terminated by ampersand
+
+        if not host_is_local(host):
+            launchcmd = "ssh -f " + host + " '" + launchcmd + "'"
+
+        self.print_log("d", "\nartdaq process launch commands to execute on %s (output will be in %s:%s):\n%s\n" % (host, host, self.launch_attempt_files[host], "\n".join(launch_commands_on_host_to_show_user)), executing_commands_debug_level)
+    
+        with deepsuppression(self.debug_level < 5):
+            status = Popen(launchcmd, executable="/bin/bash",shell=True, preexec_fn=os.setpgrp).wait()
+
+        if status != 0:   
+            self.print_log("e", "Status error raised in attempting to launch processes on %s, to investigate, see %s:%s for output" % (host, host, self.launch_attempt_files[host]))
+            self.print_log("i", make_paragraph("You can also try running again with the \"debug level\" in the boot file set to 4. Otherwise, you can recreate what DAQInterface did by performing a clean login to %s, source-ing the DAQInterface environment and executing the following:" % (host)))
+            self.print_log("i", "\n" + "\n".join(launch_commands_on_host_to_show_user) + "\n")
+            raise Exception("Status error raised attempting to launch processes on %s; scroll up for more detail" % (host))
+        else:
+            self.print_log("d", "...done.", executing_commands_debug_level)
+
+        return status
+
 # JCF, Dec-18-18
     
 # For the purposes of more helpful error reporting if DAQInterface
@@ -48,7 +93,6 @@ def bootfile_name_to_execname(bootfile_name):
 # launch_procs_base return a dictionary whose keys are the hosts on
 # which it ran commands, and whose values are the list of commands run
 # on those hosts
-
 def launch_procs_base(self):
 
 
@@ -83,8 +127,11 @@ def launch_procs_base(self):
                 raise Exception("Status error raised in %s executing \"%s\"" % (launch_procs_base.__name__, cmd))
 
     launch_commands_to_run_on_host = {}
-    launch_commands_to_run_on_host_background = {}  # Need to run artdaq processes in the background so they're persistent outside of this function's Popen calls
-    launch_commands_on_host_to_show_user = {} # Don't want to clobber a pre-existing logfile or clutter the commands via "$?" checks
+    launch_commands_to_run_on_host_background = {}  # Need to run artdaq processes in the background so they're persistent
+                                                    # outside of this
+                                                                                                      # function's Popen calls
+    launch_commands_on_host_to_show_user = {} # Don't want to clobber a pre-existing logfile or clutter the commands via
+                                              # "$?" checks
             
     self.launch_attempt_files = {}
 
@@ -94,95 +141,64 @@ def launch_procs_base(self):
             procinfo.host = get_short_hostname()
 
         if not procinfo.host in launch_commands_to_run_on_host:
-            self.launch_attempt_files[procinfo.host ] = "%s/pmt/launch_attempt_%s_%s_partition%s_%s" % (self.log_directory, procinfo.host, os.environ["USER"], os.environ["DAQINTERFACE_PARTITION_NUMBER"], date_and_time_filename())
+            self.launch_attempt_files[procinfo.host] = "%s/pmt/launch_attempt_%s_%s_partition%s_%s" % (self.log_directory, procinfo.host, os.environ["USER"], os.environ["DAQINTERFACE_PARTITION_NUMBER"], date_and_time_filename())
 
-            launch_commands_to_run_on_host[ procinfo.host ] = []
-            launch_commands_to_run_on_host_background[ procinfo.host ] = []
-            launch_commands_on_host_to_show_user[ procinfo.host ] = []
+            launch_commands_to_run_on_host[procinfo.host] = []
+            launch_commands_to_run_on_host_background[procinfo.host] = []
+            launch_commands_on_host_to_show_user[procinfo.host] = []
 
-            launch_commands_to_run_on_host[ procinfo.host ].append("set +C")  
-            launch_commands_to_run_on_host[ procinfo.host ].append("echo > %s" % (self.launch_attempt_files[procinfo.host]))
-            launch_commands_to_run_on_host[ procinfo.host ].append("export PRODUCTS=\"%s\"; . %s/setup >> %s 2>&1 " % (self.productsdir,upsproddir_from_productsdir(self.productsdir),self.launch_attempt_files[procinfo.host]))
-            launch_commands_to_run_on_host[ procinfo.host ].append( bash_unsetup_command + " > /dev/null 2>&1 " )
-            launch_commands_to_run_on_host[ procinfo.host ].append("source %s for_running >> %s 2>&1 " % (self.daq_setup_script, self.launch_attempt_files[procinfo.host] ))
-            launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_ROOT=%s" % (self.log_directory))
-            launch_commands_to_run_on_host[ procinfo.host ].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))
+            launch_commands_to_run_on_host[procinfo.host].append("set +C")  
+            launch_commands_to_run_on_host[procinfo.host].append("echo > %s" % (self.launch_attempt_files[procinfo.host]))
+            launch_commands_to_run_on_host[procinfo.host].append("export PRODUCTS=\"%s\"; . %s/setup >> %s 2>&1 " % (self.productsdir,upsproddir_from_productsdir(self.productsdir),self.launch_attempt_files[procinfo.host]))
+            launch_commands_to_run_on_host[procinfo.host].append(bash_unsetup_command + " > /dev/null 2>&1 ")
+            launch_commands_to_run_on_host[procinfo.host].append("source %s for_running >> %s 2>&1 " % (self.daq_setup_script, self.launch_attempt_files[procinfo.host]))
+            launch_commands_to_run_on_host[procinfo.host].append("export ARTDAQ_LOG_ROOT=%s" % (self.log_directory))
+            launch_commands_to_run_on_host[procinfo.host].append("export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename))
 
-            launch_commands_to_run_on_host[ procinfo.host ].append("which boardreader >> %s 2>&1 " % (self.launch_attempt_files[procinfo.host])) # Assume if this works, eventbuilder, etc. are also there
-            launch_commands_to_run_on_host[ procinfo.host ].append("%s/bin/mopup_shmem.sh %s --force >> %s 2>&1" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"], os.environ["DAQINTERFACE_PARTITION_NUMBER"], self.launch_attempt_files[procinfo.host]))
-            #launch_commands_to_run_on_host[ procinfo.host ].append("setup valgrind v3_13_0")
-	    #launch_commands_to_run_on_host[ procinfo.host ].append("export LD_PRELOAD=libasan.so")
-	    #launch_commands_to_run_on_host[ procinfo.host ].append("export ASAN_OPTIONS=alloc_dealloc_mismatch=0")
+            launch_commands_to_run_on_host[procinfo.host].append("which boardreader >> %s 2>&1 " % (self.launch_attempt_files[procinfo.host])) # Assume if this works, eventbuilder, etc.  are also there
+            launch_commands_to_run_on_host[procinfo.host].append("%s/bin/mopup_shmem.sh %s --force >> %s 2>&1" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"], os.environ["DAQINTERFACE_PARTITION_NUMBER"], self.launch_attempt_files[procinfo.host]))
+            #launch_commands_to_run_on_host[ procinfo.host ].append("setup
+            #valgrind v3_13_0")
+	    #launch_commands_to_run_on_host[ procinfo.host ].append("export
+	    #LD_PRELOAD=libasan.so")
+	    #launch_commands_to_run_on_host[ procinfo.host ].append("export
+	    #ASAN_OPTIONS=alloc_dealloc_mismatch=0")
 
-            for command in launch_commands_to_run_on_host[ procinfo.host ]:
+            for command in launch_commands_to_run_on_host[procinfo.host]:
                 res = re.search(r"^([^>]*).*%s.*$" % (self.launch_attempt_files[procinfo.host]), command)
                 if not res:
-                    launch_commands_on_host_to_show_user[ procinfo.host ].append( command)
+                    launch_commands_on_host_to_show_user[procinfo.host].append(command)
                 else:
-                    launch_commands_on_host_to_show_user[ procinfo.host].append( res.group(1) )
+                    launch_commands_on_host_to_show_user[procinfo.host].append(res.group(1))
                     
 
-        prepend=procinfo.prepend.strip("\"")
+        prepend = procinfo.prepend.strip("\"")
         base_launch_cmd = "%s %s -c \"id: %s commanderPluginType: xmlrpc rank: %s application_name: %s partition_number: %s\"" % \
                           (prepend, bootfile_name_to_execname(procinfo.name), procinfo.port, 
                            procinfo.rank, procinfo.label, 
                            os.environ["DAQINTERFACE_PARTITION_NUMBER"])
         if procinfo.allowed_processors is not None:
-            base_launch_cmd="taskset --cpu-list %s %s" % (procinfo.allowed_processors, base_launch_cmd)
+            base_launch_cmd = "taskset --cpu-list %s %s" % (procinfo.allowed_processors, base_launch_cmd)
         elif self.allowed_processors is not None:
-            base_launch_cmd="taskset --cpu-list %s %s" % (self.allowed_processors, base_launch_cmd)
+            base_launch_cmd = "taskset --cpu-list %s %s" % (self.allowed_processors, base_launch_cmd)
         
 
         #base_launch_cmd = "valgrind --tool=callgrind %s" % (base_launch_cmd)
         launch_cmd = "%s >> %s 2>&1 & " % (base_launch_cmd, self.launch_attempt_files[procinfo.host])
 
-        launch_commands_to_run_on_host_background[ procinfo.host ].append( launch_cmd )
-        launch_commands_on_host_to_show_user[ procinfo.host].append( "%s &" % (base_launch_cmd) )
+        launch_commands_to_run_on_host_background[procinfo.host].append(launch_cmd)
+        launch_commands_on_host_to_show_user[procinfo.host].append("%s &" % (base_launch_cmd))
 
     print
+    
+    threads = []
     for host in launch_commands_to_run_on_host:
-
-        executing_commands_debug_level = 2
-        self.print_log("d", "Executing commands to launch processes on %s" % (host), executing_commands_debug_level, False)
-
-        # Before we try launching the processes, let's make sure there
-        # aren't any pre-existing processes listening on the same
-        # ports
-
-        grepped_lines = []
-        preexisting_pids = get_pids("\|".join([ "%s.*id:\s\+%s" % 
-                                                (bootfile_name_to_execname(procinfo.name), procinfo.port) for \
-                                                procinfo in self.procinfos if procinfo.host == host ]),
-                                    host,
-                                    grepped_lines)
-        if len(preexisting_pids) > 0:
-            self.print_log("e", make_paragraph("On host %s, found artdaq process(es) already existing which use the ports DAQInterface was going to use; this may be the result of an improper cleanup from a prior run: " % (host)))
-            self.print_log("e", "\n" + "\n".join(grepped_lines))
-            self.print_log("i", "...note that the process(es) may get automatically cleaned up during DAQInterface recovery\n")
-            raise Exception(make_paragraph("DAQInterface found previously-existing artdaq processes using desired ports; see error message above for details"))
-        
-
-        launchcmd = construct_checked_command( launch_commands_to_run_on_host[ host ] )
-        launchcmd += "; "
-        launchcmd += " ".join(launch_commands_to_run_on_host_background[ host ])  # Each command already terminated by ampersand
-
-        if not host_is_local(host):
-            launchcmd = "ssh -f " + host + " '" + launchcmd + "' &"
-        else:
-            launchcmd = "$(" + launchcmd + ") &"
-
-        self.print_log("d", "\nartdaq process launch commands to execute on %s (output will be in %s:%s):\n%s\n" % (host, host, self.launch_attempt_files[host], "\n".join(launch_commands_on_host_to_show_user[host])), 3)
-        
-        with deepsuppression(self.debug_level < 5):
-            status = Popen(launchcmd, executable="/bin/bash",shell=True, preexec_fn=os.setpgrp).wait()
-
-        if status != 0:   
-            self.print_log("e", "Status error raised in attempting to launch processes on %s, to investigate, see %s:%s for output" % (host, host, self.launch_attempt_files[host]))
-            self.print_log("i", make_paragraph("You can also try running again with the \"debug level\" in the boot file set to 4. Otherwise, you can recreate what DAQInterface did by performing a clean login to %s, source-ing the DAQInterface environment and executing the following:" % (host)))
-            self.print_log("i", "\n" + "\n".join(launch_commands_on_host_to_show_user[host]) + "\n")
-            raise Exception("Status error raised attempting to launch processes on %s; scroll up for more detail" % (host))
-        else:
-            self.print_log("d", "...done.", executing_commands_debug_level)
+        t=threading.Thread(target=launch_procs_on_host, args=(self, host, launch_commands_to_run_on_host[host], launch_commands_to_run_on_host_background[host], launch_commands_on_host_to_show_user[host]))
+        t.start()
+        threads.append(t)
+    
+    for t in threads:
+        t.join()
 
     return launch_commands_on_host_to_show_user
 
@@ -199,7 +215,7 @@ def kill_procs_base(self):
         artdaq_pids, labels_of_found_processes = get_pids_and_labels_on_host(host, self.procinfos)
         if len(artdaq_pids) > 0:
             self.print_log("d", "%s: Found the following processes on %s, will attempt to kill them: %s" % \
-                           (date_and_time(), host, " ".join( labels_of_found_processes ) ), 2)
+                           (date_and_time(), host, " ".join(labels_of_found_processes)), 2)
 
             cmd = "kill %s" % (" ".join(artdaq_pids))
             if not host_is_local(host):
@@ -208,13 +224,13 @@ def kill_procs_base(self):
             Popen(cmd, executable="/bin/bash",shell=True, stdout=subprocess.PIPE,
                   stderr=subprocess.STDOUT).wait()
             self.print_log("d", "%s: Finished (attempted) kill of the following processes on %s: %s" % \
-                           (date_and_time(), host, " ".join( labels_of_found_processes ) ), 2)
+                           (date_and_time(), host, " ".join(labels_of_found_processes)), 2)
 
         art_pids = get_pids("art -c .*partition_%s" % os.environ["DAQINTERFACE_PARTITION_NUMBER"], host)
 
         if len(art_pids) > 0:
 
-            cmd = "kill -9 %s" % (" ".join( art_pids ) )   # JCF, Dec-8-2018: the "-9" is apparently needed...
+            cmd = "kill -9 %s" % (" ".join(art_pids))   # JCF, Dec-8-2018: the "-9" is apparently needed...
 
             if not host_is_local(host):
                 cmd = "ssh -x " + host + " '" + cmd + "'"
@@ -269,7 +285,6 @@ def find_process_manager_variable_base(self, line):
 
 def set_process_manager_default_variables_base(self):
     pass # There ARE no persistent variables specific to direct process management
-
 def reset_process_manager_variables_base(self):
     pass
 
@@ -312,9 +327,9 @@ def get_pid_for_process_base(self, procinfo):
         return None
     else:
         for grepped_line in grepped_lines:
-            print (grepped_line)
+            print(grepped_line)
 
-        print ("Appear to have duplicate processes for %s on %s, pids: %s" % (procinfo.label, procinfo.host, " ".join( pids )))
+        print("Appear to have duplicate processes for %s on %s, pids: %s" % (procinfo.label, procinfo.host, " ".join(pids)))
 
     return None
 
@@ -346,12 +361,14 @@ def mopup_process_base(self, procinfo):
                            (procinfo.label, procinfo.host))
             Popen(cmd, executable="/bin/bash",shell=True).wait()
 
-    # Will need to perform some additional cleanup (clogged ports, zombie art processes, etc.)
+    # Will need to perform some additional cleanup (clogged ports, zombie art
+    # processes, etc.)
 
     ssh_mopup_ok = True  
     related_process_mopup_ok = True
 
-    # Need to deal with the lingering ssh command if the lost process is on a remote host
+    # Need to deal with the lingering ssh command if the lost process is on a
+    # remote host
     if on_other_node:
 
         # Mopup the ssh call on this side
@@ -367,7 +384,8 @@ def mopup_process_base(self, procinfo):
         elif len(pids) > 1:
             ssh_mopup_ok = False
 
-    # And take out the process(es) associated with the artdaq process via its listening port (e.g., the art processes)
+    # And take out the process(es) associated with the artdaq process via its
+    # listening port (e.g., the art processes)
     
     cmd = "kill %s > /dev/null 2>&1" % (" ".join(get_related_pids_for_process(procinfo)))
     
@@ -397,19 +415,23 @@ def mopup_process_base(self, procinfo):
 
     
 
-# If you change what this function returns, you should rename it for obvious reasons
+# If you change what this function returns, you should rename it for obvious
+# reasons
 def get_pids_and_labels_on_host(host, procinfos):
 
     greptokens = []
     
     for procinfo in [pi for pi in procinfos if pi.host == host]:
-        greptokens.append( "[0-9]:[0-9][0-9]\s\+" + bootfile_name_to_execname(procinfo.name) + " -c .*" + procinfo.port + ".*" ) 
+        greptokens.append("[0-9]:[0-9][0-9]\s\+" + bootfile_name_to_execname(procinfo.name) + " -c .*" + procinfo.port + ".*") 
     greptoken = "[0-9]:[0-9][0-9]\s\+\(%s\).*application_name.*partition_number:\s*%s" % \
                 ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])), \
                  os.environ["DAQINTERFACE_PARTITION_NUMBER"])
 
-    #greptoken = "[0-9]:[0-9][0-9]\s\+valgrind.*\(%s\).*application_name.*partition_number:\s*%s" % \
-    #            ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])), \
+    #greptoken =
+    #"[0-9]:[0-9][0-9]\s\+valgrind.*\(%s\).*application_name.*partition_number:\s*%s"
+    #% \
+    #            ("\|".join(set([bootfile_name_to_execname(procinfo.name) for
+    #            procinfo in procinfos])), \
     # os.environ["DAQINTERFACE_PARTITION_NUMBER"])
 
 
@@ -421,7 +443,7 @@ def get_pids_and_labels_on_host(host, procinfos):
     for line in grepped_lines:
         res = re.search(r"application_name:\s+(\S+)", line)
         assert res
-        labels_of_found_processes.append( res.group(1) )
+        labels_of_found_processes.append(res.group(1))
         
     return pids, labels_of_found_processes
 
@@ -442,14 +464,13 @@ def get_related_pids_for_process(procinfo):
             pid = res.group(1)
             pname = res.group(2)
             if "python" not in pname:  # Don't want DAQInterface to kill itself off...
-                related_pids.append( res.group(1) )
+                related_pids.append(res.group(1))
     return set(related_pids)
 
 
 
 # check_proc_heartbeats_base() will check that the expected artdaq
 # processes are up and running
-
 def check_proc_heartbeats_base(self, requireSuccess=True):
 
     is_all_ok = True
@@ -463,22 +484,22 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
         
         for procinfo in [procinfo for procinfo in self.procinfos if procinfo.host == host]:
             if procinfo.label in labels_of_found_processes:
-                found_processes.append( procinfo )
+                found_processes.append(procinfo)
             else:
                 is_all_ok = False
 
                 if requireSuccess:
                     self.print_log("e", "%s: Appear to have lost process with label %s on host %s" % (date_and_time(), procinfo.label, procinfo.host))
-                    procinfos_to_remove.append( procinfo )
+                    procinfos_to_remove.append(procinfo)
 
                     mopup_process_base(self, procinfo)
     
     if not is_all_ok and requireSuccess:
         if self.state(self.name) == "running":
             for procinfo in procinfos_to_remove:
-                self.procinfos.remove( procinfo )
+                self.procinfos.remove(procinfo)
                 self.throw_exception_if_losing_process_violates_requirements(procinfo)
-            self.print_log("i", "Processes remaining:\n%s" % ("\n".join( [procinfo.label for procinfo in self.procinfos])))
+            self.print_log("i", "Processes remaining:\n%s" % ("\n".join([procinfo.label for procinfo in self.procinfos])))
         else:
             raise Exception("\nProcess(es) %s died or found in Error state" % (", ".join(['"' + procinfo.label + '"' for procinfo in procinfos_to_remove])))
             
@@ -515,14 +536,14 @@ def main():
             daq_setup_script = "/home/jcfree/artdaq-demo_multiple_fragments_per_boardreader/setupARTDAQDEMO"
 
             procinfos = []
-            procinfos.append( Procinfo("BoardReader", "0", "localhost", "10100", "MockBoardReader") )
-            procinfos.append( Procinfo("EventBuilder", "1", "localhost", "10101", "MockEventBuilder") )
+            procinfos.append(Procinfo("BoardReader", "0", "localhost", "10100", "MockBoardReader"))
+            procinfos.append(Procinfo("EventBuilder", "1", "localhost", "10101", "MockEventBuilder"))
 
             def print_log(self, ignore, string_to_print, ignore2):
-                print (string_to_print)
+                print(string_to_print)
             
 
-        launch_procs_base( MockDAQInterface() )
+        launch_procs_base(MockDAQInterface())
 
 if __name__ == "__main__":
     main()
