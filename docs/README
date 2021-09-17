@@ -2,11 +2,11 @@ The files in this directory are installed in the DAQInterface directory when qui
 
 boot.txt: Example boot.txt file with entries for 2 EventBuilders, a DataLogger, and a Dispatcher
 
-boot.mu2edaq.txt: Example boot.txt file modified for use on the mu2edaq cluster during integration tests. It defines the same applications as boot.txt, but spreads them between mu2edaq14, mu2edaq11, and mu2edaq12
+boot.mu2edaq.txt: Example boot.txt file modified for use on the mu2edaq cluster during integration tests. It defines the same applications as boot.txt, but spreads them between mu2edaq14, mu2edaq11, and mu2edaq07
 
 known_boardreaders_list_example: Example boardreaders_list file with entries for a number of components.
 
-known_boardreaders_list_example.mu2edaq: Example boardreaders_list file for use on the mu2edaq cluster during integration tests. It defines the same components as known_boardreaders_list_example, but spread between mu2edaq14, mu2edaq11, and mu2edaq12
+known_boardreaders_list_example.mu2edaq: Example boardreaders_list file for use on the mu2edaq cluster during integration tests. It defines the same components as known_boardreaders_list_example, but spread between mu2edaq14, mu2edaq11, and mu2edaq07
 
 known_boardreaders_list_mu2edaq: Example boardreaders list file for use on the mu2edaq cluster during large-scale protoDUNE testing.
 
