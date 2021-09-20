@@ -1,7 +1,7 @@
 
 services: {
   ArtdaqSharedMemoryServiceInterface: {
-    service_provider: ArtdaqSharedMemoryService
+   service_provider: ArtdaqSharedMemoryService
   }
   ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqFragmentNamingService helper_plugin: "ArtdaqDemo" }
 }
@@ -49,7 +49,7 @@ outputs: {
   #  fileName: "/tmp/artdaqdemo_eb00_r%06r_sr%02s_%to_%#.root"
   #  #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
   #  fileProperties: { maxSubRuns: 1 maxRuns: 1  }
-  #  compressionLevel: 501 # ZSTD
+  #  compressionLevel: 3
   #  fastCloning: false
  #}
 }

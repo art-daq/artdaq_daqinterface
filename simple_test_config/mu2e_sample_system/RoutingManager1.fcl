@@ -1,10 +1,9 @@
   daq: {
   policy: {
-  	  policy: "NoOp"
-	  receiver_ranks: [2,3]
+  	  policy: "PreferSameHost"
+	  routing_manager_mode: DataFlow
+	  host_map: []
   }
-
-  sender_ranks: [0,1]
 
   	table_update_interval_ms: 1000
 	table_ack_retry_count: 5

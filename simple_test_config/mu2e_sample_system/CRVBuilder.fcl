@@ -1,10 +1,4 @@
 
-services: {
-  ArtdaqSharedMemoryServiceInterface: {
-    service_provider: ArtdaqSharedMemoryService
-  }
-  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqFragmentNamingService helper_plugin: "ArtdaqDemo" }
-}
 
 daq: {
   event_builder: {
@@ -14,7 +8,10 @@ daq: {
 	buffer_count: 20
 	max_incomplete_events: 75 # Same as boardreader sync interval
 	verbose: true
+	init_fragment_count: 2
 	send_requests: false
+    request_port: 3001
+    request_address: "227.128.12.26" # Multicast request address
 
 	routing_token_config: {
 	use_routing_manager: false
@@ -22,6 +19,7 @@ daq: {
 
 	sources: { }
   }
+
   metrics: {
 	evbFile: {
 	  metricPluginType: "file"
@@ -33,23 +31,24 @@ daq: {
   }
 } 
 
+art: {
+services: {
+  ArtdaqSharedMemoryServiceInterface: { service_provider: ArtdaqSharedMemoryService }
+  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqFragmentNamingService helper_plugin: "ArtdaqDemo" }
+}
 outputs: {
   rootNetOutput: {
     module_type: RootNetOutput
     #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
     #broadcast_sends: true
-	destinations: {	}
-
-	routing_table_config: {
-	    use_routing_manager: false
-	}
+	destinations: {	}	
   }
   #normalOutput: {
   #  module_type: RootDAQOut
   #  fileName: "/tmp/artdaqdemo_eb00_r%06r_sr%02s_%to_%#.root"
   #  #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
   #  fileProperties: { maxSubRuns: 1 maxRuns: 1  }
-  #  compressionLevel: 501 # ZSTD
+  #  compressionLevel: 3
   #  fastCloning: false
  #}
 }
@@ -89,11 +88,11 @@ physics: {
    
   a1: [ toy1Integ, toy2Integ ]
   my_output_modules: [ rootNetOutput ]
-  #my_output_modules: [ normalOutput ]
 }
 source: {
   module_type: ArtdaqInput
   waiting_time: 2500000
   resume_after_timeout: true
 }
-process_name: DAQ
+process_name: CRVEB
+}
