@@ -310,9 +310,9 @@ def get_pid_for_process_base(self, procinfo):
         return None
     else:
         for grepped_line in grepped_lines:
-            print grepped_line
+            print (grepped_line)
 
-        print "Appear to have duplicate processes for %s on %s, pids: %s" % (procinfo.label, procinfo.host, " ".join( pids ))
+        print ("Appear to have duplicate processes for %s on %s, pids: %s" % (procinfo.label, procinfo.host, " ".join( pids )))
 
     return None
 
@@ -398,11 +398,10 @@ def mopup_process_base(self, procinfo):
 # If you change what this function returns, you should rename it for obvious reasons
 def get_pids_and_labels_on_host(host, procinfos):
 
-    greptokens = []
-    
-    for procinfo in [pi for pi in procinfos if pi.host == host]:
-        greptokens.append( "[0-9]:[0-9][0-9]\s\+" + bootfile_name_to_execname(procinfo.name) + " -c .*" + procinfo.port + ".*" ) 
-    greptoken = "[0-9]:[0-9][0-9]\s\+\(%s\).*application_name.*partition_number:\s*%s" % \
+    greptoken = "[0-9]:[0-9][0-9]\s\+.*\(%s\).*application_name.*partition_number:\s*%s" % \
+                ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])), \
+                 os.environ["DAQINTERFACE_PARTITION_NUMBER"])
+    sshgreptoken = "[0-9]:[0-9][0-9]\s\+ssh.*\(%s\).*application_name.*partition_number:\s*%s" % \
                 ("\|".join(set([bootfile_name_to_execname(procinfo.name) for procinfo in procinfos])), \
                  os.environ["DAQINTERFACE_PARTITION_NUMBER"])
 
@@ -414,14 +413,19 @@ def get_pids_and_labels_on_host(host, procinfos):
     grepped_lines = []
     pids = get_pids(greptoken, host, grepped_lines)
 
+    ssh_pids = get_pids(sshgreptoken, host)
+            
+    cleaned_pids = [ pid for pid in pids if pid not in ssh_pids ]
+    cleaned_lines = [ line for line in grepped_lines if " ssh " not in line ]
+
     labels_of_found_processes = []
 
-    for line in grepped_lines:
+    for line in cleaned_lines:
         res = re.search(r"application_name:\s+(\S+)", line)
         assert res
         labels_of_found_processes.append( res.group(1) )
         
-    return pids, labels_of_found_processes
+    return cleaned_pids, labels_of_found_processes
 
 
 def get_related_pids_for_process(procinfo):
@@ -517,7 +521,7 @@ def main():
             procinfos.append( Procinfo("EventBuilder", "1", "localhost", "10101", "MockEventBuilder") )
 
             def print_log(self, ignore, string_to_print, ignore2):
-                print string_to_print
+                print (string_to_print)
             
 
         launch_procs_base( MockDAQInterface() )
