@@ -14,6 +14,7 @@ daq: {
     buffer_count: 40
     onmon_event_prescale: 1
     is_data_logger: true
+    init_fragment_count: 5 # Will be book-kept by DAQInterface
 
     auto_suppression_enabled: false
 
@@ -45,7 +46,7 @@ outputs: {
     fileName: "/tmp/artdaqdemo_r%06r_sr%02s_%to_%#.root"
     fileProperties: { maxSubRuns: 1 maxRuns: 1  }
     fastCloning: false
-    compressionLevel: 3
+    compressionLevel: 501 # ZSTD
   }
   rootNetOutput: {
     module_type: RootNetOutput
