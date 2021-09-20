@@ -54,7 +54,6 @@ art: {
 
       policy: {                                                                                                                                        
         policy: "RoundRobin"
-        receiver_ranks: []
         minimum_participants: -2
       }
 
@@ -62,8 +61,6 @@ art: {
         publisher: "ZMQ"
         bind_address: "tcp://*:5599"
       }
-
-      sender_ranks: []
 
       token_receiver: {
           routing_token_port: 35555  # default
