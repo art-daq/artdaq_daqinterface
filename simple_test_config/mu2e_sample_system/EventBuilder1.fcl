@@ -9,9 +9,7 @@ daq: {
 	max_incomplete_events: 75 # Same as boardreader sync interval
 	verbose: true
 	init_fragment_count: 2
-	send_requests: true
-    request_port: 3001
-    request_address: "227.128.12.26" # Multicast request address
+	send_requests: false
 
 	routing_token_config: {
 	use_routing_manager: false
@@ -48,23 +46,20 @@ outputs: {
   #  fileName: "/tmp/artdaqdemo_eb00_r%06r_sr%02s_%to_%#.root"
   #  #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
   #  fileProperties: { maxSubRuns: 1 maxRuns: 1  }
-  #  compressionLevel: 3
+  #  compressionLevel: 501 # ZSTD
   #  fastCloning: false
  #}
 }
 
 physics: {
   analyzers: {
-    toy1Integ: {
-      module_type: CheckIntegrity
-      raw_data_label: "daq"
-      frag_type: "TOY1"      
-    }
-    toy2Integ: {
-      module_type: CheckIntegrity
-      raw_data_label: "daq"
-      frag_type: "TOY2"
-    }
+    requests: {
+		module_type: RequestSender
+		send_requests: true
+		request_port: 3001
+		request_address: "227.128.12.26" # Multicast request address
+
+	}
   }
 
   producers: {
@@ -86,7 +81,7 @@ physics: {
   pmod2: [ prescaleMod2 ]
   pmod3: [ prescaleMod3 ]
    
-  a1: [ toy1Integ, toy2Integ ]
+  a1: [ requests ]
   my_output_modules: [ rootNetOutput ]
 }
 source: {
