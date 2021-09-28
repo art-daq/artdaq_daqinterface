@@ -1977,8 +1977,6 @@ class DAQInterface(Component):
                 else:
                     errmsg = "%s; returned value suggests that the ssh call to %s timed out. Perhaps a lack of public/private ssh keys resulted in ssh asking for a password?" % (errmsg, random_host)
                 self.print_log("e", make_paragraph(errmsg))
-                self.print_log("e", "STDOUT: \n%s" % (out_stdout))
-                self.print_log("e", "STDERR: \n%s" % (out_stderr))
                 raise Exception("Problem source-ing %s on %s" % (self.daq_setup_script, random_host))
 
             endtime = time()
