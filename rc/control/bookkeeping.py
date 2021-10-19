@@ -422,7 +422,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             # and destination blocks in PROLOGs.
             while table_start != -1 and table_end != -1:
                 
-                if enclosing_table_name(self.procinfos[i_proc].fhicl_used, tablename, searchstart) != "message"
+                if enclosing_table_name(self.procinfos[i_proc].fhicl_used, tablename, searchstart) != "message":
                     self.procinfos[i_proc].fhicl_used = \
                         self.procinfos[i_proc].fhicl_used[:table_start] + \
                         "\n" + tablename + ": { \n" + \
