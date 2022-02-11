@@ -236,15 +236,15 @@ def get_boot_info_base(self, boot_filename):
                 if memberDict["prepend"] == "not set":
                     memberDict["prepend"] = ""
 
-                self.procinfos.append(self.Procinfo(memberDict["name"],
-                                                    rank,
-                                                    memberDict["host"],
-                                                    memberDict["port"],
-                                                    memberDict["label"],
-                                                    memberDict["subsystem"],
-                                                    memberDict["allowed_processors"],
-                                                    memberDict["target"],
-                                                    memberDict["prepend"]
+                self.procinfos.append(self.Procinfo(name=memberDict["name"],
+                                                    rank=rank,
+                                                    host=memberDict["host"],
+                                                    port=memberDict["port"],
+                                                    label=memberDict["label"],
+                                                    subsystem=memberDict["subsystem"],
+                                                    allowed_processors=memberDict["allowed_processors"],
+                                                    target=memberDict["target"],
+                                                    prepend=memberDict["prepend"]
                                                     ))
 
                 for varname in memberDict.keys():

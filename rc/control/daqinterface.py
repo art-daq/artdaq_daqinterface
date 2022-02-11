@@ -1861,6 +1861,7 @@ class DAQInterface(Component):
             boardreader_subsystem = "1"
             boardreader_allowed_processors = "-1"
             boardreader_prepend = ""
+            boardreader_target = "EventBuilder"
 
             if len(self.daq_comp_list[compname]) == 1:
                 boardreader_host = self.daq_comp_list[compname]
@@ -1888,11 +1889,15 @@ class DAQInterface(Component):
 
             if boardreader_allowed_processors == "-1":
                 boardreader_allowed_processors = None
-
-            self.procinfos.append(self.Procinfo("BoardReader",
-                                                boardreader_rank,
-                                                boardreader_host,
-                                                boardreader_port, compname, boardreader_subsystem, boardreader_allowed_processors, boardreader_prepend))
+            self.procinfos.append(self.Procinfo(name="BoardReader",
+                                                rank=boardreader_rank,
+                                                host=boardreader_host,
+                                                port=boardreader_port,
+                                                label=compname,
+                                                subsystem=boardreader_subsystem,
+                                                allowed_processors=boardreader_allowed_processors,
+                                                target=boardreader_target,
+                                                prepend=boardreader_prepend))
 
         # See the Procinfo.__lt__ function for details on sorting
 
