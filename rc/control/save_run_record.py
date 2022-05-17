@@ -178,10 +178,10 @@ def save_run_record_base(self):
             # We'll throw this on the list of packages whose actual versions we need to figure out in real-time
             packages_whose_versions_we_need.append(pkgname)
 
-    self.fill_package_versions( [ string.replace(pkg, "-", "_") for pkg in packages_whose_versions_we_need ] )
+    self.fill_package_versions( [ pkg.replace("-", "_") for pkg in packages_whose_versions_we_need ] )
         
     for pkgname in packages_whose_versions_we_need:
-        package_commit_dict[pkgname] = "%s commit/version: %s" % (pkgname, self.package_versions[string.replace(pkgname, "-","_")])
+        package_commit_dict[pkgname] = "%s commit/version: %s" % (pkgname, self.package_versions[pkgname.replace("-","_")])
 
     for pkg in sorted(package_commit_dict.keys()):
         outf.write("%s" % (package_commit_dict[pkg]))

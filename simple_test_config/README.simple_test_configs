@@ -93,6 +93,13 @@ A version of the "demo" configuration with four DataLoggers.
 
 =====================================================================
 
+multiple_fragment_ids:
+
+A version of the "demo" configuration where component02 and component03
+generate multiple Fragments for each event.
+
+=====================================================================
+
 no_aggregators:
 
 TODO: Describe this configuration or remove it!!!

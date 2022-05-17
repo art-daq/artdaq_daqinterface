@@ -51,7 +51,7 @@ outputs: {
   #  fileName: "/tmp/artdaqdemo_eb00_r%06r_sr%02s_%to_%#.root"
   #  #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
   #  fileProperties: { maxSubRuns: 1 maxRuns: 1  }
-  #  compressionLevel: 3
+  #  compressionLevel: 501 # ZSTD
   #  fastCloning: false
  #}
 }
@@ -95,7 +95,7 @@ physics: {
 }
 source: {
   module_type: ArtdaqInput
-  waiting_time: 2500000
+  waiting_time: 2500001
   resume_after_timeout: true
 }
-process_name: DAQ
+process_name: DAQ02

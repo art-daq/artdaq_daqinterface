@@ -20,7 +20,7 @@ def get_config_parentdir():
 
 def get_config_info_base(self):
 
-    uuidgen=Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    uuidgen=Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip().decode('utf-8')
     tmpdir = "/tmp/%s" % (uuidgen)
     os.mkdir(tmpdir)
 
@@ -62,8 +62,8 @@ def get_boot_info_base(self, boot_filename):
                             "unable to locate configuration file \"" +
                             boot_filename + "\""))
 
-    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set", "allowed_processors": "not set"}
-    subsystemDict = {"id": None, "source": "not set", "destination": "not set", "fragmentMode": "not set"}
+    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set", "allowed_processors": "not set", "target": "not set", "prepend": "not set"}
+    subsystemDict = {"id": None, "source": "not set", "destination": "not set", "fragmentMode": "not set", "boardreadersSendEvents": "not set"}
 
     num_expected_processes = 0
     num_actual_processes = 0
@@ -143,7 +143,7 @@ def get_boot_info_base(self, boot_filename):
                 "DataLogger" in line or "Dispatcher" in line or \
                 "RoutingManager" in line:
 
-            res = re.search(r"^\s*(\w+)\s+(\S+)\s*:\s*(\S+)", line)
+            res = re.search(r"^\s*(\w+)\s+(\S+)\s*:\s*(\"[^\"]*\"|\S+)", line)
 
             if res:
                 memberDict["name"] = res.group(1)
@@ -200,12 +200,17 @@ def get_boot_info_base(self, boot_filename):
                 if re.search("[Ff]alse",subsystemDict["fragmentMode"]):
                     fragmentMode = False
 
-                self.subsystems[subsystemDict["id"]] = self.Subsystem(sources, destination, fragmentMode)
+                boardreadersSendEvents = False
+                if re.search("[Tt]rue", subsystemDict["boardreadersSendEvents"]):
+                    boardreadersSendEvents = True
+
+                self.subsystems[subsystemDict["id"]] = self.Subsystem(sources, destination, fragmentMode, boardreadersSendEvents)
 
                 subsystemDict["id"] = None
                 subsystemDict["source"] = "not set"
                 subsystemDict["destination"] = "not set"
                 subsystemDict["fragmentMode"] = "not set"
+                subsystemDict["boardreadersSendEvents"] = "not set"
 
             # If it has been filled, then initialize a Procinfo
             # object, append it to procinfos, and reset the
@@ -228,17 +233,22 @@ def get_boot_info_base(self, boot_filename):
                 if memberDict["allowed_processors"] == "not set":
                     memberDict["allowed_processors"] = None  # Where None actually means "allow all processors"
 
-                self.procinfos.append(self.Procinfo(memberDict["name"],
-                                                    rank,
-                                                    memberDict["host"],
-                                                    memberDict["port"],
-                                                    memberDict["label"],
-                                                    memberDict["subsystem"],
-                                                    memberDict["allowed_processors"]
+                if memberDict["prepend"] == "not set":
+                    memberDict["prepend"] = ""
+
+                self.procinfos.append(self.Procinfo(name=memberDict["name"],
+                                                    rank=rank,
+                                                    host=memberDict["host"],
+                                                    port=memberDict["port"],
+                                                    label=memberDict["label"],
+                                                    subsystem=memberDict["subsystem"],
+                                                    allowed_processors=memberDict["allowed_processors"],
+                                                    target=memberDict["target"],
+                                                    prepend=memberDict["prepend"]
                                                     ))
 
                 for varname in memberDict.keys():
-                    if varname != "port" and varname != "subsystem" and varname != "allowed_processors":
+                    if varname != "port" and varname != "subsystem" and varname != "allowed_processors" and varname != "target" and varname != "prepend":
                         memberDict[varname] = None
                     else:
                         memberDict[varname] = "not set"
@@ -264,7 +274,7 @@ def listdaqcomps_base(self):
     try:
         inf = open( components_file )
     except:
-        print traceback.format_exc()
+        print (traceback.format_exc())
         return 
 
     lines = inf.readlines()
@@ -275,7 +285,7 @@ def listdaqcomps_base(self):
             count = count - 1
 
     print
-    print "# of components found in listdaqcomps call: %d" % (count)
+    print ("# of components found in listdaqcomps call: %d" % (count))
 
     lines.sort()
     for line in lines:
@@ -284,7 +294,7 @@ def listdaqcomps_base(self):
         component = line.split()[0].strip()
         host = line.split()[1].strip()
         
-        print "%s (runs on %s)" % (component, host)
+        print ("%s (runs on %s)" % (component, host))
 
 def listconfigs_base(self):
     subdirs = next(os.walk(get_config_parentdir()))[1]
@@ -295,18 +305,21 @@ def listconfigs_base(self):
     outf = open(listconfigs_file, "w")
 
     print
-    print "Available configurations: "
+    print ("Available configurations: ")
     for config in sorted(configs):
-        print config
+        print (config)
         outf.write("%s\n" % config)
 
     print
-    print "See file \"%s\" for saved record of the above configurations" % (listconfigs_file)
-    print make_paragraph("Please note that for the time being, the optional max_configurations_to_list variable which may be set in %s is only applicable when working with the database" % os.environ["DAQINTERFACE_SETTINGS"])
+    print ("See file \"%s\" for saved record of the above configurations" % (listconfigs_file))
+    print (make_paragraph("Please note that for the time being, the optional max_configurations_to_list variable which may be set in %s is only applicable when working with the database" % os.environ["DAQINTERFACE_SETTINGS"]))
     print
 
+    #print(flush=True)
+    sys.stdout.flush()
+
 def main():
-    print "Calling listdaqcomps_base: "
+    print ("Calling listdaqcomps_base: ")
     listdaqcomps_base("ignored_argument")
 
 if __name__ == "__main__":

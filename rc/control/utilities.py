@@ -44,7 +44,7 @@ def make_paragraph(userstring, chars_per_line=75):
     previous_string_index = -1
     ignore_algorithm = False
 
-    userstring = string.replace(userstring, "\n", " ")
+    userstring = userstring.replace("\n", " ")
 
     while len(userstring) - string_index > 0:
 
@@ -94,7 +94,7 @@ def get_pids(greptoken, host="localhost", grepresults = None):
     cmd = 'ps aux | grep "%s" | grep -v grep' % (greptoken)
 
     if host != "localhost":
-        cmd = "ssh -x " + host + " '" + cmd + "'"
+        cmd = "ssh -x %s '%s'" % ( host, cmd )
 
     proc = Popen(cmd, shell=True, stdout=subprocess.PIPE)
 
@@ -102,9 +102,9 @@ def get_pids(greptoken, host="localhost", grepresults = None):
 
     if grepresults is not None:
         for line in lines:
-            grepresults.append( line ) # Clunkier than a straight assignment, but needed for pass-by-reference
+            grepresults.append( line.decode('utf-8') ) # Clunkier than a straight assignment, but needed for pass-by-reference
 
-    pids = [line.split()[1] for line in lines]
+    pids = [line.decode('utf-8').split()[1] for line in lines]
 
     return pids
 
@@ -116,13 +116,13 @@ def table_range(fhiclstring, tablename, startingloc=0):
 
     # 13-Apr-2018, KAB: added the startingloc argument so that this function can
     # be used to find more than the first instance of the tablename in the string.
-    loc = string.find(fhiclstring, tablename, startingloc)
+    loc = fhiclstring.find(tablename, startingloc)
 
     if loc == -1:
         return (-1, -1)
 
     # JCF, Apr-18-2019
-    # Account for the scenario where in the FHiCL we have something like 
+    # Account for the scenario where in the FHiCL we have something like
     # table_whose_range_we_want: @local::table_which_gets_assigned_to_table_whose_range_we_want
 
     res = re.search(r"%s\s*:\s*@local::(\S+)" % tablename, fhiclstring[loc:])
@@ -144,7 +144,7 @@ def table_range(fhiclstring, tablename, startingloc=0):
         else:
             return (-1, -1)
 
-    open_brace_loc = string.index(fhiclstring[loc:], "{")
+    open_brace_loc = fhiclstring[loc:].index("{")
 
     close_braces_needed = 1
     close_brace_loc = -1
@@ -173,13 +173,13 @@ def table_range(fhiclstring, tablename, startingloc=0):
 # contents of the entire table.
 def enclosing_table_range(fhiclstring, searchstring, startingloc=0):
 
-    loc = string.find(fhiclstring, searchstring, startingloc)
+    loc = fhiclstring.find(searchstring, startingloc)
 
     if loc == -1:
         return (-1, -1)
 
     braces_before = [(i+startingloc, c) for (i, c) in enumerate(fhiclstring[startingloc:loc]) if (c == "}" or c=="{")]
-    
+
     opening_count = 0
     closing_count = 0
     opening_position = -1
@@ -189,7 +189,7 @@ def enclosing_table_range(fhiclstring, searchstring, startingloc=0):
             opening_count += 1
         else:
             closing_count += 1
-        
+
         if opening_count - closing_count == 1:
             opening_position = brace[0]
             break
@@ -225,7 +225,7 @@ def enclosing_table_name(fhiclstring, searchstring, startingloc=0):
 
     (open_brace_loc, close_brace_loc_will_be_ignored) = enclosing_table_range(fhiclstring, searchstring, startingloc)
 
-    colon_loc = string.rindex(fhiclstring, ":", 0, open_brace_loc)
+    colon_loc = fhiclstring.rindex(":", 0, open_brace_loc)
 
     while fhiclstring[colon_loc - 1] == " ":
         colon_loc -= 1
@@ -253,15 +253,15 @@ def commit_check_throws_if_failure(packagedir, commit_hash, date, request_after)
 
 def is_msgviewer_running():
 
-    for line in Popen("ps u", shell=True, 
+    for line in Popen("ps u", shell=True,
                       stdout=subprocess.PIPE).stdout.readlines():
-        if "msgviewer" in line and "DAQINTERFACE_TTY" in os.environ and os.environ["DAQINTERFACE_TTY"] in line:
+        if "msgviewer" in line.decode('utf-8') and "DAQINTERFACE_TTY" in os.environ and os.environ["DAQINTERFACE_TTY"] in line.decode('utf-8'):
             return True
 
     return False
 
 def execute_command_in_xterm(home, cmd):
-    
+
     if not os.path.exists( os.environ["HOME"] + "/.Xauthority"):
         raise Exception("Unable to find .Xauthority file in home directory")
 
@@ -284,20 +284,20 @@ def execute_command_in_xterm(home, cmd):
     Popen(fullcmd, shell=True).wait()
 
 def date_and_time():
-    return Popen("LC_ALL=\"en_US.UTF-8\" date", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    return Popen("LC_ALL=\"en_US.UTF-8\" date", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].decode('utf-8').strip()
 
 def date_and_time_more_precision():
-    return Popen("date +%a_%b_%d_%H:%M:%S.%N | sed -r 's/_/ /g'", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    return Popen("date +%a_%b_%d_%H:%M:%S.%N | sed -r 's/_/ /g'", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].decode('utf-8').strip()
 
 def date_and_time_filename():
-    return Popen("LC_ALL=\"en_US.UTF-8\" date +%Y%m%d%H%M%S", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    return Popen("LC_ALL=\"en_US.UTF-8\" date +%Y%m%d%H%M%S", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].decode('utf-8').strip()
 
 def construct_checked_command(cmds):
 
     checked_cmds = []
 
     for cmd in cmds:
-        
+
         checked_cmds.append( cmd )
 
         if not re.search(r"\s*&\s*$", cmd) and not bash_unsetup_command in cmd:
@@ -316,13 +316,13 @@ def reformat_fhicl_documents(setup_fhiclcpp, procinfos):
     cmd = "grep -c ^processor /proc/cpuinfo"
 
     nprocessors = Popen(cmd, shell=True,
-                        stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+                        stdout=subprocess.PIPE).stdout.readlines()[0].decode('utf-8').strip()
 
     if not re.search(r"^[0-9]+$", nprocessors):
         raise Exception(make_paragraph("A problem occurred when DAQInterface tried to execute \"%s\"; result was not an integer" % (cmd)))
 
-    reformat_indir = Popen("mktemp -d", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
-    reformat_outdir = Popen("mktemp -d", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    reformat_indir = Popen("mktemp -d", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].decode('utf-8').strip()
+    reformat_outdir = Popen("mktemp -d", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].decode('utf-8').strip()
 
     for procinfo in procinfos:
         with open("%s/%s.fcl" % (reformat_indir, procinfo.label), "w") as preformat_fhicl_file:
@@ -339,7 +339,7 @@ def reformat_fhicl_documents(setup_fhiclcpp, procinfos):
 
     cmds.append("echo About to execute '%s'" % (xargs_cmd))
     cmds.append(xargs_cmd)
-    
+
     out = Popen("\n".join(cmds), shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
 
     out_comm = out.communicate()
@@ -349,13 +349,13 @@ def reformat_fhicl_documents(setup_fhiclcpp, procinfos):
     status = out.returncode
 
     if status != 0:
-        
+
         if out_stdout is not None:
-            print out_stdout
+            print (out_stdout.decode('utf-8'))
 
         if out_stderr is not None:
-            print out_stderr
-        
+            print (out_stderr.decode('utf-8'))
+
         raise Exception("There was a problem reformatting the FHiCL documents found in %s; this is very likely due to illegal FHiCL syntax somewhere. See above for more info." % (reformat_indir))
 
     reformatted_fhicl_strings = []
@@ -388,14 +388,14 @@ def get_commit_hash(gitrepo):
 
     if len(proclines) != 1 or len(proclines[0].strip()) != 40:
         raise Exception(make_paragraph("Commit hash for \"%s\" not found; this was requested in the \"packages_hashes_to_save\" list found in %s" % (gitrepo, os.environ["DAQINTERFACE_SETTINGS"])))
-        
+
     commit_hash = proclines[0].strip()
 
     cmds = []
     cmds.append("cd %s" % (gitrepo))
     cmds.append("git diff --unified=0 | grep \"^-[^-][^-]\" | wc -l")
     num_subtracted_lines = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
-    
+
     cmds = []
     cmds.append("cd %s" % (gitrepo))
     cmds.append("git diff --unified=0 | grep \"^+[^+][^+]\" | wc -l")
@@ -404,9 +404,9 @@ def get_commit_hash(gitrepo):
     return "%s %s %s" % (commit_hash, num_subtracted_lines, num_added_lines)
 
 def get_commit_comment( gitrepo ):
-    
+
     max_length = 50
-    
+
     if not os.path.exists(gitrepo):
         return ""
 
@@ -415,7 +415,11 @@ def get_commit_comment( gitrepo ):
     cmds.append("git log --format=%B -n 1 HEAD")
     proc = Popen(";".join(cmds), shell=True,
                  stdout=subprocess.PIPE)
-    single_line_comment = " ".join( proc.stdout.readlines() )
+
+    proclines = proc.stdout.readlines()
+    single_line_comment = proclines[0].decode('utf-8')
+    for line in proclines[1:]:
+      single_line_comment += " " + line.decode('utf-8')
 
     for badchar in [ '\n', '"', "'" ]:
         single_line_comment = single_line_comment.replace(badchar, "")
@@ -436,8 +440,8 @@ def get_commit_time(gitrepo):
 
     proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE)
     proclines = proc.stdout.readlines()
-    
-    return proclines[0].strip()
+
+    return proclines[0].decode('utf-8').strip()
 
 def get_commit_branch(gitrepo):
     if not os.path.exists(gitrepo):
@@ -449,18 +453,18 @@ def get_commit_branch(gitrepo):
 
     proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE)
     proclines = proc.stdout.readlines()
-    
+
     return proclines[0].strip()
 
 
 # JCF, Jul-6-2019
 
-# Note to self: if you modify the label before the colon below, make sure you make commensurate 
+# Note to self: if you modify the label before the colon below, make sure you make commensurate
 # modifications in save_run_record...
 
 def get_commit_info(pkgname, gitrepo):
     return "%s commit/version: %s \"%s\" \"%s\" \"%s\"" % (pkgname, get_commit_hash(gitrepo), get_commit_comment(gitrepo), get_commit_time(gitrepo), get_commit_branch(gitrepo))
-        
+
 def get_commit_info_filename(pkgname):
     return "%s_commit_info.txt" % (pkgname)
 
@@ -490,7 +494,7 @@ def get_build_info(pkgnames, setup_script):
                     continue
 
         if not found_buildinfo_version or not found_buildinfo_time:
-            print "Failed to find one (or both of) buildinfo time and version in %s!" % (buildinfo_filename)
+            print ("Failed to find one (or both of) buildinfo time and version in %s!" % (buildinfo_filename))
 
         return "%s %s" % (buildinfo_time, buildinfo_version)
 
@@ -500,7 +504,7 @@ def get_build_info(pkgnames, setup_script):
     cmds.append(". %s" % (setup_script))
 
     for pkgname in pkgnames:
-        ups_pkgname = string.replace(pkgname, "-", "_")
+        ups_pkgname = pkgname.replace("-", "_")
         cmds.append("ups active | grep -E \"^%s\s+\"" % (ups_pkgname))
 
     proc = Popen(";".join(cmds), shell=True, stdout=subprocess.PIPE)
@@ -512,18 +516,18 @@ def get_build_info(pkgnames, setup_script):
         buildinfo_version="\"version from BuildInfo undetermined\""
         pkg_build_infos[ pkgname ] = "%s %s" % (buildinfo_time, buildinfo_version)
 
-        ups_pkgname = string.replace(pkgname, "-", "_")
+        ups_pkgname = pkgname.replace("-", "_")
 
         found_ups_package = False
         package_line_number = -1
         for i_l, line in enumerate(stdoutlines):
-            if re.search(r"^%s\s+" % (ups_pkgname), line):
+            if re.search(r"^%s\s+" % (ups_pkgname), line.decode('utf-8')):
                 found_ups_package = True
                 package_line_number = i_l
                 break
 
         if found_ups_package:
-            version=stdoutlines[package_line_number].split()[1]    
+            version=stdoutlines[package_line_number].split()[1]
             upsdir=stdoutlines[package_line_number].split()[-1]
 
             ups_sourcedir="%s/%s/%s/source" % (upsdir, ups_pkgname, version)
@@ -533,17 +537,17 @@ def get_build_info(pkgnames, setup_script):
                 continue
 
             buildinfo_file1="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, pkgname)
-            buildinfo_file2="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, string.replace(pkgname, "_", "-"))
+            buildinfo_file2="%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (ups_sourcedir, pkgname.replace("_", "-"))
             if os.path.exists(buildinfo_file1):
                 buildinfo_file = buildinfo_file1
             elif os.path.exists(buildinfo_file2):
                 buildinfo_file = buildinfo_file2
             else:
                 if buildinfo_file1 != buildinfo_file2:
-                    print "Unable to find hoped-for %s BuildInfo file (%s or %s), will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file1, buildinfo_file2, pkgname)
+                    print ("Unable to find hoped-for %s BuildInfo file (%s or %s), will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file1, buildinfo_file2, pkgname))
                 else:
-                    print "Unable to find hoped-for %s BuildInfo file (%s), will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file1, pkgname)
-                    
+                    print ("Unable to find hoped-for %s BuildInfo file (%s), will not be able to save build info for %s in the run record" % (pkgname, buildinfo_file1, pkgname))
+
                 continue
 
             pkg_build_infos[ pkgname ] = parse_buildinfo_file(buildinfo_file)
@@ -555,15 +559,15 @@ def get_build_info(pkgnames, setup_script):
 
             if len(builddir_as_list) == 1:
                 builddir= builddir_as_list[0]
-                desired_file = "%s/%s/%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (mrb_basedir, builddir, string.replace(pkgname, "-", "_"), pkgname)
+                desired_file = "%s/%s/%s/%s/BuildInfo/GetPackageBuildInfo.cc" % (mrb_basedir, builddir, pkgname.replace("-", "_"), pkgname)
                 if os.path.exists(desired_file):
                     pkg_build_infos[ pkgname ] = parse_buildinfo_file(desired_file)
                 else:
                     #print "Unable to find a file with the name %s, will not be able to save build info for %s in the run record" % (desired_file, pkgname)
                     pass
-                
+
             elif len(builddir_as_list) > 1:
-                print "Warning: unable to find build info for %s as %s doesn't set up a ups product for it and there's more than one local build subdirectory in %s: %s" % (pkgname, setup_script, mrb_basedir, " ".join(builddir_as_list))
+                print ("Warning: unable to find build info for %s as %s doesn't set up a ups product for it and there's more than one local build subdirectory in %s: %s" % (pkgname, setup_script, mrb_basedir, " ".join(builddir_as_list)))
                 pass
             else:
                 #print "No local build subdirectory was found in %s, no build info for %s will be saved in the run record" % (mrb_basedir, pkgname)
@@ -588,7 +592,7 @@ def fhiclize_document(filename):
 
     with open(filename) as inf:
         for line in inf.readlines():
-            # Parse any line that's not blank or a comment                                                                           
+            # Parse any line that's not blank or a comment
             if not re.search(r"^\s*$", line) and not re.search(r"^\s*#.*$", line):
                 res = re.search(r"^\s*(\S[^:]*):\s*(\S.*)[\s]", line)
                 if res:
@@ -603,8 +607,8 @@ def fhiclize_document(filename):
 
                     fhiclized_lines.append("%s: \"%s\"" % (key, value))
                 else:
-                    print "WARNING: %s not able to FHiCLize the line \"%s\"" % \
-                        (fhiclize_document.__name__, line.rstrip())
+                    print ("WARNING: %s not able to FHiCLize the line \"%s\"" % \
+                        (fhiclize_document.__name__, line.rstrip()))
             else:
                 continue
     return "\n".join( fhiclized_lines )
@@ -613,7 +617,7 @@ def get_messagefacility_template_filename():
     if "DAQINTERFACE_MESSAGEFACILITY_FHICL" in os.environ.keys():
         messagefacility_fhicl_filename = os.environ["DAQINTERFACE_MESSAGEFACILITY_FHICL"]
     else:
-        messagefacility_fhicl_filename = os.getcwd() + "/MessageFacility.fcl" 
+        messagefacility_fhicl_filename = os.getcwd() + "/MessageFacility.fcl"
 
     return messagefacility_fhicl_filename
 
@@ -628,7 +632,7 @@ def obtain_messagefacility_fhicl(have_artdaq_mfextensions):
     # artdaq/DAQdata/configureMessageFacility.cc in artdaq
     # v2_03_03 for details).
 
-    default_contents = """ 
+    default_contents = """
 
 # This file was automatically generated as %s at %s on host %s, and is
 # the default file DAQInterface uses to determine how to modify the
@@ -640,16 +644,16 @@ def obtain_messagefacility_fhicl(have_artdaq_mfextensions):
 # the environment variable DAQINTERFACE_MESSAGEFACILITY_FHICL to the
 # name of the other file.
 
-udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THIS_WITH_AN_INTEGER_VALUE host : "%s" } 
+udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THIS_WITH_AN_INTEGER_VALUE host : "%s" }
 
 """ % (messagefacility_fhicl_filename, date_and_time(), os.environ["HOSTNAME"], socket.gethostname())
-        
+
     if not os.path.exists( messagefacility_fhicl_filename ):
         with open(messagefacility_fhicl_filename, "w") as outf_mf:
             outf_mf.write( default_contents )
 
     processed_messagefacility_fhicl_filename="/tmp/messagefacility_partition%s_%s.fcl" % (os.environ["DAQINTERFACE_PARTITION_NUMBER"], os.environ["USER"])
-    
+
     with open(messagefacility_fhicl_filename) as inf_mf:
         with open(processed_messagefacility_fhicl_filename, "w") as outf_mf:
             for line in inf_mf.readlines():
@@ -669,11 +673,11 @@ def get_private_networks(host):
     if host != "localhost" and host != os.environ["HOSTNAME"]:
         cmd = "ssh -x %s '%s'" % (host, cmd)
 
-    lines = Popen(cmd, shell=True, stdout=subprocess.PIPE ).stdout.readlines() 
+    lines = Popen(cmd, shell=True, stdout=subprocess.PIPE ).stdout.readlines()
     networks = []
 
     for line in lines:
-        network = line.strip()
+        network = line.decode('utf-8').strip()
         res = re.search(r"^([0-9]+\.[0-9]+\.[0-9]+\.)[0-9]+", network)
         if not res:
             raise Exception("Unexpected result from command \"%s\"; line \"%s\" doesn't appear to be an address" % (cmd, network))
@@ -700,27 +704,27 @@ def record_directory_info(recorddir):
         raise Exception("Directory \"%s\" doesn't exist, exiting...")
     stats = os.stat(recorddir)
     return "inode: %s" % (stats.st_ino)
-    
+
 def get_short_hostname():
-    hostname = Popen("hostname -s", executable="/bin/bash", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    hostname = Popen("hostname -s", executable="/bin/bash", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].decode('utf-8').strip()
     return hostname
 
 def main():
 
     if len(sys.argv) > 1 and sys.argv[1] == "get_commit_info":
         if len(sys.argv) != 5:
-            print make_paragraph("Error: expected four arguments (\"get_commit_info\", the name of the package (dashes, not underscores), the full pathname of that package's git repository whose commit info you want, and the full pathname of the output directory where you want to save the commit info)")
+            print (make_paragraph("Error: expected four arguments (\"get_commit_info\", the name of the package (dashes, not underscores), the full pathname of that package's git repository whose commit info you want, and the full pathname of the output directory where you want to save the commit info)"))
             sys.exit(1)
         pkgname = sys.argv[2]
         gitrepo = sys.argv[3]
         outputdir = sys.argv[4]
 
         if not os.path.exists(gitrepo):
-            print "Error: requested repo \"%s\" doesn't appear to exist" % (gitrepo)
+            print ("Error: requested repo \"%s\" doesn't appear to exist" % (gitrepo))
             sys.exit(2)
 
         if not os.path.exists(outputdir):
-            print "Error: requested output directory \"%s\" doesn't appear to exist" % (outputdir)
+            print ("Error: requested output directory \"%s\" doesn't appear to exist" % (outputdir))
             sys.exit(3)
 
         filename = "%s/%s" % (outputdir, get_commit_info_filename(pkgname))
@@ -728,20 +732,20 @@ def main():
         try:
             outf = open(filename, "w")
         except:
-            print "Error: problem opening the file \"%s\" for writing" % (filename)
+            print ("Error: problem opening the file \"%s\" for writing" % (filename))
             sys.exit(4)
-            
+
         try:
             outf.write(get_commit_info(pkgname, gitrepo))
         except:
-            print "Error: problem getting the commit info from \"%s\"" % (gitrepo)
+            print ("Error: problem getting the commit info from \"%s\"" % (gitrepo))
             sys.exit(5)
-        
+
         sys.exit(0)
 
     elif len(sys.argv) > 1 and sys.argv[1] == "upsproddir_from_productsdir":
         if len(sys.argv) != 3:
-            print make_paragraph("Error: expected 1 argument to upsproddir_from_productsdir: PRODUCTS_list")
+            print (make_paragraph("Error: expected 1 argument to upsproddir_from_productsdir: PRODUCTS_list"))
             sys.exit(1)
 
         productsdir = sys.argv[2]
@@ -749,9 +753,9 @@ def main():
         sys.exit(0)
     elif len(sys.argv) > 1 and sys.argv[1] == "record_directory_info":
         if len(sys.argv) != 3:
-            print make_paragraph("Error: expected 1 argument to record_directory_info: the name of an existing run records directory")
+            print (make_paragraph("Error: expected 1 argument to record_directory_info: the name of an existing run records directory"))
             sys.exit(1)
-        print record_directory_info(sys.argv[2])
+        print (record_directory_info(sys.argv[2]))
         sys.exit(0)
 
     paragraphed_string_test = False
@@ -772,19 +776,19 @@ def main():
         paragraphed_string=make_paragraph( sample_string )
 
         print
-        print "Sample string: "
-        print sample_string
+        print ("Sample string: ")
+        print (sample_string)
 
         print
-        print "Paragraphed string: "
-        print paragraphed_string
+        print ("Paragraphed string: ")
+        print (paragraphed_string)
 
     if msgviewer_check_test:
         if is_msgviewer_running():
-            print "A msgviewer appears to be running"
+            print ("A msgviewer appears to be running")
         else:
-            print "A msgviewer doesn't appear to be running"
-        
+            print ("A msgviewer doesn't appear to be running")
+
     if execute_command_in_xterm_test:
         execute_command_in_xterm(os.environ["PWD"], "echo Hello world")
         execute_command_in_xterm(os.environ["PWD"], "echo You should see an xclock appear; xclock ")
@@ -796,7 +800,7 @@ def main():
 
         # Note the setup string assumes cvmfs is available...
         proddir = "/cvmfs/fermilab.opensciencegrid.org/products/artdaq"
-        print "This test assumes that %s is available" % (proddir)
+        print ("This test assumes that %s is available" % (proddir))
 
         with open(source_filename, "w") as source_file:
             source_file.write( "source %s/setup; setup fhiclcpp v4_05_01 -q prof:e14" % (proddir) )
@@ -805,15 +809,15 @@ def main():
         try:
             outputstring = reformat_fhicl_document(source_filename, inputstring)
         except Exception:
-            print "Exception caught"
+            print ("Exception caught")
 
         os.unlink(source_filename)
 
-        print "Input FHiCL string: "
-        print inputstring
+        print ("Input FHiCL string: ")
+        print (inputstring)
         print
-        print "Output FHiCL string: "
-        print outputstring
+        print ("Output FHiCL string: ")
+        print (outputstring)
         print
 
     if bash_unsetup_test:
@@ -823,8 +827,8 @@ def main():
         pkgname = "artdaq"
         gitrepo = "/home/jcfree/artdaq-demo_v3_04_01/srcs/artdaq"
 
-        print "Commit info for %s:" % (gitrepo)
-        print get_commit_info(pkgname, gitrepo)
+        print ("Commit info for %s:" % (gitrepo))
+        print (get_commit_info(pkgname, gitrepo))
 
     if get_build_info_test:
         pkgnames = ["artdaq-demo", "artdaq-core-demo", "artdaq", "artdaq-utilities", "artdaq-core"]
@@ -832,32 +836,32 @@ def main():
 
         pkg_build_infos_dict = get_build_info(pkgnames, daq_setup_script)
         for pkg, buildinfo in pkg_build_infos_dict.items():
-            print "%s: %s" % (pkg, buildinfo)
+            print ("%s: %s" % (pkg, buildinfo))
 
     if table_range_test:
 
         assert "ARTDAQ_DAQINTERFACE_DIR" in os.environ, "Need to have DAQInterface environment sourced for table_range test"
         filename = "%s/simple_test_config/pdune_swtrig_noRM/DFO.fcl" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"])
-        print "From file %s:" % (filename)
+        print ("From file %s:" % (filename))
 
         with open( filename ) as inf:
             inf_contents = inf.read()
 
             (table_start, table_end) = table_range( inf_contents, "art" )
-            print "Contents of table: "
-            print inf_contents[table_start:table_end]
+            print ("Contents of table: ")
+            print (inf_contents[table_start:table_end])
 
     if get_private_networks_test:
         hosts = ["localhost"]
 
         for host in hosts:
             private_networks = get_private_networks(host)
-            print "%s: " % (host)
-            print [network.strip() for network in private_networks]
+            print ("%s: " % (host))
+            print ([network.strip() for network in private_networks])
 
     if enclosing_table_range_test or enclosing_table_name_test:
         if len(sys.argv) != 3:
-            print make_paragraph("Since at least one of enclosing_table_range_test and enclosing_table_name_test are true, you need to supply the name of a FHiCL file and then a token which is enclosed in a table in the file")
+            print( make_paragraph("Since at least one of enclosing_table_range_test and enclosing_table_name_test are true, you need to supply the name of a FHiCL file and then a token which is enclosed in a table in the file"))
             sys.exit(0)
         filename = sys.argv[1]
         token = sys.argv[2]
@@ -874,24 +878,24 @@ def main():
                 raise Exception("Uh-oh: unable to find an enclosing table around \"%s\"" % (token))
 
             print
-            print "Enclosing table range starts at %d and ends at %d. Contents of table are between the =====s" % (start, end)
-            print "======================================================================"
-            print full_fhicl_blob[start:end]
-            print "======================================================================"
+            print ("Enclosing table range starts at %d and ends at %d. Contents of table are between the =====s" % (start, end))
+            print ("======================================================================")
+            print (full_fhicl_blob[start:end])
+            print( "======================================================================")
             print
 
         if enclosing_table_name_test:
             tablename = enclosing_table_name(full_fhicl_blob, token)
-            print "Name of table enclosing \"%s\" found to be \"%s\"" % (token, tablename)
-            
+            print( "Name of table enclosing \"%s\" found to be \"%s\"" % (token, tablename))
+
 
 def kill_tail_f():
-    tail_pids = get_pids("%s.*tail -f %s" % 
+    tail_pids = get_pids("%s.*tail -f %s" %
                          (os.environ["DAQINTERFACE_TTY"], os.environ["DAQINTERFACE_LOGFILE"]))
     if len(tail_pids) > 0:
         status = Popen("kill %s" % (" ".join(tail_pids)), shell=True).wait()
         if status != 0:
-            print "There was a problem killing \"tail -f\" commands in this terminal; you'll want to do this manually or you'll get confusing output moving forward"
+            print ("There was a problem killing \"tail -f\" commands in this terminal; you'll want to do this manually or you'll get confusing output moving forward")
 
 
 if __name__ == "__main__":

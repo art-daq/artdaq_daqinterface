@@ -123,7 +123,7 @@ def stringify_times(d):
         return str(d)
     if type(d) is dict:
         return dict((k, stringify_times(v))
-                    for (k, v) in d.iteritems())
+                    for (k, v) in d.items())
     elif type(d) is list:
         return map(stringify_times, d)
     elif type(d) is tuple:

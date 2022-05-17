@@ -265,7 +265,7 @@ def get_process_manager_log_filenames_base(self):
     if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
         cmd = "ssh %s '%s'" % (self.pmt_host, cmd)
 
-    log_filename_current = Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    log_filename_current = Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip().decode('utf-8')
 
     host = self.pmt_host
     if host == "localhost":
@@ -296,9 +296,9 @@ def get_pid_for_process_base(self, procinfo):
         return None
     else:
         for grepped_line in grepped_lines:
-            print grepped_line
+            print (grepped_line)
 
-        print "Appear to have duplicate processes for %s on %s, pids: %s" % (procinfo.label, procinfo.host, " ".join( pids ))
+        print ("Appear to have duplicate processes for %s on %s, pids: %s" % (procinfo.label, procinfo.host, " ".join( pids )))
 
 # check_proc_heartbeats_base() will check that the expected artdaq
 # processes are up and running
