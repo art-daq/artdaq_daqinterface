@@ -422,12 +422,13 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             # and destination blocks in PROLOGs.
             while table_start != -1 and table_end != -1:
                 
-                self.procinfos[i_proc].fhicl_used = \
-                    self.procinfos[i_proc].fhicl_used[:table_start] + \
-                    "\n" + tablename + ": { \n" + \
-                    create_sources_or_destinations_string(self.procinfos[i_proc], tablename, max_event_sizes[self.procinfos[i_proc].subsystem], inter_subsystem_transfer) + \
-                    "\n } \n" + \
-                    self.procinfos[i_proc].fhicl_used[table_end:]
+                if enclosing_table_name(self.procinfos[i_proc].fhicl_used, tablename, searchstart) != "message":
+                    self.procinfos[i_proc].fhicl_used = \
+                        self.procinfos[i_proc].fhicl_used[:table_start] + \
+                        "\n" + tablename + ": { \n" + \
+                        create_sources_or_destinations_string(self.procinfos[i_proc], tablename, max_event_sizes[self.procinfos[i_proc].subsystem], inter_subsystem_transfer) + \
+                        "\n } \n" + \
+                        self.procinfos[i_proc].fhicl_used[table_end:]
 
                 searchstart = table_end
                 (table_start, table_end) = \
