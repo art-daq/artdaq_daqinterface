@@ -20,7 +20,7 @@ def get_config_parentdir():
 
 def get_config_info_base(self):
 
-    uuidgen=Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    uuidgen=Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip().decode('utf-8')
     tmpdir = "/tmp/%s" % (uuidgen)
     os.mkdir(tmpdir)
 
@@ -236,15 +236,15 @@ def get_boot_info_base(self, boot_filename):
                 if memberDict["prepend"] == "not set":
                     memberDict["prepend"] = ""
 
-                self.procinfos.append(self.Procinfo(memberDict["name"],
-                                                    rank,
-                                                    memberDict["host"],
-                                                    memberDict["port"],
-                                                    memberDict["label"],
-                                                    memberDict["subsystem"],
-                                                    memberDict["allowed_processors"],
-                                                    memberDict["target"],
-                                                    memberDict["prepend"]
+                self.procinfos.append(self.Procinfo(name=memberDict["name"],
+                                                    rank=rank,
+                                                    host=memberDict["host"],
+                                                    port=memberDict["port"],
+                                                    label=memberDict["label"],
+                                                    subsystem=memberDict["subsystem"],
+                                                    allowed_processors=memberDict["allowed_processors"],
+                                                    target=memberDict["target"],
+                                                    prepend=memberDict["prepend"]
                                                     ))
 
                 for varname in memberDict.keys():
