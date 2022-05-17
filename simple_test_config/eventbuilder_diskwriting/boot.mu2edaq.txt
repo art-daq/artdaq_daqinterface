@@ -12,5 +12,5 @@ EventBuilder label: EventBuilder1
 EventBuilder host: mu2edaq11
 EventBuilder label: EventBuilder2
 
-Dispatcher host: mu2edaq12
+Dispatcher host: mu2edaq07
 Dispatcher label: Dispatcher1
