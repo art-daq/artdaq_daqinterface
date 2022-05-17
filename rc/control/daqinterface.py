@@ -1864,6 +1864,7 @@ class DAQInterface(Component):
             boardreader_subsystem="1"
             boardreader_allowed_processors="-1"
             boardreader_prepend=""
+            boardreader_target = "EventBuilder"
 
             if len(self.daq_comp_list[ compname ] ) == 1:
                 boardreader_host = self.daq_comp_list[ compname ]
@@ -1891,11 +1892,15 @@ class DAQInterface(Component):
 
             if boardreader_allowed_processors == "-1":
                 boardreader_allowed_processors = None
-
-            self.procinfos.append(self.Procinfo("BoardReader",
-                                                boardreader_rank,
-                                                boardreader_host,
-                                                boardreader_port, compname, boardreader_subsystem, boardreader_allowed_processors, boardreader_prepend))
+            self.procinfos.append(self.Procinfo(name="BoardReader",
+                                                rank=boardreader_rank,
+                                                host=boardreader_host,
+                                                port=boardreader_port,
+                                                label=compname,
+                                                subsystem=boardreader_subsystem,
+                                                allowed_processors=boardreader_allowed_processors,
+                                                target=boardreader_target,
+                                                prepend=boardreader_prepend))
 
         # See the Procinfo.__lt__ function for details on sorting
 
@@ -1981,8 +1986,6 @@ class DAQInterface(Component):
                 else:
                     errmsg = "%s; returned value suggests that the ssh call to %s timed out. Perhaps a lack of public/private ssh keys resulted in ssh asking for a password?" % (errmsg, random_host)
                 self.print_log("e", make_paragraph(errmsg))
-                self.print_log("e", "STDOUT: \n%s" % (out_stdout))
-                self.print_log("e", "STDERR: \n%s" % (out_stderr))
                 raise Exception("Problem source-ing %s on %s" % (self.daq_setup_script, random_host))
             
             endtime = time()

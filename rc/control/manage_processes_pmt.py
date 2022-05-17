@@ -265,7 +265,7 @@ def get_process_manager_log_filenames_base(self):
     if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
         cmd = "ssh %s '%s'" % (self.pmt_host, cmd)
 
-    log_filename_current = Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    log_filename_current = Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip().decode('utf-8')
 
     host = self.pmt_host
     if host == "localhost":

@@ -15,7 +15,7 @@ EventBuilder host: mu2edaq11
 EventBuilder port: 5236
 EventBuilder label: EventBuilder2
 
-EventBuilder host: mu2edaq12
+EventBuilder host: mu2edaq07
 EventBuilder port: 5237
 EventBuilder label: EventBuilder3
 
@@ -27,7 +27,7 @@ DataLogger label: DataLogger1
 #DataLogger port: 5266
 #DataLogger label: DataLogger2
 
-Dispatcher host: mu2edaq12
+Dispatcher host: mu2edaq07
 Dispatcher port: 5269
 Dispatcher label: Dispatcher1
 
