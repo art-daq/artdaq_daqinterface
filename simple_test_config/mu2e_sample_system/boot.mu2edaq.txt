@@ -21,7 +21,7 @@ EventBuilder host: mu2edaq11
 EventBuilder label: EventFilter1
 EventBuilder subsystem: 1
 
-EventBuilder host: mu2edaq12
+EventBuilder host: mu2edaq07
 EventBuilder label: EventFilter2
 EventBuilder subsystem: 1
 
@@ -37,7 +37,7 @@ DataLogger host: mu2edaq14
 DataLogger label: DataLogger1
 DataLogger subsystem: 2
 
-Dispatcher host: localhost
+Dispatcher host: mu2edaq14
 Dispatcher label: Dispatcher1
 Dispatcher subsystem: 2
 
@@ -53,6 +53,6 @@ DataLogger host: mu2edaq11
 DataLogger label: CRVLogger
 DataLogger subsystem: 3
 
-Dispatcher host: localhost
+Dispatcher host: mu2edaq11
 Dispatcher label: CRVDispatcher
 Dispatcher subsystem: 3
