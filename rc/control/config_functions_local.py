@@ -20,7 +20,7 @@ def get_config_parentdir():
 
 def get_config_info_base(self):
 
-    uuidgen=Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip()
+    uuidgen=Popen("uuidgen", shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip().decode('utf-8')
     tmpdir = "/tmp/%s" % (uuidgen)
     os.mkdir(tmpdir)
 
@@ -62,8 +62,8 @@ def get_boot_info_base(self, boot_filename):
                             "unable to locate configuration file \"" +
                             boot_filename + "\""))
 
-    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set", "allowed_processors": "not set"}
-    subsystemDict = {"id": None, "source": "not set", "destination": "not set", "fragmentMode": "not set"}
+    memberDict = {"name": None, "label": None, "host": None, "port": "not set", "fhicl": None, "subsystem": "not set", "allowed_processors": "not set", "target": "not set", "prepend": "not set"}
+    subsystemDict = {"id": None, "source": "not set", "destination": "not set", "fragmentMode": "not set", "boardreadersSendEvents": "not set"}
 
     num_expected_processes = 0
     num_actual_processes = 0
@@ -143,7 +143,7 @@ def get_boot_info_base(self, boot_filename):
                 "DataLogger" in line or "Dispatcher" in line or \
                 "RoutingManager" in line:
 
-            res = re.search(r"^\s*(\w+)\s+(\S+)\s*:\s*(\S+)", line)
+            res = re.search(r"^\s*(\w+)\s+(\S+)\s*:\s*(\"[^\"]*\"|\S+)", line)
 
             if res:
                 memberDict["name"] = res.group(1)
@@ -200,12 +200,17 @@ def get_boot_info_base(self, boot_filename):
                 if re.search("[Ff]alse",subsystemDict["fragmentMode"]):
                     fragmentMode = False
 
-                self.subsystems[subsystemDict["id"]] = self.Subsystem(sources, destination, fragmentMode)
+                boardreadersSendEvents = False
+                if re.search("[Tt]rue", subsystemDict["boardreadersSendEvents"]):
+                    boardreadersSendEvents = True
+
+                self.subsystems[subsystemDict["id"]] = self.Subsystem(sources, destination, fragmentMode, boardreadersSendEvents)
 
                 subsystemDict["id"] = None
                 subsystemDict["source"] = "not set"
                 subsystemDict["destination"] = "not set"
                 subsystemDict["fragmentMode"] = "not set"
+                subsystemDict["boardreadersSendEvents"] = "not set"
 
             # If it has been filled, then initialize a Procinfo
             # object, append it to procinfos, and reset the
@@ -228,17 +233,22 @@ def get_boot_info_base(self, boot_filename):
                 if memberDict["allowed_processors"] == "not set":
                     memberDict["allowed_processors"] = None  # Where None actually means "allow all processors"
 
-                self.procinfos.append(self.Procinfo(memberDict["name"],
-                                                    rank,
-                                                    memberDict["host"],
-                                                    memberDict["port"],
-                                                    memberDict["label"],
-                                                    memberDict["subsystem"],
-                                                    memberDict["allowed_processors"]
+                if memberDict["prepend"] == "not set":
+                    memberDict["prepend"] = ""
+
+                self.procinfos.append(self.Procinfo(name=memberDict["name"],
+                                                    rank=rank,
+                                                    host=memberDict["host"],
+                                                    port=memberDict["port"],
+                                                    label=memberDict["label"],
+                                                    subsystem=memberDict["subsystem"],
+                                                    allowed_processors=memberDict["allowed_processors"],
+                                                    target=memberDict["target"],
+                                                    prepend=memberDict["prepend"]
                                                     ))
 
                 for varname in memberDict.keys():
-                    if varname != "port" and varname != "subsystem" and varname != "allowed_processors":
+                    if varname != "port" and varname != "subsystem" and varname != "allowed_processors" and varname != "target" and varname != "prepend":
                         memberDict[varname] = None
                     else:
                         memberDict[varname] = "not set"

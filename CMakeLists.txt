@@ -18,7 +18,7 @@ cmake_minimum_required (VERSION 3.16)
 
 find_package(cetmodules)
 
-project(artdaq_daqinterface VERSION 3.10.03.01)
+project(artdaq_daqinterface VERSION 3.11.02)
 
 set(artdaq_daqinterface_NOARCH TRUE)
 
@@ -31,7 +31,7 @@ cet_set_compiler_flags(DIAGS VIGILANT
   EXTRA_FLAGS -pedantic
 )
 
-cet_report_compiler_flags()
+#cet_report_compiler_flags()
 
 INSTALL(DIRECTORY bin DESTINATION . FILE_PERMISSIONS USE_SOURCE_PERMISSIONS)
 INSTALL(DIRECTORY docs DESTINATION . FILE_PERMISSIONS USE_SOURCE_PERMISSIONS)
@@ -40,5 +40,4 @@ INSTALL(DIRECTORY simple_test_config DESTINATION . FILE_PERMISSIONS USE_SOURCE_P
 INSTALL(DIRECTORY utils DESTINATION . FILE_PERMISSIONS USE_SOURCE_PERMISSIONS)
 INSTALL(FILES source_me DESTINATION .)
 
-# ups - table and config files
-add_subdirectory(ups)
+cet_cmake_config()
