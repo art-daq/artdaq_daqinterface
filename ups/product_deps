@@ -36,7 +36,7 @@ bindir product_dir bin
 # list all products here
 # the 4th field may be either optional or only_for_build
 product		version
-cetmodules	v3_08_00	-	only_for_build
+cetmodules	v3_13_02	-	only_for_build
 end_product_list
  
 # e5  - with gcc 4.8.2 and -std=c++11 
