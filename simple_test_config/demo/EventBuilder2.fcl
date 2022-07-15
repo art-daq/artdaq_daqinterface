@@ -23,6 +23,10 @@ daq: {
 	sources: { }
   }
   metrics: {
+	evbReport: {
+	  metricPluginType: "report"
+	  level: 1
+	}
 	evbFile: {
 	  metricPluginType: "file"
 	  level: 4

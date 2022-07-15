@@ -24,6 +24,10 @@ daq: {
   }
 
   metrics: {
+	aggReport: {
+	  metricPluginType: "report"
+	  level: 1
+	}
     aggFile: {
       metricPluginType: "file"
       level: 4

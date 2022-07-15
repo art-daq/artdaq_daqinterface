@@ -72,6 +72,10 @@ max_fragment_size_bytes: 1024
   }
 
   metrics: {
+	brReport: {
+	  metricPluginType: "report"
+	  level: 1
+	}
 	brFile: {
 	  metricPluginType: "file"
 	  level: 4
