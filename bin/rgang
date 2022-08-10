@@ -3,7 +3,10 @@
 #   Apr 13, 2001. "TERMS AND CONDITIONS" governing this file are in the README
 #   or COPYING file. If you do not have such a file, one can be obtained by
 #   contacting Ron or Fermi Lab in Batavia IL, 60510, phone: 630-840-3000.
-#   $RCSfile: rgang.py,v $ $Revision: 1.182 $ $Date: 2019/07/31 03:49:25 $
+#   $RCSfile: rgang.py,v $ $Revision: 1.204 $ $Date: 2022/05/20 16:57:01 $
+
+rcs_keyword='$Revision: 1.204 $$Date: 2022/05/20 16:57:01 $'
+VERSION='3.9.1 cvs: %s'%(rcs_keyword,)
 
 import os.path                          # basename
 import sys                              # argv
@@ -17,6 +20,8 @@ import pprint                           # pprint
 import math                             # ceil
 import select                           # select
 import zlib                             # crc32
+
+PY3_ = sys.version_info[0] >= 3    # python 3+
 
 DFLT_RSH='ssh'
 DFLT_RCP='scp'
@@ -36,8 +41,6 @@ if dd == '': dd = where(sys.argv[0])
                                #  /mnt/disk1/home/... instead of just /home/...
 DFLT_PATH=os.popen('cd %s;pwd'%(dd,)).readlines()[0][:-1]
 
-rcs_keyword='$Revision: 1.182 $$Date: 2019/07/31 03:49:25 $'
-VERSION='3.8.0 cvs: %s'%(rcs_keyword,)
 APP = os.path.basename( sys.argv[0] )
 USAGE=\
 "%s: run cmds on hosts\n"%(APP,)+\
@@ -134,43 +137,33 @@ OPTSPEC={ 'd':{'desc':"List farmlet names"},
           'c':{'desc':"Copy input output"},
           'C':{'desc':"Copy and skip current (local) node. Equiv to -sc"},
           'p':{'desc':"Same as rcp -p (only applicable if -c/C)"},
-          'l':{'desc':"Same as rsh -l (only applicable if not -c/C)",'arg':1},
           'x':{'desc':"Same as rsh/rcp -x (turns on encryption)"},
           'X':{'desc':"Same as rsh/rcp -X (turns off encryption)"},
           'f':{'desc':"Same as rsh -f (forward nonforwardable credentials)"},
           'F':{'desc':"Same as rsh/rcp -F (forward forwardable credentials)"},
           'N':{'desc':"Same as rsh/rcp -N (prevent credential forwarding)"},
+
+          # This block of options has arg or optional arg
+          'l':{'desc':"Same as rsh -l (only applicable if not -c/C)",'arg':1},
           'n':{'desc':"-n or -n0: no header, -n1 or -nn: node=, -n2: ---,\n\
                        -n3: --- and cmd", 'arg':2,'init':'','opt':'0'},
-          'list'    :{'desc':"list farmlets (there contents)"},
           'farmlets':{'desc':"override farmlets dir /usr/local/etc/farmlets",
                       'arg':1,'init':'/usr/local/etc/farmlets'},
           'serial'  :{'desc':"do not fork all commands before reading output (works\n\
                        with nway)", 'arg':2,'init':'','opt':'0'},
-          'ditto'   :{'desc':'Attempt to detect when output is same as previous (using\n\
-                       crc32) and print "ditto"'},
           'skip'    :{'desc':'skip this specific list of nodes','arg':1},
           'rsh'     :{'desc':'override default rsh (use quotes to include options) default=%s'%(DFLT_RSH),'arg':1,'init':DFLT_RSH},
           'rcp'     :{'desc':'override default rcp','arg':1,'init':DFLT_RCP},
           'sh'      :{'desc':'override default sh (use quotes to include options) default=%s'%(DFLT_SH),'arg':1,'init':DFLT_SH},
           'nway'    :{'desc':'number of branches for each node of the tree OR if\n\
                        --serial, # of groups (def=200)', 'arg':1,'init':200},
-          'combine' :{'desc':"spawn commands with stderr dupped onto stdout"},
-          'do-local':{'desc':"INTERNAL option - tells rgang to do 1st node in current\n\
-                       (local) environment; do not rsh"},
           'tlvlmsk' :{'desc':"debugging; set hex debug mask i.e. 0xf, \"1<<9\"",'arg':2,'opt':1,'init':'0'},
-          'pty'     :{'desc':"use pseudo term -- good for when ssh wants passwd"},
           'rshto'   :{'desc':"change non-copy default timeout val %s (float seconds)"%DFLT_RSHTO,
                       'arg':1,'init':DFLT_RSHTO},
           'rcpto'   :{'desc':"change the default timeout value %s (float seconds)\n\
                        for the copy"%DFLT_RCPTO, 'arg':1,'init':DFLT_RCPTO},
           'err-file':{'desc':"file to write timedout/error nodes to (could be used for\n\
                        retry)", 'arg':1 },
-          'verbose' :{'desc':"verbose (including a bit more with -h)",'alias':['v']},
-          'pyret'   :{'desc':"don't output to stdout/err (used when rgang is imported\n\
-                       in other .py scripts)"},
-          'pyprint' :{'desc':"implies pyret but *final* result is printed (this option\n\
-                       negated by pypickle)"},
           'pypickle':{'desc':"implies pyret but *final* result is pickled and printed\n\
                        (preceeded by 8 length chars) 0=just final,1=intermediate",
                       'arg':2,'opt':'1'},
@@ -179,10 +172,23 @@ OPTSPEC={ 'd':{'desc':"List farmlet names"},
                              # check out: rgang --path=/tmp --nway=1 'fnapcf.fnal.gov{,,}' 'printenv PATH'
           'app'     :{'desc':"change application name from default \"%s\" (use when\n\
                        call from script)"%(APP,),'arg':1,'init':APP},
+          'mach_idx_offset' :{'desc':"INTERNAL - used to determine \"root\" machine",'arg':1},
+
+          'list'    :{'desc':"list farmlets (their contents)"},
+          'ditto'   :{'desc':'Attempt to detect when output is same as previous (using\n\
+                       crc32) and print "ditto"'},
+          'combine' :{'desc':"spawn commands with stderr dupped onto stdout"},
+          'do-local':{'desc':"INTERNAL option - tells rgang to do 1st node in current\n\
+                       (local) environment; do not rsh"},
+          'pty'     :{'desc':"use pseudo term -- good for when ssh wants passwd"},
+          'verbose' :{'desc':"verbose (including a bit more with -h)",'alias':['v']},
+          'pyret'   :{'desc':"don't output to stdout/err (used when rgang is imported\n\
+                       in other .py scripts)"},
+          'pyprint' :{'desc':"implies pyret but *final* result is printed (this option\n\
+                       negated by pypickle)"},
           'input-to-all-branches' :{'desc':"send input to all branches, not just currently\n\
                           processed"},
           'adjust-copy-args':{'desc':"INTERNAL - applicable for \"-c\" (copy-mode)"},
-          'mach_idx_offset' :{'desc':"INTERNAL - used to determine \"root\" machine",'arg':1},
           }
 
 
@@ -224,8 +230,8 @@ Note: all options can be specified via environment variables of the form\n\
       %s_<OPTION> where option is all uppercase\n\
       OR in a single %s_OPTS env.var.\n\
 Options:\n"%(env_app,env_app)
-    if sys.version_info[0] == 2: xx=optspec.keys(); xx.sort()
-    else:                        xx=sorted(optspec.keys())
+    if PY3_: xx=sorted(optspec.keys())
+    else:    xx=optspec.keys(); xx.sort()   # the python 2 way
     for op in xx:
         dash=''
         for op_ in [op]+optspec[op]['alias']:
@@ -267,7 +273,8 @@ Options:\n"%(env_app,env_app)
                 if long_flg and op_arg:
                     sys.stderr.write('option %s does not take an argument\n'%(op_,))
                     sys.exit(1)
-                opt[op_] = '1'
+                if not opt[op_]: opt[op_] = '1'
+                else:            opt[op_] = str(int(opt[op_]) + 1)
             elif optspec[op_]['arg'] == 1: ### OPTION ARG
                 if long_flg and op_arg:
                     opt[op_] = op_arg[:-1] # strip off added '='
@@ -351,17 +358,25 @@ class NodeInfo:
         else:            self.shortnames_l = [ss[0]]
         try: # must "try" because this aint going to work under every os
             # get a list of inet address for all interfaces and aliases
-            os_fo = os.popen( "ifconfig 2>/dev/null | grep 'inet addr:' | sed -e 's/.*addr://' -e 's/ .*//'" )
-            for inet_addr in os_fo.readlines():
+            os_fo = os.popen( "/sbin/ifconfig 2>/dev/null | grep 'inet ' | sed -e 's/.*inet //' -e 's/addr://' -e 's/ .*//'" )
+            ll = os_fo.readlines()
+            if g_opt['verbose'] and int(g_opt['verbose']) >= 2: sys.stderr.write('NodeInfo __init__ ifconfig returned %d lines\n'%(len(ll),))
+            for inet_addr in ll:
                 xx = socket.gethostbyaddr(inet_addr[:-1])
                 self.hostnames_l = self.hostnames_l + [xx[0]]
                 self.alias_l     = self.alias_l     + xx[1]
                 self.ip_l        = self.ip_l        + xx[2]
                 ss = xx[0].split(".")
-                if len(ss) == 1: self.shortnames_l = self.shortnames_l + self.hostnames_l
+                if len(ss) == 1: self.shortnames_l = self.shortnames_l + ss
                 else:            self.shortnames_l = self.shortnames_l + [ss[0]]
+                if g_opt['verbose'] and int(g_opt['verbose']) >= 2: sys.stderr.write('NodeInfo __init__ shortnames_l=%s alias_l=%s\n'%(self.shortnames_l, self.alias_l))
             os_fo.close()
-        except: pass # no TRACE because TRACE may call this
+        except:
+            exc, value, tb = sys.exc_info()
+            if g_opt['verbose'] and int(g_opt['verbose']) >= 2: sys.stderr.write('NodeInfo __init__ ifconfig EXCEPTION: %s: %s\n'%(exc,value))
+            pass # no TRACE because TRACE may call this
+        self.shortnames_l = self.shortnames_l + ['localhost']
+        self.ip_l         = self.ip_l         + ['127.0.0.1']
         self.mach_idx = '?'  # rgang specific
     def is_me( self, node ):
         # NOTE: I feel that using gethostbyaddr, which potentially
@@ -372,6 +387,7 @@ class NodeInfo:
                or node in self.ip_l: return 1
             else:                    return 0
         else:
+            if    node[:4] == '127.': return 1  # probably just a linux thing
             if    node in self.hostnames_l \
                or node in self.alias_l \
                or node in self.ip_l: return 1
@@ -401,9 +417,8 @@ class Re:
     def __init__( self, reg_ex=None,flags=0 ):
         if reg_ex: self.compiled = self.re.compile(reg_ex,flags)
         self.match_obj=None
-    def search(self,haystack,regex_=None):
-        if regex_: self.match_obj = self.re.search(haystack, regex_)
-        else:      self.match_obj = self.compiled.search( haystack )
+    def search(self,haystack):
+        self.match_obj = self.compiled.search( haystack )
         return self.match_obj
     # Re
 
@@ -456,9 +471,6 @@ def find_node_list_from_file( spec ):
         #    return []
     elif os.access(g_opt['farmlets']+'/'+spec,os.R_OK):    # you can always specify --farmlets=.
         listfile = g_opt['farmlets']+'/'+spec
-        mach_l = node_list_from_file( listfile )
-    elif os.access(spec,os.R_OK):
-        listfile = spec
         mach_l = node_list_from_file( listfile )
         pass
     return mach_l
@@ -602,10 +614,12 @@ def node_list_from_spec( spec ):
         "farmlet" files.
     """
     mach_l = []
+    TRACE( 15, 'node_list_from_spec spec=%s', spec)
     if spec == '-':
         xx,sts = try_line( sys.stdin.fileno() )
-        while xx != '.\n' and xx != '':
-            if re_mach.search(xx): mach_l.append(re_mach.match_obj.group(1))
+        TRACE( 15,'node_list_from_spec xx=%s type(xx)=%s',xx,type(xx))
+        while xx != b'.\n' and xx != b'':
+            if re_mach.search(xx.decode('utf-8')): mach_l.append(re_mach.match_obj.group(1))
             xx,sts = try_line( sys.stdin.fileno() )
     else:
         #check for invalid node spec char(s)
@@ -615,6 +629,7 @@ def node_list_from_spec( spec ):
         #if g_opt['verbose']: sys.stderr.write('assuming expandable node list\n')
         if g_opt['verbose']: sys.stderr.write('processing node spec (potential expansion)\n')
         mach_l = expand( spec )
+    TRACE( 9,'node_list_from_spec - returning len(mach_l)=%d mach_l[0]=%s type(mach_l[0])=%s', len(mach_l), mach_l[0], type(mach_l[0]) )
     return mach_l
 #-node_list_from_spec
 
@@ -683,7 +698,8 @@ def spawn( cmd, args, combine_stdout_stderr=0 ):
 
         try: os.execvp( cmd_list[0], cmd_list+args ) # bye-bye python
         except:  # From doc: Errors will be reported as OSError exceptions.
-            os.write( 2, 'Error execing %s\n'%(cmd_list[0],) )
+            msg='Error execing %s\n'%(cmd_list[0],)
+            os.write( 2, msg.encode('utf-8') )
             sys.exit( 1 )
         pass
     #parent
@@ -785,8 +801,8 @@ def spawn_cmd( node_info, mach_idx, opts, args, branch_nodes, do_local ):
             sp_args = sp_args + [sh_cmd_s]
             sp_info = spawn( g_opt['rsh'], sp_args, 0 )  # never combine stderr/out of rsh rgang
             try:
-                for machine in branch_nodes: os.write( sp_info[1], machine+'\n' )
-                os.write( sp_info[1], '.\n' )
+                for machine in branch_nodes: os.write( sp_info[1], (machine+'\n').encode('utf-8') )
+                os.write( sp_info[1], b'.\n' )
             except OSError: pass # let select (get_output) deal with the trouble
             node_info['stage'] = 'rgang'
             timeout_add( node_info['gbl_branch_idx'], float(g_opt['rshto']) )
@@ -894,12 +910,14 @@ def spawn_cmd( node_info, mach_idx, opts, args, branch_nodes, do_local ):
 
         sp_args = sp_args + [sh_cmd_s]
         sp_info = spawn( g_opt['rsh'], sp_args, 0 )  # never combine stderr/out of rsh rgang
-        TRACE( 23, 'spawn_cmd sending nodes: %s', branch_nodes )
+        TRACE( 23, 'spawn_cmd sending %d nodes: %s', len(branch_nodes), branch_nodes )
         try:
             for ii in range(len(branch_nodes)):
                 machine = branch_nodes[ii]
-                os.write( sp_info[1], machine+'\n' )
-            os.write( sp_info[1], '.\n' )
+                TRACE( 23, 'spawn_cmd sending node %s type(machine)=%s to fd=%d', machine,type(machine), sp_info[1])
+                if PY3_: os.write( sp_info[1], str.encode(machine)+b'\n' )
+                else:    os.write( sp_info[1], machine+'\n' )
+            os.write( sp_info[1], b'.\n' )
         except:
             EClass,detail = sys.exc_info()[:2]
             if EClass is OSError:
@@ -909,6 +927,7 @@ def spawn_cmd( node_info, mach_idx, opts, args, branch_nodes, do_local ):
                     TRACE( 10, 'OSError EPIPE exception writing node_l fd=%d',fd )
                 else: TRACE( 10, 'OSError %d exception writing node_l',errn )
                 pass
+            else: TRACE( 23, 'spawn_cmd EClass is %s', EClass )
             pass
         node_info['stage'] = 'rgang'
         timeout_add( node_info['gbl_branch_idx'], float(g_opt['rshto']) )
@@ -927,17 +946,6 @@ def get_nway_indexes( nway, nth, list_length, minus_idx0=0 ):
            nway, nth, list_length, minus_idx0, start, end )
     return start,end
     # get_nway_indexes
-
-def determ( index, list_length, nway, minus_idx0=0 ):
-    if minus_idx0: minus_idx0=1; list_length = list_length - 1
-    # get starting point
-    split_num = float(list_length) / nway
-    nth = int((index-minus_idx0)/split_num)
-    # now see if it's right
-    if (index-minus_idx0) >= int( ((nth+1)*split_num)+0.5 ): nth = nth + 1
-    idx_in_nth = (index-minus_idx0) - int( ((nth)*split_num)+0.5 )
-    return nth,idx_in_nth
-    # determ, get_nway_indexes
 
 
 def set_connected_g( mach_idx, to_state ):
@@ -1166,7 +1174,7 @@ def do_output( mach_idx, processing_idx, ret_info ):
 # NOTE: get_output (above) does some of this separating too
 # basic algorithm is:
 # try searching in last_few+ss   (last_few might be '')
-#   if not found, determin if within the last few characters, if there is a
+#   if not found, determine if within the last few characters, if there is a
 #     potential match and if there is, withhold/buffer those last few char
 # last few could be "P"                 save "P"
 #                   "PI"                save "PI"
@@ -1220,9 +1228,12 @@ def partial_pickle_cookie_check( chk_bytes ):
     return -1,b''   # partial_pickle_cookie_check
 
 def unpickle_and_add_to_ret_info( mach_idx, ret_info, pickle_str ):
-    TRACE( 11, 'unpickle mach_idx=%d', mach_idx )
+    TRACE( 11, 'unpickle mach_idx=%d type(pickle_str)=%s', mach_idx, type(pickle_str) )
     try: loads = pickle.loads( pickle_str )
-    except: return None
+    except:
+        exc, value, tb = sys.exc_info()
+        TRACE( 11, 'unpickle_and_add_to_ret_info pickle.loads EXCEPTION %s', exc )
+        return None
 
     if g_opt['c']: offset = 1
     else:          offset = 0
@@ -1230,8 +1241,14 @@ def unpickle_and_add_to_ret_info( mach_idx, ret_info, pickle_str ):
     for ii in range(len(loads)):
         ret_info[mach_idx+offset+ii]['rmt_sh_sts'] = loads[ii]['rmt_sh_sts']
         ret_info[mach_idx+offset+ii]['name']       = loads[ii]['name']
-        ret_info[mach_idx+offset+ii]['stdout']    += loads[ii]['stdout']
-        ret_info[mach_idx+offset+ii]['stderr']    += loads[ii]['stderr']
+        TRACE( 11, "unpickle_and_add_to_ret_info type(ret_info[mach_idx+offset+ii]['stdout'])=%s type(loads[ii]['stdout'])=%s",
+                                                 type(ret_info[mach_idx+offset+ii]['stdout']),   type(loads[ii]['stdout']) )
+        if type(ret_info[mach_idx+offset+ii]['stdout']) != type(loads[ii]['stdout']):
+              ret_info[mach_idx+offset+ii]['stdout']    += loads[ii]['stdout'].encode("utf-8")
+        else: ret_info[mach_idx+offset+ii]['stdout']    += loads[ii]['stdout']
+        if type(ret_info[mach_idx+offset+ii]['stderr']) != type(loads[ii]['stderr']):
+              ret_info[mach_idx+offset+ii]['stderr']    += loads[ii]['stderr'].encode("utf-8")
+        else: ret_info[mach_idx+offset+ii]['stderr']    += loads[ii]['stderr']
         ret_info[mach_idx+offset+ii]['crc32']      = loads[ii]['crc32']
         pass
     TRACE( 11, 'unpickle_and_add_to_ret_info completed mach_idx=%d offset=%d ii=%d', mach_idx, offset, ii )
@@ -1283,9 +1300,13 @@ def do_stage_rgang_processing( ss, mach_idx, ret_info ):
                 if potential: chk_str = potential + ss
                 else:         chk_str = ss
 
-                if re_pickle.search(chk_str.decode("utf-8")):
+                chk_str_deco = chk_str.decode("utf-8",'ignore') # needed for python3 node --nway=1 to python2 node ????
+                if re_pickle.search(chk_str_deco):
                     pickle_len = int(re_pickle.match_obj.group(1),16)
-                    pickle_idx = chk_str.find(re_pickle.match_obj.group(0)) + pickle_cookie_len
+                    if PY3_: pickle_idx = chk_str.find(str.encode(re_pickle.match_obj.group(0))) + pickle_cookie_len
+                    else:    pickle_idx = chk_str_deco.find(re_pickle.match_obj.group(0)) + pickle_cookie_len
+                    TRACE( 11, 'do_stage_rgang_processing re_pickle.match_obj.group(0)=%s pickle_len=%d pickle_idx=%d',
+                           re_pickle.match_obj.group(0), pickle_len, pickle_idx )
                     pre        = chk_str[:pickle_idx-pickle_cookie_len]
                     pickle_str = chk_str[pickle_idx:pickle_idx+pickle_len]
                     ss         = pre + chk_str[pickle_idx+pickle_len:]
@@ -1349,11 +1370,11 @@ def timeout_add( gbl_br_idx, timeout_period ): # timeout_period is either float(
     elif len(g_timeout_l) == 0: g_timeout_l.append( {'timeout_expires':expire_tm,'gbl_branch_idx':gbl_br_idx} )
     else: # copy mode, mix of rsh and rcp
         low_idx=0; high_idx=len(g_timeout_l)-1  # gaurd against len=0 above
-        mid_idx = low_idx + (high_idx - low_idx)/2
+        mid_idx = low_idx + int((high_idx - low_idx)/2)  # NOTE: python 2 vs 3 diff: in 2, 1/2 = int 0, in 3, it's float .5
         while mid_idx!=high_idx:
             if expire_tm < g_timeout_l[mid_idx]['timeout_expires']: high_idx = mid_idx
             else:                                                   low_idx = mid_idx+1 # no need to look at mid again
-            mid_idx = low_idx + (high_idx - low_idx)/2
+            mid_idx = low_idx + int((high_idx - low_idx)/2)
         if expire_tm < g_timeout_l[mid_idx]['timeout_expires']: new_idx = mid_idx
         else:                                                   new_idx = mid_idx+1
         g_timeout_l.insert( new_idx, {'timeout_expires':expire_tm,'gbl_branch_idx':gbl_br_idx} )
@@ -1420,14 +1441,16 @@ def initiator_node_status( mach_idx ):
 
 
 def pickle_to_stdout( ret_info ):
-    TRACE( 11, 'pickle_to_stdout' )
-    dumps = pickle.dumps(ret_info)
-    cookie = 'PICKLE:%08x:\n'%(len(dumps),)   # make it a "line" for try_line
+    dumps = pickle.dumps(ret_info,protocol=2)
+    cookie = b'PICKLE:%08x:\n'%(len(dumps),)   # make it a "line" for try_line
     ostr = cookie+dumps
+    TRACE( 11, 'pickle_to_stdout len(ostr)=%d', len(ostr) )
     for ii in range(len(ret_info)):
+        TRACE( 11, "pickle_to_stdout len(ret_info[%d][stdout])=%d len(ret_info[ii][stderr])=%d", ii, len(ret_info[ii]['stdout']), len(ret_info[ii]['stderr']) )
         ret_info[ii]['stdout'] = ret_info[ii]['stderr'] = b''
         pass
-    sys.stdout.write( ostr ); sys.stdout.flush()
+    #sys.stdout.write( ostr ); sys.stdout.flush()
+    os.write(1,ostr)
     return None
 
 
@@ -1641,7 +1664,7 @@ def rgang( opts_n_args ):
     if sys.version_info[0] == 2: exec( 'stdin_bytes = 0L' )
     else:                        exec( 'stdin_bytes = 0' )
     # build/initialize the array so we can add stdin at the end
-    ret_info = g_ret_info   # make ret_info g_ret_info
+    ret_info = g_ret_info = []  # make ret_info g_ret_info
     g_internal_info=[]
     for ii in range(mach_l_len):
         ret_info.append({'name':g_mach_l[ii],'stdout':b'','stderr':b'','rmt_sh_sts':None,'crc32':0})
@@ -1680,8 +1703,8 @@ def rgang( opts_n_args ):
     # manual delay should be used to make sure that all connections a ready
     # for the passwd.
     if not g_opt['input-to-all-branches'] or g_opt['pty']:
-        fd = sys.stdin.fileno()
         try:
+            fd = sys.stdin.fileno()   # in python3, stdin in <type 'None'> when <&-
             os.fstat(fd)
             select_l.append(fd)
             fo2node_map[fd] = {'mach_idx':mach_l_len,'std':None}  # KLUDGE ALERT - stdin is "extra machine" (see "SPECIAL STDIN FLAG" below)
@@ -1700,8 +1723,12 @@ def rgang( opts_n_args ):
     branch_input_l = []
     g_branch_info_l = []
     g_timeout_l = []
+    g_processing_idx = 0
 
     have_me = 0 # basicaly, flag to skip past idx 0 in branch processing below
+    TRACE(5,'rgang - type(g_mach_l[0])=%s g_thisnode.is_me(%s)=%d',
+          type(g_mach_l[0]), g_mach_l[0], g_thisnode.is_me(g_mach_l[0]) )
+    #or g_mach_l[0] == 'localhost' 
     if not g_opt['c'] and not g_opt['serial'] and ( g_thisnode.is_me(g_mach_l[0]) or g_opt['do-local'] ):
         have_me = 1
         ret_info[0] = {'name':g_mach_l[0],'stdout':b'','stderr':b'','rmt_sh_sts':None,'crc32':0}
@@ -1981,15 +2008,15 @@ def rgang( opts_n_args ):
                     TRACE( 8, 'print any previously store stdout/err mach_idx=%d crc=0x%08x', mach_idx, ret_info[mach_idx]['crc32'] )
                     if g_opt['ditto'] and g_opt['mach_idx_offset']=='' and mach_idx!=0:
                         if ret_info[g_processing_idx]['crc32'] == ret_info[g_processing_idx-1]['crc32']:
-                            os.write( sys.stdout.fileno(),'ditto\n')
+                            os.write( sys.stdout.fileno(),b'ditto\n')
                         else:
                             os.write( sys.stdout.fileno(), ret_info[mach_idx]['stdout'] )
                             os.write( sys.stderr.fileno(), ret_info[mach_idx]['stderr'] )
                     else:
                         os.write( sys.stdout.fileno(), ret_info[mach_idx]['stdout'] )
                         os.write( sys.stderr.fileno(), ret_info[mach_idx]['stderr'] )
-                    ret_info[mach_idx]['stdout']=''
-                    ret_info[mach_idx]['stderr']=''
+                    ret_info[mach_idx]['stdout']=b''
+                    ret_info[mach_idx]['stderr']=b''
                     pass
 
 
@@ -2089,15 +2116,15 @@ def rgang( opts_n_args ):
                         TRACE( 8, 'stage==rgang write-n-clear stdout/err mach_idx=%d crc=0x%08x', mach_idx, ret_info[mach_idx]['crc32'] )
                         if g_opt['ditto'] and g_opt['mach_idx_offset']=='' and mach_idx!=0:
                             if ret_info[g_processing_idx]['crc32'] == ret_info[g_processing_idx-1]['crc32']:
-                                os.write( sys.stdout.fileno(),'ditto\n')
+                                os.write( sys.stdout.fileno(),b'ditto\n')
                             else:
                                 os.write( sys.stdout.fileno(), ret_info[g_processing_idx]['stdout'])
                                 os.write( sys.stderr.fileno(), ret_info[g_processing_idx]['stderr'])
                         else:
                             os.write( sys.stdout.fileno(), ret_info[g_processing_idx]['stdout'])
                             os.write( sys.stderr.fileno(), ret_info[g_processing_idx]['stderr'])
-                        ret_info[g_processing_idx]['stdout']=''
-                        ret_info[g_processing_idx]['stderr']=''
+                        ret_info[g_processing_idx]['stdout']=b''
+                        ret_info[g_processing_idx]['stderr']=b''
                         pass
                     pass
 
@@ -2214,13 +2241,13 @@ def rgang( opts_n_args ):
 ###############################################################################
 # import sys,os,time
 g_prop=0
-g_propeller=('|','/','-','\\','|','/','-','\\')
+g_propeller=(b'|',b'/',b'-',b'\\',b'|',b'/',b'-',b'\\')
 g_prop_t=time.time()+2.0
 def prop():
     global g_prop, g_prop_t
     if g_opt.get('mach_idx_offset',''): return None # only write to stderr/out after exception on "initiator" node
     if time.time() > g_prop_t:
-        os.write( sys.stderr.fileno(), g_propeller[g_prop]+'\b' )
+        os.write( sys.stderr.fileno(), g_propeller[g_prop]+b'\b' )
         g_prop=(g_prop+1)%len(g_propeller)
         g_prop_t=time.time()+1.0
         pass
@@ -2326,8 +2353,8 @@ def main():
             prop()
             TRACE( 30, "main output if initiator node" )
             if exc == KeyboardInterrupt and g_opt.get('mach_idx_offset','')=='':  # "initiator" node
-                #os.write(sys.stderr.fileno(),'\npids=%d sigs_sent=%d exited=%s\n'%(pids,kills,pids_l))
-                os.write(sys.stderr.fileno(),'\nsub_processes=%d sigs_sent=%d exited=%d\n'%(pids,kills,len(pids_l)))
+                #os.write(sys.stderr.fileno(),b'\npids=%d sigs_sent=%d exited=%s\n'%(pids,kills,pids_l))
+                os.write(sys.stderr.fileno(),b'\nsub_processes=%d sigs_sent=%d exited=%d\n'%(pids,kills,len(pids_l)))
                 mach_idx = g_processing_idx
                 TRACE( 28, 'status main exception initiator_node_status loop at mach_idx=%d',mach_idx )
                 while mach_idx < len(g_mach_l):
@@ -2358,8 +2385,8 @@ def main():
                             ret_info = g_internal_info[g_processing_idx]['ret_info']
                             os.write( sys.stdout.fileno(),ret_info['stdout'])
                             os.write( sys.stderr.fileno(),ret_info['stderr'])
-                            ret_info['stdout'] = ''
-                            ret_info['stderr'] = ''
+                            ret_info['stdout'] = b''
+                            ret_info['stderr'] = b''
                             pass
                         pass
                     g_processing_idx = g_processing_idx + 1
@@ -2371,8 +2398,8 @@ def main():
                                 # print-n-flush and clear stdout/err
                                 os.write( sys.stdout.fileno(),ret_info['stdout'])
                                 os.write( sys.stderr.fileno(),ret_info['stderr'])
-                                ret_info['stdout'] = ''
-                                ret_info['stderr'] = ''
+                                ret_info['stdout'] = b''
+                                ret_info['stderr'] = b''
                                 pass
                             pass
                         g_processing_idx = g_processing_idx + 1
