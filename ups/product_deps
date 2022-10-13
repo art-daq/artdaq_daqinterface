@@ -46,6 +46,7 @@ end_product_list
 # -nq- here means there is no qualifier
 # a - here means the dependent product is not required by the parent and will not be setup
 qualifier	cetmodules	notes
+-nq-            -nq-
 end_qualifier_list
 
 table_fragment_begin
