@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/bin/env python3
 import os
 import sys
 sys.path.append(os.environ["ARTDAQ_DAQINTERFACE_DIR"])
@@ -389,6 +389,7 @@ class DAQInterface(Component):
         self.daq_setup_script = None
         self.debug_level = 10000
         self.request_address = None
+        self.run_number = None
 
         # JCF, Nov-7-2015
 
@@ -2611,9 +2612,10 @@ class DAQInterface(Component):
             self.print_log("i", "Process manager logfiles (if applicable): %s" % (",".join(self.process_manager_log_filenames)))
 
     def do_recover(self):
+        run_number_string = f" for run {self.run_number}" if self.run_number else ""
         print
-        self.print_log("w", "\n%s: RECOVER transition underway" % \
-                (date_and_time()))
+        self.print_log("w", "\n%s: RECOVER transition underway%s" % \
+                (date_and_time(), run_number_string))
 
         self.in_recovery = True
 
@@ -2625,7 +2627,7 @@ class DAQInterface(Component):
 
             self.in_recovery = False
             self.complete_state_change(self.name, "recovering")
-            self.print_log("i", "\n%s: RECOVER transition complete" % (date_and_time()))
+            self.print_log("i", "\n%s: RECOVER transition complete%s" % (date_and_time(), run_number_string))
             return
 
         if self.state(self.name) == "running" or self.state(self.name) == "stopping":
@@ -2786,7 +2788,7 @@ class DAQInterface(Component):
 
         self.complete_state_change(self.name, "recovering")
 
-        self.print_log("i", "\n%s: RECOVER transition complete" % (date_and_time()))
+        self.print_log("i", "\n%s: RECOVER transition complete%s" % (date_and_time(), run_number_string))
 
     def artdaq_process_info(self, name):
 
