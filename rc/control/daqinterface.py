@@ -1242,7 +1242,7 @@ class DAQInterface(Component):
                 else:
                     if num_logfile_checks == max_num_logfile_checks:
                         self.print_log("e", "\nProblem associating logfiles with the artdaq processes. Output is as follows:")
-                        self.print_log("e", "\nSTDOUT:\n======================================================================\n%s\n======================================================================\n" % ("".join(proclines)))
+                        self.print_log("e", "\nSTDOUT:\n======================================================================\n%s\n======================================================================\n" % ("".join([line.decode('utf-8') for line in proclines])))
                         self.print_log("e", "STDERR:\n======================================================================\n%s\n======================================================================\n" % ("".join([line.decode('utf-8') for line in proclines_err])))
                         raise Exception(make_paragraph("Error: there was a problem identifying the logfiles for at least some of the artdaq processes. This may be the result of you not having write access to the directories where the logfiles are meant to be written. Please scroll up to see further output."))
                     else:
@@ -1358,17 +1358,17 @@ class DAQInterface(Component):
             stderrlines = proc.stderr.readlines()
 
             for line in stderrlines:
-                if "type: unsetup: not found" in line:
+                if b"type: unsetup: not found" in line:
                     self.print_log("w", line)
                     stderrlines.remove(line)
-                elif re.search("INFO: mrb v\d_\d\d_\d\d requires cetmodules >= \d\.\d\d\.\d\d to run: attempting to configure\.\.\.v\d_\d\d_\d\d OK", line):
+                elif re.search(b"INFO: mrb v\d_\d\d_\d\d requires cetmodules >= \d\.\d\d\.\d\d to run: attempting to configure\.\.\.v\d_\d\d_\d\d OK", line):
                     self.print_log("i", line)
                     stderrlines.remove(line)
                      
 
             if len(stderrlines) > 0:
                 raise Exception("Error in %s: the command \"%s\" yields output to stderr:\n\"%s\"" % \
-                                (self.fill_package_versions.__name__, cmd, "".join(stderrlines)))
+                               (self.fill_package_versions.__name__, cmd, "".join([x.decode() for x in stderrlines])))
 
             if len(stdoutlines) == 0:
                 print(traceback.format_exc())
@@ -2012,8 +2012,8 @@ class DAQInterface(Component):
 
                     self.print_log("e", "\nNonzero return value (%d) resulted when trying to run the following on host %s:\n%s\n" % \
                                    (status, host, "\n".join(logdir_commands_to_run_on_host)))
-                    self.print_log("e", "STDOUT output: \n%s" % ("\n".join(proc.stdout.readlines())))
-                    self.print_log("e", "STDERR output: \n%s" % ("\n".join(proc.stderr.readlines())))
+                    self.print_log("e", "STDOUT output: \n%s" % ("\n".join([line.decode('utf-8') for line in proc.stdout.readlines()])))
+                    self.print_log("e", "STDERR output: \n%s" % ("\n".join([line.decode('utf-8') for line in proc.stderr.readlines()])))
                     self.print_log("e", make_paragraph("Returned value of %d suggests that the ssh call to %s timed out. Perhaps a lack of public/private ssh keys resulted in ssh asking for a password?" % (status, host)))
                     raise Exception("Problem running mkdir -p for the needed logfile directories on %s; this is likely due either to an ssh issue or a directory permissions issue" % (host))
 
@@ -2035,8 +2035,8 @@ class DAQInterface(Component):
             if status != 0:
                 self.print_log("e", "\nNonzero return value (%d) resulted when trying to run the following:\n%s\n" % \
                                    (status, "\n".join(cmds)))
-                self.print_log("e", "STDOUT output: \n%s" % ("\n".join(proc.stdout.readlines())))
-                self.print_log("e", "STDERR output: \n%s" % ("\n".join(proc.stderr.readlines())))
+                self.print_log("e", "STDOUT output: \n%s" % ("\n".join([line.decode('utf-8') for line in proc.stdout.readlines()])))
+                self.print_log("e", "STDERR output: \n%s" % ("\n".join([line.decode('utf-8') for line in proc.stderr.readlines()])))
                 self.print_log("e", make_paragraph("The FHiCL code designed to control MessageViewer, found in %s, appears to contain one or more syntax errors (Or there was a problem running fhicl-dump)" % (get_messagefacility_template_filename())))
 
                 raise Exception("The FHiCL code designed to control MessageViewer, found in %s, appears to contain one or more syntax errors (Or there was a problem running fhicl-dump)" % (get_messagefacility_template_filename()))
