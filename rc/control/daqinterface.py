@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/bin/env python3
 import os
 import sys
 sys.path.append(os.environ["ARTDAQ_DAQINTERFACE_DIR"])
@@ -2612,7 +2612,7 @@ class DAQInterface(Component):
             self.print_log("i", "Process manager logfiles (if applicable): %s" % (",".join(self.process_manager_log_filenames)))
 
     def do_recover(self):
-        run_number_string = f" in Run {self.run_number}" if self.run_number else ""
+        run_number_string = f" for run {self.run_number}" if self.run_number else ""
         print
         self.print_log("w", "\n%s: RECOVER transition underway%s" % \
                 (date_and_time(), run_number_string))
