@@ -1362,7 +1362,7 @@ class DAQInterface(Component):
                 if b"type: unsetup: not found" in line:
                     self.print_log("w", line)
                     stderrlines.remove(line)
-                elif re.search(b"INFO: mrb v\d_\d\d_\d\d requires cetmodules >= \d\.\d\d\.\d\d to run: attempting to configure\.\.\.v\d_\d\d_\d\d OK", line):
+                elif re.search(r"INFO: mrb v\d_\d\d_\d\d requires cetmodules >= \d\.\d\d\.\d\d to run: attempting to configure\.\.\.v\d_\d\d_\d\d OK", line.decode('utf-8')):
                     self.print_log("i", line)
                     stderrlines.remove(line)
                      
@@ -1383,7 +1383,7 @@ class DAQInterface(Component):
 
                     if not re.search(r"v[0-9]+_[0-9]+_[0-9]+.*", version):
                         raise Exception(make_paragraph("Error in %s: the version of the package \"%s\" this function has determined, \"%s\", is not the expected v<int>_<int>_<int>optionalextension format" % (self.fill_package_versions.__name__, package, version)))
-                    print('package=%s type(package)=%s' % (package,type(package)))
+                    #print('package=%s type(package)=%s' % (package,type(package)))
                     self.package_versions[package] = version
 
         for package in packages:
@@ -1431,8 +1431,8 @@ class DAQInterface(Component):
 
             out_comm = out.communicate()
 
-            out_stdout = out_comm[0]
-            out_stderr = out_comm[1]
+            out_stdout = out_comm[0].decode('utf-8')
+            out_stderr = out_comm[1].decode('utf-8')
             status = out.returncode
 
             if status == 0:

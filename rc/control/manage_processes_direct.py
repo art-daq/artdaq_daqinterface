@@ -68,8 +68,8 @@ def launch_procs_base(self):
     if status != 0:
         self.print_log("e", "\nNonzero return value (%d) resulted when trying to run the following:\n%s\n" % \
                        (status, "\n".join(cmds)))
-        self.print_log("e", "STDOUT output: \n%s" % ("\n".join(proc.stdout.readlines())))
-        self.print_log("e", "STDERR output: \n%s" % ("\n".join(proc.stderr.readlines())))
+        self.print_log("e", "STDOUT output: \n%s" % ("\n".join([line.decode('utf-8') for line in proc.stdout.readlines()])))
+        self.print_log("e", "STDERR output: \n%s" % ("\n".join([line.decode('utf-8') for line in proc.stderr.readlines()])))
         self.print_log("e", make_paragraph("The FHiCL code designed to control MessageViewer, found in %s, appears to contain one or more syntax errors (Or there was a problem running fhicl-dump)" % (get_messagefacility_template_filename())))
                 
         raise Exception("The FHiCL code designed to control MessageViewer, found in %s, appears to contain one or more syntax errors (Or there was a problem running fhicl-dump)" % (get_messagefacility_template_filename()))
@@ -439,7 +439,8 @@ def get_related_pids_for_process(procinfo):
     proc = Popen(netstat_cmd, executable="/bin/bash",shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     for procline in proc.stdout.readlines():
-        res = re.search(r"([0-9]+)/(.*)", procline.split()[-1])
+        procstring = procline.decode('utf-8')
+        res = re.search(r"([0-9]+)/(.*)", procstring.split()[-1])
         if res:
             pid = res.group(1)
             pname = res.group(2)
