@@ -8,22 +8,29 @@ from rc.io.rpc import rpc_server
 from rc.threading import threadable
 from rc.util.contexts import ContextObject
 
+
 class Component(ContextObject):
     """
     Dummy (or subclass-able) component for use with the LBNE Run
     Control protoype.
     """
+
     __MAXPORT = 65535
 
-    def __init__(self, logpath=None, name="toycomponent",
-                 rpc_host="localhost", control_host='localhost',
-                 synchronous=False, rpc_port=6659, skip_init=False):
+    def __init__(
+        self,
+        logpath=None,
+        name="toycomponent",
+        rpc_host="localhost",
+        control_host="localhost",
+        synchronous=False,
+        rpc_port=6659,
+        skip_init=False,
+    ):
         if rpc_port > Component.__MAXPORT:
-            raise ValueError("Maximum allowed port is %s" %
-                             Component.__MAXPORT)
+            raise ValueError("Maximum allowed port is %s" % Component.__MAXPORT)
         if name == "daq":
-            raise ValueError("Name 'daq' is not allowed for individual "
-                             "components")
+            raise ValueError("Name 'daq' is not allowed for individual " "components")
         self.name = name
         self.synchronous = synchronous
 
@@ -33,45 +40,59 @@ class Component(ContextObject):
         self.run_params = None
         self.__dummy_val = 0
         self.contexts = [
-            ("rpc_server",
-             rpc_server(port=self.__rpc_port,
-                        funcs={"state": self.state,
-                               "artdaq_process_info": self.artdaq_process_info,
-                               "state_change": self.state_change,
-                               "setdaqcomps": self.setdaqcomps,
-                               "listdaqcomps": self.listdaqcomps,
-                               "listconfigs": self.listconfigs,
-                               "trace_get": self.trace_get,
-                               "trace_set": self.trace_set })),
-            ("runner", threadable(func=self.runner))]
+            (
+                "rpc_server",
+                rpc_server(
+                    port=self.__rpc_port,
+                    funcs={
+                        "state": self.state,
+                        "artdaq_process_info": self.artdaq_process_info,
+                        "state_change": self.state_change,
+                        "setdaqcomps": self.setdaqcomps,
+                        "listdaqcomps": self.listdaqcomps,
+                        "listconfigs": self.listconfigs,
+                        "trace_get": self.trace_get,
+                        "trace_set": self.trace_set,
+                    },
+                ),
+            ),
+            ("runner", threadable(func=self.runner)),
+        ]
 
-        self.dict_state_to = {"booting": "booted",
-                    "shutting": "booted",
-                    "stopping": "ready",
-                    "configuring": "ready",
-                    "starting": "running",
-                    "pausing": "paused",
-                    "resuming": "running",
-                    "terminating": "stopped",
-                    "recovering": "stopped"}
+        self.dict_state_to = {
+            "booting": "booted",
+            "shutting": "booted",
+            "stopping": "ready",
+            "configuring": "ready",
+            "starting": "running",
+            "pausing": "paused",
+            "resuming": "running",
+            "terminating": "stopped",
+            "recovering": "stopped",
+        }
 
-        self.dict_state_from = {"booting": "stopped",
-                    "shutting": "ready",
-                    "stopping": "running",
-                    "configuring": "booted",
-                    "starting": "ready",
-                    "pausing": "running",
-                    "resuming": "paused",
-                    "terminating": "ready|booted"}
+        self.dict_state_from = {
+            "booting": "stopped",
+            "shutting": "ready",
+            "stopping": "running",
+            "configuring": "booted",
+            "starting": "ready",
+            "pausing": "running",
+            "resuming": "paused",
+            "terminating": "ready|booted",
+        }
 
-        self.dict_correct_grammar = {"booting":"boot",
-                                     "shutting":"shutdown",
-                                     "stopping":"stop",
-                                     "configuring":"config",
-                                     "starting":"start",
-                                     "pausing":"pause",
-                                     "resuming":"resume",
-                                     "terminating":"terminate"}
+        self.dict_correct_grammar = {
+            "booting": "boot",
+            "shutting": "shutdown",
+            "stopping": "stop",
+            "configuring": "config",
+            "starting": "start",
+            "pausing": "pause",
+            "resuming": "resume",
+            "terminating": "terminate",
+        }
+
     def state(self, name):
         if name != self.name:
             return "unknown"
@@ -120,7 +141,7 @@ class Component(ContextObject):
     # severity level
 
     def print_log(self, severity, printstr, debuglevel=-999):
-        print (printstr)
+        print(printstr)
 
     def trace_get(self, name, trace_args):
         if name != self.name:
@@ -139,23 +160,36 @@ class Component(ContextObject):
             return
         trep = datetime.datetime.utcnow()
 
-        if requested in self.dict_state_from.keys() and \
-                self.__state not in self.dict_state_from[ requested ]:
+        if (
+            requested in self.dict_state_from.keys()
+            and self.__state not in self.dict_state_from[requested]
+        ):
 
-            self.print_log("w", "\nWARNING: Unable to accept transition request " \
-                "\"%s\" from current state \"%s\"; the command will have no effect." % \
-                (self.dict_correct_grammar[requested], self.__state))
+            self.print_log(
+                "w",
+                "\nWARNING: Unable to accept transition request "
+                '"%s" from current state "%s"; the command will have no effect.'
+                % (self.dict_correct_grammar[requested], self.__state),
+            )
 
             allowed_transitions = []
 
             for key, val in self.dict_state_from.items():
                 if self.__state in val:
-                    allowed_transitions.append( key )
+                    allowed_transitions.append(key)
 
             assert len(allowed_transitions) > 0, "Zero allowed transitions"
 
-            self.print_log("w", "Can accept the following transition request(s): " + \
-                ", ".join( [ self.dict_correct_grammar[ transition ] for transition in allowed_transitions ] ) )
+            self.print_log(
+                "w",
+                "Can accept the following transition request(s): "
+                + ", ".join(
+                    [
+                        self.dict_correct_grammar[transition]
+                        for transition in allowed_transitions
+                    ]
+                ),
+            )
             return
 
         # set out transition state now.
@@ -277,18 +311,35 @@ class Component(ContextObject):
 
 
 def get_args():  # no-coverage
-    parser = argparse.ArgumentParser(
-        description="Simulated LBNE 35 ton component")
-    parser.add_argument("-n", "--name", type=str, dest='name',
-                        default="toy", help="Component name")
-    parser.add_argument("-r", "--rpc-port", type=int, dest='rpc_port',
-                        default=6660, help="RPC port")
-    parser.add_argument("-H", "--rpc-host", type=str, dest='rpc_host',
-                        default='localhost', help="This hostname/IP addr")
-    parser.add_argument("-c", "--control-host", type=str, dest='control_host',
-                        default='localhost', help="Control host")
-    parser.add_argument("-s", "--is-synchronous", dest="synchronous",
-                        default=False, action="store_true",
-                        help="Component is synchronous (starts/stops w/ DAQ)")
+    parser = argparse.ArgumentParser(description="Simulated LBNE 35 ton component")
+    parser.add_argument(
+        "-n", "--name", type=str, dest="name", default="toy", help="Component name"
+    )
+    parser.add_argument(
+        "-r", "--rpc-port", type=int, dest="rpc_port", default=6660, help="RPC port"
+    )
+    parser.add_argument(
+        "-H",
+        "--rpc-host",
+        type=str,
+        dest="rpc_host",
+        default="localhost",
+        help="This hostname/IP addr",
+    )
+    parser.add_argument(
+        "-c",
+        "--control-host",
+        type=str,
+        dest="control_host",
+        default="localhost",
+        help="Control host",
+    )
+    parser.add_argument(
+        "-s",
+        "--is-synchronous",
+        dest="synchronous",
+        default=False,
+        action="store_true",
+        help="Component is synchronous (starts/stops w/ DAQ)",
+    )
     return parser.parse_args()
-
