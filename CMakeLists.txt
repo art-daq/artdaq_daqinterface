@@ -23,7 +23,7 @@ project(artdaq_daqinterface VERSION 3.12.02)
 set(artdaq_daqinterface_NOARCH TRUE)
 
 include(CetCMakeEnv)
-cet_cmake_env(noarch)
+cet_cmake_env()
 
 cet_set_compiler_flags(DIAGS VIGILANT
   WERROR
