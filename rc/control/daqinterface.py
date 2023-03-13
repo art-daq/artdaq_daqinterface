@@ -1314,6 +1314,31 @@ class DAQInterface(Component):
 
         return (version, qualifiers)
 
+    #WK 8/31/21
+    #refactor out launching the message viewer into a function
+    #and make that function run in the background
+    #return a proc that can be polled.
+    def launch_msgviewer(self):
+        cmds = []
+        port_to_replace = 30000
+        msgviewer_fhicl = "/tmp/msgviewer_partition%d_%s.fcl" % (self.partition_number, os.environ["USER"])
+        cmds.append(bash_unsetup_command)
+        cmds.append(". %s for_running" % (self.daq_setup_script))
+        cmds.append("which msgviewer")
+        cmds.append("cp $ARTDAQ_MFEXTENSIONS_DIR/fcl/msgviewer.fcl %s" % (msgviewer_fhicl))
+        cmds.append("res=$( grep -l \"port: %d\" %s )" % (port_to_replace, msgviewer_fhicl))
+        cmds.append("if [[ -n $res ]]; then true ; else false ; fi")
+        cmds.append("sed -r -i 's/port: [^\s]+/port: %d/' %s" % (10005 + self.partition_number*1000, msgviewer_fhicl))
+        cmds.append("msgviewer -c %s 2>&1 > /dev/null" % (msgviewer_fhicl))
+    
+        msgviewercmd = "$(" + construct_checked_command( cmds ) + ") &"
+        
+        with deepsuppression(self.debug_level < 4):
+            proc = Popen(msgviewercmd, executable="/bin/bash", shell=True)
+
+        return proc
+            
+    
     # JCF, 5/29/15
 
     # check_proc_exceptions() takes advantage of an artdaq feature
@@ -2939,6 +2964,46 @@ class DAQInterface(Component):
                         2,
                     )
 
+
+        #WK 8/31/21
+        #Startup msgviewer early. check on it later
+        self.msgviewer_proc = None #initialize
+        if self.use_messageviewer:
+
+            # Use messageviewer if it's available, i.e., if there's
+            # one already up or if it's set up via the user-supplied
+            # setup script
+
+            try:
+
+                if self.have_artdaq_mfextensions() and is_msgviewer_running():
+                    self.print_log("i", make_paragraph("An instance of messageviewer already appears to be running; " + \
+                                             "messages will be sent to the existing messageviewer"))
+                    
+                elif self.have_artdaq_mfextensions():
+                    version, qualifiers = self.artdaq_mfextensions_info()
+
+                    self.print_log("i", make_paragraph("artdaq_mfextensions %s, %s, appears to be available; "
+                                                       "if windowing is supported on your host you should see the "
+                                                       "messageviewer window pop up momentarily" % \
+                                                       (version, qualifiers)))
+
+                    self.msgviewer_proc = self.launch_msgviewer()
+                    
+                    
+                else:
+                    self.print_log("i", make_paragraph("artdaq_mfextensions does not appear to be available; "
+                                         "unable to launch the messageviewer window. This will not affect"
+                                         " actual datataking, it just means you'll need to look at the"
+                                         " logfiles to see artdaq output."))
+
+            except Exception:
+                self.print_log("e", traceback.format_exc())
+                self.alert_and_recover("Problem during messageviewer launch stage")
+                return
+
+
+
         # JCF, Oct-18-2017
 
         # After a discussion with Ron about how trace commands need to
@@ -3314,88 +3379,11 @@ class DAQInterface(Component):
                     )
                     return
 
-        if self.use_messageviewer:
-
-            # Use messageviewer if it's available, i.e., if there's
-            # one already up or if it's set up via the user-supplied
-            # setup script
-
-            try:
-
-                if self.have_artdaq_mfextensions() and is_msgviewer_running():
-                    self.print_log(
-                        "i",
-                        make_paragraph(
-                            "An instance of messageviewer already appears to be running; "
-                            + "messages will be sent to the existing messageviewer"
-                        ),
-                    )
-                elif self.have_artdaq_mfextensions():
-                    version, qualifiers = self.artdaq_mfextensions_info()
-
-                    self.print_log(
-                        "i",
-                        make_paragraph(
-                            "artdaq_mfextensions %s, %s, appears to be available; "
-                                              "if windowing is supported on your host you should see the "
-                            "messageviewer window pop up momentarily"
-                            % (version, qualifiers)
-                        ),
-                    )
-
-                    cmds = []
-                    port_to_replace = 30000
-                    msgviewer_fhicl = "/tmp/msgviewer_partition%d_%s.fcl" % (
-                        self.partition_number,
-                        os.environ["USER"],
-                    )
-                    cmds.append(bash_unsetup_command)
-                    cmds.append(". %s for_running" % (self.daq_setup_script))
-                    cmds.append("which msgviewer")
-                    cmds.append(
-                        "cp $ARTDAQ_MFEXTENSIONS_DIR/fcl/msgviewer.fcl %s"
-                        % (msgviewer_fhicl)
-                    )
-                    cmds.append(
-                        'res=$( grep -l "port: %d" %s )'
-                        % (port_to_replace, msgviewer_fhicl)
-                    )
-                    cmds.append("if [[ -n $res ]]; then true ; else false ; fi")
-                    cmds.append(
-                        "sed -r -i 's/port: [^\s]+/port: %d/' %s"
-                        % (10005 + self.partition_number * 1000, msgviewer_fhicl)
-                    )
-                    cmds.append(
-                        "msgviewer -c %s 2>&1 > /dev/null &" % (msgviewer_fhicl)
-                    )
-
-                    msgviewercmd = construct_checked_command( cmds )
-
-                    with deepsuppression(self.debug_level < 4):
-                        status = Popen(
-                            msgviewercmd, executable="/bin/bash", shell=True
-                        ).wait()
-
-                    if status != 0:
-                        self.alert_and_recover(
-                            'Status error raised in msgviewer call within Popen; tried the following commands: \n\n"%s"'
-                            % " ;\n".join(cmds)
-                        )
-                        return
-                else:
-                    self.print_log(
-                        "i",
-                        make_paragraph(
-                            "artdaq_mfextensions does not appear to be available; "
-                                         "unable to launch the messageviewer window. This will not affect"
-                                         " actual datataking, it just means you'll need to look at the"
-                            " logfiles to see artdaq output."
-                        ),
-                    )
-
-            except Exception:
-                self.print_log("e", traceback.format_exc())
-                self.alert_and_recover("Problem during messageviewer launch stage")
+        if self.msgviewer_proc is not None:
+            #now wait/check status from msgviewer
+            if self.msgviewer_proc.wait() != 0:
+                self.alert_and_recover("Status error raised in msgviewer call within Popen; tried the following commands: \n\n\"%s\"" %
+                                       " ;\n".join(cmds) )
                 return
 
         if self.manage_processes:
