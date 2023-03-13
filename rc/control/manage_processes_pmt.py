@@ -29,6 +29,7 @@ from rc.control.deepsuppression import deepsuppression
 # which it ran commands, and whose values are the list of commands run
 # on those hosts
 
+
 def launch_procs_base(self):
 
     # JCF, Sep-3-2019
@@ -37,7 +38,10 @@ def launch_procs_base(self):
     
     with deepsuppression(self.debug_level < 4):
         for host in set([procinfo.host for procinfo in self.procinfos]):
-            cmd = "%s/bin/mopup_shmem.sh %s --force" % (os.environ["ARTDAQ_DAQINTERFACE_DIR"], os.environ["DAQINTERFACE_PARTITION_NUMBER"])
+            cmd = "%s/bin/mopup_shmem.sh %s --force" % (
+                os.environ["ARTDAQ_DAQINTERFACE_DIR"],
+                os.environ["DAQINTERFACE_PARTITION_NUMBER"],
+            )
             if host != os.environ["HOSTNAME"] and host != "localhost":
                 cmd = "ssh -f " + host + " '" + cmd + "'"
                 Popen(cmd, shell=True)
@@ -46,19 +50,19 @@ def launch_procs_base(self):
     pids = get_pids(greptoken, self.pmt_host)
 
     if len(pids) != 0:
-        raise Exception("\"pmt.rb -p %s\" was already running on %s" %
-                        (self.pmt_port, self.pmt_host))
+        raise Exception(
+            '"pmt.rb -p %s" was already running on %s' % (self.pmt_port, self.pmt_host)
+        )
 
-    self.print_log("d",  "Assuming daq package is in " + \
-                   self.daq_dir, 2)
+    self.print_log("d", "Assuming daq package is in " + self.daq_dir, 2)
 
     # We'll use the desired features of the artdaq processes to
     # create a text file which will be passed to artdaq's pmt.rb
     # program
 
-    self.pmtconfigname = "/tmp/pmtConfig." + \
-        ''.join(random.choice(string.digits)
-                for _ in range(5))
+    self.pmtconfigname = "/tmp/pmtConfig." + "".join(
+        random.choice(string.digits) for _ in range(5)
+    )
 
     outf = open(self.pmtconfigname, "w")
 
@@ -72,23 +76,44 @@ def launch_procs_base(self):
         else:
             host_to_write = os.environ["HOSTNAME"]
 
-        outf.write(host_to_write + "!  id: " + procinfo.port + " commanderPluginType: xmlrpc application_name: " + str(procinfo.label) + " partition_number: " + str(self.partition_number) + "\n")
+        outf.write(
+            host_to_write
+            + "!  id: "
+            + procinfo.port
+            + " commanderPluginType: xmlrpc application_name: "
+            + str(procinfo.label)
+            + " partition_number: "
+            + str(self.partition_number)
+            + "\n"
+        )
 
     outf.close()
 
     if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
-        raise Exception("\"PMT host\" currently needs to be set to \"localhost\" or \"%s\" in the boot file" % (os.environ["HOSTNAME"]))
+        raise Exception(
+            '"PMT host" currently needs to be set to "localhost" or "%s" in the boot file'
+            % (os.environ["HOSTNAME"])
+        )
 
     if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
-        status = Popen("scp -p " + self.pmtconfigname + " " +
-                       self.pmt_host + ":/tmp", shell=True).wait()
+        status = Popen(
+            "scp -p " + self.pmtconfigname + " " + self.pmt_host + ":/tmp", shell=True
+        ).wait()
 
         if status != 0:
-            raise Exception("Exception in DAQInterface: unable to copy " +
-                            self.pmtconfigname + " to " + self.pmt_host + ":/tmp")
+            raise Exception(
+                "Exception in DAQInterface: unable to copy "
+                + self.pmtconfigname
+                + " to "
+                + self.pmt_host
+                + ":/tmp"
+            )
 
     self.launch_cmds = []
-    self.launch_cmds.append("export PRODUCTS=\"%s\"; . %s/setup"%(self.productsdir,upsproddir_from_productsdir(self.productsdir)))  
+    self.launch_cmds.append(
+        'export PRODUCTS="%s"; . %s/setup'
+        % (self.productsdir, upsproddir_from_productsdir(self.productsdir))
+    )
     self.launch_cmds.append( bash_unsetup_command )
     self.launch_cmds.append("source %s for_running"%(self.daq_setup_script,) )
     self.launch_cmds.append("which pmt.rb")  # Sanity check capable of returning nonzero
@@ -98,19 +123,36 @@ def launch_procs_base(self):
     # process timeouts.
     self.launch_cmds.append("export ARTDAQ_PROCESS_FAILURE_EXIT_DELAY=120")
 
-    messagefacility_fhicl_filename = obtain_messagefacility_fhicl(self.have_artdaq_mfextensions())
+    messagefacility_fhicl_filename = obtain_messagefacility_fhicl(
+        self.have_artdaq_mfextensions()
+    )
 
     for host in set([procinfo.host for procinfo in self.procinfos]):
         if host != "localhost" and host != os.environ["HOSTNAME"]:
-            cmd = "scp -p %s %s:%s" % (messagefacility_fhicl_filename, host, messagefacility_fhicl_filename)
+            cmd = "scp -p %s %s:%s" % (
+                messagefacility_fhicl_filename,
+                host,
+                messagefacility_fhicl_filename,
+            )
             status = Popen(cmd, shell=True).wait()
 
             if status != 0:
-                raise Exception("Status error raised in %s executing \"%s\"" % (launch_procs_base.__name__, cmd))
+                raise Exception(
+                    'Status error raised in %s executing "%s"'
+                    % (launch_procs_base.__name__, cmd)
+                )
 
-    cmd = "pmt.rb -p " + self.pmt_port + " -d " + self.pmtconfigname + \
-        " --logpath " + self.log_directory + \
-        " --logfhicl " + messagefacility_fhicl_filename + " --display $DISPLAY & "
+    cmd = (
+        "pmt.rb -p "
+        + self.pmt_port
+        + " -d "
+        + self.pmtconfigname
+        + " --logpath "
+        + self.log_directory
+        + " --logfhicl "
+        + messagefacility_fhicl_filename
+        + " --display $DISPLAY & "
+    )
 
     self.launch_cmds.append(cmd)
 
@@ -125,13 +167,18 @@ def launch_procs_base(self):
         status = Popen(launchcmd, shell=True, preexec_fn=os.setpgrp).wait()
 
     if status != 0:   
-        raise Exception("Status error raised; commands were \"\n%s\n\n\". For more information, you can check to see if a pmt (process management tool) logfile was produced during the failure in the directory %s/pmt on %s. Also try again with \"debug level\" set to 4 in the boot file, or even running the above commands interactively on %s after performing a clean login and source-ing the DAQInterface environment." %
-                        ("\n".join(self.launch_cmds), self.log_directory, self.pmt_host, self.pmt_host))
+        raise Exception(
+            'Status error raised; commands were "\n%s\n\n". For more information, you can check to see if a pmt (process management tool) logfile was produced during the failure in the directory %s/pmt on %s. Also try again with "debug level" set to 4 in the boot file, or even running the above commands interactively on %s after performing a clean login and source-ing the DAQInterface environment.'
+            % (
+                "\n".join(self.launch_cmds),
+                self.log_directory,
+                self.pmt_host,
+                self.pmt_host,
+            )
+        )
     return { self.pmt_host : self.launch_cmds }
 
     
-
-
 def kill_procs_base(self):
 
     # JCF, 12/29/14
@@ -146,8 +193,7 @@ def kill_procs_base(self):
     # Now, the commands which will clean up the pmt.rb + its child
     # artdaq processes
 
-    pmt_pids = get_pids("ruby.*pmt.rb -p " + str(self.pmt_port),
-                             self.pmt_host)
+    pmt_pids = get_pids("ruby.*pmt.rb -p " + str(self.pmt_port), self.pmt_host)
 
     if len(pmt_pids) > 0:
 
@@ -158,7 +204,9 @@ def kill_procs_base(self):
             if self.pmt_host != "localhost":
                 cmd = "ssh -x " + self.pmt_host + " '" + cmd + "'"
 
-            proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            proc = Popen(
+                cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
 
     for procinfo in self.procinfos:
 
@@ -172,8 +220,7 @@ def kill_procs_base(self):
             if procinfo.host != "localhost":
                 cmd = "ssh -x " + procinfo.host + " '" + cmd + "'"
 
-            Popen(cmd, shell=True, stdout=subprocess.PIPE,
-                  stderr=subprocess.STDOUT)
+            Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
             # Check that it was actually killed
 
@@ -182,15 +229,20 @@ def kill_procs_base(self):
             pids = get_pids(greptoken, procinfo.host)
 
             if len(pids) > 0:
-                self.print_log("w", "Appeared to be unable to kill %s at %s:%s during cleanup" % \
-                                   (procinfo.label, procinfo.host, procinfo.port))
+                self.print_log(
+                    "w",
+                    "Appeared to be unable to kill %s at %s:%s during cleanup"
+                    % (procinfo.label, procinfo.host, procinfo.port),
+                )
 
     self.procinfos = []
 
     return
 
+
 def mopup_process_base(self, procinfo):
     pass   # Any killing of individual processes would bring down everything else with it when pmt.rb is used
+
 
 def softlink_process_manager_logfiles_base(self):
 
@@ -201,22 +253,35 @@ def softlink_process_manager_logfiles_base(self):
 
     for pmt_pid in pids:
 
-        get_pmt_logfile_cmd = "ls -tr %s/pmt/pmt-%s.* | tail -1" % \
-                              (self.log_directory, pmt_pid)
+        get_pmt_logfile_cmd = "ls -tr %s/pmt/pmt-%s.* | tail -1" % (
+            self.log_directory,
+            pmt_pid,
+        )
 
         if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
-            get_pmt_logfile_cmd = "ssh -f %s '%s'" % (self.pmt_host, get_pmt_logfile_cmd)
+            get_pmt_logfile_cmd = "ssh -f %s '%s'" % (
+                self.pmt_host,
+                get_pmt_logfile_cmd,
+            )
 
-        ls_output = Popen(get_pmt_logfile_cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()
+        ls_output = Popen(
+            get_pmt_logfile_cmd, shell=True, stdout=subprocess.PIPE
+        ).stdout.readlines()
 
         if len(ls_output) == 1:
             pmt_logfile = ls_output[0].strip()            
 
-            link_pmt_logfile_cmd = "ln -s %s %s/pmt/run%d-pmt.log" % \
-                                   (pmt_logfile, self.log_directory, self.run_number)
+            link_pmt_logfile_cmd = "ln -s %s %s/pmt/run%d-pmt.log" % (
+                pmt_logfile,
+                self.log_directory,
+                self.run_number,
+            )
 
             if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
-                link_pmt_logfile_cmd = "ssh %s '%s'" % (self.pmt_host, link_pmt_logfile_cmd)
+                link_pmt_logfile_cmd = "ssh %s '%s'" % (
+                    self.pmt_host,
+                    link_pmt_logfile_cmd,
+                )
 
             status = Popen(link_pmt_logfile_cmd, shell=True).wait()
 
@@ -228,6 +293,7 @@ def softlink_process_manager_logfiles_base(self):
 
     if not linked_pmt_logfile:
         self.print_log("w", "WARNING: failure in attempt to softlink to pmt logfile")
+
 
 def find_process_manager_variable_base(self, line):
 
@@ -243,6 +309,7 @@ def find_process_manager_variable_base(self, line):
 
     return False
 
+
 def set_process_manager_default_variables_base(self):
     if not hasattr(self, "pmt_port") or self.pmt_port is None:
         self.pmt_port = str( int(self.rpc_port) + 1 )
@@ -252,12 +319,16 @@ def set_process_manager_default_variables_base(self):
         undefined_vars.append("PMT host")
 
     if len(undefined_vars) > 0:
-        raise Exception("Error: the following parameters needed by DAQInterface are undefined: %s" % \
-                        ( ",".join( undefined_vars ) ))
+        raise Exception(
+            "Error: the following parameters needed by DAQInterface are undefined: %s"
+            % (",".join(undefined_vars))
+        )
+
 
 def reset_process_manager_variables_base(self):
     self.pmt_host = None
     self.pmt_port = None
+
 
 def get_process_manager_log_filenames_base(self):
 
@@ -266,12 +337,18 @@ def get_process_manager_log_filenames_base(self):
     if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
         cmd = "ssh %s '%s'" % (self.pmt_host, cmd)
 
-    log_filename_current = Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()[0].strip().decode('utf-8')
+    log_filename_current = (
+        Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        .stdout.readlines()[0]
+        .strip()
+        .decode("utf-8")
+    )
 
     host = self.pmt_host
     if host == "localhost":
         host = os.environ["HOSTNAME"]
     return [ "%s:%s/pmt/%s" % (host, self.log_directory, log_filename_current) ]
+
 
 def process_manager_cleanup_base(self):
 
@@ -281,6 +358,7 @@ def process_manager_cleanup_base(self):
         if hasattr(self, "pmt_host"):
             if self.pmt_host != "localhost" and self.pmt_host != os.environ["HOSTNAME"]:
                 cmd = "ssh -x " + self.pmt_host + " '" + cmd + "'"
+
 
 def get_pid_for_process_base(self, procinfo):
 
@@ -299,10 +377,15 @@ def get_pid_for_process_base(self, procinfo):
         for grepped_line in grepped_lines:
             print (grepped_line)
 
-        print ("Appear to have duplicate processes for %s on %s, pids: %s" % (procinfo.label, procinfo.host, " ".join( pids )))
+        print(
+            "Appear to have duplicate processes for %s on %s, pids: %s"
+            % (procinfo.label, procinfo.host, " ".join(pids))
+        )
+
 
 # check_proc_heartbeats_base() will check that the expected artdaq
 # processes are up and running
+
 
 def check_proc_heartbeats_base(self, requireSuccess=True):
 
@@ -330,19 +413,32 @@ def check_proc_heartbeats_base(self, requireSuccess=True):
             is_all_ok = False
 
     if not is_all_ok:
-        missing_processes = [procinfo for procinfo in self.procinfos if procinfo not in found_processes]
+        missing_processes = [
+            procinfo for procinfo in self.procinfos if procinfo not in found_processes
+        ]
 
     if not is_all_ok and requireSuccess:
         self.heartbeat_failure = True
         pmtlogfiles = self.get_process_manager_log_filenames()
         assert len(pmtlogfiles) == 1
-        self.alert_and_recover("Please check process management logfile %s and, if available, the MessageViewer window, as the following artdaq processes appear to have died unexpectedly: %s" % 
-                               (self.pmt_host, ",".join(["%s at %s:%s" % (procinfo.label, procinfo.host, procinfo.port) for procinfo in missing_processes])))
+        self.alert_and_recover(
+            "Please check process management logfile %s and, if available, the MessageViewer window, as the following artdaq processes appear to have died unexpectedly: %s"
+            % (
+                self.pmt_host,
+                ",".join(
+                    [
+                        "%s at %s:%s" % (procinfo.label, procinfo.host, procinfo.port)
+                        for procinfo in missing_processes
+                    ]
+                ),
+            )
+        )
         
     if is_all_ok:
         assert len(found_processes) == len(self.procinfos)
 
     return found_processes
+
 
 def process_launch_diagnostics_base(self, procinfos_of_failed_processes):
     pass
@@ -352,5 +448,4 @@ def handle_bad_process_base(self, procinfo):
     if self.shepherd_bad_processes == True:
         self.print_log("w", make_paragraph("Warning: shepherd_bad_processes is set to true in the DAQInterface settings file \"%s\", but you're using pmt process management which doesn't support shepherding. No action will be taken on bad process \"%s\"." % (os.environ["DAQINTERFACE_SETTINGS"], procinfo.label)))
     return [pi for pi in self.procinfos if pi.label != procinfo.label]
-
 
