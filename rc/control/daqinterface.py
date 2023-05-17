@@ -590,7 +590,7 @@ class DAQInterface(Component):
         self.do_trace_set_boolean = False
 
         self.messageviewer_sender = None
-        self.printlock = threading.Lock()
+        self.printlock = Lock()
 
         # Here, states refers to individual artdaq process states, not the
         # DAQInterface state
