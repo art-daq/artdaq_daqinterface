@@ -89,8 +89,8 @@ physics: {
   pmod3: [ prescaleMod3 ]
    
   a1: [ toy1Integ, toy2Integ ]
-  my_output_modules: [ rootNetOutput ]
-  #my_output_modules: [ rootNetOutput, normalOutput ]
+  #my_output_modules: [ rootNetOutput ]
+  my_output_modules: [ rootNetOutput, normalOutput ]
 }
 source: {
   module_type: ArtdaqInput
