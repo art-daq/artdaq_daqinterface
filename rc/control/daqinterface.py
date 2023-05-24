@@ -18,7 +18,7 @@ import re
 import string
 import glob
 import stat
-from threading import Thread
+from threading import Thread, Lock
 import shutil
 from shutil import copyfile
 import random
@@ -456,20 +456,21 @@ class DAQInterface(Component):
                     )
 
             else:
-                if self.fake_messagefacility:
-                    print(
-                        "%%MSG-%s DAQInterface %s %s %s"
-                        % (severity, formatted_day, time, timezone)
-                    )
-                if not newline and not self.fake_messagefacility:
-                    sys.stdout.write(printstr)
-                else:
-                    print (printstr)
+                with self.printlock:
+                    if self.fake_messagefacility:
+                        print(
+                            "%%MSG-%s DAQInterface %s %s %s"
+                            % (severity, formatted_day, time, timezone)
+                        )
+                    if not newline and not self.fake_messagefacility:
+                        sys.stdout.write(printstr)
+                    else:
+                        print (printstr)
 
-                if self.fake_messagefacility:
-                    print ("%MSG")
+                    if self.fake_messagefacility:
+                        print ("%MSG")
 
-            sys.stdout.flush()
+                    sys.stdout.flush()
 
     # JCF, Dec-16-2016
 
@@ -589,6 +590,7 @@ class DAQInterface(Component):
         self.do_trace_set_boolean = False
 
         self.messageviewer_sender = None
+        self.printlock = Lock()
 
         # Here, states refers to individual artdaq process states, not the
         # DAQInterface state
@@ -1329,7 +1331,7 @@ class DAQInterface(Component):
         cmds.append("res=$( grep -l \"port: %d\" %s )" % (port_to_replace, msgviewer_fhicl))
         cmds.append("if [[ -n $res ]]; then true ; else false ; fi")
         cmds.append("sed -r -i 's/port: [^\s]+/port: %d/' %s" % (10005 + self.partition_number*1000, msgviewer_fhicl))
-        cmds.append("msgviewer -c %s 2>&1 > /dev/null" % (msgviewer_fhicl))
+        cmds.append("msgviewer -c %s 2>&1 > /dev/null &" % (msgviewer_fhicl))
     
         msgviewercmd = "$(" + construct_checked_command( cmds ) + ") &"
         

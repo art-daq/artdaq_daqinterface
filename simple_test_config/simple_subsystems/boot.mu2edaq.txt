@@ -18,7 +18,7 @@ EventBuilder label: EventBuilder1
 EventBuilder host: mu2edaq11
 EventBuilder label: EventBuilder2
 
-EventBuilder host: mu2edaq07
+EventBuilder host: mu2edaq13
 EventBuilder label: EventBuilder3
 EventBuilder subsystem: 2
 
@@ -29,6 +29,6 @@ DataLogger host: mu2edaq11
 DataLogger label: DataLogger2
 DataLogger subsystem: 2
 
-Dispatcher host: mu2edaq07
+Dispatcher host: mu2edaq13
 Dispatcher label: Dispatcher1
 Dispatcher subsystem: 2

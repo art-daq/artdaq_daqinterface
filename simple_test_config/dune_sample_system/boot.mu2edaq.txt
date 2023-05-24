@@ -33,7 +33,7 @@ EventBuilder host: mu2edaq11
 EventBuilder label: SWTrig
 EventBuilder subsystem: 2
 
-EventBuilder host: mu2edaq07
+EventBuilder host: mu2edaq13
 EventBuilder label: DFO
 EventBuilder subsystem: 3
 
@@ -45,7 +45,7 @@ EventBuilder host: mu2edaq11
 EventBuilder label: EventBuilder2
 EventBuilder subsystem: 4
 
-EventBuilder host: mu2edaq07
+EventBuilder host: mu2edaq13
 EventBuilder label: EventBuilder3
 EventBuilder subsystem: 4
 
@@ -57,7 +57,7 @@ DataLogger host: mu2edaq11
 DataLogger label: DataLogger1
 DataLogger subsystem: 4
 
-Dispatcher host: mu2edaq07
+Dispatcher host: mu2edaq13
 Dispatcher label: Dispatcher1
 Dispatcher subsystem: 4
 
