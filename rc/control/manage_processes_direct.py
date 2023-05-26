@@ -56,6 +56,18 @@ def launch_procs_on_host(self, host,launch_commands_to_run_on_host, launch_comma
                                                 procinfo in self.procinfos if procinfo.host == host ]),
                                                 host,
                                         grepped_lines)
+
+        if self.attempt_existing_pid_kill and len(preexisting_pids) > 0:
+            procinfos_save = copy.deepcopy(self.procinfos)
+            kill_procs_base()
+            self.procinfos = procinfos_save
+            self.print_log("d", "Before re-check for existing processes on %s" % (host), executing_commands_debug_level)
+            grepped_lines = []
+            preexisting_pids = get_pids("\|".join([ "%s.*id:\s\+%s" % (bootfile_name_to_execname(procinfo.name), procinfo.port) for \
+                                                procinfo in self.procinfos if procinfo.host == host ]),
+                                                host,
+                                        grepped_lines)
+
         if len(preexisting_pids) > 0:
             self.print_log("e", make_paragraph("On host %s, found artdaq process(es) already existing which use the ports DAQInterface was going to use; this may be the result of an improper cleanup from a prior run: " % (host)))
             self.print_log("e", "\n" + "\n".join(grepped_lines))
