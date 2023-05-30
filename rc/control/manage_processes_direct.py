@@ -58,6 +58,7 @@ def launch_procs_on_host(self, host,launch_commands_to_run_on_host, launch_comma
                                         grepped_lines)
 
         if self.attempt_existing_pid_kill and len(preexisting_pids) > 0:
+            self.print_log("i", "Found existing processes on %s, will attempt to kill them" % (host))
             procinfos_save = copy.deepcopy(self.procinfos)
             kill_procs_base()
             self.procinfos = procinfos_save
