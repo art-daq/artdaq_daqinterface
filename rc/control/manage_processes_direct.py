@@ -1,6 +1,5 @@
 
 import random
-import threading
 import string
 import os
 import subprocess
@@ -9,6 +8,7 @@ import socket
 from time import sleep
 import re
 import sys
+import copy
 
 sys.path.append(os.environ["ARTDAQ_DAQINTERFACE_DIR"])
 
@@ -22,6 +22,7 @@ from rc.control.utilities import make_paragraph
 from rc.control.utilities import upsproddir_from_productsdir
 from rc.control.utilities import get_short_hostname
 from rc.control.utilities import get_messagefacility_template_filename
+from rc.control.utilities import RaisingThread
 from rc.control.deepsuppression import deepsuppression
 
 
@@ -58,9 +59,9 @@ def launch_procs_on_host(self, host,launch_commands_to_run_on_host, launch_comma
                                         grepped_lines)
 
         if self.attempt_existing_pid_kill and len(preexisting_pids) > 0:
-            self.print_log("i", "Found existing processes on %s, will attempt to kill them" % (host))
+            self.print_log("i", "Found existing processes on %s" % (host))
             procinfos_save = copy.deepcopy(self.procinfos)
-            kill_procs_base()
+            self.kill_procs()
             self.procinfos = procinfos_save
             self.print_log("d", "Before re-check for existing processes on %s" % (host), executing_commands_debug_level)
             grepped_lines = []
@@ -303,7 +304,7 @@ def launch_procs_base(self):
     
     threads = []
     for host in launch_commands_to_run_on_host:
-        t=threading.Thread(target=launch_procs_on_host, args=(self, host, launch_commands_to_run_on_host[host], launch_commands_to_run_on_host_background[host], launch_commands_on_host_to_show_user[host]))
+        t=RaisingThread(target=launch_procs_on_host, args=(self, host, launch_commands_to_run_on_host[host], launch_commands_to_run_on_host_background[host], launch_commands_on_host_to_show_user[host]))
         t.start()
         threads.append(t)
     
