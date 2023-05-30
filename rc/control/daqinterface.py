@@ -18,7 +18,7 @@ import re
 import string
 import glob
 import stat
-from threading import Thread, Lock
+from threading import Lock
 import shutil
 from shutil import copyfile
 import random
@@ -57,6 +57,7 @@ from rc.control.utilities import upsproddir_from_productsdir
 from rc.control.utilities import obtain_messagefacility_fhicl
 from rc.control.utilities import record_directory_info
 from rc.control.utilities import get_messagefacility_template_filename
+from rc.control.utilities import RaisingThread
 
 try:
     import python_artdaq
@@ -774,7 +775,7 @@ class DAQInterface(Component):
 
         threads = []
         for i_p in range(len(self.procinfos)):
-            t = Thread(target=send_trace_get_command, args=(self, i_p))
+            t = RaisingThread(target=send_trace_get_command, args=(self, i_p))
             threads.append(t)
             t.start()
 
@@ -834,7 +835,7 @@ class DAQInterface(Component):
 
         threads = []
         for i_p in range(len(self.procinfos)):
-            t = Thread(target=send_trace_set_command, args=(self, i_p))
+            t = RaisingThread(target=send_trace_set_command, args=(self, i_p))
             threads.append(t)
             t.start()
 
@@ -891,6 +892,7 @@ class DAQInterface(Component):
         self.use_messageviewer = True
         self.advanced_memory_usage = False
         self.fake_messagefacility = False
+        self.attempt_existing_pid_kill = False
         self.data_directory_override = None
         self.max_configurations_to_list = 1000000
         self.disable_unique_rootfile_labels = False
@@ -1100,6 +1102,13 @@ class DAQInterface(Component):
                 self.max_num_launch_procs_checks = int( line.split()[-1].strip() )
             elif "launch_procs_wait_time" in line or "launch procs wait time" in line:
                 self.launch_procs_wait_time = int( line.split()[-1].strip() )
+            elif "kill_existing_processes" in line or "kill existing processes" in line:
+                token = line.split()[-1].strip()
+
+                res = re.search(r"[Tt]rue", token)
+
+                if res:
+                    self.attempt_existing_pid_kill = True
 
         missing_vars = []
 
@@ -2426,7 +2435,7 @@ class DAQInterface(Component):
                             and priority == procinfo.priority
                             and procinfo.subsystem == subsystem
                         ):
-                            t = Thread(
+                            t = RaisingThread(
                                 target=process_command, args=(self, i_procinfo, command)
                             )
                             proc_threads[procinfo.label] = t
@@ -4242,7 +4251,7 @@ class DAQInterface(Component):
                 for priority in sorted(priorities_used.keys(), reverse = True):
                     for procinfo in self.procinfos:
                         if name in procinfo.name and priority == procinfo.priority:
-                            t = Thread(target=attempted_stop, args=(self, procinfo))
+                            t = RaisingThread(target=attempted_stop, args=(self, procinfo))
                             threads.append(t)
                             t.start()
 
