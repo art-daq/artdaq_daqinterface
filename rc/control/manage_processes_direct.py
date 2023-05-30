@@ -80,7 +80,7 @@ def launch_procs_on_host(
     if self.attempt_existing_pid_kill and len(preexisting_pids) > 0:
         self.print_log("i", "Found existing processes on %s" % (host))
         
-        kill_procs_on_host(host, kill_art=True, use_force=True)
+        kill_procs_on_host(self, host, kill_art=True, use_force=True)
 
         self.print_log(
             "d",
@@ -498,12 +498,12 @@ def kill_procs_on_host(self, host, kill_art=False, use_force=False):
 def kill_procs_base(self):
 
     for host in set([procinfo.host for procinfo in self.procinfos]):
-        kill_procs_on_host(host, kill_art=True)
+        kill_procs_on_host(self, host, kill_art=True)
 
     sleep(1)
 
     for host in set([procinfo.host for procinfo in self.procinfos]):
-        kill_procs_on_host(host, use_force=True)
+        kill_procs_on_host(self, host, use_force=True)
 
     self.procinfos = []
 
