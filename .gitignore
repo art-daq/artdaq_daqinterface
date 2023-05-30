@@ -4,4 +4,3 @@ MessageFacility.fcl
 sync.ffs_*
 .editorconfig
 *.pyproj*
-CMakePresets.json
