@@ -69,7 +69,7 @@ try:
     messagefacility_fhicl_filename = obtain_messagefacility_fhicl(True)
     if (
         not "ARTDAQ_LOG_FHICL" in os.environ
-        or os.environ["ARTDAQ_LOG_FHICL"] != messagefacility_fhicl_filename
+        #or os.environ["ARTDAQ_LOG_FHICL"] != messagefacility_fhicl_filename
     ):
         raise Exception(
             make_paragraph(
@@ -430,7 +430,7 @@ class DAQInterface(Component):
             # JCF, Dec-31-2019
             # The swig_artdaq instance by default writes to stdout, so no
             # explicit print call is needed
-            if self.use_messageviewer and self.messageviewer_sender is not None:
+            if self.use_messagefacility and self.messageviewer_sender is not None:
                 if severity == "e":
                     self.messageviewer_sender.write_error(
                         "DAQInterface partition %s"
@@ -627,9 +627,13 @@ class DAQInterface(Component):
             )
             sys.exit(1)
 
-        if self.use_messageviewer:
+        if self.use_messagefacility:
             try:
-                self.messageviewer_sender = swig_artdaq("")
+                config_str = "application_name: DAQInterface"
+                if self.debug_level > 0:
+                    config_str += " debug_logging: true"
+                
+                self.messageviewer_sender = swig_artdaq(config_str)
             except:
                 pass
 
@@ -890,6 +894,7 @@ class DAQInterface(Component):
         self.routingmanager_timeout = 30
 
         self.use_messageviewer = True
+        self.use_messagefacility = True
         self.advanced_memory_usage = False
         self.fake_messagefacility = False
         self.attempt_existing_pid_kill = False
@@ -1076,6 +1081,13 @@ class DAQInterface(Component):
 
                 if res:
                     self.use_messageviewer = False
+            elif "use_messagefacility" in line or "use messagefacility" in line:
+                token = line.split()[-1].strip()
+
+                res = re.search(r"[Ff]alse", token)
+
+                if res:
+                    self.use_messagefacility = False
             elif "advanced_memory_usage" in line or "advanced memory usage" in line:
                 token = line.split()[-1].strip()
 
