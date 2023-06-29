@@ -1988,15 +1988,16 @@ class DAQInterface(Component):
             if not host_is_local(host):
                 link_logfile_cmd = "ssh %s '%s'" % (host, link_logfile_cmd)
 
-            status = Popen(link_logfile_cmd, executable="/bin/bash", shell=True).wait()
+            proc = Popen(link_logfile_cmd, executable="/bin/bash", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            status = proc.wait()
 
             if status == 0:
                 self.print_log("d", "\n".join( links_printed_to_output[host] ), 2)
             else:
                 self.print_log(
                     "w",
-                    "WARNING: failure in performing user-friendly softlinks to logfiles on host %s"
-                    % (host),
+                    "WARNING: failure in performing user-friendly softlinks to logfiles on host %s:\n%s"
+                    % (host, proc.stdout.readlines()),
                 )
 
     def fill_package_versions(self, packages):

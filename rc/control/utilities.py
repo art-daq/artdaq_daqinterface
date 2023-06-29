@@ -115,7 +115,6 @@ def host_is_local(host):
         or get_short_hostname() in host
     )
 
-
 def get_pids(greptoken, host="localhost", grepresults=None):
 
     cmd = 'ps aux | grep "%s" | grep -v grep' % (greptoken)
