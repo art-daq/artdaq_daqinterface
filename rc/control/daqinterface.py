@@ -45,6 +45,7 @@ else:
 from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_pids
+from rc.control.utilities import host_is_local
 from rc.control.utilities import is_msgviewer_running
 from rc.control.utilities import date_and_time
 from rc.control.utilities import date_and_time_more_precision
@@ -1809,7 +1810,7 @@ class DAQInterface(Component):
 
             cmd = "; ".join( cmds )
 
-            if host != os.environ["HOSTNAME"] and host != "localhost":
+            if not host_is_local(host):
                 cmd = "ssh -f " + host + " '" + cmd + "'"
 
             num_logfile_checks = 0
@@ -1984,7 +1985,7 @@ class DAQInterface(Component):
         for host in softlink_commands_to_run_on_host:
             link_logfile_cmd = "; ".join( softlink_commands_to_run_on_host[host] )
 
-            if host != "localhost" and host != os.environ["HOSTNAME"]:
+            if not host_is_local(host):
                 link_logfile_cmd = "ssh %s '%s'" % (host, link_logfile_cmd)
 
             status = Popen(link_logfile_cmd, executable="/bin/bash", shell=True).wait()
@@ -3056,7 +3057,7 @@ class DAQInterface(Component):
                     self.daq_setup_script,
                 )
 
-                if random_host != "localhost" and random_host != os.environ["HOSTNAME"]:
+                if not host_is_local(random_host):
                     cmd = "timeout %d ssh %s '%s'" % (
                         ssh_timeout_in_seconds,
                         random_host,
@@ -3132,7 +3133,7 @@ class DAQInterface(Component):
             for host in set([procinfo.host for procinfo in self.procinfos]):
                 logdircmd = construct_checked_command( logdir_commands_to_run_on_host )
 
-                if host != os.environ["HOSTNAME"] and host != "localhost":
+                if not host_is_local(host):
                     logdircmd = "timeout %d ssh -f %s '%s'" % (
                         ssh_timeout_in_seconds,
                         host,

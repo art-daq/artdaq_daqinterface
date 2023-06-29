@@ -901,7 +901,7 @@ def get_private_networks(host):
     if not host_is_local(host):
         cmd = "ssh -x %s '%s'" % (host, cmd)
 
-    lines = Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()
+    lines = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout.readlines()
     networks = []
 
     for line in lines:
@@ -947,7 +947,7 @@ def record_directory_info(recorddir):
 
 def get_short_hostname():
     hostname = (
-        Popen("hostname -s", executable="/bin/bash", shell=True, stdout=subprocess.PIPE)
+        Popen("hostname -s", executable="/bin/bash", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         .stdout.readlines()[0]
         .decode("utf-8")
         .strip()
@@ -1062,7 +1062,7 @@ def main():
         ), "This test is deprecated until function signature is brought up-to-date"
         inputstring = 'mytable: {   this: "and"        that: "and  the other"   }'
         source_filename = (
-            Popen("mktemp", shell=True, stdout=subprocess.PIPE)
+            Popen("mktemp", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             .stdout.readlines()[0]
             .strip()
         )

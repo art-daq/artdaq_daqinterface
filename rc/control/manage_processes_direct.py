@@ -149,9 +149,10 @@ def launch_procs_on_host(
     )
 
     with deepsuppression(self.debug_level < 5):
-        status = Popen(
-            launchcmd, executable="/bin/bash", shell=True, preexec_fn=os.setpgrp
-        ).wait()
+        proc = Popen(
+            launchcmd, executable="/bin/bash", shell=True, preexec_fn=os.setpgrp, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        )
+        status = proc.wait()
 
     if status != 0:
         self.print_log(
