@@ -1340,9 +1340,9 @@ class DAQInterface(Component):
         cmds.append("res=$( grep -l \"port: %d\" %s )" % (port_to_replace, msgviewer_fhicl))
         cmds.append("if [[ -n $res ]]; then true ; else false ; fi")
         cmds.append("sed -r -i 's/port: [^\s]+/port: %d/' %s" % (10005 + self.partition_number*1000, msgviewer_fhicl))
-        cmds.append("msgviewer -c %s 2>&1 > /dev/null &" % (msgviewer_fhicl))
+        cmds.append("msgviewer -c %s >/dev/null 2>&1 &" % (msgviewer_fhicl))
     
-        msgviewercmd = "$(" + construct_checked_command( cmds ) + ") &"
+        msgviewercmd = construct_checked_command( cmds )
         
         with deepsuppression(self.debug_level < 4):
             proc = Popen(msgviewercmd, executable="/bin/bash", shell=True)
