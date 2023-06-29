@@ -108,16 +108,28 @@ def make_paragraph(userstring, chars_per_line=75):
 # this result
 
 
+def host_is_local(host):
+    return (
+        host == "localhost"
+        or host == os.environ["HOSTNAME"]
+        or get_short_hostname() in host
+    )
+
+
 def get_pids(greptoken, host="localhost", grepresults=None):
 
     cmd = 'ps aux | grep "%s" | grep -v grep' % (greptoken)
 
-    if host != "localhost":
+    if not host_is_local(host):
         cmd = "ssh -x %s '%s'" % (host, cmd)
 
-    proc = Popen(cmd, shell=True, stdout=subprocess.PIPE)
+    proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     lines = proc.stdout.readlines()
+
+    errlines = proc.stderr.readlines()
+    if len(errlines) > 0:
+        raise Exception("SSH process for retrieving PIDs had the following error output:\n %s" % "\n".join(errlines)) 
 
     if grepresults is not None:
         for line in lines:
@@ -886,7 +898,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THI
 def get_private_networks(host):
     cmd = '/usr/sbin/ifconfig | sed -r -n "s/^\s*inet\s+(192\.168\.\S+|10\.\S+)\s+.*/\\1/p"'
 
-    if host != "localhost" and host != os.environ["HOSTNAME"]:
+    if not host_is_local(host):
         cmd = "ssh -x %s '%s'" % (host, cmd)
 
     lines = Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.readlines()

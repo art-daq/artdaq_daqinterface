@@ -12,6 +12,7 @@ import copy
 
 sys.path.append(os.environ["ARTDAQ_DAQINTERFACE_DIR"])
 
+from rc.control.utilities import host_is_local
 from rc.control.utilities import get_pids
 from rc.control.utilities import bash_unsetup_command
 from rc.control.utilities import date_and_time
@@ -508,15 +509,6 @@ def kill_procs_base(self):
     self.procinfos = []
 
     return
-
-
-def host_is_local(host):
-    return (
-        host == "localhost"
-        or host == os.environ["HOSTNAME"]
-        or host == get_short_hostname()
-    )
-
 
 def softlink_process_manager_logfile(self, host):
     pmt_logfile = get_process_manager_log_filename(self, host)
