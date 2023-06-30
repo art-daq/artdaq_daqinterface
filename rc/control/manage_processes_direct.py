@@ -150,7 +150,7 @@ def launch_procs_on_host(
 
     with deepsuppression(self.debug_level < 5):
         proc = Popen(
-            launchcmd, executable="/bin/bash", shell=True, process_group=0, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+            launchcmd, executable="/bin/bash", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
         status = proc.wait()
 
@@ -217,8 +217,9 @@ def launch_procs_base(self):
         shell=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        encoding="utf-8"
     )
-    outlines, errlines = proc.communicate()
+    out, err = proc.communicate()
     status = proc.returncode
 
     if status != 0:
@@ -230,12 +231,12 @@ def launch_procs_base(self):
         self.print_log(
             "e",
             "STDOUT output: \n%s"
-            % ("\n".join([line.decode("utf-8") for line in outlines])),
+            % (out),
         )
         self.print_log(
             "e",
             "STDERR output: \n%s"
-            % ("\n".join([line.decode("utf-8") for line in errlines])),
+            % (err),
         )
         self.print_log(
             "e",

@@ -1847,14 +1847,16 @@ class DAQInterface(Component):
                     shell=True,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
+                    encoding="utf-8",
                 )
-                proclines, proclines_err = proc.communicate()
+                out, err = proc.communicate()
+                proclines = out.strip().split("\n")
 
                 if len(
                     [
                         line
                         for line in proclines
-                        if re.search(r"\.log$", line.decode("utf-8"))
+                        if re.search(r"\.log$", line)
                     ]
                 ) == len(proctypes):
                     break  # Success
@@ -1867,16 +1869,12 @@ class DAQInterface(Component):
                         self.print_log(
                             "e",
                             "\nSTDOUT:\n======================================================================\n%s\n======================================================================\n"
-                            % ("".join([line.decode("utf-8") for line in proclines])),
+                            % (out),
                         )
                         self.print_log(
                             "e",
                             "STDERR:\n======================================================================\n%s\n======================================================================\n"
-                            % (
-                                "".join(
-                                    [line.decode("utf-8") for line in proclines_err]
-                                )
-                            ),
+                            % (err),
                         )
                         raise Exception(
                             make_paragraph(
@@ -1894,7 +1892,7 @@ class DAQInterface(Component):
                         "%s:%s"
                         % (
                             full_hostname,
-                            proclines[i_p].decode("utf-8").strip().split()[-1],
+                            proclines[i_p].strip().split()[-1],
                         )
                     )
                 elif "EventBuilder" in proctypes[i_p]:
@@ -1902,7 +1900,7 @@ class DAQInterface(Component):
                         "%s:%s"
                         % (
                             full_hostname,
-                            proclines[i_p].decode("utf-8").strip().split()[-1],
+                            proclines[i_p].strip().split()[-1],
                         )
                     )
                 elif "DataLogger" in proctypes[i_p]:
@@ -1910,7 +1908,7 @@ class DAQInterface(Component):
                         "%s:%s"
                         % (
                             full_hostname,
-                            proclines[i_p].decode("utf-8").strip().split()[-1],
+                            proclines[i_p].strip().split()[-1],
                         )
                     )
                 elif "Dispatcher" in proctypes[i_p]:
@@ -1918,7 +1916,7 @@ class DAQInterface(Component):
                         "%s:%s"
                         % (
                             full_hostname,
-                            proclines[i_p].decode("utf-8").strip().split()[-1],
+                            proclines[i_p].strip().split()[-1],
                         )
                     )
                 elif "RoutingManager" in proctypes[i_p]:
@@ -1926,7 +1924,7 @@ class DAQInterface(Component):
                         "%s:%s"
                         % (
                             full_hostname,
-                            proclines[i_p].decode("utf-8").strip().split()[-1],
+                            proclines[i_p].strip().split()[-1],
                         )
                     )
                 else:
@@ -2062,9 +2060,12 @@ class DAQInterface(Component):
                 shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                encoding="utf-8"
             )
 
-            stdoutlines,stderrlines = proc.communicate()
+            out, err = proc.communicate()
+            stdoutlines = out.strip().split("\n")
+            stderrlines = err.strip().split("\n")
 
             for line in stderrlines:
                 if b"type: unsetup: not found" in line:
@@ -2072,7 +2073,7 @@ class DAQInterface(Component):
                     stderrlines.remove(line)
                 elif re.search(
                     r"INFO: mrb v\d_\d\d_\d\d requires cetmodules >= \d\.\d\d\.\d\d to run: attempting to configure\.\.\.v\d_\d\d_\d\d OK",
-                    line.decode("utf-8"),
+                    line,
                 ):
                     self.print_log("i", line)
                     stderrlines.remove(line)
@@ -2083,7 +2084,7 @@ class DAQInterface(Component):
                     % (
                         self.fill_package_versions.__name__,
                         cmd,
-                        "".join([x.decode() for x in stderrlines]),
+                        "".join(stderrlines),
                     )
                 )
 
@@ -2095,7 +2096,6 @@ class DAQInterface(Component):
                 )
 
             for line in stdoutlines:
-                line = line.decode("utf-8")
                 if re.search(r"^(%s)\s+" % ("|".join(needed_packages)), line):
                     (package, version) = line.split()
 
@@ -2172,10 +2172,9 @@ class DAQInterface(Component):
             hosts_for_rgang = set()
             for key in nodes_for_rgang.keys():
                 if host_is_local(key):
-                    hosts_for_rgang.add('localhost')
+                    hosts_for_rgang.add("localhost")
                 else:
                     hosts_for_rgang.add(key)
-
 
             cmd = '%s %s --run %d --transition %s --node-list="%s"' % (
                 trace_script,
@@ -2192,12 +2191,11 @@ class DAQInterface(Component):
                 shell=True,
                 stderr=subprocess.PIPE,
                 stdout=subprocess.PIPE,
+                encoding="utf-8"
             )
 
-            out_comm = out.communicate()
+            out_stdout,out_stderr = out.communicate()
 
-            out_stdout = out_comm[0].decode("utf-8")
-            out_stderr = out_comm[1].decode("utf-8")
             status = out.returncode
 
             if status == 0:
@@ -3120,21 +3118,22 @@ class DAQInterface(Component):
                     cmd,
                     executable="/bin/bash",
                     shell=True,
-                    stderr=subprocess.STDOUT,
+                    stderr=subprocess.PIPE,
                     stdout=subprocess.PIPE,
+                    encoding="utf-8"
                 )
 
                 out_comm = out.communicate()
 
                 if out_comm[0] is not None:
-                    out_stdout = out_comm[0].decode("utf-8")
+                    out_stdout = out_comm[0]
                     self.print_log(
                         "d",
                         "\nSTDOUT: \n%s" % (out_stdout),
                         random_node_source_debug_level,
                     )
                 if out_comm[1] is not None:
-                    out_stderr = out_comm[1].decode("utf-8")
+                    out_stderr = out_comm[1]
                     self.print_log(
                         "d",
                         "STDERR: \n%s" % (out_stderr),
@@ -3199,8 +3198,9 @@ class DAQInterface(Component):
                         shell=True,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
+                        encoding="utf-8",
                     )
-                    outlines, errlines = proc.communicate()
+                    out, err = proc.communicate()
                     status = proc.returncode
 
                 if status != 0:
@@ -3212,27 +3212,11 @@ class DAQInterface(Component):
                     )
                     self.print_log(
                         "e",
-                        "STDOUT output: \n%s"
-                        % (
-                            "\n".join(
-                                [
-                                    line.decode("utf-8")
-                                    for line in outlines
-                                ]
-                            )
-                        ),
+                        "STDOUT output: \n%s" % (out),
                     )
                     self.print_log(
                         "e",
-                        "STDERR output: \n%s"
-                        % (
-                            "\n".join(
-                                [
-                                    line.decode("utf-8")
-                                    for line in errlines
-                                ]
-                            )
-                        ),
+                        "STDERR output: \n%s" % (err),
                     )
                     self.print_log(
                         "e",
@@ -3270,9 +3254,10 @@ class DAQInterface(Component):
                 shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                encoding="utf-8",
             )
 
-            outlines, errlines = proc.communicate()
+            out, err = proc.communicate()
             status = proc.returncode
 
             if status != 0:
@@ -3283,21 +3268,11 @@ class DAQInterface(Component):
                 )
                 self.print_log(
                     "e",
-                    "STDOUT output: \n%s"
-                    % (
-                        "\n".join(
-                            [line.decode("utf-8") for line in outlines]
-                        )
-                    ),
+                    "STDOUT output: \n%s" % (out),
                 )
                 self.print_log(
                     "e",
-                    "STDERR output: \n%s"
-                    % (
-                        "\n".join(
-                            [line.decode("utf-8") for line in errlines]
-                        )
-                    ),
+                    "STDERR output: \n%s" % (err),
                 )
                 self.print_log(
                     "e",

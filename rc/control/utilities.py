@@ -124,22 +124,25 @@ def get_pids(greptoken, host="localhost", grepresults=None):
     if not host_is_local(host):
         cmd = "ssh -x %s '%s'" % (host, cmd)
 
-    proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8")
 
-    lines, errlines = proc.communicate()
-    if len(errlines) > 0:
+    out, err = proc.communicate()
+    lines = []
+    if len(out) > 0:
+        lines = out.strip().split('\n')
+    if len(err) > 0:
         raise Exception(
             "SSH process for retrieving PIDs had the following error output:\n %s"
-            % "\n".join(errlines)
+            % (err)
         )
 
     if grepresults is not None:
         for line in lines:
             grepresults.append(
-                line.decode("utf-8")
+                line
             )  # Clunkier than a straight assignment, but needed for pass-by-reference
 
-    pids = [line.decode("utf-8").split()[1] for line in lines]
+    pids = [line.split()[1] for line in lines]
 
     return pids
 
