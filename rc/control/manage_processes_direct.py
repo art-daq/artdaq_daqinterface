@@ -218,7 +218,8 @@ def launch_procs_base(self):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    status = proc.wait()
+    outlines, errlines = proc.communicate()
+    status = proc.returncode
 
     if status != 0:
         self.print_log(
@@ -229,12 +230,12 @@ def launch_procs_base(self):
         self.print_log(
             "e",
             "STDOUT output: \n%s"
-            % ("\n".join([line.decode("utf-8") for line in proc.stdout.readlines()])),
+            % ("\n".join([line.decode("utf-8") for line in outlines])),
         )
         self.print_log(
             "e",
             "STDERR output: \n%s"
-            % ("\n".join([line.decode("utf-8") for line in proc.stderr.readlines()])),
+            % ("\n".join([line.decode("utf-8") for line in errlines])),
         )
         self.print_log(
             "e",
@@ -803,7 +804,7 @@ def get_related_pids_for_process(procinfo):
         executable="/bin/bash",
         shell=True,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
 
     for procline in proc.stdout.readlines():

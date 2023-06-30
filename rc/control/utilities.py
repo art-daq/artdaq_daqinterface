@@ -126,9 +126,7 @@ def get_pids(greptoken, host="localhost", grepresults=None):
 
     proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    lines = proc.stdout.readlines()
-
-    errlines = proc.stderr.readlines()
+    lines, errlines = proc.communicate()
     if len(errlines) > 0:
         raise Exception(
             "SSH process for retrieving PIDs had the following error output:\n %s"
@@ -297,7 +295,7 @@ def commit_check_throws_if_failure(packagedir, commit_hash, date, request_after)
     cmds.append("git log | grep %s" % (commit_hash))
 
     proc = Popen(
-        ";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        ";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
     )
     proclines = proc.stdout.readlines()
 

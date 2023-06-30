@@ -1321,7 +1321,7 @@ class DAQInterface(Component):
             executable="/bin/bash",
             shell=True,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
         )
 
         proclines = proc.stdout.readlines()
@@ -1366,8 +1366,8 @@ class DAQInterface(Component):
                 msgviewercmd,
                 executable="/bin/bash",
                 shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
 
         return proc
@@ -1848,8 +1848,7 @@ class DAQInterface(Component):
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                 )
-                proclines = proc.stdout.readlines()
-                proclines_err = proc.stderr.readlines()
+                proclines, proclines_err = proc.communicate()
 
                 if len(
                     [
@@ -2065,8 +2064,7 @@ class DAQInterface(Component):
                 stderr=subprocess.PIPE,
             )
 
-            stdoutlines = proc.stdout.readlines()
-            stderrlines = proc.stderr.readlines()
+            stdoutlines,stderrlines = proc.communicate()
 
             for line in stderrlines:
                 if b"type: unsetup: not found" in line:
@@ -3202,7 +3200,8 @@ class DAQInterface(Component):
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                     )
-                    status = proc.wait()
+                    outlines, errlines = proc.communicate()
+                    status = proc.returncode
 
                 if status != 0:
 
@@ -3218,7 +3217,7 @@ class DAQInterface(Component):
                             "\n".join(
                                 [
                                     line.decode("utf-8")
-                                    for line in proc.stdout.readlines()
+                                    for line in outlines
                                 ]
                             )
                         ),
@@ -3230,7 +3229,7 @@ class DAQInterface(Component):
                             "\n".join(
                                 [
                                     line.decode("utf-8")
-                                    for line in proc.stderr.readlines()
+                                    for line in errlines
                                 ]
                             )
                         ),
@@ -3273,7 +3272,8 @@ class DAQInterface(Component):
                 stderr=subprocess.PIPE,
             )
 
-            status = proc.wait()
+            outlines, errlines = proc.communicate()
+            status = proc.returncode
 
             if status != 0:
                 self.print_log(
@@ -3286,7 +3286,7 @@ class DAQInterface(Component):
                     "STDOUT output: \n%s"
                     % (
                         "\n".join(
-                            [line.decode("utf-8") for line in proc.stdout.readlines()]
+                            [line.decode("utf-8") for line in outlines]
                         )
                     ),
                 )
@@ -3295,7 +3295,7 @@ class DAQInterface(Component):
                     "STDERR output: \n%s"
                     % (
                         "\n".join(
-                            [line.decode("utf-8") for line in proc.stderr.readlines()]
+                            [line.decode("utf-8") for line in errlines]
                         )
                     ),
                 )
