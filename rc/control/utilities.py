@@ -125,7 +125,6 @@ def get_pids(greptoken, host="localhost", grepresults=None):
         cmd = "ssh -x %s '%s'" % (host, cmd)
 
     proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    proc.wait()
 
     lines = proc.stdout.readlines()
 
@@ -300,7 +299,6 @@ def commit_check_throws_if_failure(packagedir, commit_hash, date, request_after)
     proc = Popen(
         ";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
-    proc.wait()
     proclines = proc.stdout.readlines()
 
     if request_after and len(proclines) != 1:
