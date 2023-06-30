@@ -63,7 +63,7 @@ def save_run_record_base(self):
     Popen(
         "cp -p " + self.daq_setup_script + " " + outdir + "/setup.txt",
         shell=True,
-        stdout=subprocess.PIPE,
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     ).wait()
 
     if not os.path.exists(outdir + "/setup.txt"):
@@ -74,6 +74,7 @@ def save_run_record_base(self):
     Popen(
         "cp -p " + os.environ["DAQINTERFACE_SETTINGS"] + " " + outdir + "/settings.txt",
         shell=True,
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     ).wait()
 
     if not os.path.exists(outdir + "/settings.txt"):
@@ -88,7 +89,7 @@ def save_run_record_base(self):
         + outdir
         + "/known_boardreaders_list.txt",
         shell=True,
-        stdout=subprocess.PIPE,
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     ).wait()
 
     if not os.path.exists(outdir + "/known_boardreaders_list.txt"):
