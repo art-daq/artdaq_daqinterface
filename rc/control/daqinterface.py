@@ -2144,12 +2144,20 @@ class DAQInterface(Component):
             for procinfo in self.procinfos_orig:
                 nodes_for_rgang[ procinfo.host ] = 1
 
+            hosts_for_rgang = set()
+            for key in nodes_for_rgang.keys():
+                if host_is_local(key):
+                    hosts_for_rgang.add('localhost')
+                else:
+                    hosts_for_rgang.add(key)
+
+
             cmd = '%s %s --run %d --transition %s --node-list="%s"' % (
                 trace_script,
                 trace_file,
                 self.run_number,
                 transition,
-                " ".join(nodes_for_rgang.keys()),
+                " ".join(hosts_for_rgang),
             )
             self.print_log("d", 'Executing "%s"' % (cmd), 2)
 
