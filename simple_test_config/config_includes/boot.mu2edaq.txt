@@ -12,7 +12,7 @@ EventBuilder label: EventBuilder1
 EventBuilder host: mu2edaq11
 EventBuilder label: EventBuilder2
 
-DataLogger host: mu2edaq07
+DataLogger host: mu2edaq13
 DataLogger label: DataLogger1
 
 # DataLogger host: mu2edaq14
@@ -21,7 +21,7 @@ DataLogger label: DataLogger1
 # DataLogger host: mu2edaq11
 # DataLogger label: DataLogger3
 
-# DataLogger host: mu2edaq07
+# DataLogger host: mu2edaq13
 # DataLogger label: DataLogger4
 
 Dispatcher host: mu2edaq14
