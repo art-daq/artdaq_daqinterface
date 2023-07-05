@@ -14,10 +14,23 @@ from subprocess import Popen
 from time import sleep
 from time import time
 
-from multiprocessing.pool import ThreadPool
+from threading import Thread
 
 bash_unsetup_command = 'upsname=$( which ups 2>/dev/null ); if [[ -n $upsname ]]; then unsetup() { . `$upsname unsetup "$@"` ; }; for pp in `printenv | sed -ne "/^SETUP_/{s/SETUP_//;s/=.*//;p}"`; do test $pp = UPS && continue; prod=`echo $pp | tr "A-Z" "a-z"`; unsetup -j $prod; done; echo "After bash unsetup, products active (should be nothing but ups listed):"; ups active; else echo "ups does not appear to be set up; will not unsetup any products"; fi'
 
+# Raise exceptions from threads https://stackoverflow.com/questions/2829329/catch-a-threads-exception-in-the-caller-thread
+class RaisingThread(Thread):
+  def run(self):
+    self._exc = None
+    try:
+      super().run()
+    except Exception as e:
+      self._exc = e
+
+  def join(self, timeout=None):
+    super().join(timeout=timeout)
+    if self._exc:
+      raise self._exc
 
 def expand_environment_variable_in_string(line):
 

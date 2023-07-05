@@ -21,7 +21,7 @@ EventBuilder host: mu2edaq11
 EventBuilder label: EventFilter1
 EventBuilder subsystem: 1
 
-EventBuilder host: mu2edaq07
+EventBuilder host: mu2edaq13
 EventBuilder label: EventFilter2
 EventBuilder subsystem: 1
 

@@ -20,7 +20,7 @@ EventBuilder label: EventBuilder3
 DataLogger host: mu2edaq14
 DataLogger label: DataLogger1
 
-DataLogger host: mu2edaq07
+DataLogger host: mu2edaq13
 DataLogger label: DataLogger2
 
 Dispatcher host: localhost
