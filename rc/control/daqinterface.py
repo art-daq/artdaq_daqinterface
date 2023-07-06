@@ -18,7 +18,7 @@ import re
 import string
 import glob
 import stat
-from threading import Lock
+from threading import RLock
 import shutil
 from shutil import copyfile
 import random
@@ -591,7 +591,7 @@ class DAQInterface(Component):
         self.do_trace_set_boolean = False
 
         self.messageviewer_sender = None
-        self.printlock = Lock()
+        self.printlock = RLock()
 
         # Here, states refers to individual artdaq process states, not the
         # DAQInterface state
