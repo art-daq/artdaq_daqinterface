@@ -178,7 +178,7 @@ def launch_procs_on_host(
         )
         self.print_log(
             "d",
-            "Output from failed command:\n" + out),
+            "Output from failed command:\n" + out,
             executing_commands_debug_level,
         )
         raise Exception(
