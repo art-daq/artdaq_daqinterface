@@ -23,7 +23,6 @@ import shutil
 from shutil import copyfile
 import random
 import signal
-import imp
 
 from rc.io.timeoutclient import TimeoutServerProxy
 from rc.control.component import Component
@@ -1853,11 +1852,7 @@ class DAQInterface(Component):
                 proclines = out.strip().split("\n")
 
                 if len(
-                    [
-                        line
-                        for line in proclines
-                        if re.search(r"\.log$", line)
-                    ]
+                    [line for line in proclines if re.search(r"\.log$", line)]
                 ) == len(proctypes):
                     break  # Success
                 else:
@@ -2060,7 +2055,7 @@ class DAQInterface(Component):
                 shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                encoding="utf-8"
+                encoding="utf-8",
             )
 
             out, err = proc.communicate()
@@ -2191,10 +2186,10 @@ class DAQInterface(Component):
                 shell=True,
                 stderr=subprocess.PIPE,
                 stdout=subprocess.PIPE,
-                encoding="utf-8"
+                encoding="utf-8",
             )
 
-            out_stdout,out_stderr = out.communicate()
+            out_stdout, out_stderr = out.communicate()
 
             status = out.returncode
 
@@ -3120,7 +3115,7 @@ class DAQInterface(Component):
                     shell=True,
                     stderr=subprocess.PIPE,
                     stdout=subprocess.PIPE,
-                    encoding="utf-8"
+                    encoding="utf-8",
                 )
 
                 out_comm = out.communicate()
