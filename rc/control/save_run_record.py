@@ -8,8 +8,6 @@ import traceback
 import shutil
 import string
 
-from rc.control.deepsuppression import deepsuppression
-
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_commit_info
 from rc.control.utilities import get_commit_info_filename
@@ -194,33 +192,33 @@ def save_run_record_base(self):
 
     package_buildinfo_dict = get_build_info(buildinfo_packages, self.daq_setup_script)
 
-    with deepsuppression(self.debug_level < 3):
-        try:
-            commit_info_fullpathname = "%s/%s" % (
-                os.path.dirname(self.daq_setup_script),
-                get_commit_info_filename("DAQInterface"),
-            )
-            if os.path.exists(commit_info_fullpathname):
-                with open(commit_info_fullpathname) as commitfile:
-                    outf.write("%s" % (commitfile.read()))
-            else:
-                outf.write(
-                    "%s"
-                    % (
-                        get_commit_info(
-                            "DAQInterface", os.environ["ARTDAQ_DAQINTERFACE_DIR"]
-                        )
+    
+    try:
+        commit_info_fullpathname = "%s/%s" % (
+            os.path.dirname(self.daq_setup_script),
+            get_commit_info_filename("DAQInterface"),
+        )
+        if os.path.exists(commit_info_fullpathname):
+            with open(commit_info_fullpathname) as commitfile:
+                outf.write("%s" % (commitfile.read()))
+        else:
+            outf.write(
+                "%s"
+                % (
+                    get_commit_info(
+                        "DAQInterface", os.environ["ARTDAQ_DAQINTERFACE_DIR"]
                     )
                 )
-        except Exception:
-            # Not an exception in a bad sense as the throw just means we're using DAQInterface as a ups product
-            self.fill_package_versions(["artdaq_daqinterface"])
-            outf.write(
-                "DAQInterface commit/version: %s"
-                % (self.package_versions["artdaq_daqinterface"])
             )
+    except Exception:
+        # Not an exception in a bad sense as the throw just means we're using DAQInterface as a ups product
+        self.fill_package_versions(["artdaq_daqinterface"])
+        outf.write(
+            "DAQInterface commit/version: %s"
+            % (self.package_versions["artdaq_daqinterface"])
+        )
 
-        outf.write(" %s\n\n" % (package_buildinfo_dict["artdaq_daqinterface"]))
+    outf.write(" %s\n\n" % (package_buildinfo_dict["artdaq_daqinterface"]))
 
     package_commit_dict = {}
     packages_whose_versions_we_need = []

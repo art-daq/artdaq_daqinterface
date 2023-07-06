@@ -26,7 +26,6 @@ import signal
 
 from rc.io.timeoutclient import TimeoutServerProxy
 from rc.control.component import Component
-from rc.control.deepsuppression import deepsuppression
 
 from rc.control.save_run_record import save_run_record_base
 from rc.control.save_run_record import save_metadata_value_base
@@ -1289,14 +1288,13 @@ class DAQInterface(Component):
 
         checked_cmd = construct_checked_command(cmds)
 
-        with deepsuppression(self.debug_level < 5):
-            status = Popen(
-                checked_cmd,
-                executable="/bin/bash",
-                shell=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            ).wait()
+        status = Popen(
+            checked_cmd,
+            executable="/bin/bash",
+            shell=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ).wait()
 
         if status == 0:
             self.artdaq_mfextensions_booleans[self.daq_setup_script] = True
@@ -1361,14 +1359,13 @@ class DAQInterface(Component):
 
         msgviewercmd = construct_checked_command(cmds)
 
-        with deepsuppression(self.debug_level < 4):
-            proc = Popen(
-                msgviewercmd,
-                executable="/bin/bash",
-                shell=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
+        proc = Popen(
+            msgviewercmd,
+            executable="/bin/bash",
+            shell=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
         return proc
 
@@ -3097,45 +3094,44 @@ class DAQInterface(Component):
             )
             # self.print_log("d", "\n", random_node_source_debug_level)
 
-            with deepsuppression(self.debug_level < random_node_source_debug_level):
-                cmd = "%s ; . %s for_running" % (
-                    bash_unsetup_command,
-                    self.daq_setup_script,
-                )
+            cmd = "%s ; . %s for_running" % (
+                bash_unsetup_command,
+                self.daq_setup_script,
+            )
 
-                if not host_is_local(random_host):
-                    cmd = "timeout %d ssh %s '%s'" % (
-                        ssh_timeout_in_seconds,
-                        random_host,
-                        cmd,
-                    )
-
-                out = Popen(
+            if not host_is_local(random_host):
+                cmd = "timeout %d ssh %s '%s'" % (
+                    ssh_timeout_in_seconds,
+                    random_host,
                     cmd,
-                    executable="/bin/bash",
-                    shell=True,
-                    stderr=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    encoding="utf-8",
                 )
 
-                out_comm = out.communicate()
+            out = Popen(
+                cmd,
+                executable="/bin/bash",
+                shell=True,
+                stderr=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                encoding="utf-8",
+            )
 
-                if out_comm[0] is not None:
-                    out_stdout = out_comm[0]
-                    self.print_log(
-                        "d",
-                        "\nSTDOUT: \n%s" % (out_stdout),
-                        random_node_source_debug_level,
-                    )
-                if out_comm[1] is not None:
-                    out_stderr = out_comm[1]
-                    self.print_log(
-                        "d",
-                        "STDERR: \n%s" % (out_stderr),
-                        random_node_source_debug_level,
-                    )
-                status = out.returncode
+            out_comm = out.communicate()
+
+            if out_comm[0] is not None:
+                out_stdout = out_comm[0]
+                self.print_log(
+                    "d",
+                    "\nSTDOUT: \n%s" % (out_stdout),
+                    random_node_source_debug_level,
+                )
+            if out_comm[1] is not None:
+                out_stderr = out_comm[1]
+                self.print_log(
+                    "d",
+                    "STDERR: \n%s" % (out_stderr),
+                    random_node_source_debug_level,
+                )
+            status = out.returncode
 
             if status != 0:
                 errmsg = (
@@ -3187,17 +3183,16 @@ class DAQInterface(Component):
                         logdircmd,
                     )
 
-                with deepsuppression(self.debug_level < 4):
-                    proc = Popen(
-                        logdircmd,
-                        executable="/bin/bash",
-                        shell=True,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        encoding="utf-8",
-                    )
-                    out, err = proc.communicate()
-                    status = proc.returncode
+                proc = Popen(
+                    logdircmd,
+                    executable="/bin/bash",
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    encoding="utf-8",
+                )
+                out, err = proc.communicate()
+                status = proc.returncode
 
                 if status != 0:
 

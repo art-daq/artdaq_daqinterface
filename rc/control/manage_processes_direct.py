@@ -24,7 +24,6 @@ from rc.control.utilities import upsproddir_from_productsdir
 from rc.control.utilities import get_short_hostname
 from rc.control.utilities import get_messagefacility_template_filename
 from rc.control.utilities import RaisingThread
-from rc.control.deepsuppression import deepsuppression
 
 
 def bootfile_name_to_execname(bootfile_name):
@@ -148,17 +147,16 @@ def launch_procs_on_host(
         executing_commands_debug_level,
     )
 
-    with deepsuppression(self.debug_level < 5):
-        proc = Popen(
-            launchcmd,
-            executable="/bin/bash",
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            encoding="utf-8",
-        )
-        out, _ = proc.communicate()
-        status = proc.returncode
+    proc = Popen(
+        launchcmd,
+        executable="/bin/bash",
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        encoding="utf-8",
+    )
+    out, _ = proc.communicate()
+    status = proc.returncode
 
     if status != 0:
         self.print_log(
