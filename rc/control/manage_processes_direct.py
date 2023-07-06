@@ -184,7 +184,7 @@ def launch_procs_on_host(
             % (host)
         )
     else:
-        self.print_log("d", "...done.", executing_commands_debug_level)
+        self.print_log("d", "...host %s done." % ( host ),executing_commands_debug_level)
 
     return status
 
