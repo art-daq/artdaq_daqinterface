@@ -458,6 +458,8 @@ class DAQInterface(Component):
 
             else:
                 with self.printlock:
+                    # Reset stdout
+                    sys.stdout = sys.__stdout__
                     if self.fake_messagefacility:
                         print(
                             "%%MSG-%s DAQInterface %s %s %s"
@@ -466,12 +468,10 @@ class DAQInterface(Component):
                     if not newline and not self.fake_messagefacility:
                         sys.stdout.write(printstr)
                     else:
-                        print(printstr)
+                        print(printstr, flush=True)
 
                     if self.fake_messagefacility:
-                        print("%MSG")
-
-                    sys.stdout.flush()
+                        print("%MSG", flush=True)
 
     # JCF, Dec-16-2016
 
