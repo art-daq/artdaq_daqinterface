@@ -424,6 +424,8 @@ class DAQInterface(Component):
 
         dummy, month, day, time, timezone, year = date_and_time().split()
         formatted_day = "%s-%s-%s" % (day, month, year)
+    
+        print(f"out={sys.stdout.fileno()}, err={sys.stderr.fileno()}, _o_={sys.__stdout__.fileno()}, _e_={sys.__stderr__.fileno()}")
 
         if self.debug_level >= debuglevel:
 

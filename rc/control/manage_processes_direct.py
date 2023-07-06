@@ -51,20 +51,19 @@ def launch_procs_on_host(
     launch_commands_to_run_on_host,
     launch_commands_to_run_on_host_background,
     launch_commands_on_host_to_show_user,
-    logs
 ):
-    def debug_log(msg):
-        if self.debug_level >= executing_commands_debug_level:
-            logs[host].append(msg)
-
     executing_commands_debug_level = 2
-    logs[host].append("Executing commands to launch processes on %s" % (host))
+    self.print_log("i", "Executing commands to launch processes on %s" % (host))
 
     # Before we try launching the processes, let's make sure there
     # aren't any pre-existing processes listening on the same
     # ports
 
-    debug_log( "Before check for existing processes on %s" % (host)    )
+    self.print_log(
+        "d",
+        "Before check for existing processes on %s" % (host),
+        executing_commands_debug_level,
+    )
     grepped_lines = []
     preexisting_pids = get_pids(
         "\|".join(
@@ -80,12 +79,14 @@ def launch_procs_on_host(
     )
 
     if self.attempt_existing_pid_kill and len(preexisting_pids) > 0:
-        logs[host].append("Found existing processes on %s" % (host))
+        self.print_log("i", "Found existing processes on %s" % (host))
 
         kill_procs_on_host(self, host, kill_art=True, use_force=True)
 
-        debug_log(
-            "Before re-check for existing processes on %s" % (host)
+        self.print_log(
+            "d",
+            "Before re-check for existing processes on %s" % (host),
+            executing_commands_debug_level,
         )
         grepped_lines = []
         preexisting_pids = get_pids(
@@ -102,13 +103,17 @@ def launch_procs_on_host(
         )
 
     if len(preexisting_pids) > 0:
-        logs[host].append(make_paragraph(
+        self.print_log(
+            "e",
+            make_paragraph(
                 "On host %s, found artdaq process(es) already existing which use the ports DAQInterface was going to use; this may be the result of an improper cleanup from a prior run: "
                 % (host)
             ),
         )
-        logs[host].append("\n" + "\n".join(grepped_lines))
-        logs[host].append("...note that the process(es) may get automatically cleaned up during DAQInterface recovery\n",
+        self.print_log("e", "\n" + "\n".join(grepped_lines))
+        self.print_log(
+            "i",
+            "...note that the process(es) may get automatically cleaned up during DAQInterface recovery\n",
         )
         raise Exception(
             make_paragraph(
@@ -116,9 +121,10 @@ def launch_procs_on_host(
             )
         )
 
-    debug_log(
-        "After check for existing processes on %s" % (host)
-        
+    self.print_log(
+        "d",
+        "After check for existing processes on %s" % (host),
+        executing_commands_debug_level,
     )
 
     launchcmd = construct_checked_command(launch_commands_to_run_on_host)
@@ -130,14 +136,16 @@ def launch_procs_on_host(
     if not host_is_local(host):
         launchcmd = "ssh -f " + host + " '" + launchcmd + "'"
 
-    debug_log("\nartdaq process launch commands to execute on %s (output will be in %s:%s):\n%s\n"
+    self.print_log(
+        "d",
+        "\nartdaq process launch commands to execute on %s (output will be in %s:%s):\n%s\n"
         % (
             host,
             host,
             self.launch_attempt_files[host],
             "\n".join(launch_commands_on_host_to_show_user),
         ),
-        
+        executing_commands_debug_level,
     )
 
     with deepsuppression(self.debug_level < 5):
@@ -153,24 +161,32 @@ def launch_procs_on_host(
         status = proc.returncode
 
     if status != 0:
-        logs[host].append("Status error raised in attempting to launch processes on %s, to investigate, see %s:%s for output"
+        self.print_log(
+            "e",
+            "Status error raised in attempting to launch processes on %s, to investigate, see %s:%s for output"
             % (host, host, self.launch_attempt_files[host]),
         )
-        logs[host].append(make_paragraph(
+        self.print_log(
+            "i",
+            make_paragraph(
                 'You can also try running again with the "debug level" in the boot file set to 4. Otherwise, you can recreate what DAQInterface did by performing a clean login to %s, source-ing the DAQInterface environment and executing the following:'
                 % (host)
-           )
+           ),
         )
-        logs[host].append("\n" + "\n".join(launch_commands_on_host_to_show_user) + "\n"
+        self.print_log(
+            "i", "\n" + "\n".join(launch_commands_on_host_to_show_user) + "\n"
         )
-        debug_log( "Output from failed command:\n" + out,
+        self.print_log(
+            "d",
+            "Output from failed command:\n" + out,
+            executing_commands_debug_level,
         )
         raise Exception(
             "Status error raised attempting to launch processes on %s; scroll up for more detail"
             % (host)
         )
     else:
-        debug_log("...done.", )
+        self.print_log("d", "...done.", executing_commands_debug_level)
 
     return status
 
@@ -384,9 +400,7 @@ def launch_procs_base(self):
     print
 
     threads = []
-    logs = {}
     for host in launch_commands_to_run_on_host:
-        logs[host] = []
         t = RaisingThread(
             target=launch_procs_on_host,
             args=(
@@ -395,7 +409,6 @@ def launch_procs_base(self):
                 launch_commands_to_run_on_host[host],
                 launch_commands_to_run_on_host_background[host],
                 launch_commands_on_host_to_show_user[host],
-                logs
             ),
         )
         t.start()
@@ -403,9 +416,6 @@ def launch_procs_base(self):
 
     for t in threads:
         t.join()
-
-    for host in logs:
-        self.print_log("i", "\n\nOutput from launching thread for host %s:\n" % (host) + "\n".join(logs[host]))
 
     return launch_commands_on_host_to_show_user
 
