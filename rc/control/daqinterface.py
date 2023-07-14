@@ -2072,7 +2072,7 @@ class DAQInterface(Component):
             stderrlines = err.strip().split("\n")
 
             for line in stderrlines:
-                if line == "":
+                if not line or not line.strip():
                     stderrlines.remove(line)
                 elif "type: unsetup: not found" in line:
                     self.print_log("w", line)
