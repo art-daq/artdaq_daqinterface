@@ -25,7 +25,7 @@ def get_config_parentdir():
 def get_config_info_base(self):
 
     uuidgen = (
-        Popen("uuidgen", shell=True, stdout=subprocess.PIPE)
+        Popen("uuidgen", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         .stdout.readlines()[0]
         .strip()
         .decode("utf-8")
