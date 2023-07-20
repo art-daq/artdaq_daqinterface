@@ -18,16 +18,14 @@ import re
 import string
 import glob
 import stat
-from threading import Lock
+from threading import RLock
 import shutil
 from shutil import copyfile
 import random
 import signal
-import imp
 
 from rc.io.timeoutclient import TimeoutServerProxy
 from rc.control.component import Component 
-from rc.control.deepsuppression import deepsuppression
 
 from rc.control.save_run_record import save_run_record_base
 from rc.control.save_run_record import save_metadata_value_base
@@ -45,6 +43,7 @@ else:
 from rc.control.utilities import expand_environment_variable_in_string
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import get_pids
+from rc.control.utilities import host_is_local
 from rc.control.utilities import is_msgviewer_running
 from rc.control.utilities import date_and_time
 from rc.control.utilities import date_and_time_more_precision
@@ -69,7 +68,7 @@ try:
     messagefacility_fhicl_filename = obtain_messagefacility_fhicl(True)
     if (
         not "ARTDAQ_LOG_FHICL" in os.environ
-        or os.environ["ARTDAQ_LOG_FHICL"] != messagefacility_fhicl_filename
+        #or os.environ["ARTDAQ_LOG_FHICL"] != messagefacility_fhicl_filename
     ):
         raise Exception(
             make_paragraph(
@@ -433,7 +432,7 @@ class DAQInterface(Component):
             # JCF, Dec-31-2019
             # The swig_artdaq instance by default writes to stdout, so no
             # explicit print call is needed
-            if self.use_messageviewer and self.messageviewer_sender is not None:
+            if self.use_messagefacility and self.messageviewer_sender is not None:
                 if severity == "e":
                     self.messageviewer_sender.write_error(
                         "DAQInterface partition %s"
@@ -464,17 +463,17 @@ class DAQInterface(Component):
             if self.fake_messagefacility:
                     print(
                         "%%MSG-%s DAQInterface %s %s %s"
-                        % (severity, formatted_day, time, timezone)
+                            % (severity, formatted_day, time, timezone),
+                            flush=True,
                     )
             if not newline and not self.fake_messagefacility:
                 sys.stdout.write(printstr)
+                        sys.stdout.flush()
                 else:
-                    print(printstr)
+                        print(printstr, flush=True)
 
                 if self.fake_messagefacility:
-                    print("%MSG")
-
-                sys.stdout.flush()
+                        print("%MSG", flush=True)
 
     # JCF, Dec-16-2016
 
@@ -594,7 +593,7 @@ class DAQInterface(Component):
         self.do_trace_set_boolean = False
 
         self.messageviewer_sender = None
-        self.printlock = Lock()
+        self.printlock = RLock()
 
         # Here, states refers to individual artdaq process states, not the
         # DAQInterface state
@@ -630,9 +629,13 @@ class DAQInterface(Component):
             )
             sys.exit(1)
 
-        if self.use_messageviewer:
+        if self.use_messagefacility:
             try:
-                self.messageviewer_sender = swig_artdaq("")
+                config_str = "application_name: DAQInterface"
+                if self.debug_level > 0:
+                    config_str += " debug_logging: true"
+                
+                self.messageviewer_sender = swig_artdaq(config_str)
             except:
                 pass
 
@@ -894,6 +897,7 @@ class DAQInterface(Component):
         self.routingmanager_timeout = 30
 
         self.use_messageviewer = True
+        self.use_messagefacility = True
         self.advanced_memory_usage = False
         self.fake_messagefacility = False
         self.attempt_existing_pid_kill = False
@@ -1081,6 +1085,13 @@ class DAQInterface(Component):
 
                 if res:
                     self.use_messageviewer = False
+            elif "use_messagefacility" in line or "use messagefacility" in line:
+                token = line.split()[-1].strip()
+
+                res = re.search(r"[Ff]alse", token)
+
+                if res:
+                    self.use_messagefacility = False
             elif "advanced_memory_usage" in line or "advanced memory usage" in line:
                 token = line.split()[-1].strip()
                 
@@ -1300,8 +1311,13 @@ class DAQInterface(Component):
 
         checked_cmd = construct_checked_command( cmds )
         
-        with deepsuppression(self.debug_level < 5):
-            status = Popen(checked_cmd, executable="/bin/bash", shell = True).wait()
+        status = Popen(
+            checked_cmd,
+            executable="/bin/bash",
+            shell=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ).wait()
 
         if status == 0:
             self.artdaq_mfextensions_booleans[self.daq_setup_script] = True
@@ -1326,7 +1342,7 @@ class DAQInterface(Component):
             executable="/bin/bash",
             shell=True,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
         )
 
         proclines = proc.stdout.readlines()
@@ -1344,24 +1360,38 @@ class DAQInterface(Component):
     def launch_msgviewer(self):
         cmds = []
         port_to_replace = 30000
-        msgviewer_fhicl = "/tmp/msgviewer_partition%d_%s.fcl" % (self.partition_number, os.environ["USER"])
+        msgviewer_fhicl = "/tmp/msgviewer_partition%d_%s.fcl" % (
+            self.partition_number,
+            os.environ["USER"],
+        )
         cmds.append(bash_unsetup_command)
         cmds.append(". %s for_running" % (self.daq_setup_script))
         cmds.append("which msgviewer")
-        cmds.append("cp $ARTDAQ_MFEXTENSIONS_DIR/fcl/msgviewer.fcl %s" % (msgviewer_fhicl))
-        cmds.append("res=$( grep -l \"port: %d\" %s )" % (port_to_replace, msgviewer_fhicl))
+        cmds.append(
+            "cp $ARTDAQ_MFEXTENSIONS_DIR/fcl/msgviewer.fcl %s" % (msgviewer_fhicl)
+        )
+        cmds.append(
+            'res=$( grep -l "port: %d" %s )' % (port_to_replace, msgviewer_fhicl)
+        )
         cmds.append("if [[ -n $res ]]; then true ; else false ; fi")
-        cmds.append("sed -r -i 's/port: [^\s]+/port: %d/' %s" % (10005 + self.partition_number*1000, msgviewer_fhicl))
-        cmds.append("msgviewer -c %s 2>&1 > /dev/null &" % (msgviewer_fhicl))
+        cmds.append(
+            "sed -r -i 's/port: [^\s]+/port: %d/' %s"
+            % (10005 + self.partition_number * 1000, msgviewer_fhicl)
+        )
+        cmds.append("msgviewer -c %s >/dev/null 2>&1 &" % (msgviewer_fhicl))
     
-        msgviewercmd = "$(" + construct_checked_command( cmds ) + ") &"
+        msgviewercmd = construct_checked_command(cmds)
         
-        with deepsuppression(self.debug_level < 4):
-            proc = Popen(msgviewercmd, executable="/bin/bash", shell=True)
+        proc = Popen(
+            msgviewercmd,
+            executable="/bin/bash",
+            shell=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
         return proc
             
-    
     # JCF, 5/29/15
 
     # check_proc_exceptions() takes advantage of an artdaq feature
@@ -1824,7 +1854,7 @@ class DAQInterface(Component):
 
             cmd = "; ".join( cmds )
 
-            if host != os.environ["HOSTNAME"] and host != "localhost":
+            if not host_is_local(host):
                 cmd = "ssh -f " + host + " '" + cmd + "'"
 
             num_logfile_checks = 0
@@ -1840,16 +1870,13 @@ class DAQInterface(Component):
                     shell=True,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
+                    encoding="utf-8",
                 )
-                proclines = proc.stdout.readlines()
-                proclines_err = proc.stderr.readlines()
+                out, err = proc.communicate()
+                proclines = out.strip().split("\n")
 
                 if len(
-                    [
-                        line
-                        for line in proclines
-                        if re.search(r"\.log$", line.decode("utf-8"))
-                    ]
+                    [line for line in proclines if re.search(r"\.log$", line)]
                 ) == len(proctypes):
                     break   # Success
                 else:
@@ -1861,16 +1888,12 @@ class DAQInterface(Component):
                         self.print_log(
                             "e",
                             "\nSTDOUT:\n======================================================================\n%s\n======================================================================\n"
-                            % ("".join([line.decode("utf-8") for line in proclines])),
+                            % (out),
                         )
                         self.print_log(
                             "e",
                             "STDERR:\n======================================================================\n%s\n======================================================================\n"
-                            % (
-                                "".join(
-                                    [line.decode("utf-8") for line in proclines_err]
-                                )
-                            ),
+                            % (err),
                         )
                         raise Exception(
                             make_paragraph(
@@ -1888,7 +1911,7 @@ class DAQInterface(Component):
                         "%s:%s"
                         % (
                             full_hostname,
-                            proclines[i_p].decode("utf-8").strip().split()[-1],
+                            proclines[i_p].strip().split()[-1],
                         )
                     )
                 elif "EventBuilder" in proctypes[i_p]:
@@ -1896,7 +1919,7 @@ class DAQInterface(Component):
                         "%s:%s"
                         % (
                             full_hostname,
-                            proclines[i_p].decode("utf-8").strip().split()[-1],
+                            proclines[i_p].strip().split()[-1],
                         )
                     )
                 elif "DataLogger" in proctypes[i_p]:
@@ -1904,7 +1927,7 @@ class DAQInterface(Component):
                         "%s:%s"
                         % (
                             full_hostname,
-                            proclines[i_p].decode("utf-8").strip().split()[-1],
+                            proclines[i_p].strip().split()[-1],
                         )
                     )
                 elif "Dispatcher" in proctypes[i_p]:
@@ -1912,7 +1935,7 @@ class DAQInterface(Component):
                         "%s:%s"
                         % (
                             full_hostname,
-                            proclines[i_p].decode("utf-8").strip().split()[-1],
+                            proclines[i_p].strip().split()[-1],
                         )
                     )
                 elif "RoutingManager" in proctypes[i_p]:
@@ -1920,7 +1943,7 @@ class DAQInterface(Component):
                         "%s:%s"
                         % (
                             full_hostname,
-                            proclines[i_p].decode("utf-8").strip().split()[-1],
+                            proclines[i_p].strip().split()[-1],
                         )
                     )
                 else:
@@ -1999,18 +2022,25 @@ class DAQInterface(Component):
         for host in softlink_commands_to_run_on_host:
             link_logfile_cmd = "; ".join( softlink_commands_to_run_on_host[host] )
 
-            if host != "localhost" and host != os.environ["HOSTNAME"]:
+            if not host_is_local(host):
                 link_logfile_cmd = "ssh %s '%s'" % (host, link_logfile_cmd)
 
-            status = Popen(link_logfile_cmd, executable="/bin/bash", shell=True).wait()
+            proc = Popen(
+                link_logfile_cmd,
+                executable="/bin/bash",
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+            status = proc.wait()
             
             if status == 0:
                 self.print_log("d", "\n".join( links_printed_to_output[host] ), 2)
             else:
                 self.print_log(
                     "w",
-                    "WARNING: failure in performing user-friendly softlinks to logfiles on host %s"
-                    % (host),
+                    "WARNING: failure in performing user-friendly softlinks to logfiles on host %s:\n%s"
+                    % (host, proc.stdout.readlines()),
                 )
 
     def fill_package_versions(self, packages):    
@@ -2049,18 +2079,22 @@ class DAQInterface(Component):
                 shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                encoding="utf-8",
             )
 
-            stdoutlines = proc.stdout.readlines()
-            stderrlines = proc.stderr.readlines()
+            out, err = proc.communicate()
+            stdoutlines = out.strip().split("\n")
+            stderrlines = err.strip().split("\n")
 
             for line in stderrlines:
-                if b"type: unsetup: not found" in line:
+                if not line or not line.strip():
+                    stderrlines.remove(line)
+                elif "type: unsetup: not found" in line:
                     self.print_log("w", line)
                     stderrlines.remove(line)
                 elif re.search(
                     r"INFO: mrb v\d_\d\d_\d\d requires cetmodules >= \d\.\d\d\.\d\d to run: attempting to configure\.\.\.v\d_\d\d_\d\d OK",
-                    line.decode("utf-8"),
+                    line,
                 ):
                     self.print_log("i", line)
                     stderrlines.remove(line)
@@ -2071,7 +2105,7 @@ class DAQInterface(Component):
                     % (
                         self.fill_package_versions.__name__,
                         cmd,
-                        "".join([x.decode() for x in stderrlines]),
+                        "".join(stderrlines),
                     )
                 )
 
@@ -2083,7 +2117,6 @@ class DAQInterface(Component):
                 )
 
             for line in stdoutlines:
-                line = line.decode("utf-8")
                 if re.search(r"^(%s)\s+" % ("|".join(needed_packages)), line):
                     (package, version) = line.split()
 
@@ -2157,12 +2190,19 @@ class DAQInterface(Component):
             for procinfo in self.procinfos_orig:
                 nodes_for_rgang[ procinfo.host ] = 1
 
+            hosts_for_rgang = set()
+            for key in nodes_for_rgang.keys():
+                if host_is_local(key):
+                    hosts_for_rgang.add("localhost")
+                else:
+                    hosts_for_rgang.add(key)
+
             cmd = '%s %s --run %d --transition %s --node-list="%s"' % (
                 trace_script,
                 trace_file,
                 self.run_number,
                 transition,
-                " ".join(nodes_for_rgang.keys()),
+                " ".join(hosts_for_rgang),
             )
             self.print_log("d", 'Executing "%s"' % (cmd), 2)
 
@@ -2172,12 +2212,11 @@ class DAQInterface(Component):
                 shell=True,
                 stderr=subprocess.PIPE,
                 stdout=subprocess.PIPE,
+                encoding="utf-8",
             )
 
-            out_comm = out.communicate()
+            out_stdout, out_stderr = out.communicate()
 
-            out_stdout = out_comm[0].decode("utf-8")
-            out_stderr = out_comm[1].decode("utf-8")
             status = out.returncode
 
             if status == 0:
@@ -2679,6 +2718,7 @@ class DAQInterface(Component):
                     executable="/bin/bash",
                     shell=True,
                     stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
                 ).stdout.readlines()
                 if len(lines) > 0:
                     fhiclcpp_to_setup_line = lines[-1].decode("utf-8")
@@ -2855,7 +2895,13 @@ class DAQInterface(Component):
                 boot_filename,
                 self.boot_filename,
             )
-            status = Popen(cmd, executable="/bin/bash", shell=True).wait()
+            status = Popen(
+                cmd,
+                executable="/bin/bash",
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            ).wait()
             if status != 0:
                 raise Exception('Error: the command "%s" returned nonzero' % cmd)
             
@@ -2990,7 +3036,6 @@ class DAQInterface(Component):
                         2,
                     )
 
-
         #WK 8/31/21
         #Startup msgviewer early. check on it later
         self.msgviewer_proc = None #initialize
@@ -3003,32 +3048,44 @@ class DAQInterface(Component):
             try:
 
                 if self.have_artdaq_mfextensions() and is_msgviewer_running():
-                    self.print_log("i", make_paragraph("An instance of messageviewer already appears to be running; " + \
-                                             "messages will be sent to the existing messageviewer"))
+                    self.print_log(
+                        "i",
+                        make_paragraph(
+                            "An instance of messageviewer already appears to be running; "
+                            + "messages will be sent to the existing messageviewer"
+                        ),
+                    )
                     
                 elif self.have_artdaq_mfextensions():
                     version, qualifiers = self.artdaq_mfextensions_info()
 
-                    self.print_log("i", make_paragraph("artdaq_mfextensions %s, %s, appears to be available; "
+                    self.print_log(
+                        "i",
+                        make_paragraph(
+                            "artdaq_mfextensions %s, %s, appears to be available; "
                                                        "if windowing is supported on your host you should see the "
-                                                       "messageviewer window pop up momentarily" % \
-                                                       (version, qualifiers)))
+                            "messageviewer window pop up momentarily"
+                            % (version, qualifiers)
+                        ),
+                    )
 
                     self.msgviewer_proc = self.launch_msgviewer()
                     
-                    
                 else:
-                    self.print_log("i", make_paragraph("artdaq_mfextensions does not appear to be available; "
+                    self.print_log(
+                        "i",
+                        make_paragraph(
+                            "artdaq_mfextensions does not appear to be available; "
                                          "unable to launch the messageviewer window. This will not affect"
                                          " actual datataking, it just means you'll need to look at the"
-                                         " logfiles to see artdaq output."))
+                            " logfiles to see artdaq output."
+                        ),
+                    )
 
             except Exception:
                 self.print_log("e", traceback.format_exc())
                 self.alert_and_recover("Problem during messageviewer launch stage")
                 return
-
-
 
         # JCF, Oct-18-2017
 
@@ -3065,13 +3122,12 @@ class DAQInterface(Component):
             )
             #self.print_log("d", "\n", random_node_source_debug_level)
 
-            with deepsuppression(self.debug_level < random_node_source_debug_level):
                 cmd = "%s ; . %s for_running" % (
                     bash_unsetup_command,
                     self.daq_setup_script,
                 )
 
-                if random_host != "localhost" and random_host != os.environ["HOSTNAME"]:
+            if not host_is_local(random_host):
                     cmd = "timeout %d ssh %s '%s'" % (
                         ssh_timeout_in_seconds,
                         random_host,
@@ -3082,21 +3138,22 @@ class DAQInterface(Component):
                     cmd,
                     executable="/bin/bash",
                     shell=True,
-                    stderr=subprocess.STDOUT,
+                stderr=subprocess.PIPE,
                     stdout=subprocess.PIPE,
+                encoding="utf-8",
                 )
 
                 out_comm = out.communicate()
 
                 if out_comm[0] is not None:
-                    out_stdout = out_comm[0].decode("utf-8")
+                out_stdout = out_comm[0]
                     self.print_log(
                         "d",
                         "\nSTDOUT: \n%s" % (out_stdout),
                         random_node_source_debug_level,
                     )
                 if out_comm[1] is not None:
-                    out_stderr = out_comm[1].decode("utf-8")
+                out_stderr = out_comm[1]
                     self.print_log(
                         "d",
                         "STDERR: \n%s" % (out_stderr),
@@ -3147,22 +3204,23 @@ class DAQInterface(Component):
             for host in set([procinfo.host for procinfo in self.procinfos]):
                 logdircmd = construct_checked_command( logdir_commands_to_run_on_host )
 
-                if host != os.environ["HOSTNAME"] and host != "localhost":
+                if not host_is_local(host):
                     logdircmd = "timeout %d ssh -f %s '%s'" % (
                         ssh_timeout_in_seconds,
                         host,
                         logdircmd,
                     )
 
-                with deepsuppression(self.debug_level < 4):
                     proc = Popen(
                         logdircmd,
                         executable="/bin/bash",
                         shell=True,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
+                    encoding="utf-8",
                     )
-                    status = proc.wait()
+                out, err = proc.communicate()
+                status = proc.returncode
 
                 if status != 0:   
 
@@ -3173,27 +3231,11 @@ class DAQInterface(Component):
                     )
                     self.print_log(
                         "e",
-                        "STDOUT output: \n%s"
-                        % (
-                            "\n".join(
-                                [
-                                    line.decode("utf-8")
-                                    for line in proc.stdout.readlines()
-                                ]
-                            )
-                        ),
+                        "STDOUT output: \n%s" % (out),
                     )
                     self.print_log(
                         "e",
-                        "STDERR output: \n%s"
-                        % (
-                            "\n".join(
-                                [
-                                    line.decode("utf-8")
-                                    for line in proc.stderr.readlines()
-                                ]
-                            )
-                        ),
+                        "STDERR output: \n%s" % (err),
                     )
                     self.print_log(
                         "e",
@@ -3231,9 +3273,11 @@ class DAQInterface(Component):
                 shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                encoding="utf-8",
             )
 
-            status = proc.wait()
+            out, err = proc.communicate()
+            status = proc.returncode
             
             if status != 0:
                 self.print_log(
@@ -3243,21 +3287,11 @@ class DAQInterface(Component):
                 )
                 self.print_log(
                     "e",
-                    "STDOUT output: \n%s"
-                    % (
-                        "\n".join(
-                            [line.decode("utf-8") for line in proc.stdout.readlines()]
-                        )
-                    ),
+                    "STDOUT output: \n%s" % (out),
                 )
                 self.print_log(
                     "e",
-                    "STDERR output: \n%s"
-                    % (
-                        "\n".join(
-                            [line.decode("utf-8") for line in proc.stderr.readlines()]
-                        )
-                    ),
+                    "STDERR output: \n%s" % (err),
                 )
                 self.print_log(
                     "e",
@@ -3408,8 +3442,10 @@ class DAQInterface(Component):
         if self.msgviewer_proc is not None:
             #now wait/check status from msgviewer
             if self.msgviewer_proc.wait() != 0:
-                self.alert_and_recover("Status error raised in msgviewer call within Popen; tried the following commands: \n\n\"%s\"" %
-                                       " ;\n".join(cmds) )
+                self.alert_and_recover(
+                    'Status error raised in msgviewer call within Popen; tried the following commands: \n\n"%s"'
+                    % " ;\n".join(cmds)
+                )
                 return
 
         if self.manage_processes:
@@ -3628,6 +3664,7 @@ class DAQInterface(Component):
                 executable="/bin/bash",
                 shell=True,
                 stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
             )
             .stdout.readlines()[0]
             .strip(),
@@ -3773,7 +3810,11 @@ class DAQInterface(Component):
                 )
                 return
             Popen(
-                "touch %s" % (run_record_directory), executable="/bin/bash", shell=True
+                "touch %s" % (run_record_directory),
+                executable="/bin/bash",
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
             os.chmod(run_record_directory, 0o555)
 
@@ -3838,7 +3879,11 @@ class DAQInterface(Component):
         self.save_metadata_value(
             "DAQInterface start time",
             Popen(
-                "date --utc", executable="/bin/bash", shell=True, stdout=subprocess.PIPE
+                "date --utc",
+                executable="/bin/bash",
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
             )
             .stdout.readlines()[0]
             .strip()
@@ -3880,7 +3925,11 @@ class DAQInterface(Component):
         self.save_metadata_value(
             "DAQInterface stop time",
             Popen(
-                "date --utc", executable="/bin/bash", shell=True, stdout=subprocess.PIPE
+                "date --utc",
+                executable="/bin/bash",
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
             )
             .stdout.readlines()[0]
             .strip()
@@ -4266,7 +4315,9 @@ class DAQInterface(Component):
                 for priority in sorted(priorities_used.keys(), reverse = True):
                     for procinfo in self.procinfos:
                         if name in procinfo.name and priority == procinfo.priority:
-                            t = RaisingThread(target=attempted_stop, args=(self, procinfo))
+                            t = RaisingThread(
+                                target=attempted_stop, args=(self, procinfo)
+                            )
                             threads.append(t)
                             t.start()
 
@@ -4574,7 +4625,11 @@ def main():  # no-coverage
         )
         os.environ["HOSTNAME"] = (
             Popen(
-                "hostname", executable="/bin/bash", shell=True, stdout=subprocess.PIPE
+                "hostname",
+                executable="/bin/bash",
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
             )
             .stdout.readlines()[0]
             .strip()

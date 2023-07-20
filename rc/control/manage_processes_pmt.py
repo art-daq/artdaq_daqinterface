@@ -15,7 +15,6 @@ from rc.control.utilities import construct_checked_command
 from rc.control.utilities import obtain_messagefacility_fhicl
 from rc.control.utilities import upsproddir_from_productsdir
 from rc.control.utilities import make_paragraph
-from rc.control.deepsuppression import deepsuppression
 
 # JCF, 8/11/14
 
@@ -36,7 +35,6 @@ def launch_procs_base(self):
 
     # First, as per Issue #22372, mop up any stale shared memory segments on the hosts we'll be running on
     
-    with deepsuppression(self.debug_level < 4):
         for host in set([procinfo.host for procinfo in self.procinfos]):
             cmd = "%s/bin/mopup_shmem.sh %s --force" % (
                 os.environ["ARTDAQ_DAQINTERFACE_DIR"],
@@ -163,7 +161,6 @@ def launch_procs_base(self):
 
     self.print_log("d", "PROCESS LAUNCH COMMANDS: \n" + "\n".join( self.launch_cmds ), 3)
 
-    with deepsuppression(self.debug_level < 5):
         status = Popen(launchcmd, shell=True, preexec_fn=os.setpgrp).wait()
 
     if status != 0:   

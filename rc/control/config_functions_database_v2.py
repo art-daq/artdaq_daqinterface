@@ -20,7 +20,6 @@ sys.path.append(dbdirs[0] + "/../bin")
 
 import subprocess
 from subprocess import Popen
-from rc.control.deepsuppression import deepsuppression
 from rc.control.utilities import make_paragraph
 from rc.control.utilities import fhiclize_document
 import shutil
@@ -117,14 +116,13 @@ def get_config_info_base(self):
         os.mkdir(subconfigdir)
         os.chdir(subconfigdir)
 
-        with deepsuppression(self.debug_level < 2):
-            result = exportConfiguration(subconfig)
+        result = exportConfiguration(subconfig)
 
-            if not result:
-                raise Exception(
-                    'Error: the exportConfiguration function with the argument "%s" returned False'
-                    % subconfig
-                )
+        if not result:
+            raise Exception(
+                'Error: the exportConfiguration function with the argument "%s" returned False'
+                % subconfig
+            )
 
         for dirname, dummy, dummy in os.walk(subconfigdir):
             ffp.append(dirname)
@@ -303,11 +301,10 @@ def put_config_info_base(self):
     basedir = os.getcwd()
     os.chdir(tmpdir)
 
-    with deepsuppression(self.debug_level < 2):
-        subconfigs_for_run = [
-            subconfig.replace("/", "_") for subconfig in self.subconfigs_for_run
-        ]
-        result = archiveRunConfiguration("_".join(subconfigs_for_run), runnum)
+    subconfigs_for_run = [
+        subconfig.replace("/", "_") for subconfig in self.subconfigs_for_run
+    ]
+    result = archiveRunConfiguration("_".join(subconfigs_for_run), runnum)
 
     if not result:
         raise Exception(
@@ -409,11 +406,10 @@ def put_config_info_on_stop_base(self):
         "%s/schema.fcl" % (tmpdir),
     )
 
-    with deepsuppression():
-        subconfigs_for_run = [
-            subconfig.replace("/", "_") for subconfig in self.subconfigs_for_run
-        ]
-        result = updateArchivedRunConfiguration("_".join(subconfigs_for_run), runnum)
+    subconfigs_for_run = [
+        subconfig.replace("/", "_") for subconfig in self.subconfigs_for_run
+    ]
+    result = updateArchivedRunConfiguration("_".join(subconfigs_for_run), runnum)
 
     if not result:
         raise Exception(

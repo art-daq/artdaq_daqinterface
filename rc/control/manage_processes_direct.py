@@ -14,6 +14,7 @@ import copy
 
 sys.path.append( os.environ["ARTDAQ_DAQINTERFACE_DIR"] )
 
+from rc.control.utilities import host_is_local
 from rc.control.utilities import get_pids
 from rc.control.utilities import bash_unsetup_command
 from rc.control.utilities import date_and_time
@@ -25,7 +26,6 @@ from rc.control.utilities import upsproddir_from_productsdir
 from rc.control.utilities import get_short_hostname
 from rc.control.utilities import get_messagefacility_template_filename
 from rc.control.utilities import RaisingThread
-from rc.control.deepsuppression import deepsuppression
 from rc.io.timeoutclient import TimeoutServerProxy
 
 def bootfile_name_to_execname(bootfile_name):
@@ -149,10 +149,16 @@ def launch_procs_on_host(
         executing_commands_debug_level,
     )
 
-    with deepsuppression(self.debug_level < 5):
-        status = Popen(
-            launchcmd, executable="/bin/bash", shell=True, preexec_fn=os.setpgrp
-        ).wait()
+    proc = Popen(
+        launchcmd,
+        executable="/bin/bash",
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        encoding="utf-8",
+    )
+    out, _ = proc.communicate()
+    status = proc.returncode
 
     if status != 0:
         self.print_log(
@@ -170,12 +176,17 @@ def launch_procs_on_host(
         self.print_log(
             "i", "\n" + "\n".join(launch_commands_on_host_to_show_user) + "\n"
         )
+        self.print_log(
+            "d",
+            "Output from failed command:\n" + out,
+            executing_commands_debug_level,
+        )
         raise Exception(
             "Status error raised attempting to launch processes on %s; scroll up for more detail"
             % (host)
         )
     else:
-        self.print_log("d", "...done.", executing_commands_debug_level)
+        self.print_log("d", "...host %s done." % ( host ),executing_commands_debug_level)
 
     return status
 
@@ -220,8 +231,10 @@ def launch_procs_base(self, procinfos = None):
         shell=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        encoding="utf-8",
     )
-	    status = proc.wait()
+    out, err = proc.communicate()
+    status = proc.returncode
 	
 	    if status != 0:
         self.print_log(
@@ -231,13 +244,11 @@ def launch_procs_base(self, procinfos = None):
         )
         self.print_log(
             "e",
-            "STDOUT output: \n%s"
-            % ("\n".join([line.decode("utf-8") for line in proc.stdout.readlines()])),
+            "STDOUT output: \n%s" % (out),
         )
         self.print_log(
             "e",
-            "STDERR output: \n%s"
-            % ("\n".join([line.decode("utf-8") for line in proc.stderr.readlines()])),
+            "STDERR output: \n%s" % (err),
         )
         self.print_log(
             "e",
@@ -259,7 +270,13 @@ def launch_procs_base(self, procinfos = None):
                 host,
                 messagefacility_fhicl_filename,
             )
-	            status = Popen(cmd, executable="/bin/bash",shell=True).wait()
+            status = Popen(
+                cmd,
+                executable="/bin/bash",
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            ).wait()
 
         	        if status != 0:
                 raise Exception(
@@ -433,19 +450,21 @@ def kill_procs_on_host(self, host, kill_art=False, use_force=False):
             if not host_is_local(host):
                 cmd = "ssh -x " + host + " '" + cmd + "'"
 
-            Popen(
+            proc = Popen(
                 cmd,
                 executable="/bin/bash",
                 shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            ).wait()
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            proc.wait()
             self.print_log(
                 "d",
                 "%s: Finished (attempted) kill of the following processes on %s: %s"
                 % (date_and_time(), host, " ".join(labels_of_found_processes)),
                 2,
             )
+
         else:
             self.print_log(
                 "w",
@@ -457,13 +476,20 @@ def kill_procs_on_host(self, host, kill_art=False, use_force=False):
             cmd = "kill -9 %s" % (" ".join(artdaq_pids))
             if not host_is_local(host):
                 cmd = "ssh -x " + host + " '" + cmd + "'"
-            Popen(
+            proc = Popen(
                 cmd,
                 executable="/bin/bash",
                 shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            ).wait()
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            proc.wait()
+            self.print_log(
+                "d",
+                "%s: Finished (attempted) kill -9 of the following processes on %s: %s"
+                % (date_and_time(), host, " ".join(labels_of_found_processes)),
+                2,
+            )
 
     if kill_art:
         art_pids = get_pids(
@@ -489,8 +515,8 @@ def kill_procs_on_host(self, host, kill_art=False, use_force=False):
                 cmd,
                 executable="/bin/bash",
                 shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             ).wait()
             self.print_log(
                 "d",
@@ -515,14 +541,6 @@ def kill_procs_base(self):
     return
 
 
-def host_is_local(host):
-    return (
-        host == "localhost"
-        or host == os.environ["HOSTNAME"]
-        or host == get_short_hostname()
-    )
-
-
 def softlink_process_manager_logfile(self, host):
     pmt_logfile = get_process_manager_log_filename(self, host)
     link_pmt_logfile_cmd = "ln -s %s %s/pmt/run%d-pmt_%s.log" % (
@@ -535,7 +553,12 @@ def softlink_process_manager_logfile(self, host):
     if not host_is_local(host):
         link_pmt_logfile_cmd = "ssh -f %s '%s'" % (host, link_pmt_logfile_cmd)
 
-    status = Popen(link_pmt_logfile_cmd, shell=True).wait()
+    status = Popen(
+        link_pmt_logfile_cmd,
+        shell=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    ).wait()
 
     if status == 0:
         return True
@@ -577,7 +600,12 @@ def get_process_manager_log_filename(self, host):
         get_log_filename_cmd = "ssh -f %s '%s'" % (host, get_log_filename_cmd)
 
     log_filename_current = (
-        Popen(get_log_filename_cmd, shell=True, stdout=subprocess.PIPE)
+        Popen(
+            get_log_filename_cmd,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
         .stdout.readlines()[0]
         .decode("utf-8")
         .strip()
@@ -644,7 +672,13 @@ def mopup_process_base(self, procinfo):
         if on_other_node:
             cmd = "ssh -x %s '%s'" % (procinfo.host, cmd)
 
-        status = Popen(cmd, executable="/bin/bash",shell=True).wait()
+        status = Popen(
+            cmd,
+            executable="/bin/bash",
+            shell=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ).wait()
         sleep(1)
 
         if get_pid_for_process_base(self, procinfo) is not None:
@@ -658,7 +692,13 @@ def mopup_process_base(self, procinfo):
                 "A standard kill of the artdaq process %s on %s didn't work; resorting to a kill -9"
                 % (procinfo.label, procinfo.host),
             )
-            Popen(cmd, executable="/bin/bash",shell=True).wait()
+            Popen(
+                cmd,
+                executable="/bin/bash",
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            ).wait()
 
     # Will need to perform some additional cleanup (clogged ports, zombie art
     # processes, etc.)
@@ -683,6 +723,8 @@ def mopup_process_base(self, procinfo):
                 "kill %s > /dev/null 2>&1" % (pids[0]),
                 executable="/bin/bash",
                 shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             ).wait()
             pids = get_pids(ssh_grepstring)
             if len(pids) == 1:
@@ -700,7 +742,13 @@ def mopup_process_base(self, procinfo):
     if on_other_node:
         cmd = "ssh -x %s '%s'" % (procinfo.host, cmd)
 
-    Popen(cmd, executable="/bin/bash",shell=True).wait()
+    Popen(
+        cmd,
+        executable="/bin/bash",
+        shell=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    ).wait()
 
     unkilled_related_pids = get_related_pids_for_process(procinfo)
     if len(unkilled_related_pids) == 0:
@@ -720,7 +768,13 @@ def mopup_process_base(self, procinfo):
         if on_other_node:
             cmd = "ssh -x %s '%s'" % (procinfo.host, cmd)
         
-        Popen(cmd, executable="/bin/bash",shell=True).wait()
+        Popen(
+            cmd,
+            executable="/bin/bash",
+            shell=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ).wait()
 
     if not ssh_mopup_ok:
         self.print_log(
@@ -806,7 +860,7 @@ def get_related_pids_for_process(procinfo):
         executable="/bin/bash",
         shell=True,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
 
     for procline in proc.stdout.readlines():
