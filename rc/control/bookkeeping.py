@@ -353,9 +353,9 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 self.procinfos[i_proc].fhicl_used,
             ):
                 self.procinfos[i_proc].fhicl_used = re.sub(
-                    "\n[^#]*fragment_ids\s*:\s*\[[0-9, ]*\]",
+                    "fragment_ids\s*:\s*\[[0-9, ]*\]",
                     "fragment_ids: [ %s ]"
-                    % (fragment_ids[self.procinfos[i_proc].subsystem].join(',')),
+                    % (", ".join([str(i) for i in fragment_ids[self.procinfos[i_proc].subsystem]])),
                     self.procinfos[i_proc].fhicl_used,
                 )
 
