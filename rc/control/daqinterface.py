@@ -401,12 +401,10 @@ class DAQInterface(Component):
             sources=[],
             destination=None,
             fragmentMode=True,
-            boardreadersSendEvents=False,
         ):
             self.sources = sources
             self.destination = destination
             self.fragmentMode = fragmentMode
-            self.boardreadersSendEvents = boardreadersSendEvents
 
         def __lt__(self, other):
             if self.id != other.id:
@@ -895,6 +893,7 @@ class DAQInterface(Component):
         self.use_messageviewer = True
         self.use_messagefacility = True
         self.advanced_memory_usage = False
+        self.strict_fragment_id_mode = False
         self.fake_messagefacility = False
         self.attempt_existing_pid_kill = False
         self.data_directory_override = None
@@ -1094,6 +1093,13 @@ class DAQInterface(Component):
 
                 if res:
                     self.advanced_memory_usage = True
+            elif "strict_fragment_id_mode" in line or "strict fragment id mode" in line:
+                token = line.split()[-1].strip()
+
+                res = re.search(r"[Tt]rue", token)
+
+                if res:
+                    self.strict_fragment_id_mode = True
             elif "fake_messagefacility" in line or "fake messagefacility" in line:
                 token = line.split()[-1].strip()
 

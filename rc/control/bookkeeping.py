@@ -154,12 +154,10 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     # event produced by each subsystem's boardreader set, and the
     # amount of space those fragments take up
 
-    subsystem_fragment_count = {}
     subsystem_fragment_space = {}
     subsystem_fragment_ids = {}
 
     for ss in self.subsystems:
-        subsystem_fragment_count[ss] = 0
         subsystem_fragment_space[ss] = 0
         subsystem_fragment_ids[ss] = []
 
@@ -167,6 +165,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
         if "BoardReader" in procinfo.name:
 
             generated_fragments_per_event = 1
+            reader_ids = []
 
             res = re.search(
                 r"\n\s*fragment_id\s*:\s*([0-9]+)",
@@ -175,7 +174,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
             if res:
                 generated_fragments_per_event = 1
-                subsystem_fragment_ids[procinfo.subsystem].append(int(res.group(1)))
+                reader_ids.append(int(res.group(1)))
 
             res = re.search(
                 r"\n\s*fragment_ids\s*:\s*\[\s*([0-9,\n ]+)\s*\]",
@@ -187,7 +186,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 sz = 0
                 for id in ids:
                     try:
-                        subsystem_fragment_ids[procinfo.subsystem].append(int(id))
+                        reader_ids.append(int(id))
                         sz += 1
                     except ValueError:
                         continue
@@ -198,6 +197,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
             if re.search(r"\n\s*sends_no_fragments\s*:\s*[Tt]rue", procinfo.fhicl_used):
                 generated_fragments_per_event = 0
+                reader_ids = []
 
             if self.advanced_memory_usage:
                 list_of_one_fragment_size = [
@@ -210,16 +210,15 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
             else:
                 fragment_space = self.max_fragment_size_bytes
 
-            total_fragment_space = generated_fragments_per_event * fragment_space
-            if (
-                self.subsystems[procinfo.subsystem].boardreadersSendEvents
-                and total_fragment_space > subsystem_fragment_space[procinfo.subsystem]
-            ):
-                subsystem_fragment_space[procinfo.subsystem] = total_fragment_space
-                subsystem_fragment_count[procinfo.subsystem] = 1
-            elif not self.subsystems[procinfo.subsystem].boardreadersSendEvents:
+            if not self.strict_fragment_id_mode:
+                total_fragment_space = generated_fragments_per_event * fragment_space
                 subsystem_fragment_space[procinfo.subsystem] += total_fragment_space
-                subsystem_fragment_count[procinfo.subsystem] += generated_fragments_per_event
+                subsystem_fragment_ids[procinfo.subsystem] += reader_ids
+            else:
+                for tid in reader_ids:
+                    if tid not in subsystem_fragment_ids[procinfo.subsystem]:
+                        subsystem_fragment_space[procinfo.subsystem] += fragment_space
+                        subsystem_fragment_ids[procinfo.subsystem].append(tid)
 
     # Now using the per-subsystem info we've gathered, use recursion
     # to determine the *true* number of fragments per event and the
@@ -229,7 +228,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     # the subsystem in question
 
     def calculate_expected_fragments_per_event(ss):
-        count = subsystem_fragment_count[ss]
+        count = len(subsystem_fragment_ids[ss])
 
         for ss_source in self.subsystems[ss].sources:
             if self.subsystems[ss_source].fragmentMode:
