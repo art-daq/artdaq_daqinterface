@@ -66,6 +66,10 @@ physics: {
       raw_data_label: "daq"
       frag_type: "TOY2"
     }
+    watcher: {
+        module_type: FragmentWatcher
+        fragment_ids: []
+    }
   }
 
   producers: {
@@ -87,7 +91,7 @@ physics: {
   pmod2: [ prescaleMod2 ]
   pmod3: [ prescaleMod3 ]
    
-  a1: [ toy1Integ, toy2Integ ]
+  a1: [ toy1Integ, toy2Integ, watcher ]
   my_output_modules: [ rootNetOutput ]
   #my_output_modules: [ normalOutput ]
 }

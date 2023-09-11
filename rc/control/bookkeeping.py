@@ -195,7 +195,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 subsystem_fragment_ids[procinfo.subsystem].append(int(res.group(1)))
 
             res = re.search(
-                r"\n\s*fragment_ids\s*:\s*\[\s*([0-9, ]+)\s*\]",
+                r"\n\s*fragment_ids\s*:\s*\[\s*([0-9,\n ]+)\s*\]",
                 procinfo.fhicl_used,
             )
 
