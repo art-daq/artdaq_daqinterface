@@ -154,7 +154,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
     # event produced by each subsystem's boardreader set, and the
     # amount of space those fragments take up
 
-    fragments_per_boardreader = {}
     subsystem_fragment_count = {}
     subsystem_fragment_space = {}
     subsystem_fragment_ids = {}
@@ -169,22 +168,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
             generated_fragments_per_event = 1
 
-            # JCF, Oct-12-2018: "sends_no_fragments: true" is
-            # logically the same as "generated_fragments_per_event:
-            # 0", but I'm keeping it for reasons of backwards
-            # compatibility
-
-            if re.search(r"\n\s*sends_no_fragments\s*:\s*[Tt]rue", procinfo.fhicl_used):
-                generated_fragments_per_event = 0
-
-            res = re.search(
-                r"\n\s*generated_fragments_per_event\s*:\s*([0-9]+)",
-                procinfo.fhicl_used,
-            )
-
-            if res:
-                generated_fragments_per_event = int(res.group(1))
-
             res = re.search(
                 r"\n\s*fragment_id\s*:\s*([0-9]+)",
                 procinfo.fhicl_used,
@@ -195,7 +178,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 subsystem_fragment_ids[procinfo.subsystem].append(int(res.group(1)))
 
             res = re.search(
-                r"\n\s*fragment_ids\s*:\s*\[\s*([0-9, ]+)\s*\]",
+                r"\n\s*fragment_ids\s*:\s*\[\s*([0-9,\n ]+)\s*\]",
                 procinfo.fhicl_used,
             )
 
@@ -210,7 +193,11 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                         continue
                 generated_fragments_per_event = sz
 
-            fragments_per_boardreader[procinfo.label] = generated_fragments_per_event
+            # ELF, 11-Sep-2023: Putting "sends_no_fragments: true" check here,
+            # so you can override the count from fragment_id and/or fragment_ids (e.g. Mu2e)
+
+            if re.search(r"\n\s*sends_no_fragments\s*:\s*[Tt]rue", procinfo.fhicl_used):
+                generated_fragments_per_event = 0
 
             if self.advanced_memory_usage:
                 list_of_one_fragment_size = [
@@ -232,9 +219,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 subsystem_fragment_count[procinfo.subsystem] = 1
             elif not self.subsystems[procinfo.subsystem].boardreadersSendEvents:
                 subsystem_fragment_space[procinfo.subsystem] += total_fragment_space
-                subsystem_fragment_count[
-                    procinfo.subsystem
-                ] += generated_fragments_per_event
+                subsystem_fragment_count[procinfo.subsystem] += generated_fragments_per_event
 
     # Now using the per-subsystem info we've gathered, use recursion
     # to determine the *true* number of fragments per event and the
