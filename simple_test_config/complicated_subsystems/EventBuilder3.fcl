@@ -65,6 +65,10 @@ physics: {
       raw_data_label: "daq"
       frag_type: "TOY2"
     }
+    watcher: {
+        module_type: FragmentWatcher
+        fragment_ids: []
+    }
   }
 
   producers: {
