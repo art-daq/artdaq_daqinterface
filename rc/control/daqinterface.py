@@ -3650,6 +3650,7 @@ class DAQInterface(Component):
                 shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
+                encoding="utf8",
             )
             .stdout.readlines()[0]
             .strip(),

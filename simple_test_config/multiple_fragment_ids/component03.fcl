@@ -51,7 +51,9 @@
 
         generator: ToySimulator
 	  fragment_type: TOY2
-	  fragment_ids: [3, 4, 5]
+	  fragment_ids: [3, 
+	                 4, 
+					 5]
 	  generated_fragments_per_event: 3
 	  board_id: 1
 	  starting_fragment_id: 1
