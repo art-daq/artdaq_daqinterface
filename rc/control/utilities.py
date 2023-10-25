@@ -112,7 +112,7 @@ def make_paragraph(userstring, chars_per_line=75):
 def host_is_local(host):
     return (
         host == "localhost"
-        or host == os.environ["HOSTNAME"]
+        or ("HOSTNAME" in os.environ and host == os.environ["HOSTNAME"])
         or get_short_hostname() in host
     )
 
@@ -890,7 +890,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THI
 """ % (
         messagefacility_fhicl_filename,
         date_and_time(),
-        os.environ["HOSTNAME"],
+        socket.gethostname(),
         socket.gethostname(),
     )
 
