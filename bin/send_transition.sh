@@ -2,7 +2,6 @@
 
 badargs=false
 cmd=$1
-
 xmlrpc_arg=
 translated_cmd=
 
