@@ -50,9 +50,8 @@ from rc.control.utilities import date_and_time_more_precision
 from rc.control.utilities import construct_checked_command
 from rc.control.utilities import reformat_fhicl_documents
 from rc.control.utilities import fhicl_writes_root_file
-from rc.control.utilities import bash_unsetup_command
+from rc.control.utilities import get_setup_commands
 from rc.control.utilities import kill_tail_f
-from rc.control.utilities import upsproddir_from_productsdir
 from rc.control.utilities import obtain_messagefacility_fhicl
 from rc.control.utilities import record_directory_info
 from rc.control.utilities import get_messagefacility_template_filename
@@ -121,7 +120,7 @@ except:
     from rc.control.all_functions_noop import check_config_base
 
 
-process_management_methods = ["direct", "pmt", "external_run_control"]
+process_management_methods = ["direct", "external_run_control"]
 
 if "DAQINTERFACE_PROCESS_MANAGEMENT_METHOD" not in os.environ.keys():
     raise Exception(
@@ -147,23 +146,7 @@ else:
             )
         )
 
-if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "pmt":
-    from rc.control.manage_processes_pmt import launch_procs_base
-    from rc.control.manage_processes_pmt import kill_procs_base
-    from rc.control.manage_processes_pmt import check_proc_heartbeats_base
-    from rc.control.manage_processes_pmt import softlink_process_manager_logfiles_base
-    from rc.control.manage_processes_pmt import find_process_manager_variable_base
-    from rc.control.manage_processes_pmt import (
-        set_process_manager_default_variables_base,
-    )
-    from rc.control.manage_processes_pmt import reset_process_manager_variables_base
-    from rc.control.manage_processes_pmt import get_process_manager_log_filenames_base
-    from rc.control.manage_processes_pmt import process_manager_cleanup_base
-    from rc.control.manage_processes_pmt import get_pid_for_process_base
-    from rc.control.manage_processes_pmt import process_launch_diagnostics_base
-    from rc.control.manage_processes_pmt import mopup_process_base
-    from rc.control.manage_processes_pmt import handle_bad_process_base
-elif os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "direct":
+if os.environ["DAQINTERFACE_PROCESS_MANAGEMENT_METHOD"] == "direct":
     from rc.control.manage_processes_direct import launch_procs_base
     from rc.control.manage_processes_direct import kill_procs_base
     from rc.control.manage_processes_direct import check_proc_heartbeats_base
@@ -404,12 +387,10 @@ class DAQInterface(Component):
             sources=[],
             destination=None,
             fragmentMode=True,
-            boardreadersSendEvents=False,
         ):
             self.sources = sources
             self.destination = destination
             self.fragmentMode = fragmentMode
-            self.boardreadersSendEvents = boardreadersSendEvents
 
         def __lt__(self, other):
             if self.id != other.id:
@@ -899,6 +880,7 @@ class DAQInterface(Component):
         self.use_messageviewer = True
         self.use_messagefacility = True
         self.advanced_memory_usage = False
+        self.strict_fragment_id_mode = False
         self.fake_messagefacility = False
         self.attempt_existing_pid_kill = False
         self.data_directory_override = None
@@ -912,6 +894,7 @@ class DAQInterface(Component):
         self.launch_procs_wait_time = 40
 
         self.productsdir = None
+        self.spackdir = None
 
         for line in inf.readlines():
 
@@ -935,6 +918,11 @@ class DAQInterface(Component):
                 or "productsdir for bash scripts" in line
             ):
                 self.productsdir = line.split()[-1].strip()
+            elif (
+                "spack_root_for_bash_scripts" in line
+                or "spack root for bash scripts" in line
+            ):
+                self.spackdir = line.split()[-1].strip()
             elif "package_hashes_to_save" in line or "package hashes to save" in line:
                 res = re.search(r".*\[(.*)\].*", line)
 
@@ -1099,6 +1087,13 @@ class DAQInterface(Component):
 
                 if res:
                     self.advanced_memory_usage = True
+            elif "strict_fragment_id_mode" in line or "strict fragment id mode" in line:
+                token = line.split()[-1].strip()
+
+                res = re.search(r"[Tt]rue", token)
+
+                if res:
+                    self.strict_fragment_id_mode = True
             elif "fake_messagefacility" in line or "fake messagefacility" in line:
                 token = line.split()[-1].strip()
                 
@@ -1145,8 +1140,8 @@ class DAQInterface(Component):
         if self.record_directory is None:
             missing_vars.append("record_directory")
 
-        if self.productsdir is None:
-            missing_vars.append("productsdir_for_bash_scripts")
+        if self.productsdir is None and self.spackdir is None:
+            missing_vars.append("productsdir_for_bash_scripts or spack_root_for_bash_scripts")
 
         if not self.advanced_memory_usage and self.max_fragment_size_bytes is None:
             missing_vars.append("max_fragment_size_bytes")
@@ -1303,7 +1298,7 @@ class DAQInterface(Component):
             return self.artdaq_mfextensions_booleans[self.daq_setup_script]
 
         cmds = []
-        cmds.append(bash_unsetup_command)
+        cmds += get_setup_commands(self.productsdir, self.spackdir)
         cmds.append(". %s for_running" % (self.daq_setup_script))
         cmds.append(
             'if test -n "$SETUP_ARTDAQ_MFEXTENSIONS" -o -d "$ARTDAQ_MFEXTENSIONS_DIR"; then true; else false; fi'
@@ -1331,7 +1326,7 @@ class DAQInterface(Component):
         assert self.have_artdaq_mfextensions()
 
         cmds = []
-        cmds.append(bash_unsetup_command)
+        cmds += get_setup_commands(self.productsdir, self.spackdir)
         cmds.append(". %s for_running" % (self.daq_setup_script))
         cmds.append(
             'if [ -n "$SETUP_ARTDAQ_MFEXTENSIONS" ]; then printenv SETUP_ARTDAQ_MFEXTENSIONS; else echo "artdaq_mfextensions $ARTDAQ_MFEXTENSIONS_VERSION $MRB_QUALS";fi'
@@ -1364,7 +1359,7 @@ class DAQInterface(Component):
             self.partition_number,
             os.environ["USER"],
         )
-        cmds.append(bash_unsetup_command)
+        cmds += get_setup_commands(self.productsdir, self.spackdir)
         cmds.append(". %s for_running" % (self.daq_setup_script))
         cmds.append("which msgviewer")
         cmds.append(
@@ -1721,7 +1716,7 @@ class DAQInterface(Component):
             if "/%s-" % (procinfo.label) in logfilename
         ]
         assert len(logfilename_in_list_form) <= 1, make_paragraph(
-            'Unable to locate logfile for process "%s" out of the following list of candidates: [%s]; this may be due to incorrect assumptions made by DAQInterface about the format of the logfilenames. Please contact John Freeman at jcfree@fnal.gov'
+            'Unable to locate logfile for process "%s" out of the following list of candidates: [%s]; this may be due to incorrect assumptions made by DAQInterface about the format of the logfilenames. Please contact the artdaq-developers@fnal.gov mailing list'
             % (procinfo.label, ", ".join(all_logfilenames))
         )
 
@@ -2052,7 +2047,7 @@ class DAQInterface(Component):
             if package in self.package_versions:
                 continue
             else:
-                needed_packages.append(package)
+                needed_packages.append(package if self.productsdir != None else package.replace("_", "-"))
 
         if len(needed_packages) == 0:
             return
@@ -2062,13 +2057,21 @@ class DAQInterface(Component):
                 len(packages) == 1
             ), "Note to developer: you'll probably need to refactor save_run_records.py if you want to get the version of other packages alongside the version of DAQInterface"
             cmd = "ups active | sed -r -n 's/^artdaq_daqinterface\\s+(\\S+).*/artdaq_daqinterface \\1/p'"
-        else:
+        elif self.productsdir != None:
             cmd = (
                 "%s ; . %s; ups active | sed -r -n 's/^(%s)\\s+(\\S+).*/\\1 \\2/p'"
                 % (
-                    bash_unsetup_command,
+                    ";".join(get_setup_commands(self.productsdir, self.spackdir)),
                     self.daq_setup_script,
                     "|".join(needed_packages),
+                )
+            )
+        elif self.spackdir != None:
+            cmd = (
+                "%s ; . %s; spack find --loaded | sed -r -n 's/^(%s)@(\\S+).*/\\1 \\2/p'" % (
+                    ";".join(get_setup_commands(self.productsdir, self.spackdir)),
+                    self.daq_setup_script,
+                    "|".join(needed_packages),                
                 )
             )
 
@@ -2079,6 +2082,7 @@ class DAQInterface(Component):
                 shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                stdin=subprocess.PIPE,
                 encoding="utf-8",
             )
 
@@ -2132,7 +2136,7 @@ class DAQInterface(Component):
                             )
                         )
                     # print('package=%s type(package)=%s' % (package,type(package)))
-                    self.package_versions[package] = version
+                    self.package_versions[package.replace("-", "_")] = version
 
         for package in packages:
             if package not in self.package_versions:
@@ -2697,63 +2701,6 @@ class DAQInterface(Component):
                             % (procinfo.label, ranksfile)
                         )
 
-    def create_setup_fhiclcpp_if_needed(self):
-        if not os.path.exists(os.environ["DAQINTERFACE_SETUP_FHICLCPP"]):
-            self.print_log(
-                "w",
-                make_paragraph(
-                    'File "%s", needed for formatting FHiCL configurations, does not appear to exist; will attempt to auto-generate one...'
-                    % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"])
-                ),
-            )
-            with open( os.environ["DAQINTERFACE_SETUP_FHICLCPP"], "w") as outf:
-                outf.write(
-                    'export PRODUCTS="%s"; . %s/setup\n'
-                    % (self.productsdir, upsproddir_from_productsdir(self.productsdir))
-                )
-                outf.write( bash_unsetup_command + "\n" )
-                lines = Popen(
-                    'export PRODUCTS="%s"; . %s/setup; ups list -aK+ fhiclcpp | sort -n'
-                    % (self.productsdir, upsproddir_from_productsdir(self.productsdir)),
-                    executable="/bin/bash",
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                ).stdout.readlines()
-                if len(lines) > 0:
-                    fhiclcpp_to_setup_line = lines[-1].decode("utf-8")
-                else:
-                    os.unlink( os.environ["DAQINTERFACE_SETUP_FHICLCPP"] )
-                    raise Exception(
-                        make_paragraph(
-                            'Unable to find fhiclcpp ups product in products directory "%s" provided in the DAQInterface settings file, "%s"'
-                            % (self.productsdir, os.environ["DAQINTERFACE_SETTINGS"])
-                        )
-                    )
-
-                outf.write(
-                    "setup %s %s -q %s\n"
-                    % (
-                        fhiclcpp_to_setup_line.split()[0],
-                                                  fhiclcpp_to_setup_line.split()[1],
-                        fhiclcpp_to_setup_line.split()[3],
-                    )
-                )
-
-            if os.path.exists( os.environ["DAQINTERFACE_SETUP_FHICLCPP"] ):
-                self.print_log(
-                    "w",
-                    '"%s" has been auto-generated; you may want to check to see that it correctly sets up the fhiclcpp package...'
-                    % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"]),
-                )
-            else:
-                raise Exception(
-                    make_paragraph(
-                        'Error: was unable to find or create a file "%s"'
-                        % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"])
-                    )
-                )
-
     def readjust_process_priorities(self, priority_list):
         for i_proc in range(len(self.procinfos)):
             if "BoardReader" in self.procinfos[i_proc].name:
@@ -2828,6 +2775,64 @@ class DAQInterface(Component):
                             )
                         )
                     )
+
+    # Eric Flumerfelt, August 21, 2023: Yuck, package manager dependent stuff...
+    def create_setup_fhiclcpp_if_needed(self):
+        if not os.path.exists(os.environ["DAQINTERFACE_SETUP_FHICLCPP"]):
+            self.print_log(
+                "w",
+                make_paragraph(
+                    'File "%s", needed for formatting FHiCL configurations, does not appear to exist; will attempt to auto-generate one...'
+                    % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"])
+                ),
+            )
+            with open(os.environ["DAQINTERFACE_SETUP_FHICLCPP"], "w") as outf:
+                outf.write("\n".join(get_setup_commands(self.productsdir, self.spackdir)))
+                outf.write("\n\n")
+                if self.productsdir != None:
+                    lines = Popen(
+                        '%s;ups list -aK+ fhiclcpp | sort -n'
+                        % (";".join(get_setup_commands(self.productsdir, self.spackdir))),
+                        executable="/bin/bash",
+                        shell=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                    ).stdout.readlines()
+                    if len(lines) > 0:
+                        fhiclcpp_to_setup_line = lines[-1].decode("utf-8")
+                    else:
+                        os.unlink(os.environ["DAQINTERFACE_SETUP_FHICLCPP"])
+                        raise Exception(
+                            make_paragraph(
+                                'Unable to find fhiclcpp ups product in products directory "%s" provided in the DAQInterface settings file, "%s"'
+                                % (self.productsdir, os.environ["DAQINTERFACE_SETTINGS"])
+                            )
+                        )
+
+                    outf.write(
+                        "setup %s %s -q %s\n"
+                        % (
+                            fhiclcpp_to_setup_line.split()[0],
+                            fhiclcpp_to_setup_line.split()[1],
+                            fhiclcpp_to_setup_line.split()[3],
+                        )
+                    )
+                elif self.spackdir != None:
+                    outf.write("spack load --first fhicl-cpp")
+
+            if os.path.exists(os.environ["DAQINTERFACE_SETUP_FHICLCPP"]):
+                self.print_log(
+                    "w",
+                    '"%s" has been auto-generated; you may want to check to see that it correctly sets up the fhiclcpp package...'
+                    % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"]),
+                )
+            else:
+                raise Exception(
+                    make_paragraph(
+                        'Error: was unable to find or create a file "%s"'
+                        % (os.environ["DAQINTERFACE_SETUP_FHICLCPP"])
+                    )
+                )
 
     # do_boot(), do_config(), do_start_running(), etc., are the
     # functions which get called in the runner() function when a
@@ -3122,10 +3127,10 @@ class DAQInterface(Component):
             )
             #self.print_log("d", "\n", random_node_source_debug_level)
 
-                cmd = "%s ; . %s for_running" % (
-                    bash_unsetup_command,
-                    self.daq_setup_script,
-                )
+            cmd = "%s ; . %s for_running" % (
+                ";".join(get_setup_commands(self.productsdir, self.spackdir)),
+                self.daq_setup_script,
+            )
 
             if not host_is_local(random_host):
                     cmd = "timeout %d ssh %s '%s'" % (
@@ -3257,7 +3262,7 @@ class DAQInterface(Component):
             cmds = []
             cmds.append(
                 "if [[ -z $( command -v fhicl-dump ) ]]; then %s; source %s; fi"
-                % (bash_unsetup_command, os.environ["DAQINTERFACE_SETUP_FHICLCPP"])
+                % (";".join(get_setup_commands(self.productsdir, self.spackdir)), os.environ["DAQINTERFACE_SETUP_FHICLCPP"])
             )
             cmds.append(
                 "if [[ $FHICLCPP_VERSION =~ v4_1[01]|v4_0|v[0123] ]]; then dump_arg=0;else dump_arg=none;fi"
@@ -4631,6 +4636,7 @@ def main():  # no-coverage
                 shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
+                encoding="UTF-8"
             )
             .stdout.readlines()[0]
             .strip()

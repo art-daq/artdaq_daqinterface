@@ -112,7 +112,7 @@ def make_paragraph(userstring, chars_per_line=75):
 def host_is_local(host):
     return (
         host == "localhost"
-        or host == os.environ["HOSTNAME"]
+        or ("HOSTNAME" in os.environ and host == os.environ["HOSTNAME"])
         or get_short_hostname() in host
     )
 
@@ -298,7 +298,7 @@ def commit_check_throws_if_failure(packagedir, commit_hash, date, request_after)
     cmds.append("git log | grep %s" % (commit_hash))
 
     proc = Popen(
-        ";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        ";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="UTF-8"
     )
     proclines = proc.stdout.readlines()
 
@@ -321,12 +321,12 @@ def commit_check_throws_if_failure(packagedir, commit_hash, date, request_after)
 def is_msgviewer_running():
 
     for line in Popen(
-        "ps u", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        "ps u", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="UTF-8"
     ).stdout.readlines():
         if (
-            "msgviewer" in line.decode("utf-8")
+            "msgviewer" in line
             and "DAQINTERFACE_TTY" in os.environ
-            and os.environ["DAQINTERFACE_TTY"] in line.decode("utf-8")
+            and os.environ["DAQINTERFACE_TTY"] in line
         ):
             return True
 
@@ -379,13 +379,12 @@ def execute_command_in_xterm(home, cmd):
 def date_and_time():
     return (
         Popen(
-            'LC_ALL="en_US.UTF-8" date',
+            'date +"%a %b %e %H:%M:%S %Z %Y"',
             shell=True,
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stderr=subprocess.STDOUT, encoding="UTF-8"
         )
         .stdout.readlines()[0]
-        .decode("utf-8")
         .strip()
     )
 
@@ -396,10 +395,9 @@ def date_and_time_more_precision():
             "date +%a_%b_%d_%H:%M:%S.%N | sed -r 's/_/ /g'",
             shell=True,
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stderr=subprocess.STDOUT, encoding="UTF-8"
         )
         .stdout.readlines()[0]
-        .decode("utf-8")
         .strip()
     )
 
@@ -407,13 +405,12 @@ def date_and_time_more_precision():
 def date_and_time_filename():
     return (
         Popen(
-            'LC_ALL="en_US.UTF-8" date +%Y%m%d%H%M%S',
+            'date +%Y%m%d%H%M%S',
             shell=True,
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stderr=subprocess.STDOUT, encoding="UTF-8"
         )
         .stdout.readlines()[0]
-        .decode("utf-8")
         .strip()
     )
 
@@ -451,9 +448,8 @@ def reformat_fhicl_documents(setup_fhiclcpp, procinfos):
     cmd = "grep -c ^processor /proc/cpuinfo"
 
     nprocessors = (
-        Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="UTF-8")
         .stdout.readlines()[0]
-        .decode("utf-8")
         .strip()
     )
 
@@ -466,15 +462,13 @@ def reformat_fhicl_documents(setup_fhiclcpp, procinfos):
         )
 
     reformat_indir = (
-        Popen("mktemp -d", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        Popen("mktemp -d", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="UTF-8")
         .stdout.readlines()[0]
-        .decode("utf-8")
         .strip()
     )
     reformat_outdir = (
-        Popen("mktemp -d", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        Popen("mktemp -d", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="UTF-8")
         .stdout.readlines()[0]
-        .decode("utf-8")
         .strip()
     )
 
@@ -486,8 +480,8 @@ def reformat_fhicl_documents(setup_fhiclcpp, procinfos):
 
     cmds = []
     cmds.append(
-        "if [[ -z $( command -v fhicl-dump ) ]]; then %s; source %s; fi"
-        % (bash_unsetup_command, setup_fhiclcpp)
+        "if [[ -z $( command -v fhicl-dump ) ]]; then source %s; fi"
+        % (setup_fhiclcpp)
     )
     cmds.append(
         "if [[ $FHICLCPP_VERSION =~ v4_1[01]|v4_0|v[0123] ]]; then dump_arg=0;else dump_arg=none;fi"
@@ -503,7 +497,7 @@ def reformat_fhicl_documents(setup_fhiclcpp, procinfos):
     cmds.append(xargs_cmd)
 
     out = Popen(
-        "\n".join(cmds), shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE
+        "\n".join(cmds), shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, encoding="UTF-8"
     )
 
     out_comm = out.communicate()
@@ -515,10 +509,10 @@ def reformat_fhicl_documents(setup_fhiclcpp, procinfos):
     if status != 0:
 
         if out_stdout is not None:
-            print(out_stdout.decode("utf-8"))
+            print(out_stdout)
 
         if out_stderr is not None:
-            print(out_stderr.decode("utf-8"))
+            print(out_stderr)
 
         raise Exception(
             "There was a problem reformatting the FHiCL documents found in %s; this is very likely due to illegal FHiCL syntax somewhere. See above for more info."
@@ -552,7 +546,7 @@ def get_commit_hash(gitrepo):
     cmds.append("git log | head -1 | awk '{print $2}'")
 
     proc = Popen(
-        ";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        ";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="UTF-8"
     )
     proclines = proc.stdout.readlines()
 
@@ -571,7 +565,7 @@ def get_commit_hash(gitrepo):
     cmds.append('git diff --unified=0 | grep "^-[^-][^-]" | wc -l')
     num_subtracted_lines = (
         Popen(
-            ";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+            ";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="UTF-8"
         )
         .stdout.readlines()[0]
         .strip()
@@ -582,7 +576,7 @@ def get_commit_hash(gitrepo):
     cmds.append('git diff --unified=0 | grep "^+[^+][^+]" | wc -l')
     num_added_lines = (
         Popen(
-            ";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+            ";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="UTF-8"
         )
         .stdout.readlines()[0]
         .strip()
@@ -602,13 +596,13 @@ def get_commit_comment(gitrepo):
     cmds.append("cd %s" % (gitrepo))
     cmds.append("git log --format=%B -n 1 HEAD")
     proc = Popen(
-        ";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        ";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="UTF-8"
     )
 
     proclines = proc.stdout.readlines()
-    single_line_comment = proclines[0].decode("utf-8")
+    single_line_comment = proclines[0]
     for line in proclines[1:]:
-        single_line_comment += " " + line.decode("utf-8")
+        single_line_comment += " " + line
 
     for badchar in ["\n", '"', "'"]:
         single_line_comment = single_line_comment.replace(badchar, "")
@@ -629,11 +623,11 @@ def get_commit_time(gitrepo):
     cmds.append("git log -1 | sed -r -n 's/Date:\\s+(.*)/\\1/p'")
 
     proc = Popen(
-        ";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        ";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="UTF-8"
     )
     proclines = proc.stdout.readlines()
 
-    return proclines[0].decode("utf-8").strip()
+    return proclines[0].strip()
 
 
 def get_commit_branch(gitrepo):
@@ -645,7 +639,7 @@ def get_commit_branch(gitrepo):
     cmds.append("git branch | sed -r -n 's/^\\* (\\S+)/\\1/p'")
 
     proc = Popen(
-        ";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        ";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="UTF-8"
     )
     proclines = proc.stdout.readlines()
 
@@ -714,7 +708,7 @@ def get_build_info(pkgnames, setup_script):
         cmds.append('ups active | grep -E "^%s\s+"' % (ups_pkgname))
 
     proc = Popen(
-        ";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        ";".join(cmds), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="UTF-8"
     )
     stdoutlines = proc.stdout.readlines()
 
@@ -729,7 +723,7 @@ def get_build_info(pkgnames, setup_script):
         found_ups_package = False
         package_line_number = -1
         for i_l, line in enumerate(stdoutlines):
-            if re.search(r"^%s\s+" % (ups_pkgname), line.decode("utf-8")):
+            if re.search(r"^%s\s+" % (ups_pkgname), line):
                 found_ups_package = True
                 package_line_number = i_l
                 break
@@ -890,7 +884,7 @@ udp : { type : "UDP" threshold : "DEBUG"  port : DAQINTERFACE_WILL_OVERWRITE_THI
 """ % (
         messagefacility_fhicl_filename,
         date_and_time(),
-        os.environ["HOSTNAME"],
+        socket.gethostname(),
         socket.gethostname(),
     )
 
@@ -937,12 +931,12 @@ def get_private_networks(host):
         cmd = "ssh -x %s '%s'" % (host, cmd)
 
     lines = Popen(
-        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="UTF-8"
     ).stdout.readlines()
     networks = []
 
     for line in lines:
-        network = line.decode("utf-8").strip()
+        network = line.strip()
         res = re.search(r"^([0-9]+\.[0-9]+\.[0-9]+\.)[0-9]+", network)
         if not res:
             raise Exception(
@@ -989,10 +983,9 @@ def get_short_hostname():
             executable="/bin/bash",
             shell=True,
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stderr=subprocess.STDOUT, encoding="UTF-8"
         )
         .stdout.readlines()[0]
-        .decode("utf-8")
         .strip()
     )
     return hostname
@@ -1106,7 +1099,7 @@ def main():
         inputstring = 'mytable: {   this: "and"        that: "and  the other"   }'
         source_filename = (
             Popen(
-                "mktemp", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+                "mktemp", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="UTF-8"
             )
             .stdout.readlines()[0]
             .strip()
@@ -1228,6 +1221,38 @@ def main():
             print('Name of table enclosing "%s" found to be "%s"' % (token, tablename))
 
 
+def get_setup_commands(productsdir=None, spackdir=None, log_file=None):
+    output = []
+    if productsdir != None:
+        if log_file == None:
+            output.append(
+                'export PRODUCTS="%s"; . %s/setup'
+                % (
+                    productsdir,
+                    upsproddir_from_productsdir(productsdir),
+                )
+            )
+        else:
+            output.append(
+                'export PRODUCTS="%s"; . %s/setup >> %s 2>&1 '
+                % (
+                    productsdir,
+                    upsproddir_from_productsdir(productsdir),
+                    log_file,
+                )
+            )
+        output.append(
+                bash_unsetup_command + " > /dev/null 2>&1 "
+        )
+    elif spackdir != None:
+        if log_file == None:
+            output.append('. %s/share/spack/setup-env.sh' % (spackdir))
+            output.append('spack unload > /dev/null 2>&1')
+        else:
+            output.append('. %s/share/spack/setup-env.sh >> %s 2>&1' % (spackdir, log_file))
+            output.append('spack unload > /dev/null 2>&1')
+    return output
+
 def kill_tail_f():
     tail_pids = get_pids(
         "%s.*tail -f %s"
@@ -1239,7 +1264,6 @@ def kill_tail_f():
             print(
                 "There was a problem killing \"tail -f\" commands in this terminal; you'll want to do this manually or you'll get confusing output moving forward"
             )
-
 
 if __name__ == "__main__":
     main()

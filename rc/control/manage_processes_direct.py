@@ -16,13 +16,12 @@ sys.path.append( os.environ["ARTDAQ_DAQINTERFACE_DIR"] )
 
 from rc.control.utilities import host_is_local
 from rc.control.utilities import get_pids
-from rc.control.utilities import bash_unsetup_command
+from rc.control.utilities import get_setup_commands
 from rc.control.utilities import date_and_time
 from rc.control.utilities import date_and_time_filename
 from rc.control.utilities import construct_checked_command
 from rc.control.utilities import obtain_messagefacility_fhicl
 from rc.control.utilities import make_paragraph
-from rc.control.utilities import upsproddir_from_productsdir
 from rc.control.utilities import get_short_hostname
 from rc.control.utilities import get_messagefacility_template_filename
 from rc.control.utilities import RaisingThread
@@ -216,7 +215,7 @@ def launch_procs_base(self, procinfos = None):
 	    cmds = []
     cmds.append(
         "if [[ -z $( command -v fhicl-dump ) ]]; then %s; source %s; fi"
-        % (bash_unsetup_command, os.environ["DAQINTERFACE_SETUP_FHICLCPP"])
+        % (";".join(get_setup_commands(self.productsdir, self.spackdir)), os.environ["DAQINTERFACE_SETUP_FHICLCPP"])
     )
     cmds.append(
         "if [[ $FHICLCPP_VERSION =~ v4_1[01]|v4_0|v[0123] ]]; then dump_arg=0;else dump_arg=none;fi"
@@ -314,18 +313,11 @@ def launch_procs_base(self, procinfos = None):
             launch_commands_to_run_on_host_background[ procinfo.host ] = []
             launch_commands_on_host_to_show_user[ procinfo.host ] = []
 
-            launch_commands_to_run_on_host[ procinfo.host ].append("set +C")  
+            launch_commands_to_run_on_host[procinfo.host].append("set +C")
             launch_commands_to_run_on_host[procinfo.host].append(
-                'export PRODUCTS="%s"; . %s/setup >> %s 2>&1 '
-                % (
-                    self.productsdir,
-                    upsproddir_from_productsdir(self.productsdir),
-                    self.launch_attempt_files[procinfo.host],
-                )
+                "echo > %s" % (self.launch_attempt_files[procinfo.host])
             )
-            launch_commands_to_run_on_host[procinfo.host].append(
-                bash_unsetup_command + " > /dev/null 2>&1 "
-            )
+            launch_commands_to_run_on_host[procinfo.host] += get_setup_commands(self.productsdir, self.spackdir,self.launch_attempt_files[procinfo.host])
             launch_commands_to_run_on_host[procinfo.host].append(
                 "source %s for_running >> %s 2>&1 "
                 % (self.daq_setup_script, self.launch_attempt_files[procinfo.host])
