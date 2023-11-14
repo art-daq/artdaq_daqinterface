@@ -14,31 +14,31 @@ Subsystem fragmentMode: False
 Subsystem id: 2
 Subsystem source: 1
 
-EventBuilder host: mu2edaq11
+EventBuilder host: mu2edaq11-data
 EventBuilder label: EventFilter1
 EventBuilder subsystem: 1
 
-EventBuilder host: mu2edaq13
+EventBuilder host: mu2edaq13-data
 EventBuilder label: EventFilter2
 EventBuilder subsystem: 1
 
-DataLogger host: mu2edaq14
+DataLogger host: mu2edaq14-data
 DataLogger label: LumiLogger
 DataLogger subsystem: 1
 
-EventBuilder host: mu2edaq14
+EventBuilder host: mu2edaq14-data
 EventBuilder label: EventBuilder1
 EventBuilder subsystem: 2
 
-DataLogger host: mu2edaq14
+DataLogger host: mu2edaq14-data
 DataLogger label: DataLogger1
 DataLogger subsystem: 2
 
-Dispatcher host: mu2edaq14
+Dispatcher host: mu2edaq14-data
 Dispatcher label: Dispatcher1
 Dispatcher subsystem: 2
 
-RoutingManager host: mu2edaq14
+RoutingManager host: mu2edaq14-data
 RoutingManager label: RoutingManager1
 RoutingManager subsystem: 1
 

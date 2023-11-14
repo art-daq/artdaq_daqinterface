@@ -18,6 +18,7 @@ eventbuilder_daq_standard: {
       # send_init_fragments defines whether Init Fragments are expected to be sent to art. If true, a Warning message is printed when an Init Fragment is requested but none are available.
       send_init_fragments: false
       send_requests: true
+multicast_interface_ip: "0.0.0.0"
 
       # use_art defines whether to start and manage art threads (Sets art_analyzer count to 0 and overwrite_mode to true when false)
       use_art: true

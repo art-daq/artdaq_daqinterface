@@ -23,9 +23,9 @@ component_standard: {
 	data_buffer_depth_mb: 1000
 	
 receive_requests: true
+multicast_interface_ip: "0.0.0.0"
 	request_port: 3001
 	request_address: "227.128.12.26" # Multicast request address
-	multicast_interface_ip: "0.0.0.0"
 
 	request_window_offset: 0 # Request message contains tzero. Window will be from tzero - offset to tz-o + width
 	request_window_width: 0 # These settings correspond to "two before, two after"

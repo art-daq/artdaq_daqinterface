@@ -24,6 +24,7 @@ component_pull_standard: {
       hardware_poll_interval_us: 0 
       
 receive_requests: true
+multicast_interface_ip: "0.0.0.0"
       # See the artdaq file CommandableFragmentGenerator.hh for documentation on request_mode
       request_mode: "Window"
 

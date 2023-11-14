@@ -25,6 +25,7 @@ daq: {
 	send_init_fragments: false
 	verbose: false
 	send_requests: true
+multicast_interface_ip: "0.0.0.0"
 	
 	routing_token_config: {
 	use_routing_manager: false
