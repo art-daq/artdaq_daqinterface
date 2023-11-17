@@ -11,9 +11,9 @@ daq: {
 	expected_fragments_per_event: 0  # Will be set by DAQInterface
 	use_art: true
 	print_event_store_stats: true
-	buffer_count: 15300
+	buffer_count: 1530
     overwrite_mode: true
-    art_analyzer_count: 20
+    art_analyzer_count: 1
 	max_incomplete_events: 75 # Same as boardreader sync interval
 	verbose: true
 	send_requests: false
@@ -89,7 +89,7 @@ physics: {
   pmod2: [ prescaleMod2 ]
   pmod3: [ prescaleMod3 ]
    
-  a1: [ toy1Integ, toy2Integ ]
+  #a1: [ toy1Integ, toy2Integ ]
   my_output_modules: [ rootNetOutput ]
   #my_output_modules: [ normalOutput ]
 }

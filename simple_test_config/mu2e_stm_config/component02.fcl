@@ -70,7 +70,7 @@
 		},
 		{
 			size_bytes: 1081
-			rate_hz: 589970
+			rate_hz: 750000 # 589970
 			duration_us: 344960
 		}
 	  ]
