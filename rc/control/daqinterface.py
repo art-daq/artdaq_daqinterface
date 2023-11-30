@@ -4373,7 +4373,7 @@ class DAQInterface(Component):
             % (date_and_time(), run_number_string),
         )
 
-    def artdaq_process_info(self, name):
+    def artdaq_process_info(self, name, quiet=False):
 
         try:
             self.procinfos
@@ -4400,10 +4400,11 @@ class DAQInterface(Component):
                     procinfo.state,
                 )
 
-            with open(tmpfile, "w") as outf:
-                outf.write(infostring)
+            if not quiet:
+                with open(tmpfile, "w") as outf:
+                    outf.write(infostring)
 
-            self.print_log("d", infostring, 5)
+                self.print_log("d", infostring, 5)
 
         return infostring
 
