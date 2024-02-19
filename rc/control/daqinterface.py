@@ -2108,7 +2108,7 @@ class DAQInterface(Component):
 
             for line in stdoutlines:
                 if re.search(r"^(%s)\s+" % ("|".join(needed_packages)), line):
-                    (package, version) = line.split()
+                    (package, version) = line.split()[:2]
 
                     if not re.search(r"v[0-9]+_[0-9]+_[0-9]+.*", version):
                         raise Exception(
