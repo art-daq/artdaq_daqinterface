@@ -694,6 +694,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                     self.procinfos[i_proc], tablename, searchstart
                 )
 
+    nonsending_boardreaders = []
     for i_proc in range(len(self.procinfos)):
 
         router_process_identifier = get_router_process_identifier(
@@ -702,7 +703,6 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
 
         if router_process_identifier is not None:
             router_process_target = self.procinfos[i_proc].target
-            nonsending_boardreaders = []
 
             if router_process_target == "EventBuilder":
                 for procinfo in self.procinfos:
@@ -828,7 +828,7 @@ def bookkeeping_for_fhicl_documents_artdaq_v3_base(self):
                 router_process_for_subsystem_as_list.append(procinfo)
 
         if len(router_process_for_subsystem_as_list) == 0:
-            continue
+            pass
         elif len(router_process_for_subsystem_as_list) > 1 and len(
             [p.target for p in router_process_for_subsystem_as_list]
         ) != len(set([p.target for p in router_process_for_subsystem_as_list])):

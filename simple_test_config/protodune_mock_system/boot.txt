@@ -21,7 +21,7 @@ EventBuilder host: mu2edaq06
 EventBuilder port: 5237
 EventBuilder label: EventBuilder3
 
-EventBuilder host: mu2edaq07
+EventBuilder host: mu2edaq13-data
 EventBuilder port: 5237
 EventBuilder label: EventBuilder3
 
@@ -37,7 +37,7 @@ EventBuilder host: mu2edaq06
 EventBuilder port: 5240
 EventBuilder label: EventBuilder6
 
-EventBuilder host: mu2edaq07
+EventBuilder host: mu2edaq13-data
 EventBuilder port: 5241
 EventBuilder label: EventBuilder7
 
@@ -53,7 +53,7 @@ EventBuilder host: mu2edaq06
 EventBuilder port: 5244
 EventBuilder label: EventBuilder10
 
-EventBuilder host: mu2edaq07
+EventBuilder host: mu2edaq13-data
 EventBuilder port: 5245
 EventBuilder label: EventBuilder11
 
@@ -69,6 +69,6 @@ EventBuilder host: mu2edaq06
 EventBuilder port: 5248
 EventBuilder label: EventBuilder14
 
-EventBuilder host: mu2edaq07
+EventBuilder host: mu2edaq13-data
 EventBuilder port: 5249
 EventBuilder label: EventBuilder15
