@@ -34,6 +34,8 @@ def get_pid_for_process_base(self):
     pass
 def get_process_manager_log_filenames_base(self):
     pass
+def handle_bad_process_base(self, procinfo, problemtype):
+    pass
 def kill_procs_base(self):
     pass
 def launch_procs_base(self):
