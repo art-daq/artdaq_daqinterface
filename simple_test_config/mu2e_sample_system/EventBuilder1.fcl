@@ -56,6 +56,7 @@ physics: {
     requests: {
 		module_type: RequestSender
 		send_requests: true
+multicast_interface_ip: "0.0.0.0"
 		request_port: 3001
 		request_address: "227.128.12.26" # Multicast request address
 

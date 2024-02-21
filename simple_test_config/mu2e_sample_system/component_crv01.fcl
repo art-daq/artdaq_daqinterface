@@ -30,6 +30,7 @@ circular_buffer_mode: true
 request_port: 3001
 request_address: "227.128.12.27" # Multicast request address
 receive_requests: true
+multicast_interface_ip: "0.0.0.0"
 
 request_window_offset: 1 # Request message contains tzero. Window will be from tzero - offset to tz-o + width
 request_window_width: 3 # These settings correspond to "one before, ts, one after"

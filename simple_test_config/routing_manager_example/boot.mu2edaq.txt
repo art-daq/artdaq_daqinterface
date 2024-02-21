@@ -6,18 +6,18 @@ PMT host: localhost
 # debug level can range from 0 to 3 (increasing order of verbosity)
 debug level: 1
 
-EventBuilder host: mu2edaq14
+EventBuilder host: mu2edaq14-data
 EventBuilder label: EventBuilder1
 
-EventBuilder host: mu2edaq11
+EventBuilder host: mu2edaq11-data
 EventBuilder label: EventBuilder2
 
-DataLogger host: mu2edaq13
+DataLogger host: mu2edaq13-data
 DataLogger label: DataLogger1
 
-Dispatcher host: mu2edaq14
+Dispatcher host: mu2edaq14-data
 Dispatcher label: Dispatcher1
 
-RoutingManager host: mu2edaq11
+RoutingManager host: mu2edaq11-data
 RoutingManager label: RoutingManager1
 

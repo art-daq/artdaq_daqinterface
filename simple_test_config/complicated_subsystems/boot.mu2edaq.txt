@@ -23,26 +23,26 @@ Subsystem id: 4
 Subsystem source: 2
 Subsystem source: 3
 
-EventBuilder host: mu2edaq14
+EventBuilder host: mu2edaq14-data
 EventBuilder label: EventBuilder1
 EventBuilder subsystem: 1
 
-EventBuilder host: mu2edaq11
+EventBuilder host: mu2edaq11-data
 EventBuilder label: EventBuilder2
 EventBuilder subsystem: 2
 
-EventBuilder host: mu2edaq13
+EventBuilder host: mu2edaq13-data
 EventBuilder label: EventBuilder3
 EventBuilder subsystem: 3
 
-EventBuilder host: mu2edaq14
+EventBuilder host: mu2edaq14-data
 EventBuilder label: EventBuilder4
 EventBuilder subsystem: 4
 
-DataLogger host: mu2edaq11
+DataLogger host: mu2edaq11-data
 DataLogger label: DataLogger1
 DataLogger subsystem: 4
 
-Dispatcher host: mu2edaq13
+Dispatcher host: mu2edaq13-data
 Dispatcher label: Dispatcher1
 Dispatcher subsystem: 4

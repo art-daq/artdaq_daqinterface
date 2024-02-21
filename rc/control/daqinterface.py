@@ -2122,7 +2122,7 @@ class DAQInterface(Component):
 
             for line in stdoutlines:
                 if re.search(r"^(%s)\s+" % ("|".join(needed_packages)), line):
-                    (package, version) = line.split()
+                    (package, version) = line.split()[:2]
 
                     if not re.search(r"v[0-9]+_[0-9]+_[0-9]+.*", version):
                         raise Exception(
@@ -4387,7 +4387,7 @@ class DAQInterface(Component):
             % (date_and_time(), run_number_string),
         )
 
-    def artdaq_process_info(self, name):
+    def artdaq_process_info(self, name, quiet=False):
 
         try:
             self.procinfos
@@ -4414,11 +4414,12 @@ class DAQInterface(Component):
                     procinfo.state,
                 )
 
-            with open(tmpfile, "w") as outf:
-                outf.write(infostring)
+            if not quiet:
+                with open(tmpfile, "w") as outf:
+                    outf.write(infostring)
 
-            self.print_log("d", infostring, 5) 
-            
+                self.print_log("d", infostring, 5)
+
         return infostring
 
     # Override of the parent class Component's runner function. As of
