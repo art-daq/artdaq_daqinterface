@@ -1,6 +1,9 @@
-*.pyc
+*#
 *~
-MessageFacility.fcl
-sync.ffs_*
+*.tmproj
 .editorconfig
-*.pyproj*
+bin/*
+obj/*
+*.vcxproj*
+core.*
+spack-build-*
