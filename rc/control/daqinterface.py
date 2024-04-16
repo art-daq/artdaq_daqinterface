@@ -1836,7 +1836,7 @@ class DAQInterface(Component):
             cmd = "; ".join(cmds)
 
             if not host_is_local(host):
-                cmd = "ssh -f " + host + " '" + cmd + "'"
+                cmd = "ssh -o BatchMode=yes -f " + host + " '" + cmd + "'"
 
             num_logfile_checks = 0
             max_num_logfile_checks = 5
@@ -2004,7 +2004,7 @@ class DAQInterface(Component):
             link_logfile_cmd = "; ".join(softlink_commands_to_run_on_host[host])
 
             if not host_is_local(host):
-                link_logfile_cmd = "ssh %s '%s'" % (host, link_logfile_cmd)
+                link_logfile_cmd = "ssh -o BatchMode=yes %s '%s'" % (host, link_logfile_cmd)
 
             proc = Popen(
                 link_logfile_cmd,
@@ -3119,7 +3119,7 @@ class DAQInterface(Component):
             )
 
             if not host_is_local(random_host):
-                cmd = "timeout %d ssh %s '%s'" % (
+                cmd = "timeout %d ssh -o BatchMode=yes %s '%s'" % (
                     ssh_timeout_in_seconds,
                     random_host,
                     cmd,
@@ -3196,7 +3196,7 @@ class DAQInterface(Component):
                 logdircmd = construct_checked_command(logdir_commands_to_run_on_host)
 
                 if not host_is_local(host):
-                    logdircmd = "timeout %d ssh -f %s '%s'" % (
+                    logdircmd = "timeout %d ssh -o BatchMode=yes -f %s '%s'" % (
                         ssh_timeout_in_seconds,
                         host,
                         logdircmd,

@@ -122,7 +122,7 @@ def get_pids(greptoken, host="localhost", grepresults=None):
     cmd = 'ps aux | grep "%s" | grep -v grep' % (greptoken)
 
     if not host_is_local(host):
-        cmd = "ssh -x %s '%s'" % (host, cmd)
+        cmd = "ssh -o BatchMode=yes -x %s '%s'" % (host, cmd)
 
     proc = Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8")
 
@@ -928,7 +928,7 @@ def get_private_networks(host):
     cmd = '/usr/sbin/ifconfig | sed -r -n "s/^\s*inet\s+(192\.168\.\S+|10\.\S+)\s+.*/\\1/p"'
 
     if not host_is_local(host):
-        cmd = "ssh -x %s '%s'" % (host, cmd)
+        cmd = "ssh -o BatchMode=yes -x %s '%s'" % (host, cmd)
 
     lines = Popen(
         cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="UTF-8"
