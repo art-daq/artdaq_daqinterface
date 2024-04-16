@@ -132,7 +132,7 @@ def launch_procs_on_host(
     )  # Each command already terminated by ampersand
 
     if not host_is_local(host):
-        launchcmd = "ssh -f " + host + " '" + launchcmd + "'"
+        launchcmd = "ssh -o BatchMode=yes -f " + host + " '" + launchcmd + "'"
 
     self.print_log(
         "d",
@@ -432,7 +432,7 @@ def kill_procs_on_host(self, host, kill_art=False, use_force=False):
 
             cmd = "kill %s" % (" ".join(artdaq_pids))
             if not host_is_local(host):
-                cmd = "ssh -x " + host + " '" + cmd + "'"
+                cmd = "ssh -o BatchMode=yes -x " + host + " '" + cmd + "'"
 
             proc = Popen(
                 cmd,
@@ -459,7 +459,7 @@ def kill_procs_on_host(self, host, kill_art=False, use_force=False):
             )
             cmd = "kill -9 %s" % (" ".join(artdaq_pids))
             if not host_is_local(host):
-                cmd = "ssh -x " + host + " '" + cmd + "'"
+                cmd = "ssh -o BatchMode=yes -x " + host + " '" + cmd + "'"
             proc = Popen(
                 cmd,
                 executable="/bin/bash",
@@ -487,7 +487,7 @@ def kill_procs_on_host(self, host, kill_art=False, use_force=False):
             )  # JCF, Dec-8-2018: the "-9" is apparently needed...
 
             if not host_is_local(host):
-                cmd = "ssh -x " + host + " '" + cmd + "'"
+                cmd = "ssh -o BatchMode=yes -x " + host + " '" + cmd + "'"
 
             self.print_log(
                 "d",
@@ -535,7 +535,7 @@ def softlink_process_manager_logfile(self, host):
     )
 
     if not host_is_local(host):
-        link_pmt_logfile_cmd = "ssh -f %s '%s'" % (host, link_pmt_logfile_cmd)
+        link_pmt_logfile_cmd = "ssh -o BatchMode=yes -f %s '%s'" % (host, link_pmt_logfile_cmd)
 
     status = Popen(
         link_pmt_logfile_cmd,
@@ -581,7 +581,7 @@ def get_process_manager_log_filename(self, host):
     )
 
     if not host_is_local(host):
-        get_log_filename_cmd = "ssh -f %s '%s'" % (host, get_log_filename_cmd)
+        get_log_filename_cmd = "ssh -o BatchMode=yes -f %s '%s'" % (host, get_log_filename_cmd)
 
     log_filename_current = (
         Popen(
@@ -621,7 +621,7 @@ def get_pid_for_process_base(self, procinfo):
     grepped_lines = []
     pids = get_pids(greptoken, procinfo.host, grepped_lines)
 
-    ssh_pids = get_pids("ssh .*" + greptoken, procinfo.host)
+    ssh_pids = get_pids("ssh -o BatchMode=yes .*" + greptoken, procinfo.host)
 
     cleaned_pids = [pid for pid in pids if pid not in ssh_pids]
 
@@ -654,7 +654,7 @@ def mopup_process_base(self, procinfo):
         cmd = "kill %s" % (pid)
 
         if on_other_node:
-            cmd = "ssh -x %s '%s'" % (procinfo.host, cmd)
+            cmd = "ssh -o BatchMode=yes -x %s '%s'" % (procinfo.host, cmd)
 
         status = Popen(
             cmd,
@@ -669,7 +669,7 @@ def mopup_process_base(self, procinfo):
             cmd = "kill -9 %s > /dev/null 2>&1" % (pid)
 
             if on_other_node:
-                cmd = "ssh -x %s '%s'" % (procinfo.host, cmd)
+                cmd = "ssh -o BatchMode=yes -x %s '%s'" % (procinfo.host, cmd)
 
             self.print_log(
                 "w",
@@ -724,7 +724,7 @@ def mopup_process_base(self, procinfo):
     )
 
     if on_other_node:
-        cmd = "ssh -x %s '%s'" % (procinfo.host, cmd)
+        cmd = "ssh -o BatchMode=yes -x %s '%s'" % (procinfo.host, cmd)
 
     Popen(
         cmd,
@@ -750,7 +750,7 @@ def mopup_process_base(self, procinfo):
         cmd = "kill -9 %s > /dev/null 2>&1 " % (" ".join(unkilled_related_pids))
 
         if on_other_node:
-            cmd = "ssh -x %s '%s'" % (procinfo.host, cmd)
+            cmd = "ssh -o BatchMode=yes -x %s '%s'" % (procinfo.host, cmd)
 
         Popen(
             cmd,
@@ -837,7 +837,7 @@ def get_related_pids_for_process(procinfo):
     netstat_cmd = "netstat -alpn | grep %s" % (procinfo.port)
 
     if not host_is_local(procinfo.host):
-        netstat_cmd = "ssh -x %s '%s'" % (procinfo.host, netstat_cmd)
+        netstat_cmd = "ssh -o BatchMode=yes -x %s '%s'" % (procinfo.host, netstat_cmd)
 
     proc = Popen(
         netstat_cmd,
