@@ -7,4 +7,4 @@ obj/*
 *.vcxproj*
 core.*
 spack-build-*
-linux-build-*
+build-linux-*
