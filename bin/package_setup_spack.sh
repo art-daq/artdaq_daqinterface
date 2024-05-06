@@ -23,6 +23,7 @@ spackdir=$( sed -r -n 's/^\s*spack[_ ]root[_ ]for[_ ]bash[_ ]scripts\s*:\s*(\S+)
 if [[ -n $spackdir ]]; then
 
     cmd_save=$cmd
+    export SPACK_DISABLE_LOCAL_CONFIG=true
     . $spackdir/share/spack/setup-env.sh
     cmd=$cmd_save
 

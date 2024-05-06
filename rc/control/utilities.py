@@ -1245,12 +1245,12 @@ def get_setup_commands(productsdir=None, spackdir=None, log_file=None):
                 bash_unsetup_command + " > /dev/null 2>&1 "
         )
     elif spackdir != None:
+        output.append("export SPACK_DISABLE_LOCAL_CONFIG=true")        
         if log_file == None:
             output.append('. %s/share/spack/setup-env.sh' % (spackdir))
-            output.append('spack unload > /dev/null 2>&1')
         else:
             output.append('. %s/share/spack/setup-env.sh >> %s 2>&1' % (spackdir, log_file))
-            output.append('spack unload > /dev/null 2>&1')
+        output.append('spack unload > /dev/null 2>&1')
     return output
 
 def kill_tail_f():
