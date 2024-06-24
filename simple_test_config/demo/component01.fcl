@@ -62,6 +62,7 @@
 	  throttle_usecs: 100000
 	  distribution_type: 2
 	  timestamp_scale_factor: 1
+	  generate_metadata_fragment: true
 
         destinations: { }
 
