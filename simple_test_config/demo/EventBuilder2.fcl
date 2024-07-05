@@ -44,14 +44,14 @@ outputs: {
 	    use_routing_manager: false
 	}
   }
-  #normalOutput: {
-  #  module_type: RootDAQOut
-  #  fileName: "/tmp/artdaqdemo_eb00_r%06r_sr%02s_%to_%#.root"
-  #  #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
-  #  fileProperties: { maxSubRuns: 1 maxRuns: 1  }
-  #  compressionLevel: 501 # ZSTD
-  #  fastCloning: false
- #}
+ # normalOutput: {
+ #   module_type: RootDAQOut
+ #   fileName: "/tmp/artdaqdemo_eb02_r%06r_sr%02s_%to_%#.root"
+ # #  #SelectEvents: { SelectEvents: [ pmod2,pmod3 ] }
+ # #  fileProperties: { maxSubRuns: 1 maxRuns: 1  }
+ #   compressionLevel: 501 # ZSTD
+ #   fastCloning: false
+ # }
 }
 
 physics: {
@@ -67,9 +67,18 @@ physics: {
       frag_type: "TOY2"
     }
   }
+  
 
   producers: {
-  }
+
+     BuildInfo:
+     {
+       module_type: ArtdaqDemoBuildInfo
+       instance_name: ArtdaqDemo
+     }
+   }
+
+  p2: [ BuildInfo ]
 
   filters: {
 
@@ -88,7 +97,7 @@ physics: {
   pmod3: [ prescaleMod3 ]
    
   a1: [ toy1Integ, toy2Integ ]
-  my_output_modules: [ rootNetOutput ]
+  my_output_modules: [ rootNetOutput ] #, normalOutput ]
   #my_output_modules: [ normalOutput ]
 }
 source: {
@@ -96,4 +105,4 @@ source: {
   waiting_time: 2500000
   resume_after_timeout: true
 }
-process_name: DAQ
+process_name: DAQEB2
