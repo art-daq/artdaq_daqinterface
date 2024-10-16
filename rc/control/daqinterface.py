@@ -2033,26 +2033,12 @@ class DAQInterface(Component):
             if package in self.package_versions:
                 continue
             else:
-                needed_packages.append(package if self.productsdir != None else package.replace("_", "-"))
+                needed_packages.append(package)
 
         if len(needed_packages) == 0:
             return
 
-        if "artdaq_daqinterface" in packages:
-            assert (
-                len(packages) == 1
-            ), "Note to developer: you'll probably need to refactor save_run_records.py if you want to get the version of other packages alongside the version of DAQInterface"
-            cmd = "ups active | sed -r -n 's/^artdaq_daqinterface\\s+(\\S+).*/artdaq_daqinterface \\1/p'"
-        elif self.productsdir != None:
-            cmd = (
-                "%s ; . %s; ups active | sed -r -n 's/^(%s)\\s+(\\S+).*/\\1 \\2/p'"
-                % (
-                    ";".join(get_setup_commands(self.productsdir, self.spackdir)),
-                    self.daq_setup_script,
-                    "|".join(needed_packages),
-                )
-            )
-        elif self.spackdir != None:
+        if self.spackdir != None:
             cmd = (
                 "%s ; . %s; spack find --loaded | sed -r -n 's/^(%s)@(\\S+).*/\\1 \\2/p'" % (
                     ";".join(get_setup_commands(self.productsdir, self.spackdir)),
@@ -2122,7 +2108,7 @@ class DAQInterface(Component):
                             )
                         )
                     # print('package=%s type(package)=%s' % (package,type(package)))
-                    self.package_versions[package.replace("-", "_")] = version
+                    self.package_versions[package] = version
 
         for package in packages:
             if package not in self.package_versions:
