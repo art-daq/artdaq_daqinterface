@@ -5,6 +5,7 @@ import subprocess
 from subprocess import Popen
 import socket
 from time import sleep
+from time import time
 import re
 import sys
 import copy
@@ -61,6 +62,12 @@ def launch_procs_on_host(
         "Before check for existing processes on %s" % (host),
         executing_commands_debug_level,
     )
+    # This function runs in one thread per host, so the timings below are
+    # recorded with plain timing_trace calls: those only append to the entry
+    # list, whereas timing_trace_start/end would race on the shared nesting
+    # depth counter.
+
+    check_pids_start = time()
     grepped_lines = []
     preexisting_pids = get_pids(
         "\|".join(
@@ -74,17 +81,31 @@ def launch_procs_on_host(
         host,
         grepped_lines,
     )
+    self.timing_trace(
+        "end",
+        "do_boot_host_check_pids",
+        elapsed_s=(time() - check_pids_start),
+        extra_fields={"host": host, "found": len(preexisting_pids)},
+    )
 
     if self.attempt_existing_pid_kill and len(preexisting_pids) > 0:
         self.print_log("i", "Found existing processes on %s" % (host))
 
+        kill_start = time()
         kill_procs_on_host(self, host, kill_art=True, use_force=True)
+        self.timing_trace(
+            "end",
+            "do_boot_host_kill_existing",
+            elapsed_s=(time() - kill_start),
+            extra_fields={"host": host},
+        )
 
         self.print_log(
             "d",
             "Before re-check for existing processes on %s" % (host),
             executing_commands_debug_level,
         )
+        recheck_pids_start = time()
         grepped_lines = []
         preexisting_pids = get_pids(
             "\|".join(
@@ -97,6 +118,12 @@ def launch_procs_on_host(
             ),
             host,
             grepped_lines,
+        )
+        self.timing_trace(
+            "end",
+            "do_boot_host_recheck_pids",
+            elapsed_s=(time() - recheck_pids_start),
+            extra_fields={"host": host, "found": len(preexisting_pids)},
         )
 
     if len(preexisting_pids) > 0:
@@ -145,6 +172,9 @@ def launch_procs_on_host(
         executing_commands_debug_level,
     )
 
+    self.print_log("d", "DEBUG %s " % launchcmd, executing_commands_debug_level)
+
+    ssh_launch_start = time()
     proc = Popen(
         launchcmd,
         executable="/bin/bash",
@@ -155,6 +185,15 @@ def launch_procs_on_host(
     )
     out, _ = proc.communicate()
     status = proc.returncode
+    self.timing_trace(
+        "end",
+        "do_boot_host_ssh_launch",
+        elapsed_s=(time() - ssh_launch_start),
+        extra_fields={"host": host, "status": status},
+    )
+
+    self.print_log("d", "out: %s " % out, executing_commands_debug_level)
+    self.print_log("d", "status: %s " % status, executing_commands_debug_level)
 
     if status != 0:
         self.print_log(
@@ -314,9 +353,6 @@ def launch_procs_base(self):
             launch_commands_on_host_to_show_user[procinfo.host] = []
 
             launch_commands_to_run_on_host[procinfo.host].append("set +C")
-            launch_commands_to_run_on_host[procinfo.host].append(
-                "echo > %s" % (self.launch_attempt_files[procinfo.host])
-            )
             launch_commands_to_run_on_host[procinfo.host] += get_setup_commands(
                 self.spackdir, self.launch_attempt_files[procinfo.host]
             )
@@ -817,41 +853,20 @@ def get_pids_and_labels_on_host(host, procinfos):
             os.environ["DAQINTERFACE_PARTITION_NUMBER"],
         )
     )
-    sshgreptoken = (
-        "[0-9]:[0-9][0-9]\s\+ssh.*\(%s\).*application_name.*partition_number:\s*%s"
-        % (
-            "\|".join(
-                set(
-                    [bootfile_name_to_execname(procinfo.name) for procinfo in procinfos]
-                )
-            ),
-            os.environ["DAQINTERFACE_PARTITION_NUMBER"],
-        )
-    )
-
-    # greptoken =
-    # "[0-9]:[0-9][0-9]\s\+valgrind.*\(%s\).*application_name.*partition_number:\s*%s"
-    # % \
-    #            ("\|".join(set([bootfile_name_to_execname(procinfo.name) for
-    #            procinfo in procinfos])), \
-    # os.environ["DAQINTERFACE_PARTITION_NUMBER"])
 
     grepped_lines = []
     pids = get_pids(greptoken, host, grepped_lines)
 
-    ssh_pids = get_pids(sshgreptoken, host)
-
-    cleaned_pids = [pid for pid in pids if pid not in ssh_pids]
-    cleaned_lines = [line for line in grepped_lines if " ssh " not in line]
-
+    pids = []
     labels_of_found_processes = []
 
-    for line in cleaned_lines:
+    for line in grepped_lines:
         res = re.search(r"application_name:\s+(\S+)", line)
-        assert res
-        labels_of_found_processes.append(res.group(1))
+        if res:
+            pids.append(line.split()[1])
+            labels_of_found_processes.append(res.group(1))
 
-    return cleaned_pids, labels_of_found_processes
+    return pids, labels_of_found_processes
 
 
 def get_related_pids_for_process(procinfo):
