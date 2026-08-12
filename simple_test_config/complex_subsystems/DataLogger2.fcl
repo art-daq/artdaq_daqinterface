@@ -34,7 +34,7 @@ daq: {
 
 art: {
 services: {
-  ArtdaqSharedMemoryServiceInterface: { service_provider: ArtdaqSharedMemoryService }
+  ArtdaqSharedMemoryServiceInterface: { service_provider: ArtdaqSharedMemoryService subrun_closure_threshold: 5 }
   ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqFragmentNamingService helper_plugin: "ArtdaqDemo" }
 }
 source: {
