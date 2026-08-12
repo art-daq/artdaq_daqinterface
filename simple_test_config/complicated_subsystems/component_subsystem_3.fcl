@@ -25,7 +25,7 @@ end_of_run_quiet_timeout_ms: 1000 # Time, in milliseconds, that the entire syste
 data_buffer_depth_fragments: 1000
 data_buffer_depth_mb: 1000
 
-request_port: 3001
+request_port: 3003
 request_address: "227.128.12.27" # Multicast request address
 
 request_window_offset: 0 # Request message contains tzero. Window will be from tzero - offset to tz-o + width
