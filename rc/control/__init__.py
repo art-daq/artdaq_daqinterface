@@ -1,1 +1,1 @@
-""" DAQInterface Control """
+"""DAQInterface Control"""
