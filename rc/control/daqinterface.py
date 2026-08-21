@@ -67,17 +67,6 @@ try:
     # that artdaq-mfextensions is as well
 
     messagefacility_fhicl_filename = obtain_messagefacility_fhicl(True)
-    if (
-        not "ARTDAQ_LOG_FHICL"
-        in os.environ
-        # or os.environ["ARTDAQ_LOG_FHICL"] != messagefacility_fhicl_filename
-    ):
-        raise Exception(
-            make_paragraph(
-                "Although the swig_artdaq python module is available, it needs the environment variable ARTDAQ_LOG_FHICL to point to %s"
-                % (messagefacility_fhicl_filename)
-            )
-        )
 
 except ImportError:
     pass  # Users shouldn't need to worry if their installations don't yet have
