@@ -1,1 +1,1 @@
-""" DAQInterface InhibitManager """
+"""DAQInterface InhibitManager"""

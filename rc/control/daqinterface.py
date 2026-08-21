@@ -551,6 +551,8 @@ class DAQInterface(Component):
 
         self.fhicl_file_path = []
 
+        self.transition_process_errors = []
+
         self.__do_boot = False
         self.__do_shutdown = False
         self.__do_config = False
@@ -904,6 +906,7 @@ class DAQInterface(Component):
 
     def alert_and_recover(self, extrainfo=None):
 
+        self.timing_trace_reset()
         self.do_recover()
 
         alertmsg = ""
@@ -923,6 +926,12 @@ class DAQInterface(Component):
             ),
         )
         print
+
+        if self.transition_process_errors:
+            self.print_log("e", "Process error(s) that caused this failure:")
+            for proc_error in self.transition_process_errors:
+                self.print_log("e", "  " + proc_error)
+            self.transition_process_errors = []
 
     def read_settings(self):
         if not os.path.exists(os.environ["DAQINTERFACE_SETTINGS"]):
@@ -962,7 +971,7 @@ class DAQInterface(Component):
         self.allowed_processors = None
         self.partition_label_format = None
 
-        self.max_num_launch_procs_checks = 20
+        self.max_num_launch_procs_checks = 10
         self.launch_procs_wait_time = 40
 
         self.spackdir = None
@@ -1356,6 +1365,9 @@ class DAQInterface(Component):
                     + ': "'
                     + procinfo.lastreturned
                     + '"'
+                )
+                self.transition_process_errors.append(
+                    "%s: %s" % (procinfo.label, procinfo.lastreturned)
                 )
                 self.print_log("w", make_paragraph(errmsg))
                 print
@@ -2366,6 +2378,7 @@ class DAQInterface(Component):
 
     def do_command(self, command):
 
+        self.transition_process_errors = []
         do_command_start = self.timing_trace_start("do_command", {"command": command})
 
         if command != "Start" and command != "Init" and command != "Stop":
@@ -3468,11 +3481,33 @@ class DAQInterface(Component):
                 # processes aren't found"
 
                 found_processes = self.check_proc_heartbeats(False)
-                self.print_log(
-                    "i",
-                    "found %d of %d processes."
-                    % (len(found_processes), len(self.procinfos)),
-                )
+                missing_processes = [
+                    procinfo
+                    for procinfo in self.procinfos
+                    if procinfo not in found_processes
+                ]
+                if missing_processes:
+                    self.print_log(
+                        "i",
+                        "found %d of %d processes. Not yet up: %s"
+                        % (
+                            len(found_processes),
+                            len(self.procinfos),
+                            ", ".join(
+                                [
+                                    "%s at %s:%s"
+                                    % (procinfo.label, procinfo.host, procinfo.port)
+                                    for procinfo in missing_processes
+                                ]
+                            ),
+                        ),
+                    )
+                else:
+                    self.print_log(
+                        "i",
+                        "found %d of %d processes."
+                        % (len(found_processes), len(self.procinfos)),
+                    )
 
                 assert type(found_processes) is list, make_paragraph(
                     "check_proc_heartbeats needs to return a list of procinfos corresponding to the processes it found alive"
@@ -3629,6 +3664,7 @@ class DAQInterface(Component):
 
     def do_config(self, subconfigs_for_run=[]):
 
+        self.transition_process_errors = []
         do_config_start = self.timing_trace_start("do_config_total")
 
         self.print_log("i", "\n%s: CONFIG transition underway" % (date_and_time()))
@@ -3913,8 +3949,12 @@ class DAQInterface(Component):
                     "do_config_init_transition", init_start, {"result": "failure"}
                 )
                 self.timing_trace_end(
-                    "do_config_total", do_config_start, {"result": "failure"}
+                    "do_config_total",
+                    do_config_start,
+                    {"result": "failure"},
+                    defer_flush=True,
                 )
+                self.timing_trace_reset()
                 self.alert_and_recover(
                     'An exception was thrown when attempting to send the "init" transition to the artdaq processes; see messages above for more info'
                 )
