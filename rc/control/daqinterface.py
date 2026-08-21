@@ -3949,8 +3949,10 @@ class DAQInterface(Component):
                     "do_config_init_transition", init_start, {"result": "failure"}
                 )
                 self.timing_trace_end(
-                    "do_config_total", do_config_start, {"result": "failure"},
-                    defer_flush=True
+                    "do_config_total",
+                    do_config_start,
+                    {"result": "failure"},
+                    defer_flush=True,
                 )
                 self.timing_trace_reset()
                 self.alert_and_recover(
