@@ -195,6 +195,9 @@ def launch_procs_on_host(
     self.print_log("d", "out: %s " % out, executing_commands_debug_level)
     self.print_log("d", "status: %s " % status, executing_commands_debug_level)
 
+    self.print_log("d", "out: %s " % out, executing_commands_debug_level)
+    self.print_log("d", "status: %s " % status, executing_commands_debug_level)
+
     if status != 0:
         self.print_log(
             "e",

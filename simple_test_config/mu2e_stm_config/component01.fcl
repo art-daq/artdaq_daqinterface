@@ -56,7 +56,7 @@
 	  starting_fragment_id: 0
 	  random_seed: 8250
 	  sleep_on_stop_us: 500000
-	  max_fragment_size_bytes: 100000
+	  max_fragment_size_bytes: 500000
 	  distribution_type: 3
 	  timestamp_scale_factor: 1
 	  fragment_group_size: 10
