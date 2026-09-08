@@ -401,8 +401,9 @@ class DAQInterface(Component):
         if self.debug_level >= debuglevel:
 
             # JCF, Dec-31-2019
-            # The swig_artdaq instance by default writes to stdout, so no
-            # explicit print call is needed
+            # swig_artdaq writes to MessageFacility (C++ TLOG), NOT to
+            # Python stdout.  Also print to stdout so otsdaq's tee_buffer
+            # captures the message for the GUI error display.
             if self.use_messagefacility and self.messageviewer_sender is not None:
                 if severity == "e":
                     self.messageviewer_sender.write_error(
@@ -428,6 +429,21 @@ class DAQInterface(Component):
                         % (os.environ["DAQINTERFACE_PARTITION_NUMBER"]),
                         printstr,
                     )
+                with self.printlock:
+                    if self.fake_messagefacility:
+                        print(
+                            "%%MSG-%s DAQInterface %s %s %s"
+                            % (severity, formatted_day, time, timezone),
+                            flush=True,
+                        )
+                    if not newline and not self.fake_messagefacility:
+                        sys.stdout.write(printstr)
+                        sys.stdout.flush()
+                    else:
+                        print(printstr, flush=True)
+
+                    if self.fake_messagefacility:
+                        print("%MSG", flush=True)
 
             else:
                 with self.printlock:
