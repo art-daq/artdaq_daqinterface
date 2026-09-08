@@ -30,18 +30,18 @@ except ImportError:
 
 def _save_run_record_to_database(self):
     """Save run record procinfo and FHiCL to PostgreSQL database.
-    
-    Store process information in {prefix}_components and the used FHiCL content to {prefix}_fcl 
+
+    Store process information in {prefix}_components and the used FHiCL content to {prefix}_fcl
     linked with run_number in PostgreSQL database. Tables are created automatically if they don't exist.
-    
+
     Note: This function should be called from do_start_running when run_number is available.
     """
     # Check if database saving is enabled
     if not is_database_enabled(self):
         return
-    
+
     # Get run_number (must be set when this is called from do_start_running)
-    run_number = getattr(self, 'run_number', None)
+    run_number = getattr(self, "run_number", None)
     if run_number is None:
         self.print_log(
             "w",
@@ -49,30 +49,30 @@ def _save_run_record_to_database(self):
             2,
         )
         return
-    
+
     # Get database connection
     conn = get_db_connection(self)
     if conn is None:
         return
-    
+
     try:
         import psycopg2
         from psycopg2 import sql
     except ImportError:
         return
-    
+
     try:
         cursor = conn.cursor()
         dbschema = get_db_schema(self)
         prefix = get_db_prefix(self)
-        
+
         # Create tables if they don't exist
         create_tables_if_not_exist(cursor, dbschema, prefix)
-        
+
         # Save process information (procinfo) to {prefix}_components table
-        if hasattr(self, 'procinfos') and self.procinfos:
+        if hasattr(self, "procinfos") and self.procinfos:
             components_table = sql.Identifier(dbschema, "%s_components" % prefix)
-            
+
             for procinfo in self.procinfos:
                 # Fields: run_number, name, rank, host, port, label, subsystem, allowed_processors, target
                 components_query = sql.SQL(
@@ -88,7 +88,7 @@ def _save_run_record_to_database(self):
                     "allowed_processors = EXCLUDED.allowed_processors, "
                     "target = EXCLUDED.target"
                 ).format(table=components_table)
-                
+
                 cursor.execute(
                     components_query,
                     (
@@ -99,16 +99,16 @@ def _save_run_record_to_database(self):
                         procinfo.port,
                         procinfo.label,
                         procinfo.subsystem,
-                        getattr(procinfo, 'allowed_processors', None),
-                        getattr(procinfo, 'target', None),
+                        getattr(procinfo, "allowed_processors", None),
+                        getattr(procinfo, "target", None),
                     ),
                 )
-                
+
                 # Save FHiCL content to {prefix}_fcl table
                 # Fields: run_number, name (process type/name), label, content (fhicl_used)
-                if hasattr(procinfo, 'fhicl_used') and procinfo.fhicl_used:
+                if hasattr(procinfo, "fhicl_used") and procinfo.fhicl_used:
                     fcl_table = sql.Identifier(dbschema, "%s_fcl" % prefix)
-                    
+
                     fcl_query = sql.SQL(
                         "INSERT INTO {table} ("
                         "run_number, name, label, content) "
@@ -117,7 +117,7 @@ def _save_run_record_to_database(self):
                         "name = EXCLUDED.name, "
                         "content = EXCLUDED.content"
                     ).format(table=fcl_table)
-                    
+
                     cursor.execute(
                         fcl_query,
                         (
@@ -127,17 +127,15 @@ def _save_run_record_to_database(self):
                             procinfo.fhicl_used,  # FHiCL content
                         ),
                     )
-        
+
         conn.commit()
         self.print_log(
             "d",
-            "Saved run record to database (run_number: %s, prefix: %s)" % (
-                run_number,
-                prefix
-            ),
+            "Saved run record to database (run_number: %s, prefix: %s)"
+            % (run_number, prefix),
             2,
         )
-    
+
     except Exception as e:
         conn.rollback()
         self.print_log(
@@ -323,7 +321,9 @@ def save_run_record_base(self):
     buildinfo_packages.append("artdaq-daqinterface")
 
     try:
-        package_buildinfo_dict = get_build_info(buildinfo_packages, self.daq_setup_script)
+        package_buildinfo_dict = get_build_info(
+            buildinfo_packages, self.daq_setup_script
+        )
     except Exception:
         package_buildinfo_dict = None
 
@@ -450,15 +450,15 @@ def save_run_record_base(self):
         ),
         2,
     )
-    
+
     # Database saving is done in do_start_running when run_number is available
     self.print_log(
-            "w",
-            make_paragraph(
-                "Warning: Exception occurred while saving run record to database. "
-                "File-based saving completed successfully."
-            ),
-        )
+        "w",
+        make_paragraph(
+            "Warning: Exception occurred while saving run record to database. "
+            "File-based saving completed successfully."
+        ),
+    )
 
 
 def save_metadata_value_base(self, key, value):

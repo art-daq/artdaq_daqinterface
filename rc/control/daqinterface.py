@@ -993,15 +993,41 @@ class DAQInterface(Component):
             self.enable_run_record_database = bool(res)
         else:
             self.enable_run_record_database = False
-        
-        self.run_record_database_name = os.environ.get("OTSDAQ_RUNINFO_DATABASE_NAME") or os.environ.get("RUN_RECORD_DATABASE_NAME") or "run_info"
-        self.run_record_database_host = os.environ.get("OTSDAQ_RUNINFO_DATABASE_HOST") or os.environ.get("RUN_RECORD_DATABASE_HOST") or ""
-        self.run_record_database_port = os.environ.get("OTSDAQ_RUNINFO_DATABASE_PORT") or os.environ.get("RUN_RECORD_DATABASE_PORT") or ""
-        self.run_record_database_user = os.environ.get("OTSDAQ_RUNINFO_DATABASE_USER") or os.environ.get("RUN_RECORD_DATABASE_USER") or ""
-        self.run_record_database_pwd = os.environ.get("OTSDAQ_RUNINFO_DATABASE_PWD") or os.environ.get("RUN_RECORD_DATABASE_PWD") or ""
-        self.run_record_database_schema = os.environ.get("OTSDAQ_RUNINFO_DATABASE_SCHEMA") or os.environ.get("RUN_RECORD_DATABASE_SCHEMA") or "test"
+
+        self.run_record_database_name = (
+            os.environ.get("OTSDAQ_RUNINFO_DATABASE_NAME")
+            or os.environ.get("RUN_RECORD_DATABASE_NAME")
+            or "run_info"
+        )
+        self.run_record_database_host = (
+            os.environ.get("OTSDAQ_RUNINFO_DATABASE_HOST")
+            or os.environ.get("RUN_RECORD_DATABASE_HOST")
+            or ""
+        )
+        self.run_record_database_port = (
+            os.environ.get("OTSDAQ_RUNINFO_DATABASE_PORT")
+            or os.environ.get("RUN_RECORD_DATABASE_PORT")
+            or ""
+        )
+        self.run_record_database_user = (
+            os.environ.get("OTSDAQ_RUNINFO_DATABASE_USER")
+            or os.environ.get("RUN_RECORD_DATABASE_USER")
+            or ""
+        )
+        self.run_record_database_pwd = (
+            os.environ.get("OTSDAQ_RUNINFO_DATABASE_PWD")
+            or os.environ.get("RUN_RECORD_DATABASE_PWD")
+            or ""
+        )
+        self.run_record_database_schema = (
+            os.environ.get("OTSDAQ_RUNINFO_DATABASE_SCHEMA")
+            or os.environ.get("RUN_RECORD_DATABASE_SCHEMA")
+            or "test"
+        )
         # Prefix only checks RUN_RECORD_DATABASE_PREFIX (no OTSDAQ_ version)
-        self.run_record_database_prefix = os.environ.get("RUN_RECORD_DATABASE_PREFIX") or "artdaq"
+        self.run_record_database_prefix = (
+            os.environ.get("RUN_RECORD_DATABASE_PREFIX") or "artdaq"
+        )
 
         for line in inf.readlines():
 
@@ -1250,23 +1276,19 @@ class DAQInterface(Component):
                 if res:
                     self.enable_run_record_database = True
             elif (
-                "run_record_database_name" in line
-                or "run record database name" in line
+                "run_record_database_name" in line or "run record database name" in line
             ):
                 self.run_record_database_name = line.split()[-1].strip()
             elif (
-                "run_record_database_host" in line
-                or "run record database host" in line
+                "run_record_database_host" in line or "run record database host" in line
             ):
                 self.run_record_database_host = line.split()[-1].strip()
             elif (
-                "run_record_database_port" in line
-                or "run record database port" in line
+                "run_record_database_port" in line or "run record database port" in line
             ):
                 self.run_record_database_port = line.split()[-1].strip()
             elif (
-                "run_record_database_user" in line
-                or "run record database user" in line
+                "run_record_database_user" in line or "run record database user" in line
             ):
                 self.run_record_database_user = line.split()[-1].strip()
             elif (
@@ -1286,7 +1308,6 @@ class DAQInterface(Component):
                 or "run record database prefix" in line
             ):
                 self.run_record_database_prefix = line.split()[-1].strip()
-
 
         missing_vars = []
 
@@ -2033,10 +2054,10 @@ class DAQInterface(Component):
                 if host_is_local(host):
                     proc = subprocess.run(
                         ["/bin/bash", "-lc", cmd],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    encoding="utf-8",
-                )
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        encoding="utf-8",
+                    )
                 else:
                     proc = subprocess.run(
                         [
@@ -2254,10 +2275,10 @@ class DAQInterface(Component):
 
         if self.spackdir != None:
             cmd = "%s ; . %s; spack find | sed -r -n 's/^(%s)@(\\S+).*/\\1 \\2/p'" % (
-                    ";".join(get_setup_commands(self.spackdir)),
-                    self.daq_setup_script,
-                    "|".join(needed_packages),
-                )
+                ";".join(get_setup_commands(self.spackdir)),
+                self.daq_setup_script,
+                "|".join(needed_packages),
+            )
 
         if cmd != "":
             proc = Popen(
@@ -3576,11 +3597,11 @@ class DAQInterface(Component):
                         ),
                     )
                 else:
-                self.print_log(
-                    "i",
-                    "found %d of %d processes."
-                    % (len(found_processes), len(self.procinfos)),
-                )
+                    self.print_log(
+                        "i",
+                        "found %d of %d processes."
+                        % (len(found_processes), len(self.procinfos)),
+                    )
 
                 assert type(found_processes) is list, make_paragraph(
                     "check_proc_heartbeats needs to return a list of procinfos corresponding to the processes it found alive"
@@ -4122,10 +4143,11 @@ class DAQInterface(Component):
 
             try:
                 shutil.copytree(self.tmp_run_record, run_record_directory)
-                
+
                 # Save run record to database now that run_number is available
                 try:
                     from rc.control.save_run_record import _save_run_record_to_database
+
                     _save_run_record_to_database(self)
                 except Exception:
                     # Don't fail the start transition if database save fails
