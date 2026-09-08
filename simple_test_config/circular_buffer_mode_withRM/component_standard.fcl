@@ -38,7 +38,7 @@ hardware_poll_interval_us: 0 # How often, in microseconds, checkHWStatus_() shou
 	circular_buffer_mode: true
 
 	nADCcounts: 500000
-	max_fragment_size_bytes: 1024000
+	max_fragment_size_bytes: 2048000
 
 	throttle_usecs: 0
 	usecs_between_sends: 200000

@@ -23,11 +23,11 @@ record_directory: $HOME/run_records
 package_hashes_to_save: [ artdaq-demo, artdaq-core-demo, artdaq ]
 productsdir_for_bash_scripts: $HOME/path_to_product_dir_not_yet_defined/products
 
-boardreader timeout: 60
-eventbuilder timeout: 30
-datalogger timeout: 30
-dispatcher timeout: 30
-routing_manager timeout: 30
+boardreader timeout: 90
+eventbuilder timeout: 60
+datalogger timeout: 60
+dispatcher timeout: 60
+routing_manager timeout: 60
 
 advanced_memory_usage: true
 
