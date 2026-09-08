@@ -748,6 +748,13 @@ class DAQInterface(Component):
             self._timing_trace_depth += 1
         return time()
 
+    def timing_trace_reset(self):
+        # Discards entries left pending by an earlier transition -- e.g. a boot
+        # whose deferred summary was never flushed because no config followed it.
+        self._timing_trace_init()
+        self._timing_trace_entries = []
+        self._timing_trace_depth = 0
+
     def timing_trace_end(self, stage, start_time, extra_fields=None):
         self.timing_trace(
             "end", stage, elapsed_s=(time() - start_time), extra_fields=extra_fields
@@ -3970,7 +3977,6 @@ class DAQInterface(Component):
                     {"result": "failure"},
                     defer_flush=True,
                 )
-                self.timing_trace_reset()
                 self.alert_and_recover(
                     'An exception was thrown when attempting to send the "init" transition to the artdaq processes; see messages above for more info'
                 )
