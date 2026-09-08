@@ -4,8 +4,11 @@ import os
 import subprocess
 from subprocess import Popen
 import socket
+from base64 import b64encode
 from time import sleep
 from time import time
+from time import strftime, localtime
+from concurrent.futures import ThreadPoolExecutor
 import re
 import sys
 import copy
@@ -158,7 +161,7 @@ def launch_procs_on_host(
     )  # Each command already terminated by ampersand
 
     if not host_is_local(host):
-        launchcmd = "ssh -o BatchMode=yes -f " + host + " '" + launchcmd + "'"
+        launchcmd = "ssh -o BatchMode=yes " + host + " '" + launchcmd + "'"
 
     self.print_log(
         "d",
@@ -192,8 +195,12 @@ def launch_procs_on_host(
         extra_fields={"host": host, "status": status},
     )
 
-    self.print_log("d", "out: %s " % out, executing_commands_debug_level)
-    self.print_log("d", "status: %s " % status, executing_commands_debug_level)
+    # The launch command echoes the node's short hostname; it's recorded here
+    # since it appears in the artdaq logfile names (each thread writes a
+    # distinct key, so no locking is needed)
+    shorthost_match = re.search(r"__SHORTHOST__(\S+?)__", out)
+    if shorthost_match:
+        self.short_hostnames[host] = shorthost_match.group(1)
 
     self.print_log("d", "out: %s " % out, executing_commands_debug_level)
     self.print_log("d", "status: %s " % status, executing_commands_debug_level)
@@ -214,10 +221,14 @@ def launch_procs_on_host(
         self.print_log(
             "i", "\n" + "\n".join(launch_commands_on_host_to_show_user) + "\n"
         )
+        if out.strip():
+            self.print_log(
+                "e",
+                "Output from failed launch on %s:\n%s" % (host, out),
+            )
         self.print_log(
-            "d",
-            "Output from failed command:\n" + out,
-            executing_commands_debug_level,
+            "e",
+            "Output from failed command on %s:\n%s" % (host, out),
         )
         raise Exception(
             "Status error raised attempting to launch processes on %s; scroll up for more detail"
@@ -303,26 +314,20 @@ def launch_procs_base(self):
             % (get_messagefacility_template_filename())
         )
 
-    for host in set([procinfo.host for procinfo in self.procinfos]):
-        if not host_is_local(host):
-            cmd = "scp -p %s %s:%s" % (
-                messagefacility_fhicl_filename,
-                host,
-                messagefacility_fhicl_filename,
-            )
-            status = Popen(
-                cmd,
-                executable="/bin/bash",
-                shell=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            ).wait()
+    # The messagefacility FHiCL is distributed to the remote hosts inside the
+    # per-host launch command below (base64 keeps it quoting-proof), so no
+    # per-host scp round is needed
+    with open(messagefacility_fhicl_filename, "rb") as mf_fcl_file:
+        messagefacility_fhicl_b64 = b64encode(mf_fcl_file.read()).decode()
 
-            if status != 0:
-                raise Exception(
-                    'Status error raised in %s executing "%s"'
-                    % (launch_procs_base.__name__, cmd)
-                )
+    # One timestamp for the whole launch: exported to the artdaq processes as
+    # ARTDAQ_LOG_TIMESTAMP so that every logfile of this DAQ session carries
+    # the same timestamp (see artdaq-core's configureMessageFacility.cc), which
+    # also makes the logfile names predictable without remote discovery
+    self.launch_log_timestamp = strftime(
+        "%Y%m%d%H%M%S", localtime(self.launch_procs_time)
+    )
+    self.short_hostnames = {}
 
     launch_commands_to_run_on_host = {}
     launch_commands_to_run_on_host_background = (
@@ -340,15 +345,23 @@ def launch_procs_base(self):
             procinfo.host = get_short_hostname()
 
         if not procinfo.host in launch_commands_to_run_on_host:
-            self.launch_attempt_files[procinfo.host] = (
-                "%s/pmt/launch_attempt_%s_%s_partition%s_%s"
-                % (
-                    self.log_directory,
-                    procinfo.host,
-                    os.environ["USER"],
-                    os.environ["DAQINTERFACE_PARTITION_NUMBER"],
-                    date_and_time_filename(),
-                )
+            launch_attempt_file = "%s/pmt/launch_attempt_%s_%s_partition%s_%s" % (
+                self.log_directory,
+                procinfo.host,
+                os.environ["USER"],
+                os.environ["DAQINTERFACE_PARTITION_NUMBER"],
+                date_and_time_filename(),
+            )
+            self.launch_attempt_files[procinfo.host] = launch_attempt_file
+
+            # The DAQ setup script creates the scratch-disk log area and the
+            # symlink pointing at it, so it MUST be sourced before any mkdir
+            # touches the log directory (a premature mkdir would plant a real
+            # directory where the symlink belongs). Until the pmt logdir
+            # exists, setup output goes to a /tmp file which is then moved
+            # into place.
+            tmp_launch_attempt_file = "/tmp/%s" % (
+                os.path.basename(launch_attempt_file)
             )
 
             launch_commands_to_run_on_host[procinfo.host] = []
@@ -357,29 +370,56 @@ def launch_procs_base(self):
 
             launch_commands_to_run_on_host[procinfo.host].append("set +C")
             launch_commands_to_run_on_host[procinfo.host] += get_setup_commands(
-                self.spackdir, self.launch_attempt_files[procinfo.host]
+                self.spackdir, tmp_launch_attempt_file
             )
             launch_commands_to_run_on_host[procinfo.host].append(
                 "source %s for_running >> %s 2>&1 "
-                % (self.daq_setup_script, self.launch_attempt_files[procinfo.host])
+                % (self.daq_setup_script, tmp_launch_attempt_file)
             )
+            launch_commands_to_run_on_host[procinfo.host].append(
+                "mkdir -p -m 0775 %s" % (self.log_directory)
+            )
+            for subdir in [
+                "pmt",
+                "boardreader",
+                "eventbuilder",
+                "dispatcher",
+                "datalogger",
+                "routingmanager",
+            ]:
+                launch_commands_to_run_on_host[procinfo.host].append(
+                    "mkdir -p -m 0775 %s/%s" % (self.log_directory, subdir)
+                )
+            launch_commands_to_run_on_host[procinfo.host].append(
+                "mv %s %s" % (tmp_launch_attempt_file, launch_attempt_file)
+            )
+            write_mf_fcl_cmd = "echo %s | base64 -d > %s" % (
+                messagefacility_fhicl_b64,
+                messagefacility_fhicl_filename,
+            )
+            launch_commands_to_run_on_host[procinfo.host].append(write_mf_fcl_cmd)
             launch_commands_to_run_on_host[procinfo.host].append(
                 "export ARTDAQ_LOG_ROOT=%s" % (self.log_directory)
             )
             launch_commands_to_run_on_host[procinfo.host].append(
                 "export ARTDAQ_LOG_FHICL=%s" % (messagefacility_fhicl_filename)
             )
+            launch_commands_to_run_on_host[procinfo.host].append(
+                "export ARTDAQ_LOG_TIMESTAMP=%s" % (self.launch_log_timestamp)
+            )
+            launch_commands_to_run_on_host[procinfo.host].append(
+                'echo __SHORTHOST__$(hostname -s)__'
+            )
 
             launch_commands_to_run_on_host[procinfo.host].append(
-                "which boardreader >> %s 2>&1 "
-                % (self.launch_attempt_files[procinfo.host])
+                "which boardreader >> %s 2>&1 " % (launch_attempt_file)
             )  # Assume if this works, eventbuilder, etc. are also there
             launch_commands_to_run_on_host[procinfo.host].append(
                 "%s/bin/mopup_shmem.sh %s --force >> %s 2>&1"
                 % (
                     os.environ["ARTDAQ_DAQINTERFACE_DIR"],
                     os.environ["DAQINTERFACE_PARTITION_NUMBER"],
-                    self.launch_attempt_files[procinfo.host],
+                    launch_attempt_file,
                 )
             )
             # launch_commands_to_run_on_host[ procinfo.host ].append("setup valgrind v3_13_0")
@@ -387,8 +427,15 @@ def launch_procs_base(self):
             # launch_commands_to_run_on_host[ procinfo.host ].append("export ASAN_OPTIONS=alloc_dealloc_mismatch=0")
 
             for command in launch_commands_to_run_on_host[procinfo.host]:
+                if command == write_mf_fcl_cmd:
+                    launch_commands_on_host_to_show_user[procinfo.host].append(
+                        "# (write messagefacility fhicl to %s, contents elided)"
+                        % (messagefacility_fhicl_filename)
+                    )
+                    continue
                 res = re.search(
-                    r"^([^>]*).*%s.*$" % (self.launch_attempt_files[procinfo.host]),
+                    r"^([^>]*).*(%s|%s).*$"
+                    % (launch_attempt_file, tmp_launch_attempt_file),
                     command,
                 )
                 if not res:
@@ -611,8 +658,10 @@ def softlink_process_manager_logfile(self, host):
 
 def softlink_process_manager_logfiles_base(self):
 
-    for host in set([procinfo.host for procinfo in self.procinfos]):
-        softlink_process_manager_logfile(self, host)
+    hosts = set([procinfo.host for procinfo in self.procinfos])
+    with ThreadPoolExecutor(max_workers=min(10, len(hosts))) as executor:
+        for host in hosts:
+            executor.submit(softlink_process_manager_logfile, self, host)
     return
 
 
@@ -629,6 +678,14 @@ def reset_process_manager_variables_base(self):
 
 
 def get_process_manager_log_filename(self, host):
+    # The launch-attempt filename was chosen by DAQInterface itself during
+    # launch_procs, so no remote lookup is needed
+    if hasattr(self, "launch_attempt_files") and host in self.launch_attempt_files:
+        return self.launch_attempt_files[host]
+
+    # Fallback (e.g. during recovery when this DAQInterface instance didn't
+    # perform the launch): discover the most recent launch-attempt file on the
+    # host itself
     get_log_filename_cmd = (
         "ls -tr1 %s/pmt/launch_attempt_%s_%s_partition%s* | tail -1"
         % (
