@@ -757,9 +757,7 @@ class DAQInterface(Component):
         self._timing_trace_entries = []
         self._timing_trace_depth = 0
 
-    def timing_trace_end(
-        self, stage, start_time, extra_fields=None, defer_flush=False
-    ):
+    def timing_trace_end(self, stage, start_time, extra_fields=None, defer_flush=False):
         self.timing_trace(
             "end", stage, elapsed_s=(time() - start_time), extra_fields=extra_fields
         )
@@ -823,9 +821,7 @@ class DAQInterface(Component):
                     if i not in assigned and e[0].startswith(prefix)
                 ]
                 assigned.update(
-                    i
-                    for i, e in enumerate(entries)
-                    if e[0].startswith(prefix)
+                    i for i, e in enumerate(entries) if e[0].startswith(prefix)
                 )
 
             if not group_entries:
@@ -2067,10 +2063,10 @@ class DAQInterface(Component):
                         procinfo.port,
                     )
                     # Replaced with fllowing find, because ls can run into E2BIG (too many files)
-                    #cmds.append(
+                    # cmds.append(
                     #    "filename_%s=$( ls -tr1 %s/%s-$short_hostname-%s*.log | tail -1 )"
                     #    % (i_p, output_logdir, expected_label, procinfo.port)
-                    #)
+                    # )
                     cmds.append(
                         "filename_%s=$( find %s -maxdepth 1 -name \"%s-$short_hostname-%s*.log\" -printf '%%T@ %%p\\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2- )"
                         % (i_p, output_logdir, expected_label, procinfo.port)
@@ -2079,10 +2075,18 @@ class DAQInterface(Component):
                         "if [[ -z $filename_%s ]]; then echo No logfile found for process %s on %s after looking in %s >&2 ; exit 1; fi"
                         % (i_p, procinfo.label, procinfo.host, output_logdir)
                     )
-                    cmds.append("timestamp_%s=$( stat -c %%Y $filename_%s )" % (i_p, i_p))
+                    cmds.append(
+                        "timestamp_%s=$( stat -c %%Y $filename_%s )" % (i_p, i_p)
+                    )
                     cmds.append(
                         'if (( $( echo "$timestamp_%s < %f" | bc -l ) )); then echo Most recent logfile found in expected output directory for process %s on %s, $filename_%s, is too old to be the logfile for the process in this run >&2 ; exit 1; fi'
-                        % (i_p, self.launch_procs_time, procinfo.label, procinfo.host, i_p)
+                        % (
+                            i_p,
+                            self.launch_procs_time,
+                            procinfo.label,
+                            procinfo.host,
+                            i_p,
+                        )
                     )
                     cmds.append("echo __DAQLOG__%s__ $filename_%s" % (i_p, i_p))
                     proctypes.append(procinfo.name)
@@ -2158,7 +2162,12 @@ class DAQInterface(Component):
                             )  # Give the logfiles a bit of time to appear before the next check
 
                 return [
-                    (proctypes[i_p], proclabels[i_p], full_hostname, parsed_logfiles[i_p])
+                    (
+                        proctypes[i_p],
+                        proclabels[i_p],
+                        full_hostname,
+                        parsed_logfiles[i_p],
+                    )
                     for i_p in range(len(proctypes))
                 ]
 
@@ -3643,7 +3652,9 @@ class DAQInterface(Component):
                         )
                         return
 
-            xmlrpc_clients_start = self.timing_trace_start("do_boot_create_xmlrpc_clients")
+            xmlrpc_clients_start = self.timing_trace_start(
+                "do_boot_create_xmlrpc_clients"
+            )
 
             for procinfo in self.procinfos:
 
@@ -3785,7 +3796,9 @@ class DAQInterface(Component):
             if not hasattr(self, "subconfigs_for_run") or not self.subconfigs_for_run:
                 self.subconfigs_for_run = ["ots_config"]
 
-            self.print_log("i", "\n[config-prep] Obtaining FHiCL documents...", 1, False)
+            self.print_log(
+                "i", "\n[config-prep] Obtaining FHiCL documents...", 1, False
+            )
 
             tmpdir_for_fhicl, self.fhicl_file_path = self.get_config_info()
             assert "/tmp" == tmpdir_for_fhicl[:4]
@@ -3874,7 +3887,10 @@ class DAQInterface(Component):
 
         # If _do_config_prepare ran in a background thread during boot, join
         # it and skip straight to the init transition
-        if hasattr(self, "_config_prep_thread") and self._config_prep_thread is not None:
+        if (
+            hasattr(self, "_config_prep_thread")
+            and self._config_prep_thread is not None
+        ):
             self.print_log(
                 "i",
                 "Waiting for config prep thread (started during boot)...",
@@ -3897,8 +3913,7 @@ class DAQInterface(Component):
 
                 for procinfo in self.procinfos:
                     assert (
-                        not procinfo.fhicl is None
-                        and not procinfo.fhicl_used is None
+                        not procinfo.fhicl is None and not procinfo.fhicl_used is None
                     )
 
                 # Set up and start run record save in background
@@ -3906,14 +3921,9 @@ class DAQInterface(Component):
                     os.environ["USER"],
                     os.environ["DAQINTERFACE_PARTITION_NUMBER"],
                 )
-                self.semipermanent_run_record = (
-                    "/tmp/run_record_attempted_%s/%s"
-                    % (
-                        os.environ["USER"],
-                        datetime.datetime.now().strftime(
-                            "%a_%b_%d_%H:%M:%S.%f"
-                        ),
-                    )
+                self.semipermanent_run_record = "/tmp/run_record_attempted_%s/%s" % (
+                    os.environ["USER"],
+                    datetime.datetime.now().strftime("%a_%b_%d_%H:%M:%S.%f"),
                 )
                 if os.path.exists(self.tmp_run_record):
                     shutil.rmtree(self.tmp_run_record)
@@ -3993,9 +4003,7 @@ class DAQInterface(Component):
                         )
 
                     for filestub in ["metadata", "boot"]:
-                        with open(
-                            "%s/%s.txt" % (self.tmp_run_record, filestub)
-                        ) as inf:
+                        with open("%s/%s.txt" % (self.tmp_run_record, filestub)) as inf:
                             contents = inf.read()
                             contents = re.sub("'", '"', contents)
                             contents = re.sub('"', '"', contents)
@@ -4006,9 +4014,7 @@ class DAQInterface(Component):
                     self.archive_documents(labeled_fhicl_documents)
 
                     endtime = time()
-                    self.print_log(
-                        "i", "done (%.1f seconds)." % (endtime - starttime)
-                    )
+                    self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
                     self.timing_trace_end(
                         "do_config_archive_documents",
                         archive_start,
@@ -4593,9 +4599,7 @@ class DAQInterface(Component):
             self.timing_trace_end(
                 "do_stop_put_config_info", put_config_info_start, {"result": "failure"}
             )
-            self.timing_trace_end(
-                "do_stop_total", do_stop_start, {"result": "failure"}
-            )
+            self.timing_trace_end("do_stop_total", do_stop_start, {"result": "failure"})
             self.alert_and_recover(
                 "An exception was thrown when trying to save configuration info; see traceback above for more info"
             )

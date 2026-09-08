@@ -408,7 +408,7 @@ def launch_procs_base(self):
                 "export ARTDAQ_LOG_TIMESTAMP=%s" % (self.launch_log_timestamp)
             )
             launch_commands_to_run_on_host[procinfo.host].append(
-                'echo __SHORTHOST__$(hostname -s)__'
+                "echo __SHORTHOST__$(hostname -s)__"
             )
 
             launch_commands_to_run_on_host[procinfo.host].append(
