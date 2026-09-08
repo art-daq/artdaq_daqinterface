@@ -739,9 +739,7 @@ class DAQInterface(Component):
         self._timing_trace_entries = []
         self._timing_trace_depth = 0
 
-    def timing_trace_end(
-        self, stage, start_time, extra_fields=None, defer_flush=False
-    ):
+    def timing_trace_end(self, stage, start_time, extra_fields=None, defer_flush=False):
         self.timing_trace(
             "end", stage, elapsed_s=(time() - start_time), extra_fields=extra_fields
         )
@@ -805,9 +803,7 @@ class DAQInterface(Component):
                     if i not in assigned and e[0].startswith(prefix)
                 ]
                 assigned.update(
-                    i
-                    for i, e in enumerate(entries)
-                    if e[0].startswith(prefix)
+                    i for i, e in enumerate(entries) if e[0].startswith(prefix)
                 )
 
             if not group_entries:
@@ -1983,10 +1979,10 @@ class DAQInterface(Component):
                     procinfo.port,
                 )
                 # Replaced with fllowing find, because ls can run into E2BIG (too many files)
-                #cmds.append(
+                # cmds.append(
                 #    "filename_%s=$( ls -tr1 %s/%s-$short_hostname-%s*.log | tail -1 )"
                 #    % (i_p, output_logdir, expected_label, procinfo.port)
-                #)
+                # )
                 cmds.append(
                     "filename_%s=$( find %s -maxdepth 1 -name \"%s-$short_hostname-%s*.log\" -printf '%%T@ %%p\\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2- )"
                     % (i_p, output_logdir, expected_label, procinfo.port)
@@ -3709,7 +3705,9 @@ class DAQInterface(Component):
                         )
                         return
 
-            xmlrpc_clients_start = self.timing_trace_start("do_boot_create_xmlrpc_clients")
+            xmlrpc_clients_start = self.timing_trace_start(
+                "do_boot_create_xmlrpc_clients"
+            )
 
             for procinfo in self.procinfos:
 
@@ -4360,9 +4358,7 @@ class DAQInterface(Component):
             self.timing_trace_end(
                 "do_stop_put_config_info", put_config_info_start, {"result": "failure"}
             )
-            self.timing_trace_end(
-                "do_stop_total", do_stop_start, {"result": "failure"}
-            )
+            self.timing_trace_end("do_stop_total", do_stop_start, {"result": "failure"})
             self.alert_and_recover(
                 "An exception was thrown when trying to save configuration info; see traceback above for more info"
             )
