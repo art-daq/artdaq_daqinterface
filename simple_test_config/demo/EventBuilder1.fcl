@@ -3,7 +3,11 @@ services: {
   ArtdaqSharedMemoryServiceInterface: {
    service_provider: ArtdaqSharedMemoryService
   }
-  ArtdaqFragmentNamingServiceInterface: { service_provider: ArtdaqFragmentNamingService helper_plugin: "ArtdaqDemo" }
+  ArtdaqFragmentNamingServiceInterface: {
+    service_provider: ArtdaqFragmentNamingService
+    helper_plugin: "ArtdaqDemo"
+    enabled_fragment_types: [ "TOY1", "TOY2" ]
+  }
 }
 
 daq: {
