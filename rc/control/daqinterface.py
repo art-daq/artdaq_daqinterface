@@ -3815,7 +3815,8 @@ class DAQInterface(Component):
                 for dirname, dummy, filenames in os.walk(tmpdir_for_fhicl):
                     for filename in filenames:
                         if filename in matching_filenames:
-                            fhicl = open("%s/%s" % (dirname, filename)).read()
+                            with open("%s/%s" % (dirname, filename)) as f:
+                                fhicl = f.read()
                             self.procinfos[i_proc].fhicl = fhicl
                             self.procinfos[i_proc].fhicl_used = fhicl
                             found_fhicl = True
@@ -3831,10 +3832,7 @@ class DAQInterface(Component):
                 "i", "[config-prep] Reformatting the FHiCL documents...", 1, False
             )
 
-            try:
-                self.create_setup_fhiclcpp_if_needed()
-            except:
-                raise
+            self.create_setup_fhiclcpp_if_needed()
 
             reformatted_fhicl_documents = reformat_fhicl_documents(
                 os.environ["DAQINTERFACE_SETUP_FHICLCPP"], self.procinfos
