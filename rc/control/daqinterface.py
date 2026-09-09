@@ -3098,10 +3098,7 @@ class DAQInterface(Component):
             self.boot_filename = boot_filename
         else:
 
-            try:
-                self.create_setup_fhiclcpp_if_needed()
-            except:
-                raise
+            self.create_setup_fhiclcpp_if_needed()
 
             self.boot_filename = "/tmp/boot_%s_partition%s.txt" % (
                 os.environ["USER"],
@@ -4010,10 +4007,7 @@ class DAQInterface(Component):
         self.print_log("i", "Reformatting the FHiCL documents...", 1, False)
         reformat_start = self.timing_trace_start("do_config_reformat_fhicl")
 
-        try:
-            self.create_setup_fhiclcpp_if_needed()
-        except:
-            raise
+        self.create_setup_fhiclcpp_if_needed()
 
         reformatted_fhicl_documents = reformat_fhicl_documents(
             os.environ["DAQINTERFACE_SETUP_FHICLCPP"], self.procinfos
