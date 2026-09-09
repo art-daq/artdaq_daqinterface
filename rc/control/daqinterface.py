@@ -13,13 +13,14 @@ import datetime
 import subprocess
 from subprocess import Popen
 from time import sleep, time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import traceback
 import re
 import string
 import shlex
 import glob
 import stat
-from threading import RLock
+from threading import RLock, Thread
 import shutil
 from shutil import copyfile
 import random
@@ -476,6 +477,7 @@ class DAQInterface(Component):
 
         self.in_recovery = False
         self.heartbeat_failure = False
+        self.last_critical_error = ""
         self.manage_processes = True
         self.disable_recovery = False
         self.bootfile_fhicl_overwrites = {}
@@ -968,6 +970,8 @@ class DAQInterface(Component):
             thread.join()
 
     def alert_and_recover(self, extrainfo=None):
+
+        self.last_critical_error = extrainfo if extrainfo else ""
 
         self.timing_trace_reset()
         self.do_recover()
@@ -1960,6 +1964,20 @@ class DAQInterface(Component):
                         )
                     )
 
+    def append_log_filename(self, proctype, full_hostname, logfile):
+        if "BoardReader" in proctype:
+            self.boardreader_log_filenames.append("%s:%s" % (full_hostname, logfile))
+        elif "EventBuilder" in proctype:
+            self.eventbuilder_log_filenames.append("%s:%s" % (full_hostname, logfile))
+        elif "DataLogger" in proctype:
+            self.datalogger_log_filenames.append("%s:%s" % (full_hostname, logfile))
+        elif "Dispatcher" in proctype:
+            self.dispatcher_log_filenames.append("%s:%s" % (full_hostname, logfile))
+        elif "RoutingManager" in proctype:
+            self.routingmanager_log_filenames.append("%s:%s" % (full_hostname, logfile))
+        else:
+            assert False, "Unknown process type found in procinfos list"
+
     def get_artdaq_log_filenames(self):
 
         self.boardreader_log_filenames = []
@@ -1968,173 +1986,207 @@ class DAQInterface(Component):
         self.dispatcher_log_filenames = []
         self.routingmanager_log_filenames = []
 
-        for host in set([procinfo.host for procinfo in self.procinfos]):
+        # When ARTDAQ_LOG_TIMESTAMP was passed to the processes at launch (and
+        # artdaq-core on the nodes honors it, hence the opt-in variable), the
+        # logfile names are deterministic - label-shorthost-port-timestamp.log
+        # in a label-shorthost-port subdirectory - and can be constructed
+        # right here with no remote discovery at all
+        if (
+            os.environ.get("DAQINTERFACE_DETERMINISTIC_LOGNAMES", "0") == "1"
+            and getattr(self, "launch_log_timestamp", None) is not None
+            and all(
+                procinfo.host in getattr(self, "short_hostnames", {})
+                for procinfo in self.procinfos
+            )
+        ):
+            self.log_filename_mode = "deterministic"
+            for procinfo in self.procinfos:
+                if procinfo.host != "localhost":
+                    full_hostname = procinfo.host
+                else:
+                    full_hostname = os.environ["HOSTNAME"]
 
-            if host != "localhost":
-                full_hostname = host
-            else:
-                full_hostname = os.environ["HOSTNAME"]
-
-            procinfos_for_host = [
-                procinfo for procinfo in self.procinfos if procinfo.host == host
-            ]
-            cmds = []
-            proctypes = []
-            proclabels = []
-
-            cmds.append('short_hostname=$( hostname | sed -r "s/([^.]+).*/\\1/" )')
-            for i_p, procinfo in enumerate(procinfos_for_host):
                 expected_label = procinfo.label + (
                     ""
                     if self.partition_label_format is None
                     else self.partition_label_format % (self.partition_number)
                 )
-                output_logdir = "%s/%s-$short_hostname-%s" % (
-                    self.log_directory,
+                progname = "%s-%s-%s" % (
                     expected_label,
+                    self.short_hostnames[procinfo.host],
                     procinfo.port,
                 )
-                # Replaced with fllowing find, because ls can run into E2BIG (too many files)
-                # cmds.append(
-                #    "filename_%s=$( ls -tr1 %s/%s-$short_hostname-%s*.log | tail -1 )"
-                #    % (i_p, output_logdir, expected_label, procinfo.port)
-                # )
-                cmds.append(
-                    "filename_%s=$( find %s -maxdepth 1 -name \"%s-$short_hostname-%s*.log\" -printf '%%T@ %%p\\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2- )"
-                    % (i_p, output_logdir, expected_label, procinfo.port)
+                logfile = "%s/%s/%s-%s.log" % (
+                    self.log_directory,
+                    progname,
+                    progname,
+                    self.launch_log_timestamp,
                 )
-                cmds.append(
-                    "if [[ -z $filename_%s ]]; then echo No logfile found for process %s on %s after looking in %s >&2 ; exit 1; fi"
-                    % (i_p, procinfo.label, procinfo.host, output_logdir)
-                )
-                cmds.append("timestamp_%s=$( stat -c %%Y $filename_%s )" % (i_p, i_p))
-                cmds.append(
-                    'if (( $( echo "$timestamp_%s < %f" | bc -l ) )); then echo Most recent logfile found in expected output directory for process %s on %s, $filename_%s, is too old to be the logfile for the process in this run >&2 ; exit 1; fi'
-                    % (i_p, self.launch_procs_time, procinfo.label, procinfo.host, i_p)
-                )
-                cmds.append("echo __DAQLOG__%s__ $filename_%s" % (i_p, i_p))
-                proctypes.append(procinfo.name)
-                proclabels.append(procinfo.label)
-
-            cmd = "; ".join(cmds)
-
-            num_logfile_checks = 0
-            max_num_logfile_checks = 5
-
-            while True:
-
-                num_logfile_checks += 1
-
-                if host_is_local(host):
-                    proc = subprocess.run(
-                        ["/bin/bash", "-lc", cmd],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        encoding="utf-8",
-                    )
-                else:
-                    proc = subprocess.run(
-                        [
-                            "ssh",
-                            "-o",
-                            "BatchMode=yes",
-                            host,
-                            "/bin/bash",
-                            "-c",
-                            shlex.quote(cmd),
-                        ],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        encoding="utf-8",
-                    )
-
-                out, err = proc.stdout, proc.stderr
-
-                parsed_logfiles = []
-                for line in out.splitlines():
-                    line = line.strip()
-                    match = re.match(r"^__DAQLOG__\d+__\s+(.+)$", line)
-                    if match:
-                        parsed_logfiles.append(match.group(1).strip())
-
-                if proc.returncode == 0 and len(parsed_logfiles) == len(proctypes):
-                    break  # Success
-                else:
-                    if num_logfile_checks == max_num_logfile_checks:
-                        self.print_log(
-                            "e",
-                            "\nProblem associating logfiles with the artdaq processes. Output is as follows:",
-                        )
-                        self.print_log(
-                            "e",
-                            "\nSTDOUT:\n======================================================================\n%s\n======================================================================\n"
-                            % (out),
-                        )
-                        self.print_log(
-                            "e",
-                            "STDERR:\n======================================================================\n%s\n======================================================================\n"
-                            % (err),
-                        )
-                        raise Exception(
-                            make_paragraph(
-                                "Error: there was a problem identifying the logfiles for at least some of the artdaq processes. This may be the result of you not having write access to the directories where the logfiles are meant to be written. Please scroll up to see further output."
-                            )
-                        )
-                    else:
-                        sleep(
-                            2
-                        )  # Give the logfiles a bit of time to appear before the next check
-
-            for i_p, proctype in enumerate(proctypes):
-                logfile = parsed_logfiles[i_p]
                 self.print_log(
                     "d",
-                    "Logfile association: host=%s component=%s label=%s logfile=%s"
-                    % (full_hostname, proctype, proclabels[i_p], logfile),
+                    "Logfile association (deterministic): host=%s component=%s label=%s logfile=%s"
+                    % (full_hostname, procinfo.name, procinfo.label, logfile),
                     2,
                 )
-                if "BoardReader" in proctype:
-                    self.boardreader_log_filenames.append(
-                        "%s:%s"
-                        % (
-                            full_hostname,
-                            logfile,
-                        )
-                    )
-                elif "EventBuilder" in proctype:
-                    self.eventbuilder_log_filenames.append(
-                        "%s:%s"
-                        % (
-                            full_hostname,
-                            logfile,
-                        )
-                    )
-                elif "DataLogger" in proctype:
-                    self.datalogger_log_filenames.append(
-                        "%s:%s"
-                        % (
-                            full_hostname,
-                            logfile,
-                        )
-                    )
-                elif "Dispatcher" in proctype:
-                    self.dispatcher_log_filenames.append(
-                        "%s:%s"
-                        % (
-                            full_hostname,
-                            logfile,
-                        )
-                    )
-                elif "RoutingManager" in proctype:
-                    self.routingmanager_log_filenames.append(
-                        "%s:%s"
-                        % (
-                            full_hostname,
-                            logfile,
-                        )
-                    )
+                self.append_log_filename(procinfo.name, full_hostname, logfile)
+
+        else:
+            # Discover the logfiles on the nodes themselves; the hosts are
+            # independent of one another, so they're queried in parallel
+            # (bounded, so as not to trip sshd's MaxStartups throttling)
+            self.log_filename_mode = "discovery"
+
+            def logfiles_for_host(host):
+
+                if host != "localhost":
+                    full_hostname = host
                 else:
-                    assert False, "Unknown process type found in procinfos list"
+                    full_hostname = os.environ["HOSTNAME"]
+
+                procinfos_for_host = [
+                    procinfo for procinfo in self.procinfos if procinfo.host == host
+                ]
+                cmds = []
+                proctypes = []
+                proclabels = []
+
+                cmds.append('short_hostname=$( hostname | sed -r "s/([^.]+).*/\\1/" )')
+                for i_p, procinfo in enumerate(procinfos_for_host):
+                    expected_label = procinfo.label + (
+                        ""
+                        if self.partition_label_format is None
+                        else self.partition_label_format % (self.partition_number)
+                    )
+                    output_logdir = "%s/%s-$short_hostname-%s" % (
+                        self.log_directory,
+                        expected_label,
+                        procinfo.port,
+                    )
+                    # Replaced with fllowing find, because ls can run into E2BIG (too many files)
+                    # cmds.append(
+                    #    "filename_%s=$( ls -tr1 %s/%s-$short_hostname-%s*.log | tail -1 )"
+                    #    % (i_p, output_logdir, expected_label, procinfo.port)
+                    # )
+                    cmds.append(
+                        "filename_%s=$( find %s -maxdepth 1 -name \"%s-$short_hostname-%s*.log\" -printf '%%T@ %%p\\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2- )"
+                        % (i_p, output_logdir, expected_label, procinfo.port)
+                    )
+                    cmds.append(
+                        "if [[ -z $filename_%s ]]; then echo No logfile found for process %s on %s after looking in %s >&2 ; exit 1; fi"
+                        % (i_p, procinfo.label, procinfo.host, output_logdir)
+                    )
+                    cmds.append(
+                        "timestamp_%s=$( stat -c %%Y $filename_%s )" % (i_p, i_p)
+                    )
+                    cmds.append(
+                        'if (( $( echo "$timestamp_%s < %f" | bc -l ) )); then echo Most recent logfile found in expected output directory for process %s on %s, $filename_%s, is too old to be the logfile for the process in this run >&2 ; exit 1; fi'
+                        % (
+                            i_p,
+                            self.launch_procs_time,
+                            procinfo.label,
+                            procinfo.host,
+                            i_p,
+                        )
+                    )
+                    cmds.append("echo __DAQLOG__%s__ $filename_%s" % (i_p, i_p))
+                    proctypes.append(procinfo.name)
+                    proclabels.append(procinfo.label)
+
+                cmd = "; ".join(cmds)
+
+                num_logfile_checks = 0
+                max_num_logfile_checks = 5
+
+                while True:
+
+                    num_logfile_checks += 1
+
+                    if host_is_local(host):
+                        proc = subprocess.run(
+                            ["/bin/bash", "-lc", cmd],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            encoding="utf-8",
+                        )
+                    else:
+                        proc = subprocess.run(
+                            [
+                                "ssh",
+                                "-o",
+                                "BatchMode=yes",
+                                host,
+                                "/bin/bash",
+                                "-c",
+                                shlex.quote(cmd),
+                            ],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            encoding="utf-8",
+                        )
+
+                    out, err = proc.stdout, proc.stderr
+
+                    parsed_logfiles = []
+                    for line in out.splitlines():
+                        line = line.strip()
+                        match = re.match(r"^__DAQLOG__\d+__\s+(.+)$", line)
+                        if match:
+                            parsed_logfiles.append(match.group(1).strip())
+
+                    if proc.returncode == 0 and len(parsed_logfiles) == len(proctypes):
+                        break  # Success
+                    else:
+                        if num_logfile_checks == max_num_logfile_checks:
+                            self.print_log(
+                                "e",
+                                "\nProblem associating logfiles with the artdaq processes. Output is as follows:",
+                            )
+                            self.print_log(
+                                "e",
+                                "\nSTDOUT:\n======================================================================\n%s\n======================================================================\n"
+                                % (out),
+                            )
+                            self.print_log(
+                                "e",
+                                "STDERR:\n======================================================================\n%s\n======================================================================\n"
+                                % (err),
+                            )
+                            raise Exception(
+                                make_paragraph(
+                                    "Error: there was a problem identifying the logfiles for at least some of the artdaq processes. This may be the result of you not having write access to the directories where the logfiles are meant to be written. Please scroll up to see further output."
+                                )
+                            )
+                        else:
+                            sleep(
+                                2
+                            )  # Give the logfiles a bit of time to appear before the next check
+
+                return [
+                    (
+                        proctypes[i_p],
+                        proclabels[i_p],
+                        full_hostname,
+                        parsed_logfiles[i_p],
+                    )
+                    for i_p in range(len(proctypes))
+                ]
+
+            hosts = set([procinfo.host for procinfo in self.procinfos])
+            with ThreadPoolExecutor(max_workers=min(10, len(hosts))) as executor:
+                future_to_host = {
+                    executor.submit(logfiles_for_host, host): host for host in hosts
+                }
+                # Results are appended in the main thread; any exception from a
+                # host is re-raised by future.result()
+                for future in as_completed(future_to_host):
+                    for proctype, proclabel, full_hostname, logfile in future.result():
+                        self.print_log(
+                            "d",
+                            "Logfile association: host=%s component=%s label=%s logfile=%s"
+                            % (full_hostname, proctype, proclabel, logfile),
+                            2,
+                        )
+                        self.append_log_filename(proctype, full_hostname, logfile)
 
         self.print_log("d", "\n", 2)
         for procinfo in self.procinfos:
@@ -2206,7 +2258,10 @@ class DAQInterface(Component):
                     "%-20s %s:%s" % (label + ":", host, softlink)
                 )
 
-        for host in softlink_commands_to_run_on_host:
+        # One ssh per host with all its link commands batched together, hosts
+        # in parallel (bounded, so as not to trip sshd's MaxStartups throttling)
+
+        def softlink_on_host(host):
             link_logfile_cmd = "; ".join(softlink_commands_to_run_on_host[host])
 
             if not host_is_local(host):
@@ -2232,6 +2287,13 @@ class DAQInterface(Component):
                     "WARNING: failure in performing user-friendly softlinks to logfiles on host %s:\n%s"
                     % (host, proc.stdout.readlines()),
                 )
+
+        if softlink_commands_to_run_on_host:
+            with ThreadPoolExecutor(
+                max_workers=min(10, len(softlink_commands_to_run_on_host))
+            ) as executor:
+                for host in softlink_commands_to_run_on_host:
+                    executor.submit(softlink_on_host, host)
 
     def fill_package_versions(self, packages):
 
@@ -2446,6 +2508,7 @@ class DAQInterface(Component):
 
     def do_command(self, command):
 
+        self.transition_process_errors = []
         do_command_start = self.timing_trace_start("do_command", {"command": command})
 
         if command != "Start" and command != "Init" and command != "Stop":
@@ -3345,158 +3408,12 @@ class DAQInterface(Component):
         # benefit here seems to outweight the cost.
 
         if self.manage_processes:
-            hosts = [procinfo.host for procinfo in self.procinfos]
-            random_host = random.choice(hosts)
-
-            ssh_timeout_in_seconds = 30
-            starttime = time()
-            random_node_source_debug_level = 3
-
-            self.print_log(
-                "i",
-                "\nOn randomly selected node (%s), will confirm that the DAQ setup script \n%s\ndoesn't return a nonzero value when sourced..."
-                % (random_host, self.daq_setup_script),
-                1,
-                False,
-            )
-            # self.print_log("d", "\n", random_node_source_debug_level)
-
-            cmd = "%s ; . %s for_running" % (
-                ";".join(get_setup_commands(self.spackdir)),
-                self.daq_setup_script,
-            )
-
-            if not host_is_local(random_host):
-                cmd = "timeout %d ssh -o BatchMode=yes %s '%s'" % (
-                    ssh_timeout_in_seconds,
-                    random_host,
-                    cmd,
-                )
-
-            out = Popen(
-                cmd,
-                executable="/bin/bash",
-                shell=True,
-                stderr=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                encoding="utf-8",
-            )
-
-            out_comm = out.communicate()
-
-            if out_comm[0] is not None:
-                out_stdout = out_comm[0]
-                self.print_log(
-                    "d",
-                    "\nSTDOUT: \n%s" % (out_stdout),
-                    random_node_source_debug_level,
-                )
-            if out_comm[1] is not None:
-                out_stderr = out_comm[1]
-                self.print_log(
-                    "d",
-                    "STDERR: \n%s" % (out_stderr),
-                    random_node_source_debug_level,
-                )
-            status = out.returncode
-
-            if status != 0:
-                errmsg = (
-                    '\nNonzero value (%d) returned in attempt to source script %s on host "%s"'
-                    % (status, self.daq_setup_script, random_host)
-                )
-                if status != 124:
-                    errmsg = "%s." % (errmsg)
-                else:
-                    errmsg = (
-                        "%s; returned value suggests that the ssh call to %s timed out. Perhaps a lack of public/private ssh keys resulted in ssh asking for a password?"
-                        % (errmsg, random_host)
-                    )
-                self.print_log("e", make_paragraph(errmsg))
-                raise Exception(
-                    "Problem source-ing %s on %s" % (self.daq_setup_script, random_host)
-                )
-
-            endtime = time()
-            self.timing_trace(
-                "end", "do_boot_source_setup_check", elapsed_s=(endtime - starttime)
-            )
-            self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
-
-            # Ensure the needed log directories are in place
-
-            create_log_dirs_start = time()
-            logdir_commands_to_run_on_host = []
-            permissions = "0775"
-            logdir_commands_to_run_on_host.append(
-                "mkdir -p -m %s %s" % (permissions, self.log_directory)
-            )
-
-            for subdir in [
-                "pmt",
-                "boardreader",
-                "eventbuilder",
-                "dispatcher",
-                "datalogger",
-                "routingmanager",
-            ]:
-                logdir_commands_to_run_on_host.append(
-                    "mkdir -p -m %s %s/%s" % (permissions, self.log_directory, subdir)
-                )
-
-            for host in set([procinfo.host for procinfo in self.procinfos]):
-                logdircmd = construct_checked_command(logdir_commands_to_run_on_host)
-
-                if not host_is_local(host):
-                    logdircmd = "timeout %d ssh -o BatchMode=yes -f %s '%s'" % (
-                        ssh_timeout_in_seconds,
-                        host,
-                        logdircmd,
-                    )
-
-                proc = Popen(
-                    logdircmd,
-                    executable="/bin/bash",
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    encoding="utf-8",
-                )
-                out, err = proc.communicate()
-                status = proc.returncode
-
-                if status != 0:
-
-                    self.print_log(
-                        "e",
-                        "\nNonzero return value (%d) resulted when trying to run the following on host %s:\n%s\n"
-                        % (status, host, "\n".join(logdir_commands_to_run_on_host)),
-                    )
-                    self.print_log(
-                        "e",
-                        "STDOUT output: \n%s" % (out),
-                    )
-                    self.print_log(
-                        "e",
-                        "STDERR output: \n%s" % (err),
-                    )
-                    self.print_log(
-                        "e",
-                        make_paragraph(
-                            "Returned value of %d suggests that the ssh call to %s timed out. Perhaps a lack of public/private ssh keys resulted in ssh asking for a password?"
-                            % (status, host)
-                        ),
-                    )
-                    raise Exception(
-                        "Problem running mkdir -p for the needed logfile directories on %s; this is likely due either to an ssh issue or a directory permissions issue"
-                        % (host)
-                    )
-
-            self.timing_trace(
-                "end",
-                "do_boot_create_log_dirs",
-                elapsed_s=(time() - create_log_dirs_start),
-            )
+            # NOTE: the DAQ setup script sanity check, the log directory
+            # creation, and the messagefacility fhicl distribution which used
+            # to happen here as separate sequential per-host ssh rounds are
+            # now folded into the single per-host launch command (see
+            # launch_procs_base in manage_processes_direct.py), which runs
+            # with one ssh connection per host, hosts in parallel
 
             prepare_fhicl_start = time()
             self.init_process_requirements()
@@ -3587,16 +3504,30 @@ class DAQInterface(Component):
                 self.timing_trace_end(
                     "do_boot_launch_procs", launch_procs_start, {"result": "failure"}
                 )
-                self.print_log("e", traceback.format_exc())
+                launch_error = traceback.format_exc()
+                self.print_log("e", launch_error)
 
                 self.alert_and_recover(
-                    "An exception was thrown in launch_procs(), see traceback above for more info"
+                    "An exception was thrown in launch_procs(): " + launch_error
                 )
                 return
 
             self.timing_trace_end(
                 "do_boot_launch_procs", launch_procs_start, {"result": "success"}
             )
+
+            # Start config preparation in a background thread: the bookkeeping
+            # (resolve + reformat + bookkeeping + run-record, ~7.5s of Python
+            # string work) has no dependency on the processes being up, so it
+            # runs concurrently with wait_for_processes (~7s of I/O wait that
+            # releases the GIL). do_config will join this thread and skip the
+            # prep steps if they completed successfully.
+            self._config_prepared = False
+            self._config_prepare_error = None
+            self._config_prep_thread = Thread(
+                target=self._do_config_prepare, daemon=True
+            )
+            self._config_prep_thread.start()
 
             wait_for_procs_start = self.timing_trace_start("do_boot_wait_for_processes")
             num_launch_procs_checks = 0
@@ -3821,7 +3752,12 @@ class DAQInterface(Component):
                 return
 
             self.timing_trace_end(
-                "do_boot_logfile_association", logfiles_start, {"result": "success"}
+                "do_boot_logfile_association",
+                logfiles_start,
+                {
+                    "result": "success",
+                    "mode": getattr(self, "log_filename_mode", "unknown"),
+                },
             )
             endtime = time()
             self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
@@ -3838,8 +3774,97 @@ class DAQInterface(Component):
 
         self.print_log("i", "\n%s: BOOT transition complete" % (date_and_time()))
 
+    def _do_config_prepare(self):
+        """Pre-compute the FHiCL bookkeeping (resolve, reformat, bookkeeping,
+        run-record save) that do_config normally does sequentially before
+        sending the init transition. This is launched as a background thread
+        during do_boot so the ~7.5s of Python string work overlaps with the
+        ~7s of waiting for artdaq processes to come up.
+
+        On success sets self._config_prepared = True; on failure stores the
+        exception in self._config_prepare_error."""
+
+        try:
+            starttime = time()
+
+            # Ensure subconfigs_for_run is set — during boot, run_params
+            # holds boot args, not config args, but the config name is always
+            # available in the settings as FAKE_CONFIG_NAME = "ots_config"
+            if not hasattr(self, "subconfigs_for_run") or not self.subconfigs_for_run:
+                self.subconfigs_for_run = ["ots_config"]
+
+            self.print_log(
+                "i", "\n[config-prep] Obtaining FHiCL documents...", 1, False
+            )
+
+            tmpdir_for_fhicl, self.fhicl_file_path = self.get_config_info()
+            assert "/tmp" == tmpdir_for_fhicl[:4]
+
+            self.print_log("i", "[config-prep] Resolving FHiCL documents...", 1, False)
+
+            for i_proc in range(len(self.procinfos)):
+                matching_filenames = ["%s.fcl" % self.procinfos[i_proc].label]
+                if "BoardReader" in self.procinfos[i_proc].name:
+                    matching_filenames.append(
+                        "%s_hw_cfg.fcl" % self.procinfos[i_proc].label
+                    )
+                found_fhicl = False
+                for dirname, dummy, filenames in os.walk(tmpdir_for_fhicl):
+                    for filename in filenames:
+                        if filename in matching_filenames:
+                            with open("%s/%s" % (dirname, filename)) as f:
+                                fhicl = f.read()
+                            self.procinfos[i_proc].fhicl = fhicl
+                            self.procinfos[i_proc].fhicl_used = fhicl
+                            found_fhicl = True
+                if not found_fhicl:
+                    raise Exception(
+                        "No FHiCL found for %s" % (self.procinfos[i_proc].label)
+                    )
+
+            assert "/tmp" == tmpdir_for_fhicl[:4] and len(tmpdir_for_fhicl) > 4
+            shutil.rmtree(tmpdir_for_fhicl)
+
+            self.print_log(
+                "i", "[config-prep] Reformatting the FHiCL documents...", 1, False
+            )
+
+            self.create_setup_fhiclcpp_if_needed()
+
+            reformatted_fhicl_documents = reformat_fhicl_documents(
+                os.environ["DAQINTERFACE_SETUP_FHICLCPP"], self.procinfos
+            )
+
+            for i_proc, reformatted_fhicl_document in enumerate(
+                reformatted_fhicl_documents
+            ):
+                self.procinfos[i_proc].fhicl_used = reformatted_fhicl_document
+
+            self.print_log(
+                "i", "[config-prep] Bookkeeping the FHiCL documents...", 1, False
+            )
+
+            self.bookkeeping_for_fhicl_documents()
+
+            endtime = time()
+            self.print_log(
+                "i",
+                "[config-prep] Complete (%.1f seconds, overlapped with boot)."
+                % (endtime - starttime),
+            )
+            self._config_prepared = True
+
+        except Exception as e:
+            self.print_log(
+                "e",
+                "[config-prep] Failed: %s" % (str(e)),
+            )
+            self._config_prepare_error = e
+            self._config_prepared = False
+
     def do_config(self, subconfigs_for_run=[]):
 
+        self.transition_process_errors = []
         do_config_start = self.timing_trace_start("do_config_total")
 
         self.print_log("i", "\n%s: CONFIG transition underway" % (date_and_time()))
@@ -3854,6 +3879,180 @@ class DAQInterface(Component):
         self.subconfigs_for_run.sort()
 
         self.print_log("d", "Config name: %s" % (" ".join(self.subconfigs_for_run)), 1)
+
+        # If _do_config_prepare ran in a background thread during boot, join
+        # it and skip straight to the init transition
+        if (
+            hasattr(self, "_config_prep_thread")
+            and self._config_prep_thread is not None
+        ):
+            self.print_log(
+                "i",
+                "Waiting for config prep thread (started during boot)...",
+                1,
+                False,
+            )
+            prep_join_start = time()
+            self._config_prep_thread.join()
+            self._config_prep_thread = None
+            self.print_log(
+                "i",
+                "done (waited %.1f seconds)." % (time() - prep_join_start),
+            )
+
+            if self._config_prepared:
+                self.print_log(
+                    "i",
+                    "Config prep completed during boot, skipping to init transition.",
+                )
+
+                for procinfo in self.procinfos:
+                    assert (
+                        not procinfo.fhicl is None and not procinfo.fhicl_used is None
+                    )
+
+                # Set up and start run record save in background
+                self.tmp_run_record = "/tmp/run_record_attempted_%s/%s" % (
+                    os.environ["USER"],
+                    os.environ["DAQINTERFACE_PARTITION_NUMBER"],
+                )
+                self.semipermanent_run_record = "/tmp/run_record_attempted_%s/%s" % (
+                    os.environ["USER"],
+                    datetime.datetime.now().strftime("%a_%b_%d_%H:%M:%S.%f"),
+                )
+                if os.path.exists(self.tmp_run_record):
+                    shutil.rmtree(self.tmp_run_record)
+
+                def _save_run_record_thread_fast():
+                    try:
+                        self.save_run_record()
+                    except Exception:
+                        self.print_log("w", traceback.format_exc())
+
+                save_run_record_start = self.timing_trace_start(
+                    "do_config_save_run_record"
+                )
+                run_record_thread = Thread(
+                    target=_save_run_record_thread_fast, daemon=True
+                )
+                run_record_thread.start()
+
+                if self.manage_processes:
+
+                    self.readjust_process_priorities(
+                        self.boardreader_priorities_on_config
+                    )
+
+                    init_start = self.timing_trace_start("do_config_init_transition")
+                    try:
+                        self.do_command("Init")
+                    except Exception:
+                        self.print_log("d", traceback.format_exc(), 2)
+                        self.timing_trace_end(
+                            "do_config_init_transition",
+                            init_start,
+                            {"result": "failure"},
+                        )
+                        self.timing_trace_end(
+                            "do_config_total",
+                            do_config_start,
+                            {"result": "failure"},
+                            defer_flush=True,
+                        )
+                        self.timing_trace_reset()
+                        self.alert_and_recover(
+                            'An exception was thrown when attempting to send the "init" transition to the artdaq processes; see messages above for more info'
+                        )
+                        return
+                    self.timing_trace_end(
+                        "do_config_init_transition",
+                        init_start,
+                        {"result": "success"},
+                    )
+
+                    starttime = time()
+                    archive_start = self.timing_trace_start(
+                        "do_config_archive_documents"
+                    )
+
+                    self.print_log(
+                        "i",
+                        "Ensuring FHiCL documents will be archived in the output *.root files...",
+                        1,
+                        False,
+                    )
+                    self.print_log("d", "\n", 3)
+
+                    labeled_fhicl_documents = []
+
+                    for procinfo_with_fhicl_to_save in self.procinfos:
+                        labeled_fhicl_documents.append(
+                            (
+                                procinfo_with_fhicl_to_save.label,
+                                re.sub(
+                                    "'",
+                                    '"',
+                                    procinfo_with_fhicl_to_save.fhicl_used,
+                                ),
+                            )
+                        )
+
+                    for filestub in ["metadata", "boot"]:
+                        with open("%s/%s.txt" % (self.tmp_run_record, filestub)) as inf:
+                            contents = inf.read()
+                            contents = re.sub("'", '"', contents)
+                            contents = re.sub('"', '"', contents)
+                            labeled_fhicl_documents.append(
+                                (filestub, 'contents: "\n%s\n"\n' % (contents))
+                            )
+
+                    self.archive_documents(labeled_fhicl_documents)
+
+                    endtime = time()
+                    self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
+                    self.timing_trace_end(
+                        "do_config_archive_documents",
+                        archive_start,
+                        {"result": "success"},
+                    )
+
+                run_record_thread.join()
+                self.timing_trace_end(
+                    "do_config_save_run_record",
+                    save_run_record_start,
+                    {"result": "done"},
+                )
+
+                self.complete_state_change(self.name, "configuring")
+
+                if self.manage_processes:
+                    self.print_log(
+                        "i",
+                        str(
+                            "\nProcess manager logfiles (if applicable):\n%s"
+                            % (", ".join(self.process_manager_log_filenames))
+                        ),
+                    )
+
+                self.print_log(
+                    "i",
+                    "\n%s: CONFIG transition complete" % (date_and_time()),
+                )
+                self.timing_trace_end(
+                    "do_config_total",
+                    do_config_start,
+                    {"result": "success", "mode": "prep_overlapped_with_boot"},
+                    defer_flush=True,
+                )
+                self.timing_trace_reset()
+                return  # done — skip the normal prep path below
+
+            else:
+                self.print_log(
+                    "w",
+                    "Config prep failed during boot (%s), falling back to sequential prep."
+                    % (getattr(self, "_config_prepare_error", "unknown")),
+                )
 
         starttime = time()
         self.print_log("i", "\nObtaining FHiCL documents...", 1, False)
@@ -4067,28 +4266,6 @@ class DAQInterface(Component):
         if os.path.exists(self.tmp_run_record):
             shutil.rmtree(self.tmp_run_record)
 
-        starttime = time()
-        self.print_log("i", "Saving the run record...", 1, False)
-        save_run_record_start = self.timing_trace_start("do_config_save_run_record")
-        # self.print_log("d", "\n", 2)
-
-        try:
-            self.save_run_record()
-        except Exception:
-            self.print_log("w", traceback.format_exc())
-            self.print_log(
-                "w",
-                make_paragraph(
-                    "WARNING: an exception was thrown when attempting to save the run record. While datataking may be able to proceed, this may also indicate a serious problem"
-                ),
-            )
-
-        endtime = time()
-        self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
-        self.timing_trace_end(
-            "do_config_save_run_record", save_run_record_start, {"result": "done"}
-        )
-
         check_config_start = self.timing_trace_start("do_config_check_config")
         try:
             self.check_config()
@@ -4108,6 +4285,28 @@ class DAQInterface(Component):
             "do_config_check_config", check_config_start, {"result": "success"}
         )
 
+        # Save the run record in a background thread so it overlaps with the
+        # init transition (they're independent: run record writes to /tmp,
+        # init sends FHiCL to artdaq processes over XMLRPC)
+        def _save_run_record_thread():
+            try:
+                self.save_run_record()
+                self._run_record_saved = True
+            except Exception:
+                self.print_log("w", traceback.format_exc())
+                self.print_log(
+                    "w",
+                    make_paragraph(
+                        "WARNING: an exception was thrown when attempting to save the run record. While datataking may be able to proceed, this may also indicate a serious problem"
+                    ),
+                )
+                self._run_record_saved = False
+
+        self._run_record_saved = False
+        save_run_record_start = self.timing_trace_start("do_config_save_run_record")
+        run_record_thread = Thread(target=_save_run_record_thread, daemon=True)
+        run_record_thread.start()
+
         if self.manage_processes:
 
             self.readjust_process_priorities(self.boardreader_priorities_on_config)
@@ -4121,7 +4320,10 @@ class DAQInterface(Component):
                     "do_config_init_transition", init_start, {"result": "failure"}
                 )
                 self.timing_trace_end(
-                    "do_config_total", do_config_start, {"result": "failure"}
+                    "do_config_total",
+                    do_config_start,
+                    {"result": "failure"},
+                    defer_flush=True,
                 )
                 self.alert_and_recover(
                     'An exception was thrown when attempting to send the "init" transition to the artdaq processes; see messages above for more info'
@@ -4169,6 +4371,12 @@ class DAQInterface(Component):
                 "do_config_archive_documents", archive_start, {"result": "success"}
             )
 
+        # Join the run record thread (started before init transition)
+        run_record_thread.join()
+        self.timing_trace_end(
+            "do_config_save_run_record", save_run_record_start, {"result": "done"}
+        )
+
         self.complete_state_change(self.name, "configuring")
 
         if self.manage_processes:
@@ -4197,6 +4405,8 @@ class DAQInterface(Component):
             % (date_and_time(), self.run_number),
         )
 
+        run_record_start = self.timing_trace_start("do_start_run_record")
+
         self.check_run_record_integrity()
 
         if str(self.run_number) in [
@@ -4220,6 +4430,9 @@ class DAQInterface(Component):
                 shutil.copytree(self.tmp_run_record, run_record_directory)
             except:
                 self.print_log("e", traceback.format_exc())
+                self.timing_trace_end(
+                    "do_start_run_record", run_record_start, {"result": "failure"}
+                )
                 self.alert_and_recover(
                     make_paragraph(
                         'Error: Attempt to copy temporary run record "%s" into permanent run record "%s" didn\'t work; most likely reason is that you don\'t have write permission to %s, but it may also mean that your experiment\'s reusing a run number. Scroll up past the Recover transition output for further troubleshooting information.'
@@ -4245,6 +4458,9 @@ class DAQInterface(Component):
                 shutil.rmtree(self.semipermanent_run_record)
 
         else:
+            self.timing_trace_end(
+                "do_start_run_record", run_record_start, {"result": "failure"}
+            )
             self.alert_and_recover(
                 "Error in DAQInterface: unable to find temporary run records directory %s"
                 % self.tmp_run_record
@@ -4255,6 +4471,9 @@ class DAQInterface(Component):
             self.put_config_info()
         except Exception:
             self.print_log("e", traceback.format_exc())
+            self.timing_trace_end(
+                "do_start_run_record", run_record_start, {"result": "failure"}
+            )
             self.alert_and_recover(
                 "An exception was thrown when trying to save configuration info; see traceback above for more info"
             )
@@ -4282,6 +4501,8 @@ class DAQInterface(Component):
                 )
 
         self.execute_trace_script("start")
+
+        self.timing_trace_end("do_start_run_record", run_record_start)
 
         if self.manage_processes:
 
@@ -4321,7 +4542,9 @@ class DAQInterface(Component):
                 False,
             )
             self.print_log("d", "", 2)
+            softlink_start = self.timing_trace_start("do_start_softlink_logfiles")
             self.softlink_logfiles()
+            self.timing_trace_end("do_start_softlink_logfiles", softlink_start)
             endtime = time()
             self.print_log("i", "done (%.1f seconds)." % (endtime - starttime))
 
